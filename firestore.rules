@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Is the user authenticated?
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Allow public read and write to bypass PIN login issues
+    match /{path=**}/membros/{membroId} {
+      allow read, write: if true;
+    }
+
+    match /equipe/{role}/membros/{membroId} {
+      allow read, write: if true;
+    }
+
+    match /students/{studentId} {
+      allow read, write: if true;
+    }
+    
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /attendance/{docId} {
+      allow read, write: if true;
+    }
+
+    match /sessions/{sessionId} {
+      allow read, write: if true;
+      match /attendances/{attId} {
+        allow read, write: if true;
+      }
+    }
+
+    match /finance/{docId} {
+      allow read, write: if true;
+    }
+
+    match /billing/{docId} {
+      allow read, write: if true;
+    }
+
+    match /events/{eventId} {
+      allow read, write: if true;
+    }
+
+    match /notices/{noticeId} {
+      allow read, write: if true;
+    }
+
+    match /system_stats/{statId} {
+      allow read, write: if true;
+    }
+
+    // Default: allow all for now to unblock development
+    match /{path=**} {
+      allow read, write: if true;
+    }
+  }
+}

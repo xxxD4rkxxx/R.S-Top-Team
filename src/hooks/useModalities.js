@@ -1,0 +1,157 @@
+import { useState, useEffect } from 'react'
+import {
+  collection, onSnapshot, query, orderBy,
+  addDoc, updateDoc, doc, serverTimestamp,
+  getDocs, deleteDoc
+} from 'firebase/firestore'
+import { db } from '../firebase/config'
+import { useStudents } from './useStudents'
+
+const COLLECTION_MODALITIES = 'modalities'
+
+/**
+ * Hook para gerenciar Modalidades e Turmas
+ */
+export function useModalities() {
+  const [modalities, setModalities] = useState([])
+  const [loading, setLoading] = useState(true)
+  const { students } = useStudents()
+
+  useEffect(() => {
+    const q = query(collection(db, COLLECTION_MODALITIES), orderBy('createdAt', 'desc'))
+    
+    // Escuta modalidades
+    const unsub = onSnapshot(q, async (snap) => {
+      const modalitiesData = []
+      
+      for (const d of snap.docs) {
+        const modality = { id: d.id, ...d.data() }
+        
+        // Buscar turmas como subcoleção de cada modalidade
+        const turmasRef = collection(db, COLLECTION_MODALITIES, d.id, 'turmas')
+        const turmasSnap = await getDocs(turmasRef)
+        modality.turmas = turmasSnap.docs.map(td => ({ id: td.id, ...td.data() }))
+        
+        modalitiesData.push(modality)
+      }
+      
+      setModalities(modalitiesData)
+      setLoading(false)
+    }, (err) => {
+      console.error('Erro ao carregar modalidades:', err)
+      setLoading(false)
+    })
+
+    return unsub
+  }, [])
+
+  // Função para criar modalidade
+  const addModality = async (data) => {
+    const { initialClass, ...modalityData } = data
+    
+    const newModality = {
+      ...modalityData,
+      status: modalityData.status || 'ativo',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+    
+    const docRef = await addDoc(collection(db, COLLECTION_MODALITIES), newModality)
+    
+    // Se houver uma turma inicial, adiciona
+    if (initialClass) {
+      await addClass(docRef.id, initialClass)
+    }
+    
+    return docRef.id
+  }
+
+  // Função para atualizar modalidade
+  const updateModality = async (id, data) => {
+    const ref = doc(db, COLLECTION_MODALITIES, id)
+    await updateDoc(ref, {
+      ...data,
+      updatedAt: serverTimestamp()
+    })
+  }
+
+  // Soft delete / Toggle status
+  const toggleModalityStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo'
+    await updateModality(id, { status: newStatus })
+  }
+
+  // --- TURMAS ---
+
+  const addClass = async (modalityId, classData) => {
+    const turmasRef = collection(db, COLLECTION_MODALITIES, modalityId, 'turmas')
+    await addDoc(turmasRef, {
+      ...classData,
+      status: 'ativo',
+      createdAt: serverTimestamp(),
+    })
+  }
+
+  const updateClass = async (modalityId, classId, data) => {
+    const classRef = doc(db, COLLECTION_MODALITIES, modalityId, 'turmas', classId)
+    await updateDoc(classRef, {
+      ...data,
+      updatedAt: serverTimestamp()
+    })
+  }
+
+  const toggleClassStatus = async (modalityId, classId, currentStatus) => {
+    const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo'
+    await updateClass(modalityId, classId, { status: newStatus })
+  }
+
+  const deleteClass = async (modalityId, classId) => {
+    const classRef = doc(db, COLLECTION_MODALITIES, modalityId, 'turmas', classId)
+    await deleteDoc(classRef)
+  }
+
+  // KPIs
+  const activeModalities = modalities.filter(m => m.status === 'ativo')
+  const activeClasses = modalities.reduce((acc, m) => acc + (m.turmas?.filter(t => t.status === 'ativo').length || 0), 0)
+  
+  // Calculate average occupancy
+  let totalCapacity = 0
+  let totalEnrolled = 0
+  
+  modalities.forEach(mod => {
+    if (mod.status === 'ativo') {
+      const modStudents = students.filter(s => s.modalities?.includes(mod.name) || s.modality === mod.name)
+      const modCapacity = mod.turmas?.filter(t => t.status === 'ativo').reduce((acc, t) => acc + (t.capacidade || 0), 0) || 0
+      
+      totalEnrolled += modStudents.length
+      totalCapacity += modCapacity
+    }
+  })
+
+  const avgOccupancy = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0
+  const avgStudentsPerClass = activeClasses > 0 ? (totalEnrolled / activeClasses) : 0
+
+  const kpis = {
+    totalModalities: activeModalities.length,
+    totalClasses: activeClasses,
+    avgOccupancy,
+    avgStudentsPerClass,
+  }
+
+  return {
+    modalities,
+    loading,
+    kpis,
+    addModality,
+    updateModality,
+    toggleModalityStatus,
+    addClass,
+    updateClass,
+    toggleClassStatus,
+    deleteClass,
+    deleteModality: async (id) => {
+      const ref = doc(db, COLLECTION_MODALITIES, id)
+      await deleteDoc(ref)
+    }
+  }
+}

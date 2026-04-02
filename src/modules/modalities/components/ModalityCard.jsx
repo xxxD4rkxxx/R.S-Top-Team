@@ -1,0 +1,176 @@
+import React from 'react'
+import { Edit2, Trash2, ChevronDown, GraduationCap, Users, PlusCircle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+
+export default function ModalityCard({ 
+  modality, 
+  isExpanded,
+  onToggleExpand,
+  onEdit, 
+  onDelete,
+  onToggleStatus, 
+  onAddClass,
+  onEditClass,
+  onDeleteClass 
+}) {
+  const activeTurmas = modality.turmas?.filter(t => t.status === 'ativo') || []
+
+  return (
+    <div className={`glass-card rounded-2xl border border-white/5 transition-all relative overflow-hidden group ${isExpanded ? 'ring-1 ring-primary/30' : ''}`}>
+      {/* Mobile-First Header / List Item */}
+      <div 
+        onClick={onToggleExpand}
+        className="p-4 md:p-6 flex items-center gap-4 cursor-pointer active:bg-white/[0.03]"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-sm md:text-base font-black text-white uppercase tracking-wider truncate">{modality.name}</h3>
+            <span className={`w-1.5 h-1.5 rounded-full ${modality.status === 'ativo' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-gray-600'}`}></span>
+          </div>
+          
+          <div className="flex items-center gap-4 text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+            <div className="flex items-center gap-1.5">
+              <GraduationCap size={12} className="text-primary/70" />
+              <span>{activeTurmas.length} Turmas</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Users size={12} className="text-blue-400/70" />
+              <span>{modality.studentCount || 0} Alunos</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Status Switch (Mobile optimized) */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onToggleStatus(modality.id, modality.status); }}
+            className={`w-10 h-6 rounded-full relative transition-all ${modality.status === 'ativo' ? 'bg-primary/40' : 'bg-white/5'}`}
+          >
+            <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${modality.status === 'ativo' ? 'right-1 bg-primary' : 'left-1 bg-gray-600'}`} />
+          </button>
+          
+          <div className={`p-2 rounded-xl bg-white/5 text-gray-500 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-primary' : ''}`}>
+            <ChevronDown size={18} strokeWidth={2.5} />
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop-only secondary info area */}
+      {!isExpanded && (
+        <div className="hidden md:block px-6 pb-6 pt-0">
+          <div className="flex items-center gap-2 pt-4 border-t border-white/5">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(modality); }}
+              className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2"
+            >
+              <Edit2 size={14} />
+              Editar
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(modality.id); }}
+              className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 transition-all"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded Content - iOS Native style */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', duration: 0.5, bounce: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 md:px-6 pb-6 pt-2 border-t border-white/5 bg-white/[0.01]">
+              <div className="md:hidden flex items-center gap-2 mb-6 pt-2">
+                <button 
+                  onClick={() => onEdit(modality)}
+                  className="flex-1 py-3 bg-white/5 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400"
+                >
+                  Editar Modalidade
+                </button>
+                <button 
+                  onClick={() => onDelete(modality.id)}
+                  className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Turmas da Modalidade</h4>
+                <button 
+                  onClick={() => onAddClass(modality.id)}
+                  className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest hover:opacity-80"
+                >
+                  <PlusCircle size={14} />
+                  Nova Turma
+                </button>
+              </div>
+
+              {!modality.turmas || modality.turmas.length === 0 ? (
+                <div className="py-10 text-center border border-dashed border-white/5 rounded-xl">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-700">Nenhuma turma cadastrada</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {modality.turmas.map(turma => (
+                    <div key={turma.id} className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-[#111] border border-white/5 rounded-xl group/item hover:border-white/10 transition-all">
+                      <div className="flex items-center gap-4 mb-4 md:mb-0">
+                        <div className={`w-2 h-2 rounded-full ${turma.status === 'ativo' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-gray-600'}`} />
+                        <div>
+                          <h5 className="text-sm font-bold text-white uppercase">{turma.name}</h5>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{turma.professor || 'Sem Professor'}</p>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {turma.diasSemana?.map(day => (
+                              <span key={day} className="px-2 py-0.5 bg-white/5 text-[8px] font-black uppercase tracking-tighter text-gray-500 rounded-md">{day}</span>
+                            ))}
+                            <span className="ml-2 px-2 py-0.5 border border-white/5 text-[8px] font-black text-primary uppercase rounded-md">{turma.horarioInicio} - {turma.horarioFim}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest mb-1">Capacidade</p>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full bg-primary" style={{ width: '0%' }} />
+                            </div>
+                            <span className="text-[10px] font-mono text-gray-400">0/{turma.capacidade}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => onEditClass(modality.id, turma)}
+                            className="p-2 bg-white/5 text-gray-500 hover:text-white rounded-lg transition-colors border border-white/5"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button 
+                            onClick={() => onDeleteClass(modality.id, turma.id)}
+                            className="p-2 bg-white/5 text-gray-500 hover:text-red-500 rounded-lg transition-colors border border-white/5"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}

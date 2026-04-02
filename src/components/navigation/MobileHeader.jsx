@@ -1,0 +1,70 @@
+import React from 'react'
+import { motion } from 'framer-motion'
+import { Bell, Search, User, ArrowLeft } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
+
+const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, onBack }) => {
+  const { userData } = useAuth()
+  const navigate = useNavigate()
+
+  const handleBack = () => {
+    if (onBack) onBack()
+    else navigate(-1)
+  }
+
+  return (
+    <motion.header 
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="md:hidden flex items-center justify-between px-4 py-4 sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10"
+    >
+      <div className="flex items-center gap-3">
+        {showBack ? (
+          <button 
+            onClick={handleBack}
+            className="w-10 h-10 rounded-[5px] bg-white/5 border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform"
+          >
+            <ArrowLeft size={20} strokeWidth={3} />
+          </button>
+        ) : (
+          <div 
+            onClick={() => navigate('/profile')}
+            className="w-10 h-10 rounded-[5px] overflow-hidden border border-white/10 active:scale-90 transition-transform bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"
+          >
+            {userData?.photoURL ? (
+              <img src={userData.photoURL} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-primary font-black text-sm uppercase">
+                {(userData?.name || 'A').charAt(0)}
+              </span>
+            )}
+          </div>
+        )}
+        <div className="flex flex-col">
+          <h1 className="text-lg font-black text-white leading-tight tracking-tight">{title}</h1>
+          <span className="text-[10px] text-primary font-bold uppercase tracking-widest opacity-80 leading-none mt-0.5">
+            {userData?.role || 'Membro'}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {showSearch && (
+          <button 
+            onClick={onSearch}
+            className="p-2.5 rounded-[5px] bg-white/5 text-gray-400 active:scale-90 transition-transform"
+          >
+            <Search size={20} strokeWidth={2.5} />
+          </button>
+        )}
+        <button className="p-2.5 rounded-[5px] bg-white/5 text-gray-400 active:scale-90 transition-transform relative">
+          <Bell size={20} strokeWidth={2.5} />
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full ring-2 ring-black" />
+        </button>
+      </div>
+    </motion.header>
+  )
+}
+
+export default MobileHeader
