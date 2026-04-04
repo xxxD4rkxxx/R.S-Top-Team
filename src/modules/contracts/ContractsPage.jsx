@@ -59,7 +59,7 @@ export default function ContractsPage() {
         title="CONTRATOS DIGITAIS" 
         subtitle="GESTÃO DE TERMOS, ADESÕES E ASSINATURAS"
         extra={
-          <button className="btn-primary flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-bold uppercase shadow-xl hover:scale-105 transition-all">
+          <button className="btn-primary flex items-center gap-2 px-5 py-2 rounded-xll text-[11px] font-bold uppercase shadow-xl hover:scale-105 transition-all">
             <Plus size={16} /> Novo Contrato
           </button>
         }
@@ -93,23 +93,23 @@ export default function ContractsPage() {
          </div>
 
          {/* List Area */}
-         <div className="glass-card rounded-[24px] border border-white/10 overflow-hidden">
+         <div className="glass-card rounded-xll border border-white/10 overflow-hidden">
             <div className="p-6 border-b border-white/5 flex flex-col md:flex-row gap-4 justify-between items-center bg-white/5">
                 <div className="relative flex-1 w-full md:min-w-[300px]">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input 
                     type="text"
                     placeholder="Buscar por aluno ou plano..."
-                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-app outline-none focus:ring-1 focus:ring-primary/50"
+                    className="w-full bg-black/40 border border-white/10 rounded-xll pl-10 pr-4 py-2 text-sm text-app outline-none focus:ring-1 focus:ring-primary/50"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
-                   <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-app-bg text-app-muted border border-white/5 hover:text-app transition-all">
+                   <button className="flex items-center gap-2 px-4 py-2 rounded-xll text-xs font-bold bg-app-bg text-app-muted border border-white/5 hover:text-app transition-all">
                       <Filter size={16} /> Filtros
                    </button>
-                   <button className="p-2 rounded-xl bg-app-bg text-app-muted border border-white/5 hover:text-app">
+                   <button className="p-2 rounded-xll bg-app-bg text-app-muted border border-white/5 hover:text-app">
                       <Download size={18} />
                    </button>
                 </div>
@@ -174,3 +174,4 @@ export default function ContractsPage() {
     </div>
   )
 }
+

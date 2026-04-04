@@ -1,3 +1,6 @@
+// RESUMO: Card de representação individual da Modalidade.
+// Apresenta resumo de alunos/turmas e lista expansível com horários detalhados.
+// Gerencia ações de edição, exclusão e status da modalidade e suas respectivas turmas.
 import React from 'react'
 import { Edit2, Trash2, ChevronDown, GraduationCap, Users, PlusCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -16,7 +19,7 @@ export default function ModalityCard({
   const activeTurmas = modality.turmas?.filter(t => t.status === 'ativo') || []
 
   return (
-    <div className={`glass-card rounded-2xl border border-white/5 transition-all relative overflow-hidden group ${isExpanded ? 'ring-1 ring-primary/30' : ''}`}>
+    <div className={`glass-card rounded-[32px] border border-white/5 transition-all relative overflow-hidden group ${isExpanded ? 'ring-1 ring-primary/30' : ''}`}>
       {/* Mobile-First Header / List Item */}
       <div 
         onClick={onToggleExpand}
@@ -41,40 +44,41 @@ export default function ModalityCard({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Status Switch (Mobile optimized) */}
+          {/* Chave de Status (Ativo/Inativo) */}
           <button 
             onClick={(e) => { e.stopPropagation(); onToggleStatus(modality.id, modality.status); }}
             className={`w-10 h-6 rounded-full relative transition-all ${modality.status === 'ativo' ? 'bg-primary/40' : 'bg-white/5'}`}
           >
             <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${modality.status === 'ativo' ? 'right-1 bg-primary' : 'left-1 bg-gray-600'}`} />
           </button>
-          
-          <div className={`p-2 rounded-xl bg-white/5 text-gray-500 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-primary' : ''}`}>
+        </div>
+      </div>
+
+      {/* Área de ações Desktop - Visível por padrão para acesso rápido */}
+      <div className="hidden md:block px-6 pb-6 pt-0">
+        <div className="flex items-center gap-2 pt-4 border-t border-white/5">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onEdit(modality); }}
+            className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2"
+          >
+            <Edit2 size={14} />
+            Editar
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(modality.id); }}
+            className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 transition-all"
+          >
+            <Trash2 size={16} />
+          </button>
+          {/* Seta de expansão posicionada à direita da lixeira conforme solicitado */}
+          <div 
+            onClick={onToggleExpand}
+            className={`p-2.5 rounded-xl bg-white/5 text-gray-500 border border-white/5 cursor-pointer hover:bg-white/10 transition-all duration-300 ${isExpanded ? 'rotate-180 text-primary border-primary/30' : ''}`}
+          >
             <ChevronDown size={18} strokeWidth={2.5} />
           </div>
         </div>
       </div>
-
-      {/* Desktop-only secondary info area */}
-      {!isExpanded && (
-        <div className="hidden md:block px-6 pb-6 pt-0">
-          <div className="flex items-center gap-2 pt-4 border-t border-white/5">
-            <button 
-              onClick={(e) => { e.stopPropagation(); onEdit(modality); }}
-              className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2"
-            >
-              <Edit2 size={14} />
-              Editar
-            </button>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onDelete(modality.id); }}
-              className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 transition-all"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Expanded Content - iOS Native style */}
       <AnimatePresence initial={false}>
@@ -99,6 +103,13 @@ export default function ModalityCard({
                   className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500"
                 >
                   <Trash2 size={16} />
+                </button>
+                {/* Mobile: Seta de expansão também à direita da lixeira */}
+                <button 
+                  onClick={onToggleExpand}
+                  className={`p-3 rounded-xl bg-white/5 text-gray-500 border border-white/5 transition-all duration-300 ${isExpanded ? 'rotate-180 text-primary border-primary/30' : ''}`}
+                >
+                  <ChevronDown size={18} strokeWidth={2.5} />
                 </button>
               </div>
 
@@ -174,3 +185,4 @@ export default function ModalityCard({
     </div>
   )
 }
+

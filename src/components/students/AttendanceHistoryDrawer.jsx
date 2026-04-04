@@ -37,7 +37,7 @@ function daysBetween(a, b) {
 function CustomBarTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-xs">
+    <div className="bg-[#111] border border-white/10 rounded-xll px-3 py-2 text-xs">
       <p className="text-gray-400 font-bold">{MONTHS_FULL[label] || label}</p>
       <p className="text-white font-black">{payload[0].value} treinos</p>
     </div>
@@ -264,7 +264,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
               { icon: Award,     color:'text-primary',   label:'Total',     value: loading ? '—' : presentRecords.length },
               { icon: Star,      color:'text-yellow-400',  label:'Sequência', value: loading ? '—' : `${streak}s` },
             ].map(({ icon: Icon, color, label, value }) => (
-              <div key={label} className="bg-white/5 rounded-2xl p-3 border border-white/10 text-center">
+              <div key={label} className="bg-white/5 rounded-xll p-3 border border-white/10 text-center">
                 <Icon size={18} strokeWidth={1.9} className={`${color} mx-auto mb-1`} />
                 <p className={`text-2xl font-black ${color}`}>{value}</p>
                 <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-0.5">{label}</p>
@@ -289,7 +289,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
               )}
             </div>
             <button onClick={handlePrint} title="Exportar PDF"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xll text-[11px] font-bold bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
               <FileDown size={13} /> Exportar
             </button>
           </div>
@@ -314,7 +314,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
               {/* ══ CALENDAR TAB ══ */}
               {activeTab === 'calendar' && (
                 <div className="space-y-5">
-                  <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
+                  <div className="bg-white/5 rounded-xll border border-white/10 overflow-hidden">
                     {/* Nav */}
                     <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
                       <button onClick={() => setViewDate(p => new Date(p.getFullYear(), p.getMonth() - 1, 1))}
@@ -409,7 +409,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                       <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">Últimos Treinos</h3>
                       <div className="space-y-2">
                         {[...presentRecords].reverse().slice(0, 8).map((r, i) => (
-                          <div key={i} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5 border border-white/5">
+                          <div key={i} className="flex items-center gap-3 bg-white/5 rounded-xll px-4 py-2.5 border border-white/5">
                             <div className="w-2 h-2 rounded-full shrink-0" style={{ background: MODALITY_COLORS[r.modality] || 'var(--clr-primary)' }} />
                             <span className="text-sm text-white font-medium flex-1">
                               {r.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
@@ -434,7 +434,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
               {activeTab === 'charts' && (
                 <div className="space-y-6">
                   {/* Bar: Consistência Mensal */}
-                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
+                  <div className="bg-white/5 rounded-xll border border-white/10 p-4">
                     <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Consistência Mensal</h3>
                     <ResponsiveContainer width="100%" height={140}>
                       <BarChart data={monthlyData} barSize={14}>
@@ -448,7 +448,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                   </div>
 
                   {/* Line: Rumo à Graduação */}
-                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
+                  <div className="bg-white/5 rounded-xll border border-white/10 p-4">
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Rumo à Graduação</h3>
                       <span className="text-[10px] text-purple-400 font-bold">{Math.min(presentRecords.length, PROMO_TARGET)}/{PROMO_TARGET} treinos</span>
@@ -466,7 +466,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
 
                   {/* Pie: Modalidades */}
                   {modalityData.length > 1 && (
-                    <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
+                    <div className="bg-white/5 rounded-xll border border-white/10 p-4">
                       <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Divisão por Modalidade</h3>
                       <div className="flex items-center gap-4">
                         <ResponsiveContainer width={120} height={120}>
@@ -499,7 +499,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                   )}
 
                   {/* Heatmap GitHub-style */}
-                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
+                  <div className="bg-white/5 rounded-xll border border-white/10 p-4">
                     <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Mapa de Frequência (Horário)</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-[9px]">
@@ -559,11 +559,11 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                   {/* Add note */}
                   {!showNoteForm ? (
                     <button onClick={() => setShowNoteForm(true)}
-                      className="w-full flex items-center gap-2 justify-center py-3 rounded-xl bg-white/5 border border-dashed border-white/20 text-gray-400 hover:text-white hover:border-white/30 hover:bg-white/8 text-sm font-medium transition-all">
+                      className="w-full flex items-center gap-2 justify-center py-3 rounded-xll bg-white/5 border border-dashed border-white/20 text-gray-400 hover:text-white hover:border-white/30 hover:bg-white/8 text-sm font-medium transition-all">
                       <Plus size={16} /> Adicionar Nota do Professor
                     </button>
                   ) : (
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-3">
+                    <div className="bg-white/5 rounded-xll p-4 border border-white/10 space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-xs font-bold text-white">Nova Nota</h3>
                         <button onClick={() => setShowNoteForm(false)}><X size={14} className="text-gray-500 hover:text-white" /></button>
@@ -577,9 +577,9 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                         autoFocus
                       />
                       <div className="flex gap-2">
-                        <button onClick={() => setShowNoteForm(false)} className="flex-1 py-2 rounded-xl text-sm text-gray-400 bg-white/5 border border-white/10">Cancelar</button>
+                        <button onClick={() => setShowNoteForm(false)} className="flex-1 py-2 rounded-xll text-sm text-gray-400 bg-white/5 border border-white/10">Cancelar</button>
                         <button onClick={handleSaveNote} disabled={!noteText.trim() || savingNote}
-                          className="flex-1 btn-primary py-2 rounded-xl text-sm font-bold disabled:opacity-50">
+                          className="flex-1 btn-primary py-2 rounded-xll text-sm font-bold disabled:opacity-50">
                           {savingNote ? 'Salvando...' : 'Salvar'}
                         </button>
                       </div>
@@ -597,7 +597,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                       {notes.map(note => {
                         const d = note.createdAt?.seconds ? new Date(note.createdAt.seconds * 1000) : null
                         return (
-                          <div key={note.id} className="bg-white/5 rounded-2xl p-4 border border-white/8">
+                          <div key={note.id} className="bg-white/5 rounded-xll p-4 border border-white/8">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
                                 {note.author || 'Professor'}
@@ -619,3 +619,4 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
     </SlideOver>
   )
 }
+

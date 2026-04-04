@@ -83,6 +83,7 @@ export function useModalities() {
 
   // --- TURMAS ---
 
+  // Função para adicionar uma nova turma a uma modalidade
   const addClass = async (modalityId, classData) => {
     const turmasRef = collection(db, COLLECTION_MODALITIES, modalityId, 'turmas')
     await addDoc(turmasRef, {
@@ -90,24 +91,33 @@ export function useModalities() {
       status: 'ativo',
       createdAt: serverTimestamp(),
     })
+    // Força atualização da modalidade pai para disparar o onSnapshot
+    await updateModality(modalityId, { updatedAt: serverTimestamp() })
   }
 
+  // Função para atualizar dados de uma turma existente
   const updateClass = async (modalityId, classId, data) => {
     const classRef = doc(db, COLLECTION_MODALITIES, modalityId, 'turmas', classId)
     await updateDoc(classRef, {
       ...data,
       updatedAt: serverTimestamp()
     })
+    // Força atualização da modalidade pai para disparar o onSnapshot
+    await updateModality(modalityId, { updatedAt: serverTimestamp() })
   }
 
+  // Alterna status (Ativo/Inativo) de uma turma
   const toggleClassStatus = async (modalityId, classId, currentStatus) => {
     const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo'
     await updateClass(modalityId, classId, { status: newStatus })
   }
 
+  // Remove permanentemente uma turma
   const deleteClass = async (modalityId, classId) => {
     const classRef = doc(db, COLLECTION_MODALITIES, modalityId, 'turmas', classId)
     await deleteDoc(classRef)
+    // Força atualização da modalidade pai para disparar o onSnapshot
+    await updateModality(modalityId, { updatedAt: serverTimestamp() })
   }
 
   // KPIs

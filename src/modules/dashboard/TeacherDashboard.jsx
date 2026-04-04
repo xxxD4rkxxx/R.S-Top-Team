@@ -26,7 +26,7 @@ import { beltConfig } from '../../data/beltConfig'
 
 function Card({ children, className = '', title, subtitle, icon: Icon, action }) {
   return (
-    <div className={`glass-card rounded-[24px] border border-white/10 overflow-hidden flex flex-col ${className}`}>
+    <div className={`glass-card rounded-xll border border-white/10 overflow-hidden flex flex-col ${className}`}>
       {(title || subtitle || Icon) && (
         <div className="p-5 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -48,7 +48,7 @@ function Card({ children, className = '', title, subtitle, icon: Icon, action })
 
 function StatMini({ label, value, icon: Icon, colorClass = "text-white" }) {
   return (
-    <div className="bg-white/5 rounded-2xl p-4 border border-white/5 hover:border-white/10 transition-all group">
+    <div className="bg-white/5 rounded-xll p-4 border border-white/5 hover:border-white/10 transition-all group">
       <div className="flex items-center gap-2 mb-2">
         {Icon && <Icon size={14} className="text-gray-500 group-hover:text-white transition-colors" />}
         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
@@ -157,10 +157,10 @@ export default function TeacherDashboard() {
               </div>
             ) : (
               todaySessions.map(sess => (
-                <div key={sess.id} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer"
+                <div key={sess.id} className="group flex items-center justify-between p-4 rounded-xll bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer"
                   onClick={() => setSelectedSession(sess)}>
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-black">
+                    <div className="w-10 h-10 rounded-xll bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-black">
                       {sess.time?.split(':')[0]}h
                     </div>
                     <div>
@@ -185,7 +185,7 @@ export default function TeacherDashboard() {
             {/* Quick action button */}
             <button 
               onClick={() => setActiveTab('aulas')}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 text-xs font-bold transition-all"
+              className="w-full mt-4 flex items-center justify-center gap-2 py-3 rounded-xll bg-white/5 border border-white/5 hover:bg-white/10 text-xs font-bold transition-all"
             >
               <PlusCircle size={16} /> Ver Grade Completa
             </button>
@@ -195,26 +195,26 @@ export default function TeacherDashboard() {
         {/* Announcements Preview */}
         <Card title="Comunicados de Técnica" subtitle="Avise seus alunos" icon={MessageSquare}>
           <div className="space-y-4">
-            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-5">
+            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xll p-5">
               <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">Postar nova técnica</h4>
               <form onSubmit={handlePostAnnouncement} className="space-y-3">
                 <input 
                   type="text" 
                   placeholder="Título (ex: Raspagem de Meia Guarda)" 
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none"
+                  className="w-full bg-black/40 border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none"
                   value={announcement.title}
                   onChange={e => setAnnouncement(p => ({ ...p, title: e.target.value }))}
                 />
                 <textarea 
                   placeholder="O que será ensinado?" 
                   rows="2"
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none resize-none"
+                  className="w-full bg-black/40 border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none resize-none"
                   value={announcement.content}
                   onChange={e => setAnnouncement(p => ({ ...p, content: e.target.value }))}
                 />
                 <div className="flex gap-2">
                   <select 
-                    className="bg-black/40 border border-white/10 rounded-xl px-3 text-xs focus:border-emerald-500/50 transition-all outline-none"
+                    className="bg-black/40 border border-white/10 rounded-xll px-3 text-xs focus:border-emerald-500/50 transition-all outline-none"
                     value={announcement.difficulty}
                     onChange={e => setAnnouncement(p => ({ ...p, difficulty: e.target.value }))}
                   >
@@ -222,7 +222,7 @@ export default function TeacherDashboard() {
                     <option value="Intermediário">Intermediário</option>
                     <option value="Avançado">Avançado</option>
                   </select>
-                  <button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all">
+                  <button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs py-2.5 rounded-xll flex items-center justify-center gap-2 transition-all">
                     <Send size={16} /> Enviar p/ Alunos
                   </button>
                 </div>
@@ -232,7 +232,7 @@ export default function TeacherDashboard() {
             <div className="space-y-3">
               <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Últimos comunicados</h4>
               {notices.slice(0, 2).map((n, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <div key={i} className="flex items-start gap-3 p-3 rounded-xll bg-white/[0.02] border border-white/5">
                   <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
                     <Info size={14} className="text-gray-400" />
                   </div>
@@ -248,9 +248,9 @@ export default function TeacherDashboard() {
       </div>
 
       {/* PWA Promo Card */}
-      <div className="glass-card rounded-[24px] overflow-hidden border border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 to-transparent p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="glass-card rounded-xll overflow-hidden border border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 to-transparent p-6 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-black flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+          <div className="w-12 h-12 rounded-xll bg-emerald-500 text-black flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
             <Smartphone size={24} />
           </div>
           <div>
@@ -276,16 +276,16 @@ export default function TeacherDashboard() {
               <p className="text-xs font-bold text-white uppercase tracking-widest">Aulas do Dia ({todaySessions.length})</p>
             </div>
             <div className="flex gap-2">
-              <button className="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all"><Filter size={16} /></button>
-              <button className="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all"><Search size={16} /></button>
+              <button className="p-2 rounded-xll bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all"><Filter size={16} /></button>
+              <button className="p-2 rounded-xll bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all"><Search size={16} /></button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {todaySessions.map((sess, idx) => (
-              <div key={idx} className="group relative flex flex-col p-5 rounded-[24px] bg-white/5 border border-white/5 hover:border-white/15 transition-all">
+              <div key={idx} className="group relative flex flex-col p-5 rounded-xll bg-white/5 border border-white/5 hover:border-white/15 transition-all">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-black/40 border border-white/5 flex flex-col items-center justify-center">
+                  <div className="w-12 h-12 rounded-xll bg-black/40 border border-white/5 flex flex-col items-center justify-center">
                     <span className="text-xs font-black text-white">{sess.time?.split(':')[0]}</span>
                     <span className="text-[8px] font-bold text-gray-500 uppercase">hrs</span>
                   </div>
@@ -307,7 +307,7 @@ export default function TeacherDashboard() {
                     <span className="text-lg font-black text-white animate-value-reveal">{sess.presentes || 0}</span>
                     <span className="text-[9px] text-gray-600 uppercase font-bold">Presentes</span>
                   </div>
-                  <button className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-[10px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2">
+                  <button className="px-4 py-2 rounded-xll bg-white/[0.03] border border-white/10 text-[10px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2">
                     <PlayCircle size={14} /> Iniciar
                   </button>
                 </div>
@@ -324,7 +324,7 @@ export default function TeacherDashboard() {
             <p className="text-center text-gray-600 text-sm py-10">Nenhuma aula experimental para hoje.</p>
           ) : (
             todaySessions.filter(s => s.isExperimental).map((ex, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
+              <div key={i} className="flex items-center justify-between p-4 rounded-xll bg-amber-500/5 border border-amber-500/10">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-black">EX</div>
                   <div>
@@ -348,21 +348,21 @@ export default function TeacherDashboard() {
         subtitle="Privadas para você e gestores" 
         icon={StickyNote}
         action={
-          <button onClick={() => setShowNoteModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-black font-black text-[10px] uppercase hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
+          <button onClick={() => setShowNoteModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-xll bg-emerald-500 text-black font-black text-[10px] uppercase hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
             <PlusCircle size={16} /> Nova Nota
           </button>
         }
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loadingNotes ? (
-            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-3xl" />)
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xll" />)
           ) : notes.length === 0 ? (
             <div className="col-span-full py-20 text-center">
               <StickyNote size={40} className="mx-auto text-gray-700 mb-4 opacity-30" />
               <p className="text-gray-500 text-sm">Organize suas observações aqui.</p>
             </div>
           ) : notes.map(note => (
-            <div key={note.id} className="group p-5 rounded-[24px] bg-white/5 border border-white/5 hover:border-white/15 transition-all relative">
+            <div key={note.id} className="group p-5 rounded-xll bg-white/5 border border-white/5 hover:border-white/15 transition-all relative">
               <div className="flex justify-between items-start mb-3">
                 <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${
                   note.category === 'alunos' ? 'bg-blue-500/20 text-blue-400' : 
@@ -385,7 +385,7 @@ export default function TeacherDashboard() {
       </Card>
 
       {/* Security Info Card */}
-      <div className="p-4 rounded-2xl bg-orange-500/5 border border-orange-500/10 flex items-start gap-4">
+      <div className="p-4 rounded-xll bg-orange-500/5 border border-orange-500/10 flex items-start gap-4">
         <AlertCircle size={20} className="text-orange-500 shrink-0 mt-0.5" />
         <div>
           <h4 className="text-xs font-bold text-white uppercase tracking-widest mb-1">Dados Seguros</h4>
@@ -411,7 +411,7 @@ export default function TeacherDashboard() {
             </thead>
             <tbody>
               {(stats?.sessions || []).map((s, i) => (
-                <tr key={i} className="group bg-white/5 hover:bg-white/[0.08] transition-all cursor-pointer border border-white/5 rounded-2xl">
+                <tr key={i} className="group bg-white/5 hover:bg-white/[0.08] transition-all cursor-pointer border border-white/5 rounded-xll">
                   <td className="px-4 py-4 first:rounded-l-2xl">
                     <p className="text-sm font-bold text-white">{s.date}</p>
                     <p className="text-[10px] text-gray-600 mt-0.5">{s.time || '—'}</p>
@@ -430,7 +430,7 @@ export default function TeacherDashboard() {
                     <span className="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 uppercase tracking-tighter border border-emerald-500/20">Finalizada</span>
                   </td>
                   <td className="px-4 py-4 last:rounded-r-2xl text-right">
-                    <button className="p-2 rounded-xl bg-white/5 text-gray-500 group-hover:text-white transition-all"><Eye size={18} /></button>
+                    <button className="p-2 rounded-xll bg-white/5 text-gray-500 group-hover:text-white transition-all"><Eye size={18} /></button>
                   </td>
                 </tr>
               ))}
@@ -455,10 +455,10 @@ export default function TeacherDashboard() {
           {['Jiu-Jitsu', 'Boxe'].map((mod, i) => {
             const turmStudents = (students || []).filter(s => s.modality === mod && s.status === 'ativo')
             return (
-              <div key={i} className="p-5 rounded-[24px] bg-white/5 border border-white/5 hover:border-white/10 transition-all flex flex-col">
+              <div key={i} className="p-5 rounded-xll bg-white/5 border border-white/5 hover:border-white/10 transition-all flex flex-col">
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black ${i === 0 ? 'bg-primary text-black shadow-[0_0_20px_rgba(255,0,0,0.3)]' : 'bg-yellow-400 text-black shadow-[0_0_20px_rgba(250,204,21,0.3)]'}`}>
+                    <div className={`w-12 h-12 rounded-xll flex items-center justify-center text-xl font-black ${i === 0 ? 'bg-primary text-black shadow-[0_0_20px_rgba(255,0,0,0.3)]' : 'bg-yellow-400 text-black shadow-[0_0_20px_rgba(250,204,21,0.3)]'}`}>
                       {mod.charAt(0)}
                     </div>
                     <div>
@@ -486,8 +486,8 @@ export default function TeacherDashboard() {
                 </div>
 
                 <div className="mt-auto grid grid-cols-2 gap-2">
-                  <button className="py-2.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase text-white hover:bg-white/10 transition-all">Ver Alunos</button>
-                  <button className="py-2.5 rounded-xl bg-primary text-black text-[10px] font-black uppercase hover:opacity-90 transition-all">Enviar Aviso</button>
+                  <button className="py-2.5 rounded-xll bg-white/5 border border-white/10 text-[10px] font-black uppercase text-white hover:bg-white/10 transition-all">Ver Alunos</button>
+                  <button className="py-2.5 rounded-xll bg-primary text-black text-[10px] font-black uppercase hover:opacity-90 transition-all">Enviar Aviso</button>
                 </div>
               </div>
             )
@@ -496,7 +496,7 @@ export default function TeacherDashboard() {
       </Card>
       
       {/* Search Aluno Quick */}
-      <div className="glass-card p-6 rounded-[24px] border border-white/10">
+      <div className="glass-card p-6 rounded-xll border border-white/10">
         <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-2">
           <Search size={16} /> Busca Rápida de Aluno
         </h3>
@@ -504,7 +504,7 @@ export default function TeacherDashboard() {
           <input 
             type="text" 
             placeholder="Nome ou CPF do aluno..." 
-            className="w-full bg-white/5 border border-white/5 hover:border-white/15 rounded-2xl px-5 py-4 text-sm transition-all focus:bg-white/10 focus:border-emerald-500/30 outline-none pr-12"
+            className="w-full bg-white/5 border border-white/5 hover:border-white/15 rounded-xll px-5 py-4 text-sm transition-all focus:bg-white/10 focus:border-emerald-500/30 outline-none pr-12"
           />
           <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">
             <ChevronRight size={20} />
@@ -521,7 +521,7 @@ export default function TeacherDashboard() {
         title={`Instrutor ${userData?.name?.split(' ')[0] || 'Professor'}`} 
         subtitle="Portal de Ensino e Gestão Técnicas"
         actions={
-          <div className="hidden sm:flex items-center gap-2 bg-black/40 rounded-xl p-1 border border-white/5">
+          <div className="hidden sm:flex items-center gap-2 bg-black/40 rounded-xll p-1 border border-white/5">
             {['dashboard', 'aulas', 'turmas'].map(tab => (
               <button 
                 key={tab}
@@ -549,7 +549,7 @@ export default function TeacherDashboard() {
             <button 
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap text-[10px] font-black uppercase border transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xll whitespace-nowrap text-[10px] font-black uppercase border transition-all ${
                 activeTab === tab.id ? 'bg-primary border-primary text-black' : 'bg-white/5 border-white/5 text-gray-500'
               }`}
             >
@@ -581,7 +581,7 @@ export default function TeacherDashboard() {
             <input 
               required
               type="text" 
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-emerald-500/50 outline-none transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-xll px-4 py-3 text-sm focus:border-emerald-500/50 outline-none transition-all"
               placeholder="Ex: Observação sobre João Silva"
               value={newNote.title}
               onChange={e => setNewNote(p => ({ ...p, title: e.target.value }))}
@@ -596,7 +596,7 @@ export default function TeacherDashboard() {
                   key={cat}
                   type="button"
                   onClick={() => setNewNote(p => ({ ...p, category: cat }))}
-                  className={`py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                  className={`py-2 rounded-xll text-[10px] font-black uppercase transition-all border ${
                     newNote.category === cat ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-white/5 border-white/5 text-gray-500'
                   }`}
                 >
@@ -611,14 +611,14 @@ export default function TeacherDashboard() {
             <textarea 
               required
               rows="6"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-emerald-500/50 outline-none transition-all resize-none"
+              className="w-full bg-white/5 border border-white/10 rounded-xll px-4 py-3 text-sm focus:border-emerald-500/50 outline-none transition-all resize-none"
               placeholder="Digite suas observações detalhadas aqui..."
               value={newNote.content}
               onChange={e => setNewNote(p => ({ ...p, content: e.target.value }))}
             />
           </div>
 
-          <button type="submit" className="w-full py-4 rounded-2xl bg-emerald-500 text-black font-black text-xs uppercase hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 mt-4">
+          <button type="submit" className="w-full py-4 rounded-xll bg-emerald-500 text-black font-black text-xs uppercase hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 mt-4">
             Salvar Anotação
           </button>
         </form>
@@ -632,17 +632,17 @@ export default function TeacherDashboard() {
         subtitle={`${selectedSession?.date} • ${selectedSession?.time}`}
       >
         <div className="p-6 space-y-6">
-          <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+          <div className="bg-white/5 rounded-xll p-4 border border-white/5">
             <div className="flex justify-between items-center mb-4">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Início da Aula</span>
               <span className="text-xs font-bold text-white uppercase">{selectedSession?.time}</span>
             </div>
             <div className="flex gap-4">
-              <div className="flex-1 p-4 rounded-xl bg-black/40 border border-white/5 text-center">
+              <div className="flex-1 p-4 rounded-xll bg-black/40 border border-white/5 text-center">
                 <p className="text-2xl font-black text-emerald-400 animate-value-reveal">{selectedSession?.presentes || 0}</p>
                 <p className="text-[9px] text-gray-600 uppercase font-bold">Presentes</p>
               </div>
-              <div className="flex-1 p-4 rounded-xl bg-black/40 border border-white/5 text-center">
+              <div className="flex-1 p-4 rounded-xll bg-black/40 border border-white/5 text-center">
                 <p className="text-2xl font-black text-white animate-value-reveal">{selectedSession?.total || 0}</p>
                 <p className="text-[9px] text-gray-600 uppercase font-bold">Inscritos</p>
               </div>
@@ -652,8 +652,8 @@ export default function TeacherDashboard() {
           <div className="space-y-4">
             <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Controle de Aula</h4>
             <div className="grid grid-cols-1 gap-3">
-              <button className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-left group">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+              <button className="flex items-center gap-4 p-4 rounded-xll bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-left group">
+                <div className="w-10 h-10 rounded-xll bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
                   <Activity size={20} />
                 </div>
                 <div>
@@ -663,8 +663,8 @@ export default function TeacherDashboard() {
                 <ChevronRight size={18} className="ml-auto text-gray-700 group-hover:text-white transition-all" />
               </button>
               
-              <button className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-left group">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+              <button className="flex items-center gap-4 p-4 rounded-xll bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-left group">
+                <div className="w-10 h-10 rounded-xll bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
                   <Award size={20} />
                 </div>
                 <div>
@@ -677,7 +677,7 @@ export default function TeacherDashboard() {
           </div>
           
           <div className="flex flex-col gap-3">
-            <button className="py-4 rounded-2xl bg-emerald-500 text-black font-black text-xs uppercase hover:bg-emerald-600 transition-all">
+            <button className="py-4 rounded-xll bg-emerald-500 text-black font-black text-xs uppercase hover:bg-emerald-600 transition-all">
               Abrir Lista Completa
             </button>
             <button onClick={() => setSelectedSession(null)} className="py-2 text-xs text-gray-500 hover:text-white transition-all">
@@ -694,3 +694,4 @@ export default function TeacherDashboard() {
 function UserIcon({ size, className, color }) {
   return <Award size={size} className={className} color={color} />
 }
+

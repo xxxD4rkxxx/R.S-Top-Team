@@ -33,7 +33,7 @@ export default function SlideOver({ isOpen, onClose, title, subtitle, children, 
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            className="p-2 rounded-xll hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
           >
             <X size={18} />
           </button>
@@ -54,3 +54,4 @@ export default function SlideOver({ isOpen, onClose, title, subtitle, children, 
     </div>
   )
 }
+

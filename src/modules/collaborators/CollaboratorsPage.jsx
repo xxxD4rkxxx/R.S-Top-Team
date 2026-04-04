@@ -55,8 +55,8 @@ export default function CollaboratorsPage() {
 
       <PageHeader
         icon={Users}
-        title="COLABORADORES"
-        subtitle="Gestão de Equipe"
+        title="PROFESSORES & EQUIPE"
+        subtitle="Gestão de Professores e Colaboradores"
         extra={
           <button 
             onClick={() => setIsModalOpen(true)}
@@ -78,7 +78,7 @@ export default function CollaboratorsPage() {
             placeholder="Buscar por nome ou e-mail..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#111] border border-white/5 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+            className="w-full bg-[#111] border border-white/5 rounded-xll pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
           />
         </div>
         <div className="flex gap-2">
@@ -86,7 +86,7 @@ export default function CollaboratorsPage() {
             <button
               key={role}
               onClick={() => setRoleFilter(role)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
+              className={`px-4 py-2 rounded-xll text-[10px] font-bold uppercase tracking-widest border transition-all ${
                 roleFilter === role 
                 ? 'bg-white border-white text-black' 
                 : 'bg-transparent border-white/5 text-gray-500 hover:border-white/20 hover:text-white'
@@ -179,7 +179,7 @@ export default function CollaboratorsPage() {
                           <div className="flex gap-2">
                             <button 
                               onClick={() => toggleStatus(user)}
-                              className={`p-2.5 rounded-xl transition-all border ${
+                              className={`p-2.5 rounded-xll transition-all border ${
                                 user.status === 'Ativo' 
                                 ? 'bg-amber-500/5 border-amber-500/10 text-amber-500/50 hover:bg-amber-500 hover:text-white' 
                                 : 'bg-emerald-500/5 border-emerald-500/10 text-emerald-500/50 hover:bg-emerald-500 hover:text-white'
@@ -187,7 +187,7 @@ export default function CollaboratorsPage() {
                             >
                               {user.status === 'Ativo' ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
                             </button>
-                            <button className="p-2.5 bg-white/5 border border-white/10 text-gray-500 hover:text-white rounded-xl transition-all">
+                            <button className="p-2.5 bg-white/5 border border-white/10 text-gray-500 hover:text-white rounded-xll transition-all">
                               <MoreVertical size={16} />
                             </button>
                           </div>
@@ -224,3 +224,4 @@ export default function CollaboratorsPage() {
     </div>
   )
 }
+

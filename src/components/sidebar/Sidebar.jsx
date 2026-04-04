@@ -1,8 +1,12 @@
+// COMPONENTE DE BARRA LATERAL (SIDEBAR)
+// Centraliza a navegação principal da plataforma RS Top Team.
+// Implementa suporte a múltiplos papéis (admin, gestor, professor, aluno) 
+// e modo de simulação para administradores testarem interfaces.
 import React, { useState } from 'react'
 import {
   Settings, ChevronLeft, ChevronRight, ShieldCheck, User, ChevronDown,
   Activity, Contact, CheckCircle2, CalendarRange, Clock, Layers, Gauge, Medal,
-  Gem, FileDigit, Zap, PiggyBank, ArrowDownRight, PieChart, MessageSquare
+  Gem, FileDigit, Zap, PiggyBank, ArrowDownRight, PieChart, MessageSquare, Users
 } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -19,6 +23,7 @@ export const navGroups = [
     title: 'Opracional',
     items: [
       { to: '/students', icon: Contact, label: 'Alunos', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/collaborators', icon: Users, label: 'Equipe & Professores', roles: ['admin', 'gestor', 'professor'] },
       { to: '/attendance', icon: CheckCircle2, label: 'Controle de Presença', roles: ['admin', 'gestor', 'professor'] },
       { to: '/events', icon: CalendarRange, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'] },
       { to: '/experimental', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
@@ -50,6 +55,7 @@ export const navGroups = [
   }
 ]
 
+// Tooltip flutuante para quando a barra está recolhida (Collapsible)
 const NavTooltip = ({ content, visible }) => (
   <AnimatePresence>
     {visible && (
@@ -58,7 +64,7 @@ const NavTooltip = ({ content, visible }) => (
         animate={{ opacity: 1, x: 0, scale: 1 }}
         exit={{ opacity: 0, x: -10, scale: 0.9 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#121212] border border-white/10 rounded-[5px] shadow-2xl z-[100] pointer-events-none whitespace-nowrap"
+        className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#121212] border border-white/10 rounded-xl shadow-2xl z-[100] pointer-events-none whitespace-nowrap"
         style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
       >
         <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-[#121212] border-l border-b border-white/10 rotate-45" />
@@ -69,6 +75,7 @@ const NavTooltip = ({ content, visible }) => (
 )
 
 function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
+  // Hook de autenticação para controle de acesso e simulação de roles
   const { userData, effectiveRole, setSimulatedRole, simulatedRole } = useAuth()
   const [showSimMenu, setShowSimMenu] = useState(false)
   const [hoveredItem, setHoveredItem] = useState(null)
@@ -76,12 +83,14 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
   const effectivelyCollapsed = collapsed && !isMobile
 
+  // Filtra itens de navegação baseados no nível de acesso atual
   const isActuallyAdmin = userData?.role === 'admin'
   const filteredNavGroups = navGroups.map(group => ({
     ...group,
     items: group.items.filter(item => item.roles.includes(effectiveRole))
   })).filter(group => group.items.length > 0)
 
+  // Opções para troca rápida de visualização (apenas admins)
   const simulationOptions = [
     { label: 'Admin (Real)', value: null, icon: ShieldCheck },
     { label: 'Visão Gestor', value: 'gestor', icon: ShieldCheck },
@@ -92,6 +101,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
   return (
     <>
       <AnimatePresence>
+        {/* Overlay do menu mobile (escurecimento do fundo) */}
         {mobileOpen && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -113,7 +123,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
         className="sidebar no-scrollbar flex flex-col bg-[#0B0B0B] relative z-40 backdrop-blur-xl"
         style={{ borderRight: '1px solid rgba(255, 255, 255, 0.05)' }}
       >
-        {/* Logo Section */}
+        {/* Logotipo da Academia */}
         <Link
           to="/"
           onClick={() => setMobileOpen(false)}
@@ -176,8 +186,8 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                     className={({ isActive }) => `
                       nav-item transition-all duration-300 relative flex items-center group
                       ${effectivelyCollapsed
-                        ? 'w-[44px] h-[44px] justify-center p-0 rounded-[5px] mx-auto'
-                        : 'px-4 py-2.5 rounded-[5px] w-full mx-auto'
+                        ? 'w-[44px] h-[44px] justify-center p-0 rounded-xl mx-auto'
+                        : 'px-4 py-2.5 rounded-xl w-full mx-auto'
                       }
                       ${isActive
                         ? 'active bg-primary/10 text-primary'
@@ -245,7 +255,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
             <div className="relative">
               <button
                 onClick={() => setShowSimMenu(!showSimMenu)}
-                className={`flex items-center rounded-[5px] transition-all h-11 px-[20px] w-full flex-nowrap ${simulatedRole ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-white/5'}`}
+                className={`flex items-center rounded-xl transition-all h-11 px-[20px] w-full flex-nowrap ${simulatedRole ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-white/5'}`}
               >
                 <div className="w-7 flex-shrink-0 flex justify-center items-center">
                   <ShieldCheck size={19} strokeWidth={2} />
@@ -273,7 +283,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full left-0 w-full mb-2 border border-white/5 rounded-[5px] shadow-2xl overflow-hidden glass-card z-50 p-1"
+                    className="absolute bottom-full left-0 w-full mb-2 border border-white/5 rounded-xl shadow-2xl overflow-hidden glass-card z-50 p-1"
                   >
                     {simulationOptions.map(opt => (
                       <button
@@ -282,7 +292,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                           setSimulatedRole(opt.value)
                           setShowSimMenu(false)
                         }}
-                        className="w-full px-3 py-2.5 text-[10px] text-left hover:bg-white/5 transition-colors rounded-[5px] flex items-center gap-2"
+                        className="w-full px-3 py-2.5 text-[10px] text-left hover:bg-white/5 transition-colors rounded-lg flex items-center gap-2"
                         style={{ color: simulatedRole === opt.value ? 'var(--clr-primary)' : 'var(--clr-text-muted)' }}
                       >
                         <opt.icon size={12} />
@@ -299,7 +309,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
             onClick={() => isMobile ? setMobileOpen(false) : setCollapsed(v => !v)}
             onMouseEnter={() => setHoveredItem('collapse-btn')}
             onMouseLeave={() => setHoveredItem(null)}
-            className={`nav-item flex items-center text-gray-500 hover:bg-white/5 hover:text-white transition-all w-full relative ${effectivelyCollapsed ? 'h-[44px] w-[44px] justify-center p-0 rounded-[5px] mx-auto' : 'h-11 px-5 rounded-[5px]'}`}
+            className={`nav-item flex items-center text-gray-500 hover:bg-white/5 hover:text-white transition-all w-full relative ${effectivelyCollapsed ? 'h-[44px] w-[44px] justify-center p-0 rounded-xl mx-auto' : 'h-11 px-5 rounded-xl'}`}
           >
             <div className={`${effectivelyCollapsed ? 'w-auto' : 'w-7'} flex-shrink-0 flex justify-center items-center transition-all duration-300`}>
               {collapsed && !isMobile ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}

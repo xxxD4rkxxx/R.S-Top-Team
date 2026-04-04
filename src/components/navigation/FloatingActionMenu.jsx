@@ -72,12 +72,12 @@ const FloatingActionMenu = () => {
                   transition={{ delay: idx * 0.05, type: 'spring', stiffness: 300, damping: 25 }}
                   className="flex items-center gap-3 group"
                 >
-                  <span className="bg-[#111] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border border-white/10 shadow-2xl">
+                  <span className="bg-[#111] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xll border border-white/10 shadow-2xl">
                     {action.label}
                   </span>
                   <button
                     onClick={action.onClick}
-                    className={`w-12 h-12 rounded-2xl ${action.color} text-white flex items-center justify-center shadow-2xl active:scale-90 transition-transform`}
+                    className={`w-12 h-12 rounded-xll ${action.color} text-white flex items-center justify-center shadow-2xl active:scale-90 transition-transform`}
                   >
                     <action.icon size={20} strokeWidth={2.5} />
                   </button>
@@ -152,3 +152,4 @@ const FloatingActionMenu = () => {
 }
 
 export default FloatingActionMenu
+

@@ -1,8 +1,10 @@
-// Resumo: shell principal do app com sidebar, rotas e rodapé global.
+// RESUMO: Shell principal da aplicação RS Top Team.
+// Gerencia o roteamento, provedores de contexto (Auth, Theme, App),
+// barra lateral, navegação mobile e proteção de rotas por perfis de acesso.
 import React, { useState } from 'react'
 import { Menu, CalendarDays, GraduationCap, Target, Award, Banknote, TrendingDown, Activity } from 'lucide-react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { AppProvider } from './context/AppContext'
+import { AppProvider, useApp } from './context/AppContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar from './components/sidebar/Sidebar'
@@ -22,38 +24,35 @@ import ContractsPage from './modules/contracts/ContractsPage'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import ModuleUnderDevelopment from './components/shared/ModuleUnderDevelopment'
 import ModalitiesPage from './modules/modalities/ModalitiesPage'
-
-
 import ErrorBoundary from './components/shared/ErrorBoundary'
-
 import FloatingActionMenu from './components/navigation/FloatingActionMenu'
 
 function AppContent() {
-  const [collapsed, setCollapsed] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useApp()
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const location = useLocation()
 
+  // Listener para detectar mudanças no tamanho da janela e ajustar layout mobile
   React.useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-  const isProfilePage = location.pathname.startsWith('/profile')
+
   const { user, isSetupMode } = useAuth()
   const isAuthPage = ['/login', '/register'].includes(location.pathname)
 
-  // 1. If system has NO admins, force registration
+  // 1. MODO SETUP: Se o sistema não tiver nenhum administrador, força o registro do primeiro.
   if (isSetupMode && location.pathname !== '/register') {
     return <Navigate to="/register" replace />
   }
 
-  // 2. If user is ALREADY logged in and tries to access /login or /register, send to Home
+  // 2. REDIRECIONAMENTO: Se o usuário já estiver logado, admite acesso às telas de login/registro.
   if (user && isAuthPage) {
     return <Navigate to="/" replace />
   }
 
-  // 3. Auth Routes (Public)
+  // 3. ROTAS PÚBLICAS (AUTENTICAÇÃO)
   if (isAuthPage) {
     return (
       <Routes>
@@ -65,36 +64,36 @@ function AppContent() {
 
   return (
     <ErrorBoundary>
+      {/* Layout Principal com Sidebar e Área de Conteúdo */}
       <div className="flex h-dvh overflow-hidden w-full" style={{ background: 'var(--clr-bg)' }}>
-        {/* Renderize a Sidebar apenas no desktop (md:flex) */}
-        {!isMobile && (
-          <Sidebar
-            collapsed={collapsed}
-            setCollapsed={setCollapsed}
-            mobileOpen={mobileOpen}
-            setMobileOpen={setMobileOpen}
-          />
-        )}
+        <Sidebar
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+        />
 
-        {/* Content area - Removed pb-32 to eliminate the black bar, shifted to internal spacer */}
+        {/* Área de Conteúdo Dinâmico */}
         <div className={`main-content flex flex-col flex-1 min-w-0 transition-all ${isMobile ? 'px-4 overflow-y-auto overflow-x-hidden' : ''}`}>
-          {/* Mobile UI - Top Safe Area */}
+          
+          {/* Espaçamento extra para telas mobile (Safe Area) */}
           {isMobile && <div className="h-6 w-full shrink-0" />}
 
           <div className="flex-1">
             <Routes>
+              {/* Rotas Protegidas por Nível de Acesso */}
               <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/home" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/attendance" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AttendancePage /></ProtectedRoute>} />
               <Route path="/students" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><StudentsPage /></ProtectedRoute>} />
-              <Route path="/collaborators" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><CollaboratorsPage /></ProtectedRoute>} />
+              <Route path="/collaborators" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><CollaboratorsPage /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/attendance/review/:sessionId" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><ReviewAttendancePage /></ProtectedRoute>} />
               <Route path="/finance" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><FinancePage /></ProtectedRoute>} />
               <Route path="/contracts" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><ContractsPage /></ProtectedRoute>} />
 
-              {/* Modularização / Em Desenvolvimento */}
+              {/* Módulos em Desenvolvimento (Placeholders) */}
               <Route path="/experimental" element={<ProtectedRoute><ModuleUnderDevelopment
                 icon={CalendarDays} title="Aulas Experimentais"
                 features={['Cadastro de novos interessados', 'Lembretes automáticos', 'Histórico de visitas', 'Conversão para matrícula']}
@@ -102,11 +101,10 @@ function AppContent() {
 
               <Route path="/modalities" element={<ProtectedRoute><ModalitiesPage /></ProtectedRoute>} />
 
-
               <Route path="/occupancy" element={<ProtectedRoute><ModuleUnderDevelopment
                 icon={Target}
                 title="Controle de Ocupação"
-                description="Visualize a ocupação real de todas as turmas baseada em frequência (check-ins únicos no mês). Identifique turmas superlotadas e com baixa ocupação, veja quais alunos realmente treinaram, e receba recomendações semanais automáticas no card 'Ações da Semana'."
+                description="Visualize a ocupação real de todas as turmas baseada em frequência."
                 features={[
                   'Ocupação real por check-ins únicos',
                   'Alertas de superlotação e baixa ocupação',
@@ -117,22 +115,22 @@ function AppContent() {
 
               <Route path="/belts" element={<ProtectedRoute><ModuleUnderDevelopment
                 icon={Award} title="Faixas e Graduações"
-                features={['Controle de graus e faixas', 'Certificados digitais', 'Lembretes de trocar de faixa', 'Histórico de evolução']}
+                features={['Controle de graus e faixas', 'Certificados digitais', 'Hitorico de evolução']}
               /></ProtectedRoute>} />
 
               <Route path="/plans" element={<ProtectedRoute><ModuleUnderDevelopment
                 icon={Banknote} title="Planos"
-                features={['Planos recorrentes', 'Gestão de benefícios', 'Cobrança automática', 'Planos promocionais']}
+                features={['Planos recorrentes', 'Gestão de benefícios', 'Cobrança automática']}
               /></ProtectedRoute>} />
 
               <Route path="/expenses" element={<ProtectedRoute><ModuleUnderDevelopment
                 icon={TrendingDown} title="Despesas"
-                features={['Lançamento de custos fixos', 'Gestão de fornecedores', 'Fluxo de caixa de saída', 'Anexos de notas fiscais']}
+                features={['Lançamento de custos fixos', 'Gestão de fornecedores', 'Fluxo de caixa']}
               /></ProtectedRoute>} />
 
               <Route path="/reports" element={<ProtectedRoute><ModuleUnderDevelopment
                 icon={Activity} title="Relatórios Financeiros"
-                features={['DRE Mensal', 'Comparativo anual', 'Exportação contábil', 'Gráficos de lucro e perdas']}
+                features={['DRE Mensal', 'Comparativo anual', 'Exportação contábil']}
               /></ProtectedRoute>} />
 
               <Route path="*" element={<Navigate to="/" replace />} />
@@ -141,17 +139,16 @@ function AppContent() {
 
           {!isMobile && <SiteFooter />}
 
-          {/* Spacer to allow scrolling past the floating bottom nav */}
+          {/* Espaçador para permitir scroll acima da barra de navegação flutuante no mobile */}
           {isMobile && <div className="h-32 w-full shrink-0" />}
         </div>
 
-        {/* Barra de Navegação Mobile */}
+        {/* Componente de Navegação Inferior para dispositivos móveis */}
         {isMobile && <MobileNav />}
       </div>
     </ErrorBoundary>
   )
 }
-
 
 export default function App() {
   return (

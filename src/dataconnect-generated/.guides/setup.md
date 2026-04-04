@@ -1,4 +1,4 @@
-ReferenceError: MobileHeader is not defined# Setup
+# Setup
 
 If the user hasn't already installed the SDK, always run the user's node package manager of choice, and install the package in the directory ../package.json.
 For more information on where the library is located, look at the connector.yaml file.

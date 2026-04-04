@@ -1,3 +1,6 @@
+// RESUMO: Página de Configuração Inicial (Setup) do Sistema.
+// Dividida em duas fases: Fase 1 (Admin Master) e Fase 2 (Gestor Principal).
+// Garante a criação dos primeiros administradores para o controle total da academia.
 import React, { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { UserPlus, Mail, Lock, User, ShieldCheck, ArrowLeft } from 'lucide-react'
@@ -80,7 +83,7 @@ export default function RegisterPage() {
 
       <button 
         onClick={() => navigate('/login')}
-        className="absolute top-6 left-6 p-2 rounded-[5px] bg-white/5 border border-white/10 text-gray-500 hover:text-white transition-all z-50 flex items-center gap-2 px-4 active:scale-95"
+        className="absolute top-6 left-6 p-2 rounded-xl bg-white/5 border border-white/10 text-gray-500 hover:text-white transition-all z-50 flex items-center gap-2 px-4 active:scale-95"
       >
         <ArrowLeft size={18} />
         <span className="text-[10px] uppercase tracking-widest font-black">Voltar</span>
@@ -88,13 +91,13 @@ export default function RegisterPage() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4 bg-primary/10 border border-primary/20 px-3 py-1 rounded-[5px]">
+          <div className="inline-flex items-center gap-2 mb-4 bg-primary/10 border border-primary/20 px-3 py-1 rounded-xl">
             <ShieldCheck size={14} className="text-primary" />
             <span className="text-[10px] text-primary uppercase font-black tracking-widest">
               {isGestorPhase ? 'Fase 2: Gestor Principal' : 'Fase 1: Administrador Master'}
             </span>
           </div>
-          <h1 className="text-4xl font-display font-bold text-white tracking-tighter uppercase">
+          <h1 className="text-4xl font-black text-white tracking-tighter uppercase">
             {isGestorPhase ? 'Configurar Gestor' : 'Configurar Admin'}
           </h1>
           <p className="mt-2 text-gray-600 text-sm font-medium tracking-tight opacity-60">
@@ -116,7 +119,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div className="bg-[#121212]/80 border border-white/5 rounded-[5px] p-8 shadow-2xl relative z-10 backdrop-blur-3xl overflow-hidden animate-entrance">
+          <div className="bg-[#121212]/80 border border-white/5 rounded-2xl p-8 shadow-2xl relative z-10 backdrop-blur-3xl overflow-hidden animate-entrance">
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="p-3 rounded-[5px] bg-red-500/10 border border-red-500/20 text-red-500 text-xs text-center animate-shake">
@@ -134,7 +137,7 @@ export default function RegisterPage() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-[5px] text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
+                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
                     placeholder="Ex: Mestre Rickson"
                     required
                   />
@@ -151,7 +154,7 @@ export default function RegisterPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-[5px] text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
+                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
                     placeholder="exemplo@rstoppteam.com"
                     required
                   />
@@ -171,7 +174,7 @@ export default function RegisterPage() {
                       maxLength={6}
                       value={pin}
                       onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-[5px] text-white text-sm focus:outline-none focus:border-primary/50 tracking-[0.8em] font-bold"
+                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 tracking-[0.8em] font-black"
                       placeholder="000000"
                       required
                     />
@@ -188,7 +191,7 @@ export default function RegisterPage() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-primary/20 rounded-[5px] text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
+                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-primary/20 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
                       placeholder="••••••••"
                       required
                       minLength={8}
@@ -200,7 +203,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-white hover:bg-gray-200 text-black py-4 rounded-[5px] flex items-center justify-center gap-2 font-display text-lg uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                className="w-full bg-white hover:bg-gray-200 text-black py-4 rounded-xl flex items-center justify-center gap-2 font-black text-lg uppercase tracking-widest transition-all shadow-lg active:scale-95"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />

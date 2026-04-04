@@ -83,10 +83,10 @@ export default function FinancePage() {
         subtitle="GESTÃO DE RECEITAS, COBRANÇAS E FLUXO DE CAIXA"
         extra={
           <div className="flex gap-3">
-             <button className="flex items-center gap-2 px-4 py-2 rounded-[10px] text-[11px] font-bold uppercase bg-white/5 text-gray-500 hover:text-white border border-white/5 active:scale-95 transition-all">
+             <button className="flex items-center gap-2 px-4 py-2 rounded-xll text-[11px] font-bold uppercase bg-white/5 text-gray-500 hover:text-white border border-white/5 active:scale-95 transition-all">
               <Download size={16} /> Relatórios
             </button>
-            <button className="btn-primary flex items-center gap-2 px-5 py-2 rounded-[10px] text-[11px] font-bold uppercase shadow-xl hover:brightness-110 active:scale-95 transition-all">
+            <button className="btn-primary flex items-center gap-2 px-5 py-2 rounded-xll text-[11px] font-bold uppercase shadow-xl hover:brightness-110 active:scale-95 transition-all">
               <Plus size={16} /> Nova Cobrança
             </button>
           </div>
@@ -128,7 +128,7 @@ export default function FinancePage() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex p-1 bg-black/40 rounded-[10px] border border-white/5 w-fit">
+        <div className="flex p-1 bg-black/40 rounded-xll border border-white/5 w-fit">
           {[
             { id: 'overview', label: 'Visão Geral', icon: Zap },
             { id: 'bills', label: 'Cobranças', icon: CreditCard },
@@ -151,7 +151,7 @@ export default function FinancePage() {
         </div>
 
         {/* Content Area */}
-        <div className="glass-card rounded-[10px] border border-white/10 overflow-hidden min-h-[400px]">
+        <div className="glass-card rounded-xll border border-white/10 overflow-hidden min-h-[400px]">
           {activeTab === 'expenses' ? (
             <ModuleUnderDevelopment 
               icon={TrendingDown} 
@@ -302,7 +302,7 @@ export default function FinancePage() {
                        </div>
                     </div>
                      <button className="flex items-center gap-2 px-3 py-1.5 rounded-[5px] bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">
-                       WhatsApp
+                       Telefone
                     </button>
                  </div>
                  <button className="w-full mt-2 py-2.5 rounded-[5px] text-[10px] font-black uppercase text-app-muted hover:text-app transition-colors bg-app-bg/50 border border-white/5">Ver todos os inadimplentes</button>
@@ -347,3 +347,4 @@ export default function FinancePage() {
     </div>
   )
 }
+

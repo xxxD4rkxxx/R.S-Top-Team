@@ -200,7 +200,7 @@ export function useDashboardStats(period = 'Semana') {
           return {
             id: s.id,
             name: s.name,
-            phone: s.phone || s.whatsapp || '',
+            phone: s.phone || '',
             belt: s.belt || 'white',
             modality: s.modality || '',
             daysAbsent: days,
@@ -239,7 +239,7 @@ export function useDashboardStats(period = 'Semana') {
         .map(s => ({
           id: s.id,
           name: s.name,
-          phone: s.phone || s.whatsapp || '',
+          phone: s.phone || '',
           belt: s.belt || 'white',
           modality: s.modality || '',
           reason: s.statusReason || 'Não informado',

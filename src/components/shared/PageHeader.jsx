@@ -30,7 +30,7 @@ export default function PageHeader({ icon: Icon, title, subtitle, onRefresh, loa
       {/* Left side: Icon + Title */}
       <div className="flex items-center gap-4">
         {/* Icon Box - Premium Squircle Style */}
-        <div className="w-11 h-11 rounded-[12px] bg-[#111] border border-white/5 flex items-center justify-center shrink-0 shadow-lg shadow-black/40 relative overflow-hidden group">
+        <div className="w-11 h-11 rounded-xl bg-[#111] border border-white/5 flex items-center justify-center shrink-0 shadow-lg shadow-black/40 relative overflow-hidden group">
           <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
           <Icon size={20} strokeWidth={2.2} style={{ color: 'var(--clr-primary)' }} className="relative z-10" />
         </div>
@@ -41,7 +41,7 @@ export default function PageHeader({ icon: Icon, title, subtitle, onRefresh, loa
         </div>
 
         {onRefresh && (
-          <button onClick={onRefresh} className="p-2 ml-2 text-gray-500 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-3xl border border-white/5 active:scale-95 group">
+          <button onClick={onRefresh} className="p-2 ml-2 text-gray-500 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-xll border border-white/5 active:scale-95 group">
             <RefreshCw size={18} strokeWidth={1.9} className={loading ? 'animate-spin text-primary' : 'group-hover:rotate-180 transition-transform duration-500'} />
           </button>
         )}
@@ -82,3 +82,4 @@ export default function PageHeader({ icon: Icon, title, subtitle, onRefresh, loa
     </header>
   )
 }
+

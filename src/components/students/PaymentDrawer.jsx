@@ -13,7 +13,7 @@ export default function PaymentDrawer({ student, isOpen, onClose }) {
     >
       <div className="p-5 space-y-5">
         {/* Banner em desenvolvimento */}
-        <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/5 rounded-2xl p-5 border border-yellow-500/20 text-center">
+        <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/5 rounded-xll p-5 border border-yellow-500/20 text-center">
           <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-3">
             <Zap size={22} className="text-yellow-400 animate-pulse" />
           </div>
@@ -29,7 +29,7 @@ export default function PaymentDrawer({ student, isOpen, onClose }) {
             { label: 'Próximo Vencimento', value: '15 de Abril, 2026', icon: Lock },
             { label: 'Último Pagamento', value: '15 de Março, 2026', icon: Lock },
           ].map(item => (
-            <div key={item.label} className="flex items-center gap-3 bg-white/5 rounded-xl p-4 border border-white/5 opacity-50 cursor-not-allowed">
+            <div key={item.label} className="flex items-center gap-3 bg-white/5 rounded-xll p-4 border border-white/5 opacity-50 cursor-not-allowed">
               <item.icon size={16} className="text-gray-500 shrink-0" />
               <div className="flex-1">
                 <p className="text-[10px] text-gray-600 uppercase tracking-widest">{item.label}</p>
@@ -43,3 +43,4 @@ export default function PaymentDrawer({ student, isOpen, onClose }) {
     </SlideOver>
   )
 }
+

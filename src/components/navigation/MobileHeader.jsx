@@ -23,14 +23,14 @@ const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, o
         {showBack ? (
           <button 
             onClick={handleBack}
-            className="w-10 h-10 rounded-[5px] bg-white/5 border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform shrink-0"
+            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform shrink-0"
           >
             <ArrowLeft size={20} strokeWidth={3} />
           </button>
         ) : (
           <div 
             onClick={() => navigate('/profile')}
-            className="w-10 h-10 rounded-[5px] overflow-hidden border border-white/10 active:scale-90 transition-transform bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0"
+            className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 active:scale-90 transition-transform bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0"
           >
             {userData?.photoURL ? (
               <img src={userData.photoURL} alt="" className="w-full h-full object-cover" />
@@ -55,12 +55,12 @@ const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, o
         {showSearch && (
           <button 
             onClick={onSearch}
-            className="p-2.5 rounded-[5px] bg-white/5 text-gray-400 active:scale-90 transition-transform"
+            className="p-2.5 rounded-xl bg-white/5 text-gray-400 active:scale-90 transition-transform"
           >
             <Search size={20} strokeWidth={2.5} />
           </button>
         )}
-        <button className="p-2.5 rounded-[5px] bg-white/5 text-gray-400 active:scale-90 transition-transform relative">
+        <button className="p-2.5 rounded-xl bg-white/5 text-gray-400 active:scale-90 transition-transform relative">
           <Bell size={20} strokeWidth={2.5} />
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full ring-2 ring-black" />
         </button>

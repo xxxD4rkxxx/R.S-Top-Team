@@ -1,3 +1,6 @@
+// RESUMO: Gerenciamento de Alunos.
+// Centraliza a listagem, filtros por status/modalidade, busca global e ações rápidas (editar, financeiro, graduação).
+// Implementa diálogos de segurança para deleção e alteração de status (inativação/suspensão).
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -56,7 +59,7 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
               <Trash2 size={20} className="text-red-500" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Deletar Aluno</h2>
+              <h2 className="text-base font-black text-white">Deletar Aluno</h2>
               <p className="text-[11px] text-gray-500">Esta ação é IRREVERSÍVEL.</p>
             </div>
           </div>
@@ -67,7 +70,7 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
           </div>
 
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block mb-1.5">
+            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-black block mb-1.5">
               Para confirmar, digite exatamente: <span className="text-white">{student.name}</span>
             </label>
             <input
@@ -84,7 +87,7 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
             <button
               onClick={handleDelete}
               disabled={!match || deleting}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
+              className="flex-1 py-2.5 rounded-xl text-sm font-black bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
             >
               {deleting ? 'Apagando...' : '🗑 Deletar Permanentemente'}
             </button>
@@ -112,7 +115,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
 
   return (
     <div className="flex flex-col gap-1.5 relative" ref={ref}>
-      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
@@ -124,12 +127,12 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[160px] bg-[#0d0d0d] border border-white/10 rounded-xl z-[100] overflow-hidden shadow-2xl py-1" style={{ animation: 'fadeSlideUp 0.15s ease-out forwards' }}>
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2" style={{ animation: 'fadeSlideUp 0.15s ease-out forwards' }}>
           {options.map(([v, l]) => (
             <button
               key={v}
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-bold' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-black' : 'text-gray-400 font-medium'}`}
             >
               {l}
             </button>
@@ -140,6 +143,8 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   )
 }
 
+// COMPONENTE PRINCIPAL: StudentsPage
+// Gere o estado global da lista de alunos e os modais de ação específica.
 export default function StudentsPage() {
   const { currentModality, isAdminView } = useApp()
   const { students, isLoadingStudents, addStudent, updateStudentProfile, changeStudentStatus, deleteStudent } = useStudents()
@@ -163,6 +168,7 @@ export default function StudentsPage() {
   const [menuAnchor, setMenuAnchor] = useState({ top: 0, left: 0 })
   const menuRef = useRef(null)
 
+  // Efeito para fechar o menu popup ao clicar fora ou rolar a página.
   useEffect(() => {
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpenId(null)
@@ -263,7 +269,7 @@ export default function StudentsPage() {
     return student.photo ? (
       <img src={student.photo} alt={student.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
     ) : (
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white/10 ${bgClass}`}>
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass}`}>
         {student.initials || student.name?.[0] || 'A'}
       </div>
     )
@@ -279,7 +285,7 @@ export default function StudentsPage() {
     }
     const labels = { ativo: 'Ativo', inativo: 'Inativo', suspenso: 'Suspenso', arquivado: 'Arquivado' }
     return (
-      <span className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase border inline-flex ${cfg[norm]}`}>
+      <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border inline-flex ${cfg[norm]}`}>
         {labels[norm]}
       </span>
     )
@@ -306,14 +312,14 @@ export default function StudentsPage() {
   return (
     <div className="flex flex-col flex-1 w-full min-w-0 p-0">
       {/* Header Mobile */}
-      <MobileHeader 
+      <MobileHeader
         title="Alunos"
         actions={
           <div className="flex items-center gap-1.5">
             {isAdminView && (
-              <button 
+              <button
                 onClick={() => { setDuplicateData(null); setShowModal(true) }}
-                className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
+                className="p-2.5 rounded-xl bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
               >
                 <Plus size={20} strokeWidth={3} />
               </button>
@@ -329,16 +335,16 @@ export default function StudentsPage() {
         subtitle="CONTROLE DE MATRÍCULAS E PRESENÇA"
         extra={
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
               <FileDown size={18} strokeWidth={1.9} /> IMPORTAR
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
               <FileUp size={18} strokeWidth={1.9} /> EXPORTAR
             </button>
             {isAdminView && (
               <button
                 onClick={() => { setDuplicateData(null); setShowModal(true) }}
-                className="btn-primary flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-xl active:scale-95"
+                className="btn-primary flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95"
               >
                 <Plus size={18} strokeWidth={1.9} /> NOVO ALUNO
               </button>
@@ -361,12 +367,12 @@ export default function StudentsPage() {
             onClick={() => setStatusFilter(statusFilter === 'arquivado' ? 'todos' : 'arquivado')} active={statusFilter === 'arquivado'} />
         </div>
 
-        <div className="glass-card rounded-[24px] p-5 md:p-6 border border-white/10">
+        <div className="glass-card rounded-2xl p-5 md:p-6 border border-white/10">
           {/* Busca */}
           <div className="flex flex-col lg:flex-row gap-4 mb-6">
             <div className="flex-1 relative">
               <input
-                className="form-input bg-black/40 input-raise pl-11 w-full text-base"
+                className="form-input bg-black/40 input-raise pl-11 w-full text-base rounded-xl"
                 placeholder="Buscar por nome, email, telefone..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -375,7 +381,7 @@ export default function StudentsPage() {
             </div>
             {(statusFilter !== 'todos' || modalityFilter !== 'todas' || searchTerm) && (
               <button onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setSearchTerm('') }}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 whitespace-nowrap">
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-black bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 whitespace-nowrap">
                 <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
               </button>
             )}
@@ -394,7 +400,7 @@ export default function StudentsPage() {
           </div>
 
           {/* Tabela */}
-          <div className="w-full overflow-x-auto rounded-xl border border-white/5 bg-black/20">
+          <div className="w-full overflow-x-auto rounded-2xl border border-white/5 bg-black/20">
             {isLoadingStudents ? (
               <div className="text-center py-16 text-gray-500">Carregando alunos...</div>
             ) : filtered.length === 0 ? (
@@ -405,13 +411,13 @@ export default function StudentsPage() {
             ) : (
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
-                  <tr className="border-b border-white/10 text-[10px] uppercase font-bold text-gray-500 tracking-wider bg-white/5">
+                  <tr className="border-b border-white/10 text-[10px] uppercase font-black text-gray-500 tracking-wider bg-white/5">
                     <th className="py-3 px-5">Aluno</th>
                     <th className="py-3 px-5">Telefone</th>
                     <th className="py-3 px-5">PIN</th>
                     <th className="py-3 px-5">Modalidade</th>
                     <th className="py-3 px-5">Pagamento</th>
-                    <th className="py-3 px-5">Contrato</th>
+                    <th className="py-3 px-5 w-12 text-center text-gray-500">CTO</th>
                     <th className="py-3 px-5">Status</th>
                     <th className="py-3 px-5 w-12 text-center">Ações</th>
                   </tr>
@@ -423,7 +429,7 @@ export default function StudentsPage() {
                         <div className="flex items-center gap-4">
                           {renderAvatar(student)}
                           <div>
-                            <span className="text-sm text-app font-bold">{student.name}</span>
+                            <span className="text-sm text-app font-black">{student.name}</span>
                             <p className="text-[11px] text-gray-500 mt-0.5 uppercase">
                               {beltConfig[student.belt]?.label || 'Sem faixa'}
                               {student.stripes > 0 ? ` · ${student.stripes}g` : ''}
@@ -435,10 +441,10 @@ export default function StudentsPage() {
                       <td className="py-4 px-5 text-sm font-mono text-emerald-400/80 tracking-widest">{student.pin || '---'}</td>
                       <td className="py-4 px-5 text-sm text-gray-400">{student.modality || '--'}</td>
                       <td className="py-4 px-5">
-                        <span className="px-3 py-1.5 rounded-md bg-gray-500/10 text-gray-400 text-[10px] font-bold uppercase border border-gray-500/20">Em breve</span>
+                        <span className="px-3 py-1.5 rounded-xl bg-gray-500/10 text-gray-400 text-[10px] font-black uppercase border border-gray-500/20">Em breve</span>
                       </td>
                       <td className="py-4 px-5">
-                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
                           <FileText size={18} strokeWidth={1.9} className="text-gray-500" />
                         </div>
                       </td>
@@ -455,7 +461,7 @@ export default function StudentsPage() {
                           <div
                             ref={menuRef}
                             onClick={e => e.stopPropagation()}
-                            className="fixed bg-[#0F0F0F] border border-white/10 rounded-xl z-[9999] overflow-hidden text-sm py-2 fade-slide-up"
+                            className="fixed bg-[#0F0F0F] border border-white/10 rounded-2xl z-[9999] overflow-hidden text-sm py-2 fade-slide-up"
                             style={{ top: menuAnchor.top, left: menuAnchor.left, width: 240, boxShadow: '0 24px 80px rgba(0,0,0,0.8)' }}
                           >
                             {menuItems(student).map((item, idx) =>
@@ -546,3 +552,4 @@ export default function StudentsPage() {
     </div>
   )
 }
+

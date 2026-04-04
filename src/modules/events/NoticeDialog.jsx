@@ -50,7 +50,7 @@ export default function NoticeDialog({ isOpen, onClose, onSave, initialData }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-3xl glass-card bg-[#141414] shadow-2xl rounded-[12px] border border-white/10 flex flex-col relative animate-in zoom-in-95 duration-200"
+        className="w-full max-w-3xl glass-card bg-[#141414] shadow-2xl rounded-xl border border-white/10 flex flex-col relative animate-in zoom-in-95 duration-200"
         style={{ minHeight: '60vh' }}
       >
         
@@ -87,7 +87,7 @@ export default function NoticeDialog({ isOpen, onClose, onSave, initialData }) {
 
         {/* IMAGE ATTACH ICON (DECORATIVE FOR NOW) */}
         <div className="absolute top-16 right-10">
-          <button className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center text-gray-400 border border-white/5 transition-colors">
+          <button className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-xll flex items-center justify-center text-gray-400 border border-white/5 transition-colors">
             <ImagePlus size={20} />
           </button>
         </div>
@@ -142,3 +142,4 @@ export default function NoticeDialog({ isOpen, onClose, onSave, initialData }) {
     </div>
   )
 }
+

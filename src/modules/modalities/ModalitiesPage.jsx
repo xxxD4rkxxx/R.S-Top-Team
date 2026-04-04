@@ -1,3 +1,6 @@
+// RESUMO: Gestão de Modalidades e Turmas.
+// Permite cadastrar modalidades (Jiu-Jitsu, Muay Thai, etc.) e vincular turmas (horários, dias, professores).
+// Inclui KPIs de ocupação e capacidade para otimização da academia.
 import React, { useState, useMemo } from 'react'
 import { 
   Plus, Search, Layers, 
@@ -89,7 +92,7 @@ export default function ModalitiesPage() {
         actions={
           <button 
             onClick={handleAddModality}
-            className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
+            className="p-2.5 rounded-xl bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
           >
             <Plus size={20} strokeWidth={3} />
           </button>
@@ -148,9 +151,9 @@ export default function ModalitiesPage() {
         {/* Categories / Modalidade List */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {loading ? (
-             Array(4).fill(0).map((_, i) => <div key={i} className="h-20 bg-white/5 rounded-[2rem] animate-pulse" />)
+             Array(4).fill(0).map((_, i) => <div key={i} className="h-20 bg-white/5 rounded-[32px] animate-pulse" />)
           ) : filteredModalities.length === 0 ? (
-            <div className="py-20 text-center col-span-full border border-dashed border-white/10 rounded-[2.5rem] opacity-20">
+            <div className="py-20 text-center col-span-full border border-dashed border-white/10 rounded-[32px] opacity-20">
                <Layers size={48} className="mx-auto mb-4" />
                <p className="text-xs font-black uppercase tracking-widest">Nenhuma modalidade disponível</p>
             </div>
@@ -194,3 +197,4 @@ export default function ModalitiesPage() {
     </div>
   )
 }
+

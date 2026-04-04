@@ -74,7 +74,7 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -10, scale: 0.98 }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
-      className="mb-6 rounded-[10px] overflow-hidden shadow-2xl"
+      className="mb-6 rounded-xll overflow-hidden shadow-2xl"
       style={{
         background: 'var(--clr-surface)',
         border: '1px solid color-mix(in srgb, var(--clr-primary-dark) 45%, transparent)',
@@ -153,7 +153,7 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
                   if (tag.id === 'evento') { setType('evento'); setPriority('normal') }
                   else { setType('aviso'); setPriority(tag.id) }
                 }}
-                className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold tracking-wide flex items-center gap-1.5 transition-all duration-150 border ${isActive ? tag.activeClass : tag.baseClass}`}
+                className={`px-3 py-1.5 rounded-xll text-[11px] font-bold tracking-wide flex items-center gap-1.5 transition-all duration-150 border ${isActive ? tag.activeClass : tag.baseClass}`}
               >
                 {isActive && <Check size={14} strokeWidth={2.5} />}
                 {tag.label}
@@ -173,7 +173,7 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
           <button
             onClick={handlePublish}
             disabled={!title.trim() || !description.trim()}
-            className="btn-primary px-5 py-2 rounded-[10px] text-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition-all active:scale-95"
+            className="btn-primary px-5 py-2 rounded-xll text-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition-all active:scale-95"
             style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }}
           >
             Publicar
@@ -427,3 +427,4 @@ export default function EventsPage() {
     </div>
   )
 }
+

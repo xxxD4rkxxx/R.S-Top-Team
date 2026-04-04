@@ -21,8 +21,8 @@ function SectionTitle({ title, icon: Icon, color = 'text-gray-400' }) {
 
 function StatCard({ label, value, subvalue, icon: Icon, color = 'text-primary' }) {
   return (
-    <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4 group hover:border-white/10 transition-all">
-      <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0`}>
+    <div className="bg-white/5 border border-white/5 rounded-xll p-4 flex items-center gap-4 group hover:border-white/10 transition-all">
+      <div className={`w-10 h-10 rounded-xll bg-white/5 flex items-center justify-center shrink-0`}>
         <Icon size={18} className={color} />
       </div>
       <div className="min-w-0">
@@ -36,12 +36,12 @@ function StatCard({ label, value, subvalue, icon: Icon, color = 'text-primary' }
 
 function FeatureCard({ title, desc, icon: Icon, badge, color = 'text-primary' }) {
   return (
-    <div className="bg-[#111] border border-white/5 rounded-2xl p-5 hover:border-white/15 transition-all group flex flex-col h-full relative overflow-hidden">
+    <div className="bg-[#111] border border-white/5 rounded-xll p-5 hover:border-white/15 transition-all group flex flex-col h-full relative overflow-hidden">
       {/* Subtle background glow */}
       <div className="absolute -top-10 -right-10 w-24 h-24 blur-[60px] opacity-10 rounded-full" style={{ background: 'var(--clr-primary)' }} />
       
       <div className="flex items-start justify-between mb-4">
-        <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-white transition-transform group-hover:scale-110">
+        <div className="p-2.5 rounded-xll bg-white/5 border border-white/10 text-white transition-transform group-hover:scale-110">
           <Icon size={20} className={color} />
         </div>
         {badge && (
@@ -110,7 +110,7 @@ export default function StudentDashboard({ user, notices = [] }) {
         
         {/* PROGRESSO DE GRADUAÇÃO */}
         <motion.div variants={itemVariants} className="lg:col-span-8 flex flex-col gap-6">
-          <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 relative overflow-hidden shadow-2xl">
+          <div className="bg-[#0a0a0a] border border-white/5 rounded-xll p-6 relative overflow-hidden shadow-2xl">
             {/* Background design */}
             <div className="absolute top-0 right-0 w-64 h-64 blur-[100px] opacity-10 rounded-full" style={{ background: cfg.color }} />
             
@@ -180,12 +180,12 @@ export default function StudentDashboard({ user, notices = [] }) {
         {/* SIDE: HORÁRIOS & AVISOS */}
         <motion.div variants={itemVariants} className="lg:col-span-4 space-y-6">
           {/* AVISOS RECENTES */}
-          <div className="bg-[#111] border border-white/5 rounded-3xl p-6 flex flex-col h-full">
+          <div className="bg-[#111] border border-white/5 rounded-xll p-6 flex flex-col h-full">
             <SectionTitle title="Avisos da Academia" icon={Bell} color="text-yellow-400" />
             <div className="space-y-4 flex-1">
                {displayNotices.length > 0 ? (
                  displayNotices.map((n, idx) => (
-                   <div key={idx} className={`p-4 rounded-2xl bg-white/5 border transition-all ${n.priority === 'urgent' ? 'border-primary/30 bg-primary/5 hover:bg-primary/10' : 'border-white/5 hover:bg-white/[0.07]'}`}>
+                   <div key={idx} className={`p-4 rounded-xll bg-white/5 border transition-all ${n.priority === 'urgent' ? 'border-primary/30 bg-primary/5 hover:bg-primary/10' : 'border-white/5 hover:bg-white/[0.07]'}`}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className={`w-2 h-2 rounded-full ${n.priority === 'urgent' ? 'bg-primary animate-pulse' : 'bg-blue-400'}`} />
                         <span className={`text-[10px] font-bold uppercase tracking-widest ${n.priority === 'urgent' ? 'text-primary' : 'text-blue-400'}`}>
@@ -214,7 +214,7 @@ export default function StudentDashboard({ user, notices = [] }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* CONTRATO & SEGURANÇA */}
-        <motion.div variants={itemVariants} className="md:col-span-2 bg-[#111] border border-white/5 rounded-3xl p-6 flex flex-col md:flex-row gap-8 items-center">
+        <motion.div variants={itemVariants} className="md:col-span-2 bg-[#111] border border-white/5 rounded-xll p-6 flex flex-col md:flex-row gap-8 items-center">
             <div className="flex-1 space-y-4">
                <div>
                   <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-widest">Status: Ativo & Seguro</span>
@@ -225,22 +225,22 @@ export default function StudentDashboard({ user, notices = [] }) {
                </div>
                
                <div className="grid grid-cols-2 gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                  <div className="flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="flex flex-col gap-1 p-3 rounded-xll bg-white/5 border border-white/5">
                      <span className="text-gray-600">IP de Registro</span>
                      <span className="text-white">187.32.XX.XX</span>
                   </div>
-                  <div className="flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="flex flex-col gap-1 p-3 rounded-xll bg-white/5 border border-white/5">
                      <span className="text-gray-600">Navegador</span>
                      <span className="text-white">Chrome/Mobile</span>
                   </div>
                </div>
 
-               <button className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs transition-all flex items-center justify-center gap-2">
+               <button className="w-full py-3 rounded-xll bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs transition-all flex items-center justify-center gap-2">
                  <FileText size={16} /> Baixar Cópia do Contrato
                </button>
             </div>
 
-            <div className="w-full md:w-48 aspect-square rounded-3xl bg-white/5 border border-dashed border-white/10 flex flex-col items-center justify-center p-6 text-center group cursor-pointer hover:border-emerald-500/20 transition-all">
+            <div className="w-full md:w-48 aspect-square rounded-xll bg-white/5 border border-dashed border-white/10 flex flex-col items-center justify-center p-6 text-center group cursor-pointer hover:border-emerald-500/20 transition-all">
                 <ShieldCheck size={40} className="text-emerald-500 mb-3 group-hover:scale-110 transition-transform" />
                 <p className="text-[10px] font-black text-white uppercase tracking-wider">Assinatura Certificada</p>
                 <p className="text-[9px] text-gray-600 mt-1">Selo de Validade RS Top Team</p>
@@ -248,11 +248,11 @@ export default function StudentDashboard({ user, notices = [] }) {
         </motion.div>
 
         {/* DOCUMENTOS QR CODE / QUICK ACTIONS */}
-        <motion.div variants={itemVariants} className="bg-primary/5 border border-primary/20 rounded-3xl p-6 flex flex-col justify-between">
+        <motion.div variants={itemVariants} className="bg-primary/5 border border-primary/20 rounded-xll p-6 flex flex-col justify-between">
            <div>
               <SectionTitle title="Ações Rápidas" icon={Zap} />
               <div className="space-y-2">
-                 <button className="w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-3 text-left transition-all group">
+                 <button className="w-full p-4 rounded-xll bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-3 text-left transition-all group">
                     <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
                        <ClipboardCheck size={18} />
                     </div>
@@ -263,7 +263,7 @@ export default function StudentDashboard({ user, notices = [] }) {
                     <ChevronRight size={14} className="text-gray-700 group-hover:text-white" />
                  </button>
                  
-                 <button className="w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-3 text-left transition-all group">
+                 <button className="w-full p-4 rounded-xll bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-3 text-left transition-all group">
                     <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
                        <Smartphone size={18} />
                     </div>
@@ -276,7 +276,7 @@ export default function StudentDashboard({ user, notices = [] }) {
               </div>
            </div>
            
-           <div className="mt-6 flex items-center gap-2 p-3 rounded-xl bg-primary/10 border border-primary/10">
+           <div className="mt-6 flex items-center gap-2 p-3 rounded-xll bg-primary/10 border border-primary/10">
               <AlertCircle size={14} className="text-primary shrink-0" />
               <p className="text-[9px] text-primary font-bold uppercase tracking-tight">Mantenha seus documentos em dia para treinar.</p>
            </div>
@@ -285,7 +285,7 @@ export default function StudentDashboard({ user, notices = [] }) {
       </div>
 
       {/* ── TIMELINE GRADUAÇÃO ── */}
-      <motion.div variants={itemVariants} className="bg-[#111] border border-white/5 rounded-3xl p-6">
+      <motion.div variants={itemVariants} className="bg-[#111] border border-white/5 rounded-xll p-6">
         <SectionTitle title="Minha Jornada" icon={History} color="text-purple-400" />
         <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-8 relative">
            {/* Connecting Line */}
@@ -314,8 +314,8 @@ export default function StudentDashboard({ user, notices = [] }) {
       {/* ── BOTTOM SECTION: SEGURANÇA & APP ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* DADOS SEGUROS BANNERS */}
-        <motion.div variants={itemVariants} className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-6 flex items-center gap-6">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+        <motion.div variants={itemVariants} className="bg-emerald-500/5 border border-emerald-500/20 rounded-xll p-6 flex items-center gap-6">
+          <div className="w-14 h-14 rounded-xll bg-emerald-500/10 flex items-center justify-center shrink-0">
             <ShieldCheck size={28} className="text-emerald-500" />
           </div>
           <div>
@@ -325,22 +325,22 @@ export default function StudentDashboard({ user, notices = [] }) {
         </motion.div>
 
         {/* INSTALE NO CELULAR */}
-        <motion.div variants={itemVariants} className="bg-primary/5 border border-primary/20 rounded-3xl p-6 flex items-center gap-6">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+        <motion.div variants={itemVariants} className="bg-primary/5 border border-primary/20 rounded-xll p-6 flex items-center gap-6">
+          <div className="w-14 h-14 rounded-xll bg-primary/10 flex items-center justify-center shrink-0">
             <Smartphone size={28} className="text-primary" />
           </div>
           <div className="flex-1">
             <h4 className="text-white font-bold leading-tight">Instale no seu celular</h4>
             <p className="text-xs text-gray-500 mt-1">Adicione à tela inicial para acesso rápido e funcionamento offline.</p>
           </div>
-          <button className="bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-xl transition-colors">
+          <button className="bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-xll transition-colors">
             <Download size={20} />
           </button>
         </motion.div>
       </div>
 
       {/* ── HORÁRIOS PREVIEW ── */}
-      <motion.div variants={itemVariants} className="bg-[#111] border border-white/5 rounded-3xl overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-[#111] border border-white/5 rounded-xll overflow-hidden">
         <div className="p-6 border-b border-white/5 bg-black/40 flex justify-between items-center">
           <SectionTitle title="Horários das Suas Turmas" icon={Calendar} />
           <span className="text-[10px] font-bold text-gray-500">2 Turmas Ativas</span>
@@ -348,7 +348,7 @@ export default function StudentDashboard({ user, notices = [] }) {
         <div className="divide-y divide-white/5">
           <div className="p-5 flex items-center justify-between group cursor-pointer hover:bg-white/[0.02] transition-colors">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-primary">JJ</div>
+              <div className="w-10 h-10 rounded-xll bg-primary/10 flex items-center justify-center font-bold text-primary">JJ</div>
               <div>
                 <p className="text-white font-bold text-sm">Jiu-Jitsu Adulto</p>
                 <p className="text-xs text-gray-600 mt-0.5">Seg, Qua, Sex às 19:30 • Prof. Max</p>
@@ -362,7 +362,7 @@ export default function StudentDashboard({ user, notices = [] }) {
           
           <div className="p-5 flex items-center justify-between group cursor-pointer hover:bg-white/[0.02] transition-colors">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-yellow-400/10 flex items-center justify-center font-bold text-yellow-500">BX</div>
+              <div className="w-10 h-10 rounded-xll bg-yellow-400/10 flex items-center justify-center font-bold text-yellow-500">BX</div>
               <div>
                 <p className="text-white font-bold text-sm">Boxe Iniciante</p>
                 <p className="text-xs text-gray-600 mt-0.5">Ter, Qui às 18:00 • Prof. André</p>
@@ -379,3 +379,4 @@ export default function StudentDashboard({ user, notices = [] }) {
     </motion.div>
   )
 }
+

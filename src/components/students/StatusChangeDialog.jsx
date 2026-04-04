@@ -59,25 +59,25 @@ export default function StatusChangeDialog({ student, action, onConfirm, onClose
     <div className="fixed inset-0 z-[9995] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative w-full max-w-md rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
+        className="relative w-full max-w-md rounded-xll overflow-hidden border border-white/10 shadow-2xl"
         style={{ background: '#0d0d0d', animation: 'fadeSlideUp 0.22s ease both' }}
       >
         {/* Header */}
         <div className={`flex items-center gap-3 px-6 py-4 border-b ${borderColor}`} style={{ background: 'rgba(255,255,255,0.02)' }}>
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${bgColor} ${borderColor}`}>
+          <div className={`w-9 h-9 rounded-xll flex items-center justify-center border ${bgColor} ${borderColor}`}>
             <Icon size={18} className={color} />
           </div>
           <div className="flex-1">
             <h2 className="text-base font-bold text-white">{title}</h2>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 text-gray-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="p-2 rounded-xll hover:bg-white/10 text-gray-500 hover:text-white transition-colors">
             <X size={16} />
           </button>
         </div>
 
         <div className="px-6 py-5 space-y-4">
           {/* Aviso */}
-          <div className={`flex items-start gap-3 p-3 rounded-xl border ${bgColor} ${borderColor}`}>
+          <div className={`flex items-start gap-3 p-3 rounded-xll border ${bgColor} ${borderColor}`}>
             <AlertTriangle size={16} className={`${color} shrink-0 mt-0.5`} />
             <p className="text-xs text-gray-400 leading-relaxed">{description}</p>
           </div>
@@ -114,13 +114,13 @@ export default function StatusChangeDialog({ student, action, onConfirm, onClose
 
           {/* Ações */}
           <div className="flex gap-3 pt-1">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xll text-sm text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
               Cancelar
             </button>
             <button
               onClick={handleConfirm}
               disabled={saving}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 ${btnClass}`}
+              className={`flex-1 py-2.5 rounded-xll text-sm font-bold transition-colors disabled:opacity-50 ${btnClass}`}
             >
               {saving ? 'Salvando...' : btnLabel}
             </button>
@@ -131,3 +131,4 @@ export default function StatusChangeDialog({ student, action, onConfirm, onClose
     </div>
   )
 }
+

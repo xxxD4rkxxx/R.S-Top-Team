@@ -1,5 +1,8 @@
+// RESUMO: Modal de criação e edição de Modalidades.
+// Gerencia os dados principais da modalidade e permite a configuração inicial de sua primeira turma.
+// Oferece interface lateral para gestão de turmas existentes quando em modo de edição.
 import React, { useState, useEffect } from 'react'
-import { X, Save, Layers, Plus, Edit2, Trash2, Calendar, Clock, Users as UsersIcon, ChevronDown } from 'lucide-react'
+import { X, Save, Layers, Plus, Edit2, Trash2, Calendar, Clock, Users as UsersIcon, ChevronDown, GraduationCap } from 'lucide-react'
 import { useSystemUsers } from '../../../hooks/useSystemUsers'
 
 export default function ModalityModal({ 
@@ -81,7 +84,7 @@ export default function ModalityModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="w-full max-w-4xl bg-[#0d0d0d] border-t md:border border-white/10 rounded-t-[32px] md:rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-500 flex flex-col max-h-[92vh] md:max-h-[85vh]">
+      <div className="w-full max-w-4xl bg-[#0d0d0d] border-t md:border border-white/10 rounded-t-2xl md:rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-500 flex flex-col max-h-[92vh] md:max-h-[85vh]">
         {/* Mobile Drag Handle */}
         <div className="md:hidden flex justify-center pt-3 pb-1">
           <div className="w-12 h-1.5 bg-white/10 rounded-full" />
@@ -94,7 +97,7 @@ export default function ModalityModal({
               <Layers size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-display font-black text-white uppercase tracking-tight">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">
                 {editingModality ? 'Editar Modalidade' : 'Nova Modalidade'}
               </h2>
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Configurações Gerais</p>
@@ -131,7 +134,7 @@ export default function ModalityModal({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Breve resumo sobre a modalidade..."
                   rows={3}
-                  className="w-full bg-[#111] border border-white/5 rounded-lg px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-700 resize-none"
+                  className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-700 resize-none"
                 />
               </div>
 
@@ -143,7 +146,7 @@ export default function ModalityModal({
                       key={s}
                       type="button"
                       onClick={() => setStatus(s)}
-                      className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
                         status === s 
                         ? 'bg-white border-white text-black shadow-[0_0_20px_rgba(255,255,255,0.1)]' 
                         : 'bg-[#111] border-white/5 text-gray-600 hover:border-white/10 hover:text-gray-400'
@@ -175,7 +178,7 @@ export default function ModalityModal({
 
                 {includeClass && (
                   <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                           <UsersIcon size={12} /> NOME DA TURMA
@@ -188,37 +191,9 @@ export default function ModalityModal({
                           className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
                         />
                       </div>
-                      <div className="space-y-2 relative">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                          <GraduationCap size={12} /> PROFESSOR
-                        </label>
-                        <div 
-                          onClick={() => setShowProfessors(!showProfessors)}
-                          className="w-full bg-black/40 border border-white/5 rounded-lg px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all"
-                        >
-                          <span className={professor ? 'text-white' : 'text-gray-700'}>
-                            {professor || 'Selecione...'}
-                          </span>
-                          <ChevronDown size={14} className={`text-gray-600 transition-transform ${showProfessors ? 'rotate-180' : ''}`} />
-                        </div>
-                        {showProfessors && (
-                          <div className="absolute top-full left-0 w-full mt-2 bg-[#111] border border-white/10 rounded-xl py-2 shadow-2xl z-[60] max-h-48 overflow-y-auto no-scrollbar">
-                            {staffMembers.filter(s => s.role === 'professor' || s.role === 'admin').map(staff => (
-                              <button
-                                key={staff.id}
-                                type="button"
-                                onClick={() => { setProfessor(staff.name); setShowProfessors(false) }}
-                                className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between"
-                              >
-                                {staff.name}
-                                <span className="opacity-30 text-[8px]">{staff.role}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
                     </div>
 
+                    {/* Seleção de Dias da Semana */}
                     <div className="space-y-3">
                       <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                         <Calendar size={12} /> DIAS DA SEMANA
@@ -241,31 +216,67 @@ export default function ModalityModal({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Horários e Professor lado a lado conforme solicitado */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Horário Início */}
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                          <Clock size={12} /> HORÁRIO INÍCIO
+                          <Clock size={12} /> INÍCIO
                         </label>
                         <input 
                           type="time"
                           value={startTime}
                           onChange={(e) => setStartTime(e.target.value)}
-                          className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none"
+                          className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
                         />
                       </div>
+
+                      {/* Horário Fim */}
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                          <Clock size={12} /> HORÁRIO FIM
+                          <Clock size={12} /> FIM
                         </label>
                         <input 
                           type="time"
                           value={endTime}
                           onChange={(e) => setEndTime(e.target.value)}
-                          className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none"
+                          className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
                         />
+                      </div>
+
+                      {/* Professor Responsável */}
+                      <div className="space-y-2 relative">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                          <GraduationCap size={12} /> PROFESSOR
+                        </label>
+                        <div 
+                          onClick={() => setShowProfessors(!showProfessors)}
+                          className="w-full h-[54px] bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all"
+                        >
+                          <span className={`${professor ? 'text-white' : 'text-gray-700'} truncate text-xs`}>
+                            {professor || 'Selecione...'}
+                          </span>
+                          <ChevronDown size={14} className={`text-gray-600 transition-transform ${showProfessors ? 'rotate-180' : ''}`} />
+                        </div>
+                        {showProfessors && (
+                          <div className="absolute top-full left-0 w-full mt-2 bg-[#111] border border-white/10 rounded-xl py-2 shadow-2xl z-[60] max-h-48 overflow-y-auto no-scrollbar">
+                            {staffMembers.filter(s => s.role === 'professor' || s.role === 'admin').map(staff => (
+                              <button
+                                key={staff.id}
+                                type="button"
+                                onClick={() => { setProfessor(staff.name); setShowProfessors(false) }}
+                                className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between"
+                              >
+                                {staff.name}
+                                <span className="opacity-30 text-[8px] tracking-widest">{staff.role}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
+                    {/* Capacidade em linha separada ou ajuste similar */}
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                          <UsersIcon size={12} /> CAPACIDADE MÁXIMA
@@ -274,7 +285,8 @@ export default function ModalityModal({
                         type="number"
                         value={capacity}
                         onChange={(e) => setCapacity(e.target.value)}
-                        className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none"
+                        placeholder="Ex: 20"
+                        className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
                       />
                     </div>
                   </div>
@@ -344,14 +356,14 @@ export default function ModalityModal({
                         <button 
                           type="button"
                           onClick={() => onEditClass(editingModality.id, turma)}
-                          className="p-2 hover:bg-white/5 text-gray-500 hover:text-white rounded-lg transition-all"
+                          className="p-2 hover:bg-white/5 text-gray-500 hover:text-white rounded-xl transition-all"
                         >
                           <Edit2 size={12} />
                         </button>
                         <button 
                           type="button"
                           onClick={() => onDeleteClass(editingModality.id, turma.id)}
-                          className="p-2 hover:bg-red-500/10 text-gray-500 hover:text-red-500 rounded-lg transition-all"
+                          className="p-2 hover:bg-red-500/10 text-gray-500 hover:text-red-500 rounded-xl transition-all"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -367,3 +379,4 @@ export default function ModalityModal({
     </div>
   )
 }
+

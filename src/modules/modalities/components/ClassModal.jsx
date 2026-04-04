@@ -1,3 +1,6 @@
+// RESUMO: Modal de inclusão e edição de Turmas (Horários).
+// Define o professor responsável, horários de início e fim, dias da semana e capacidade máxima.
+// Vinculado a uma modalidade específica.
 import React, { useState, useEffect } from 'react'
 import { X, Save, GraduationCap, Clock, Users, Calendar, Layers } from 'lucide-react'
 import { useSystemUsers } from '../../../hooks/useSystemUsers'
@@ -81,7 +84,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="w-full max-w-2xl bg-[#0d0d0d] border-t md:border border-white/10 rounded-t-[32px] md:rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-500 max-h-[92vh] flex flex-col">
+      <div className="w-full max-w-2xl bg-[#0d0d0d] border-t md:border border-white/10 rounded-t-2xl md:rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-500 max-h-[92vh] flex flex-col">
         {/* Mobile Drag Handle */}
         <div className="md:hidden flex justify-center pt-3 pb-1">
           <div className="w-12 h-1.5 bg-white/10 rounded-full" />
@@ -90,11 +93,11 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
         {/* Header */}
         <div className="flex items-center justify-between p-6 md:p-8 border-b border-white/5 sticky top-0 bg-[#0d0d0d] z-10">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
+            <div className="p-3 bg-primary/10 text-primary rounded-xl">
               <GraduationCap size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-display font-black text-white uppercase tracking-tight">
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">
                 {editingClass ? 'Editar Turma' : 'Nova Turma'}
               </h2>
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Configurar Horários e Professor</p>
@@ -121,7 +124,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                   required
                   value={selectedModalityId}
                   onChange={(e) => setSelectedModalityId(e.target.value)}
-                  className="w-full bg-[#111] border border-white/5 rounded-lg px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
+                  className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
                 >
                   <option value="">Selecione...</option>
                   {modalities.map(m => (
@@ -142,7 +145,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Turma da Manha, Kids..."
-                className="w-full bg-[#111] border border-white/5 rounded-lg px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
+                className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
               />
             </div>
 
@@ -155,7 +158,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                 required
                 value={professorId}
                 onChange={(e) => setProfessorId(e.target.value)}
-                className="w-full bg-[#111] border border-white/5 rounded-lg px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
+                className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
               >
                 <option value="">Selecione um professor...</option>
                 {professors.map(p => (
@@ -175,7 +178,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                     key={day.id}
                     type="button"
                     onClick={() => toggleDay(day.id)}
-                    className={`flex-1 min-w-[70px] py-3 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
+                    className={`flex-1 min-w-[70px] py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
                       diasSemana.includes(day.id) 
                       ? 'bg-primary border-primary text-white shadow-[0_4px_15px_rgba(238,52,51,0.3)]' 
                       : 'bg-[#111] border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-300'
@@ -197,7 +200,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                 required
                 value={horarioInicio}
                 onChange={(e) => setHorarioInicio(e.target.value)}
-                className="w-full bg-[#111] border border-white/5 rounded-lg px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
+                className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
               />
             </div>
 
@@ -210,7 +213,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                 required
                 value={horarioFim}
                 onChange={(e) => setHorarioFim(e.target.value)}
-                className="w-full bg-[#111] border border-white/5 rounded-lg px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
+                className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
               />
             </div>
 
@@ -225,7 +228,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                 min="1"
                 value={capacidade}
                 onChange={(e) => setCapacidade(e.target.value)}
-                className="w-full bg-[#111] border border-white/5 rounded-lg px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
+                className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
               />
             </div>
 
@@ -237,7 +240,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
               <select 
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full bg-[#111] border border-white/5 rounded-lg px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
+                className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
               >
                 <option value="ativo">Ativo</option>
                 <option value="inativo">Inativo</option>
@@ -266,3 +269,4 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
     </div>
   )
 }
+

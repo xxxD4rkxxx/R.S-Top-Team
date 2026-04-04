@@ -31,9 +31,9 @@ export const typography = {
  * Aderente ao "estilo antigo" que o usuário aprovou.
  */
 export const radius = {
-  card:    'rounded-xl',   // 12px — containers, modais, cards
-  button:  'rounded-xl',   // 12px — botões primários e secundários
-  input:   'rounded-xl',   // 12px — campos de formulário
+  card:    'rounded-2xl',  // 16px — containers, modais, cards
+  button:  'rounded-xl',   // 12px — botões primários e secundários (User requested 12px)
+  input:   'rounded-2xl',  // 16px — campos de formulário
   badge:   'rounded-full', // pill — badges, tags, status indicators
   inner:   'rounded-lg',   // 8px  — elementos internos de card
 };
@@ -66,7 +66,7 @@ export const kpiCard = {
   base:    `rounded-xl p-4 border border-white/10 bg-white/[0.03] transition-all duration-200 cursor-pointer`,
   hover:   `hover:border-primary/50 hover:bg-primary/[0.04] hover:shadow-lg hover:shadow-primary/10`,
   active:  `border-primary/60 bg-primary/[0.06] shadow-md shadow-primary/15`,
-  icon:    `w-10 h-10 rounded-xl flex items-center justify-center`,
+  icon:    `w-10 h-10 rounded-lg flex items-center justify-center`,
   value:   `font-['Bebas_Neue'] text-4xl leading-none text-white mt-2`,
   label:   `text-xs uppercase tracking-wider text-gray-400 font-semibold`,
   desc:    `text-xs text-gray-500 mt-1`,
@@ -83,9 +83,9 @@ export const buttons = {
 
 // ─── Inputs ────────────────────────────────────────────────────────────────────
 export const inputs = {
-  base:     `w-full bg-white/7 border border-white/14 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 text-sm outline-none transition-all duration-200`,
+  base:     `w-full bg-white/7 border border-white/14 rounded-2xl px-4 py-2.5 text-white placeholder-gray-600 text-sm outline-none transition-all duration-200`,
   focus:    `focus:border-primary/50 focus:bg-white/10 focus:shadow-[0_0_0_3px_rgba(225,29,72,0.12)]`,
-  select:   `w-full bg-white/7 border border-white/14 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-all duration-200 cursor-pointer`,
+  select:   `w-full bg-white/7 border border-white/14 rounded-2xl px-4 py-2.5 text-white text-sm outline-none transition-all duration-200 cursor-pointer`,
 };
 
 // ─── Animations ────────────────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ export const motionVariants = {
 // ─── Modal ─────────────────────────────────────────────────────────────────────
 export const modal = {
   backdrop: `fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm`,
-  container: `relative w-full max-w-2xl bg-[#0D0D0D] border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden`,
+  container: `relative w-full max-w-2xl bg-[#0D0D0D] border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden`,
   header:   `flex items-center justify-between px-6 py-4 border-b border-white/10`,
   title:    `font-['Bebas_Neue'] text-2xl tracking-wide text-white`,
   body:     `px-6 py-5 overflow-y-auto`,
@@ -125,7 +125,7 @@ export const modal = {
 
 // ─── Table ─────────────────────────────────────────────────────────────────────
 export const table = {
-  wrapper:    `rounded-xl border border-white/10 overflow-hidden`,
+  wrapper:    `rounded-2xl border border-white/10 overflow-hidden`,
   header:     `bg-white/[0.03] border-b border-white/10`,
   headerCell: `px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400 text-left`,
   row:        `border-b border-white/5 transition-colors hover:bg-white/[0.02]`,

@@ -9,7 +9,7 @@ const AssiduityCard = ({ student }) => {
   if (isLoading) return (
     <div className="space-y-3">
       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Status de Assiduidade</h3>
-      <div className="animate-pulse bg-white/5 h-24 rounded-xl border border-white/10" />
+      <div className="animate-pulse bg-white/5 h-24 rounded-xll border border-white/10" />
     </div>
   )
 
@@ -27,7 +27,7 @@ const AssiduityCard = ({ student }) => {
   return (
     <div className="space-y-3">
       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Status de Assiduidade</h3>
-      <div className={`p-4 rounded-xl border ${current.border} ${current.bg} space-y-4 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.01]`}>
+      <div className={`p-4 rounded-xll border ${current.border} ${current.bg} space-y-4 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.01]`}>
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${status === 'active' ? 'bg-emerald-500' : status === 'warning' ? 'bg-amber-500' : 'bg-red-600'}`} />
@@ -159,7 +159,7 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
 
         <div className="p-4 md:p-6 overflow-y-auto space-y-6">
           {errorAlert && (
-            <div className="bg-red-500/20 text-red-400 p-3 rounded-xl border border-red-500/30 flex items-center gap-2 text-sm font-bold animate-pulse shadow-lg">
+            <div className="bg-red-500/20 text-red-400 p-3 rounded-xll border border-red-500/30 flex items-center gap-2 text-sm font-bold animate-pulse shadow-lg">
               <AlertTriangle size={16} />
               {errorAlert}
             </div>
@@ -248,7 +248,7 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Contato</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+              <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-xll border border-white/5">
                 <div className="flex items-center gap-2 shrink-0 md:w-8">
                   <Mail size={16} className="text-gray-400" />
                 </div>
@@ -266,7 +266,7 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
                 </div>
               </div>
               
-              <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+              <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-xll border border-white/5">
                 <div className="flex items-center gap-2 shrink-0 md:w-8">
                   <Phone size={16} className="text-gray-400" />
                 </div>
@@ -286,7 +286,7 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
 
               {(formData.ageCategory === 'Kids' || formData.ageCategory === 'Juvenil') && (
                 <>
-                  <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+                  <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-xll border border-white/5">
                     <div className="flex items-center gap-2 shrink-0 md:w-8">
                       <Users size={16} className="text-gray-400" />
                     </div>
@@ -304,7 +304,7 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
                     </div>
                   </div>
                   
-                  <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+                  <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-xll border border-white/5">
                     <div className="flex items-center gap-2 shrink-0 md:w-8">
                       <Smartphone size={16} className="text-gray-400" />
                     </div>
@@ -330,7 +330,7 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Emergência e Saúde</h3>
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col md:flex-row md:items-start gap-3 bg-white/5 p-3 rounded-xl border border-red-900/30">
+              <div className="flex flex-col md:flex-row md:items-start gap-3 bg-white/5 p-3 rounded-xll border border-red-900/30">
                 <AlertCircle size={16} style={{ color: 'var(--clr-primary)' }} className="mt-0.5 shrink-0" />
                 <div className="flex-1 w-full">
                   <p className="text-[10px] text-gray-500 uppercase">Contato de Emergência</p>
@@ -345,7 +345,7 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
                   )}
                 </div>
               </div>
-              <div className="flex flex-col md:flex-row md:items-start gap-3 bg-white/5 p-3 rounded-xl border border-primary/30">
+              <div className="flex flex-col md:flex-row md:items-start gap-3 bg-white/5 p-3 rounded-xll border border-primary/30">
                 <HeartPulse size={16} className="text-primary mt-0.5 shrink-0" />
                 <div className="flex-1 w-full">
                   <p className="text-[10px] text-gray-500 uppercase">Restrições Médicas</p>
@@ -370,7 +370,7 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
           {!isEditing && (
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Atividade</h3>
-              <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+              <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xll border border-white/5">
                 <Calendar size={16} className="text-gray-400 shrink-0" />
                 <div className="flex-1 flex justify-between gap-4">
                   <div className="flex-1">
@@ -407,21 +407,21 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
                     parentPhone: student?.parentPhone || '',
                   })
                 }} 
-                className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 transition-colors"
+                className="px-5 py-2 rounded-xll text-sm font-bold text-white bg-white/5 hover:bg-white/10 transition-colors"
                 disabled={isSaving}
               >
                 Cancelar
               </button>
               <button 
                 onClick={handleSave} 
-                className="btn-primary flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                className="btn-primary flex items-center gap-2 px-6 py-2 rounded-xll text-sm font-bold text-white transition-all disabled:opacity-50"
                 disabled={isSaving}
               >
                 {isSaving ? 'Salvando...' : <><Save size={16}/> Salvar</>}
               </button>
             </>
           ) : (
-            <button onClick={onClose} className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-white/10 hover:bg-white/20 transition-colors">
+            <button onClick={onClose} className="px-5 py-2 rounded-xll text-sm font-bold text-white bg-white/10 hover:bg-white/20 transition-colors">
               Fechar
             </button>
           )}
@@ -430,3 +430,4 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
     </div>
   )
 }
+

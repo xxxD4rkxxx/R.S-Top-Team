@@ -1,5 +1,16 @@
-/* Resumo: estilos globais do app, efeitos de vidro, cartões, inputs e animações utilitárias. */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap');
+/* 
+  SISTEMA DE DESIGN - RS TOP TEAM
+  -------------------------------
+  TIPOGRAFIA:
+  - Principal: Inter (Pesos 400 e 900)
+  - Identidade: Bebas Neue (Apenas para o nome da academia "RS TOP TEAM")
+
+  RAIO DE BORDA:
+  - Containers/Cards principais: 16px (rounded-xll)
+  - Botões/Inputs/Elementos interativos: 12px (rounded-xl)
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;900&family=Bebas+Neue&display=swap');
 @import "tailwindcss";
 
 /* ── Tailwind theme extension: mapeamos 'primary' e 'primary-dark' para CSS vars ── */
@@ -51,16 +62,23 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Padronização global de fontes e pesos */
 html, body {
   background-color: var(--clr-bg);
   color: var(--clr-text);
   font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 400;
   height: 100dvh;
   width: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Força o peso 900 para negritos e cabeçalhos conforme solicitado */
+h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-black {
+  font-weight: 900 !important;
 }
 
 /* Light theme text overrides */
@@ -193,12 +211,13 @@ html, body {
   display: none;
 }
 
-/* === Glass cards === */
+/* === Estilos de Cards com Glassmorphism (16px de raio) === */
 .glass-card {
   background: var(--clr-glass-bg);
   border: 1px solid var(--clr-card-border);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px; /* 16px para containers */
 }
 
 .glass-card-hover {
@@ -216,6 +235,7 @@ html, body {
   background: var(--clr-surface);
   border: 1px solid var(--clr-card-border);
   transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+  border-radius: 16px;
 }
 .stat-card:hover {
   border-color: color-mix(in srgb, var(--clr-primary-dark) 60%, transparent);
@@ -225,6 +245,7 @@ html, body {
 /* KPI Card — standardized lift on hover */
 .kpi-card {
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease, border-color 220ms ease;
+  border-radius: 16px;
 }
 .kpi-card:hover {
   transform: translateY(-5px);
@@ -272,11 +293,12 @@ html, body {
   box-shadow: 0 0 14px color-mix(in srgb, var(--clr-primary) 45%, transparent);
 }
 
+/* === Botão Principal (12px de raio) === */
 .btn-primary {
   background: linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary));
   color: white;
-  font-weight: 700;
-  border-radius: 9999px;
+  font-weight: 900; /* Peso máximo solicitado */
+  border-radius: 12px; /* 12px para botões */
   letter-spacing: 0.04em;
   transition: all 0.2s ease;
   box-shadow: 0 4px 20px color-mix(in srgb, var(--clr-primary) 30%, transparent);
@@ -328,6 +350,7 @@ html, body {
 /* === Premium hover cards === */
 .selection-card {
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+  border-radius: 16px;
 }
 .selection-card:hover {
   transform: translateY(-4px);
@@ -346,12 +369,14 @@ html, body {
   border: 1px solid color-mix(in srgb, var(--clr-primary) 45%, transparent);
   box-shadow: 0 8px 30px rgba(0,0,0,0.4);
   z-index: 200;
+  border-radius: 16px;
 }
 
 .metrics-card {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
   box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  border-radius: 16px;
 }
 
 .metric.glass-card {
@@ -413,7 +438,7 @@ html, body {
 .form-input {
   background: rgba(255,255,255,0.07);
   border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 10px;
+  border-radius: 12px;
   color: var(--clr-text);
   padding: 12px 16px;
   font-size: 15px;
@@ -441,7 +466,7 @@ html, body {
 .main-content {
   flex: 1;
   height: 100dvh;
-  overflow-y: auto;
+  overflow-y:auto;
   background: var(--clr-bg);
 }
 

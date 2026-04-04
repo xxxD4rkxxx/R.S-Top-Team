@@ -8,6 +8,8 @@ export function AppProvider({ children }) {
   const [isAdminView, setIsAdminView] = useState(true)
   const [currentModality, setCurrentModality] = useState('Jiu-Jitsu')
   const [isMobileNavHidden, setIsMobileNavHidden] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
     <AppContext.Provider value={{
@@ -17,6 +19,10 @@ export function AppProvider({ children }) {
       setCurrentModality,
       isMobileNavHidden,
       setIsMobileNavHidden,
+      collapsed,
+      setCollapsed,
+      mobileOpen,
+      setMobileOpen,
     }}>
       {children}
     </AppContext.Provider>

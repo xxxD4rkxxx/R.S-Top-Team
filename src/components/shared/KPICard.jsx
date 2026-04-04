@@ -17,7 +17,7 @@ export default function KPICard({
   highlight,
 }) {
   const displayColor = valueColor || color
-  const displayDesc  = desc || description
+  const displayDesc = desc || description
 
   return (
     <div
@@ -60,3 +60,4 @@ export default function KPICard({
     </div>
   )
 }
+

@@ -1,12 +1,15 @@
+// RESUMO: Página de Revisão e Edição de Chamadas.
+// Permite visualizar o resumo de presenças de uma sessão específica e realizar ajustes finos.
+// Implementa busca rápida de alunos e alteração rápida de status (Presente, Falta, Justificada).
 import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
-  CalendarDays, Users, Clock3, History, CheckCircle2, XCircle, 
+import {
+  CalendarDays, Users, Clock3, History, CheckCircle2, XCircle,
   AlertCircle, ChevronLeft, Cake, Stethoscope, Trophy, Search, Edit2, Save
 } from 'lucide-react'
 import { db } from '../../firebase/config'
-import { 
-  getDoc, getDocs, doc, collection, query, where, orderBy, writeBatch, serverTimestamp 
+import {
+  getDoc, getDocs, doc, collection, query, where, orderBy, writeBatch, serverTimestamp
 } from 'firebase/firestore'
 import { useStudents } from '../../hooks/useStudents'
 import { beltConfig } from '../../data/beltConfig'
@@ -26,7 +29,7 @@ export default function ReviewAttendancePage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
   const { students } = useStudents()
-  
+
   const [session, setSession] = useState(null)
   const [records, setRecords] = useState({}) // { studentId: status }
   const [isLoading, setIsLoading] = useState(true)
@@ -40,7 +43,7 @@ export default function ReviewAttendancePage() {
     try {
       const batch = writeBatch(db)
       const attendancesRef = collection(db, 'sessions', sessionId, 'attendances')
-      
+
       Object.entries(records).forEach(([studentId, status]) => {
         if (status) { // Only save if a status exists
           const docRef = doc(attendancesRef, studentId)
@@ -55,7 +58,7 @@ export default function ReviewAttendancePage() {
           }, { merge: true })
         }
       })
-      
+
       await batch.commit()
       setIsEditing(false)
     } catch (err) {
@@ -74,13 +77,13 @@ export default function ReviewAttendancePage() {
         // 1. Fetch Session Metadata (O(1) Direct Lookup)
         const sessionRef = doc(db, 'sessions', sessionId)
         const sessionSnap = await getDoc(sessionRef)
-        
+
         if (!sessionSnap.exists()) {
           setError('A sessão solicitada não foi encontrada ou o ID é inválido.')
           setIsLoading(false)
           return
         }
-        
+
         const sessionData = { id: sessionSnap.id, ...sessionSnap.data() }
         setSession(sessionData)
 
@@ -136,11 +139,11 @@ export default function ReviewAttendancePage() {
   if (error) {
     return (
       <div className="flex flex-1 items-center justify-center bg-black px-6">
-        <div className="glass-card max-w-md w-full p-8 rounded-3xl border border-white/5 text-center">
+        <div className="glass-card max-w-md w-full p-8 rounded-2xl border border-white/5 text-center">
           <AlertCircle size={48} strokeWidth={1.9} style={{ color: 'var(--clr-primary)' }} className="mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-tight">Ops! Algo deu errado</h2>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Ops! Algo deu errado</h2>
           <p className="text-gray-400 mb-6">{error}</p>
-          <button 
+          <button
             onClick={() => navigate('/attendance')}
             className="btn-primary w-full py-3 rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2"
           >
@@ -157,7 +160,7 @@ export default function ReviewAttendancePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <button 
+          <button
             onClick={() => navigate('/attendance')}
             className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors mb-2 group"
           >
@@ -165,12 +168,12 @@ export default function ReviewAttendancePage() {
             <span className="text-sm">Voltar</span>
           </button>
           <div className="flex items-center gap-3">
-             <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-               #{session.seqId || 'SESSÃO'}
-             </span>
-             <h1 className="text-2xl font-bold text-white uppercase tracking-tight">
-               Revisão: {session.modality}
-             </h1>
+            <span className="bg-primary/20 text-primary text-[10px] font-black px-2 py-0.5 rounded-xl uppercase">
+              #{session.seqId || 'SESSÃO'}
+            </span>
+            <h1 className="text-2xl font-black text-white uppercase tracking-tight">
+              Revisão: {session.modality}
+            </h1>
           </div>
           <p className="text-sm text-gray-500 mt-1">
             {session.date ? formatFriendly(session.date, session.time) : 'Data não informada'} às {session.time || '--:--'} · Prof. {session.professor || 'Não informado'}
@@ -178,32 +181,32 @@ export default function ReviewAttendancePage() {
         </div>
 
         <div className="flex items-center gap-4 px-6 py-4 glass-card rounded-2xl border border-white/5">
-           <div className="text-center md:text-left">
-             <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Presença Final</p>
-             <div className="flex items-center gap-3">
-               <span className="text-2xl font-bold text-white">{stats.present}/{stats.total}</span>
-               <div className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-bold">
-                 {stats.percent}%
-               </div>
-             </div>
-           </div>
+          <div className="text-center md:text-left">
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Presença Final</p>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black text-white">{stats.present}/{stats.total}</span>
+              <div className="px-2 py-0.5 rounded-xl bg-emerald-500/20 text-emerald-400 text-xs font-black">
+                {stats.percent}%
+              </div>
+            </div>
+          </div>
 
-           <div className="ml-4 border-l border-white/10 pl-4 flex flex-col gap-2">
-             {!isEditing ? (
-               <button onClick={() => setIsEditing(true)} className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold w-full md:w-auto">
-                 <Edit2 size={18} strokeWidth={1.9} /> Editar Chamada
-               </button>
-             ) : (
-               <div className="flex flex-col md:flex-row gap-2">
-                 <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors bg-white/5 rounded-xl border border-white/10" disabled={isSaving}>
-                   Cancelar
-                 </button>
-                 <button onClick={handleSaveEdits} disabled={isSaving || isLoading} className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50">
-                   {isSaving ? 'Salvando...' : <><Save size={18} strokeWidth={1.9} /> Salvar Tudo</>}
-                 </button>
-               </div>
-             )}
-           </div>
+          <div className="ml-4 border-l border-white/10 pl-4 flex flex-col gap-2">
+            {!isEditing ? (
+              <button onClick={() => setIsEditing(true)} className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black w-full md:w-auto">
+                <Edit2 size={18} strokeWidth={1.9} /> Editar Chamada
+              </button>
+            ) : (
+              <div className="flex flex-col md:flex-row gap-2">
+                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors bg-white/5 rounded-xl border border-white/10" disabled={isSaving}>
+                  Cancelar
+                </button>
+                <button onClick={handleSaveEdits} disabled={isSaving || isLoading} className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black disabled:opacity-50">
+                  {isSaving ? 'Salvando...' : <><Save size={18} strokeWidth={1.9} /> Salvar Tudo</>}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -211,10 +214,10 @@ export default function ReviewAttendancePage() {
       <div className="max-w-5xl mx-auto w-full">
         <div className="relative mb-6">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input 
+          <input
             type="text"
             placeholder="Filtrar por nome do aluno..."
-            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary/50 transition-all shadow-inner"
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-primary/50 transition-all shadow-inner"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -224,10 +227,10 @@ export default function ReviewAttendancePage() {
           {filteredStudents.map(student => {
             const status = records[student.id]
             const bgClass = beltConfig[student.belt]?.bgClass || 'belt-white'
-            
+
             return (
-              <div 
-                key={student.id} 
+              <div
+                key={student.id}
                 className="glass-card p-4 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all"
               >
                 <div className="flex items-center gap-3">
@@ -259,28 +262,28 @@ export default function ReviewAttendancePage() {
                 <div className="flex flex-col gap-2">
                   {!isEditing ? (
                     <div className="flex items-center px-3 py-1.5 rounded-xl border border-white/5 bg-white/[0.02]">
-                       {status === 'present' && <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Presente</span>}
-                       {status === 'absent' && <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Falta</span>}
-                       {status === 'justified' && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Justificada</span>}
-                       {!status && <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Ausente</span>}
+                      {status === 'present' && <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Presente</span>}
+                      {status === 'absent' && <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Falta</span>}
+                      {status === 'justified' && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Justificada</span>}
+                      {!status && <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Ausente</span>}
                     </div>
                   ) : (
                     <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-xl border border-white/10">
                       <button
-                        onClick={() => setRecords(prev => ({...prev, [student.id]: 'present'}))}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${status === 'present' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                        onClick={() => setRecords(prev => ({ ...prev, [student.id]: 'present' }))}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${status === 'present' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
                       >
                         P
                       </button>
                       <button
-                        onClick={() => setRecords(prev => ({...prev, [student.id]: 'absent'}))}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${status === 'absent' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                        onClick={() => setRecords(prev => ({ ...prev, [student.id]: 'absent' }))}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${status === 'absent' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
                       >
                         F
                       </button>
                       <button
-                        onClick={() => setRecords(prev => ({...prev, [student.id]: 'justified'}))}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${status === 'justified' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                        onClick={() => setRecords(prev => ({ ...prev, [student.id]: 'justified' }))}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${status === 'justified' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
                       >
                         J
                       </button>

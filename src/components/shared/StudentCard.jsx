@@ -84,7 +84,7 @@ export default function StudentCard({ student, onClick }) {
 
   return (
     <div
-      className={`glass-card glass-card-hover rounded-3xl p-3.5 fade-slide-up ${onClick ? 'cursor-pointer' : ''}`}
+      className={`glass-card glass-card-hover rounded-xll p-3.5 fade-slide-up ${onClick ? 'cursor-pointer' : ''}`}
       style={{ animationDelay }}
       onClick={onClick}
     >
@@ -144,3 +144,4 @@ function beltColor(belt) {
   }
   return map[belt] || 'var(--clr-primary-dark), var(--clr-primary)'
 }
+

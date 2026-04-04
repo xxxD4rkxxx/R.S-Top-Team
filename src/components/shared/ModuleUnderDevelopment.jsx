@@ -18,7 +18,7 @@ export default function ModuleUnderDevelopment({
         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
         <Icon size={48} className="text-gray-500 relative z-10 group-hover:text-primary transition-colors duration-500" strokeWidth={1.5} />
         
-        <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-[#0a0a0a] border border-white/10 flex items-center justify-center shadow-2xl backdrop-blur-md">
+        <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xll bg-[#0a0a0a] border border-white/10 flex items-center justify-center shadow-2xl backdrop-blur-md">
           <Clock size={20} className="text-yellow-500 animate-pulse" />
         </div>
       </div>
@@ -33,7 +33,7 @@ export default function ModuleUnderDevelopment({
       </p>
 
       {features.length > 0 && (
-        <div className="w-full max-w-md bg-white/[0.02] border border-white/5 rounded-3xl p-6 mb-10 text-left">
+        <div className="w-full max-w-md bg-white/[0.02] border border-white/5 rounded-xll p-6 mb-10 text-left">
           <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] mb-4">{label}</p>
           <ul className="space-y-3">
             {features.map((feat, i) => (
@@ -63,3 +63,4 @@ export default function ModuleUnderDevelopment({
     </div>
   )
 }
+

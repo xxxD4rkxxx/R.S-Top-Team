@@ -79,7 +79,7 @@ function SectionConta({ user, onUpdateProfile }) {
   return (
     <div className="space-y-6">
       {/* PROFILE CARD */}
-      <div className="rounded-[5px] overflow-hidden" style={{ border: '1px solid color-mix(in srgb, var(--clr-primary-dark) 35%, transparent)' }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid color-mix(in srgb, var(--clr-primary-dark) 35%, transparent)' }}>
         {/* BANNER (STATIC GRADIENT) */}
         <div className="h-28 w-full relative">
           <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark) 0%, var(--clr-primary) 60%, #FF3057 100%)' }}>
@@ -128,7 +128,7 @@ function SectionConta({ user, onUpdateProfile }) {
         {[
           { key: 'name',   label: 'Nome',            val: user?.name   || 'Anon'      },
           { key: 'email',  label: 'E-mail',           val: user?.email  || '—'        },
-          { key: 'phone',  label: 'WhatsApp',         val: user?.phone  || '—'        },
+          { key: 'phone',  label: 'Telefone',         val: user?.phone  || '—'        },
         ].map(f => (
           <div key={f.key}>
             {editingField === f.key ? (
@@ -412,7 +412,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
 
       {/* FORM ADICIONAR (REFACTORADO) */}
       {showAdd && (
-        <div className="rounded-[5px] p-6 space-y-8 bg-[#0a0a0a] border border-white/10 shadow-2xl animate-in slide-in-from-top-2 duration-300 ring-1 ring-white/5">
+        <div className="rounded-xl p-6 space-y-8 bg-[#0a0a0a] border border-white/10 shadow-2xl animate-in slide-in-from-top-2 duration-300 ring-1 ring-white/5">
           
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
@@ -541,7 +541,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
 
           {/* JIU JITSU SPECIFIC FIELDS */}
           {isJiuJitsu && (
-            <div className="rounded-[5px] p-6 bg-primary/5 border border-primary/20 space-y-5 animate-in zoom-in-95 duration-300">
+            <div className="rounded-xl p-6 bg-primary/5 border border-primary/20 space-y-5 animate-in zoom-in-95 duration-300">
               <h5 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                 🥋 Informações de Jiu-Jitsu
               </h5>
@@ -596,7 +596,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
         {showConfirmExit && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowConfirmExit(false)} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-[420px] bg-[#1a1a1a] rounded-[5px] border border-white/10 shadow-2xl overflow-hidden">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-[420px] bg-[#1a1a1a] rounded-xl border border-white/10 shadow-2xl overflow-hidden">
               <div className="flex items-center gap-2 px-6 py-4 bg-white/5 border-b border-white/10 justify-between">
                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Fechar documento</span>
                 <X size={16} className="text-gray-600 cursor-pointer hover:text-white" onClick={() => setShowConfirmExit(false)} />
@@ -630,7 +630,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
       </AnimatePresence>
 
       {/* LISTA DE USUÁRIOS (ESTILO ALUNO) */}
-      <div className="bg-[#090909] rounded-[5px] border border-white/5 overflow-hidden shadow-2xl relative">
+      <div className="bg-[#090909] rounded-xl border border-white/5 overflow-hidden shadow-2xl relative">
         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
         
         <div className="hidden md:grid grid-cols-12 gap-4 px-8 py-5 bg-white/5 text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 relative z-10">
@@ -727,8 +727,8 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
         {result && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setResult(null); resetForm(); setShowAdd(false); }} className="absolute inset-0 bg-black/85 backdrop-blur-md" />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-[#1a1a1a] rounded-[5px] border border-white/10 shadow-2xl overflow-hidden p-8 text-center space-y-6">
-              <div className="w-20 h-20 bg-emerald-500/20 rounded-3xl mx-auto flex items-center justify-center border border-emerald-500/20 text-emerald-500">
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-[#1a1a1a] rounded-xl border border-white/10 shadow-2xl overflow-hidden p-8 text-center space-y-6">
+              <div className="w-20 h-20 bg-emerald-500/20 rounded-2xl mx-auto flex items-center justify-center border border-emerald-500/20 text-emerald-500">
                 <CheckCircle2 size={40} />
               </div>
               <div className="space-y-2">
@@ -740,7 +740,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                 <p className="text-[10px] font-black text-primary uppercase tracking-widest">PIN de Acesso Único</p>
                 <div className="flex justify-center gap-2">
                   {result.pin.split('').map((d, i) => (
-                    <div key={i} className="w-10 h-14 bg-black border border-primary/30 rounded-xl flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-primary/10">
+                    <div key={i} className="w-10 h-14 bg-black border border-primary/30 rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-primary/10">
                       {d}
                     </div>
                   ))}
@@ -772,7 +772,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ type: 'spring', damping: 25, stiffness: 500 }}
-              className="relative w-full max-w-md bg-[#0a0a0a] rounded-[5px] overflow-hidden border border-white/10 ring-1 ring-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(var(--clr-primary-rgb),0.1)] flex flex-col max-h-[85vh]" 
+              className="relative w-full max-w-md bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/10 ring-1 ring-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(var(--clr-primary-rgb),0.1)] flex flex-col max-h-[85vh]" 
               onClick={e => e.stopPropagation()}
             >
               {/* Header Fixo */}
@@ -781,14 +781,14 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => { handleEdit(selectedUser); setSelectedUser(null); }} 
-                    className="flex items-center gap-2 px-3.5 py-1.5 bg-[#1a1a1a] hover:bg-[#252525] border border-white/5 rounded-xl text-[10px] font-black text-gray-300 transition-all active:scale-95 uppercase tracking-wider"
+                    className="flex items-center gap-2 px-3.5 py-1.5 bg-[#1a1a1a] hover:bg-[#252525] border border-white/5 rounded-2xl text-[10px] font-black text-gray-300 transition-all active:scale-95 uppercase tracking-wider"
                   >
                     <Edit2 size={11} />
                     Editar
                   </button>
                   <button 
                     onClick={() => setSelectedUser(null)} 
-                    className="p-2.5 bg-[#1a1a1a] hover:bg-[#252525] border border-white/5 rounded-xl text-gray-400 hover:text-white transition-all active:scale-95"
+                    className="p-2.5 bg-[#1a1a1a] hover:bg-[#252525] border border-white/5 rounded-2xl text-gray-400 hover:text-white transition-all active:scale-95"
                   >
                     <X size={18} />
                   </button>
@@ -852,7 +852,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                     <div className="bg-[#121212] border border-white/5 rounded-2xl p-4 flex items-center gap-3 col-span-2">
                       <div className="text-gray-500"><Phone size={14} /></div>
                       <div>
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">WhatsApp</p>
+                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Telefone</p>
                         <p className="text-xs font-bold text-gray-200">{selectedUser.phone || 'Não informado'}</p>
                       </div>
                     </div>
@@ -864,7 +864,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                   <h4 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.25em] ml-1">Atuação & Equipe</h4>
                   <div className="grid grid-cols-1 gap-2.5">
                     <div className="bg-[#121212] border border-white/5 rounded-2xl p-4 flex items-center gap-3.5">
-                      <div className="w-9 h-9 rounded-xl bg-primary/5 flex items-center justify-center text-primary/60">
+                      <div className="w-9 h-9 rounded-2xl bg-primary/5 flex items-center justify-center text-primary/60">
                         <Award size={16} />
                       </div>
                       <div className="flex-1">
@@ -950,7 +950,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                 <div className="space-y-3 pb-2">
                   <h4 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.25em] ml-1">Saúde & Observações</h4>
                   <div className="bg-[#121212] border border-white/5 rounded-2xl p-4 flex items-start gap-3.5 group">
-                    <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors shrink-0 mt-0.5">
+                    <div className="w-9 h-9 rounded-2xl bg-white/5 flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors shrink-0 mt-0.5">
                       <HeartPulse size={16} />
                     </div>
                     <div className="min-w-0">
@@ -1071,7 +1071,7 @@ function SectionAparencia() {
               <button
                 key={t.id}
                 onClick={() => setTheme(t.id)}
-                className="relative overflow-hidden rounded-[5px] transition-all hover:scale-[1.03] active:scale-100"
+                className="relative overflow-hidden rounded-xl transition-all hover:scale-[1.03] active:scale-100"
                 style={{
                   border: `2px solid ${isActive ? t.primary : 'rgba(255,255,255,0.07)'}`,
                   boxShadow: isActive ? `0 0 20px ${t.primary}55` : 'none',
@@ -1113,7 +1113,7 @@ function SectionAparencia() {
           {/* CUSTOM TILE */}
           <button
             onClick={() => setTheme('custom')}
-            className="relative overflow-hidden rounded-xl transition-all hover:scale-[1.03] active:scale-100"
+            className="relative overflow-hidden rounded-2xl transition-all hover:scale-[1.03] active:scale-100"
             style={{
               border: `2px solid ${activeId === 'custom' ? customPrimary : 'rgba(255,255,255,0.07)'}`,
               boxShadow: activeId === 'custom' ? `0 0 20px ${customPrimary}55` : 'none',
@@ -1201,7 +1201,7 @@ function SectionAparencia() {
 
           <button
             onClick={() => setTheme('custom')}
-            className="btn-primary w-full py-2.5 rounded-xl text-sm font-bold"
+            className="btn-primary w-full py-2.5 rounded-2xl text-sm font-bold"
             style={{ background: `linear-gradient(135deg, ${customSecondary}, ${customPrimary})` }}
           >
             {activeId === 'custom' ? '✓ Tema personalizado ativo' : 'Aplicar cores personalizadas'}
@@ -1219,7 +1219,7 @@ function SectionAcademia() {
         <InlineField label="Nome"          value="RS Top Team" />
         <InlineField label="Modalidades"   value="Jiu-Jitsu, Boxe" />
         <InlineField label="Endereço"      value="" placeholder="Adicionar endereço..." />
-        <InlineField label="WhatsApp"      value="" placeholder="(51) 9xxxx-xxxx" />
+        <InlineField label="Telefone"      value="" placeholder="(51) 9xxxx-xxxx" />
       </Section>
       <Section title="Planos ativos">
         <SettingRow label="Mensalidade Jiu-Jitsu" desc="Valor padrão da mensalidade" action={<ChipButton label="R$ 180" />} />
@@ -1329,7 +1329,7 @@ export default function ProfilePage() {
         {/* BACK BUTTON */}
         <button 
           onClick={goBack}
-          className="group flex items-center gap-2 px-3 py-2 mb-8 text-gray-500 hover:text-white transition-all rounded-xl hover:bg-white/5 w-fit"
+          className="group flex items-center gap-2 px-3 py-2 mb-8 text-gray-500 hover:text-white transition-all rounded-2xl hover:bg-white/5 w-fit"
         >
           <div className="p-1.5 rounded-lg bg-white/5 border border-white/5 group-hover:border-primary/30 transition-colors">
             <ArrowLeft size={16} strokeWidth={2.5} />
@@ -1385,7 +1385,7 @@ export default function ProfilePage() {
             >
               {/* Header Mobile - Just the back button */}
               <div className="flex items-center px-6 py-5">
-                <button onClick={() => navigate('/')} className="p-2 -ml-2 text-white/50 hover:text-white transition-colors bg-white/5 rounded-xl border border-white/5 shadow-2xl active:scale-90">
+                <button onClick={() => navigate('/')} className="p-2 -ml-2 text-white/50 hover:text-white transition-colors bg-white/5 rounded-2xl border border-white/5 shadow-2xl active:scale-90">
                   <ArrowLeft size={18} strokeWidth={1.9} />
                 </button>
               </div>
@@ -1432,7 +1432,7 @@ export default function ProfilePage() {
                           onClick={() => handleSelectSection(item.id)}
                           className="w-full flex items-center gap-4 px-5 py-4 border-b border-white/5 last:border-0 active:bg-white/5 transition-colors"
                         >
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 text-gray-400">
+                          <div className="w-9 h-9 rounded-2xl flex items-center justify-center bg-white/5 text-gray-400">
                             <item.icon size={18} strokeWidth={1.9} />
                           </div>
                           <span className="flex-1 text-left text-sm font-bold text-white/90">{item.label}</span>
@@ -1463,7 +1463,7 @@ export default function ProfilePage() {
             >
               {/* Header Detalhe */}
               <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-5 bg-[#000]/80 backdrop-blur-md border-b border-white/5">
-                <button onClick={() => setMobileDetailOpen(false)} className="p-2 -ml-2 text-white placeholder-gray-500 bg-white/5 rounded-xl border border-white/5 active:scale-90">
+                <button onClick={() => setMobileDetailOpen(false)} className="p-2 -ml-2 text-white placeholder-gray-500 bg-white/5 rounded-2xl border border-white/5 active:scale-90">
                   <ArrowLeft size={20} strokeWidth={2.4} />
                 </button>
                 <div className="text-center absolute left-1/2 -translate-x-1/2">
@@ -1508,7 +1508,7 @@ export default function ProfilePage() {
 
 function InfoCard({ icon: Icon, label, value }) {
   return (
-    <div className="stat-card border border-white/5 rounded-[5px] p-5 flex items-center gap-4 transition-all hover:border-white/10 group">
+    <div className="stat-card border border-white/5 rounded-xl p-5 flex items-center gap-4 transition-all hover:border-white/10 group">
       <div className="w-12 h-12 rounded-2xl bg-black/40 flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors">
         <Icon size={20} />
       </div>
@@ -1522,7 +1522,7 @@ function InfoCard({ icon: Icon, label, value }) {
 
 function Section({ title, children }) {
   return (
-    <div className="bg-[#0a0a0a]/40 backdrop-blur-md rounded-[5px] border border-white/5 overflow-hidden shadow-xl">
+    <div className="bg-[#0a0a0a]/40 backdrop-blur-md rounded-xl border border-white/5 overflow-hidden shadow-xl">
       <div className="px-6 py-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
         <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">{title}</h3>
       </div>
@@ -1606,9 +1606,10 @@ function Toggle({ defaultOn = false }) {
 
 function ChipButton({ label }) {
   return (
-    <button className="px-4 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-black text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+    <button className="px-4 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-black text-gray-400 hover:text-white hover:bg-white/10 transition-all">
       {label}
     </button>
   )
 }
+
 

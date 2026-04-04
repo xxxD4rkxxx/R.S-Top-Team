@@ -32,7 +32,7 @@ class ErrorBoundary extends React.Component {
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 blur-[80px] rounded-full" />
             
             <div className="relative z-10">
-              <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-primary/20">
+              <div className="w-20 h-20 bg-primary/10 rounded-xll flex items-center justify-center mx-auto mb-8 border border-primary/20">
                 <AlertTriangle size={40} className="text-primary" strokeWidth={1.5} />
               </div>
               
@@ -45,7 +45,7 @@ class ErrorBoundary extends React.Component {
               </p>
 
               {this.state.error && (
-                <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-6 mb-8 text-left animate-in slide-in-from-bottom-2 duration-300">
+                <div className="bg-red-500/5 border border-red-500/10 rounded-xll p-6 mb-8 text-left animate-in slide-in-from-bottom-2 duration-300">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-red-400 opacity-60">Log do Erro</p>
@@ -59,7 +59,7 @@ class ErrorBoundary extends React.Component {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={this.handleReload}
-                  className="btn-primary w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all"
+                  className="btn-primary w-full py-4 rounded-xll flex items-center justify-center gap-3 text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all"
                 >
                   <RefreshCw size={16} strokeWidth={2.5} />
                   Recarregar Sistema
@@ -67,7 +67,7 @@ class ErrorBoundary extends React.Component {
                 
                 <button
                   onClick={this.handleGoHome}
-                  className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-xs font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                  className="w-full py-4 rounded-xll flex items-center justify-center gap-3 text-xs font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-all"
                 >
                   <Home size={16} />
                   Ir para o Dashboard
@@ -84,3 +84,4 @@ class ErrorBoundary extends React.Component {
 }
 
 export default ErrorBoundary
+

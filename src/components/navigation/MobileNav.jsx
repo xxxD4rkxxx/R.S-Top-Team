@@ -1,16 +1,20 @@
+// COMPONENTE DE NAVEGAÇÃO MOBILE (BOTTOM BAR)
+// Fornece uma barra de navegação inferior premium para dispositivos móveis.
+// Inclui um botão central flutuante para início rápido de chamada e um menu "Mais".
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { 
-  Home, 
-  Users, 
-  CheckCircle2, 
-  Banknote, 
-  MoreHorizontal, 
-  X, 
-  ChevronRight, 
-  Layers, 
-  Settings, 
+import { useApp } from '../../context/AppContext'
+import {
+  Home,
+  Users,
+  CheckCircle2,
+  Banknote,
+  MoreHorizontal,
+  X,
+  ChevronRight,
+  Layers,
+  Settings,
   TrendingUp,
   Award,
   ShieldCheck,
@@ -19,48 +23,43 @@ import {
   PieChart
 } from 'lucide-react'
 
-// Main items (Bottom Bar)
-// Main items (Bottom Bar) - Excluding the center button
+// Itens principais da barra inferior (Excluindo o botão central)
 const mainNavItems = [
   { to: '/', icon: Home, label: 'Início' },
   { to: '/students', icon: Users, label: 'Alunos' },
-  { to: '/finance', icon: Banknote, label: 'Financeiro' },
+  { to: '/finance', icon: Banknote, label: 'Fluxo' },
 ]
 
-// Drawer items (More menu)
+// Itens do menu "Mais" (Drawer lateral/inferior)
 const drawerItems = [
   { to: '/events', icon: TrendingUp, label: 'Lutas & Eventos' },
   { to: '/modalities', icon: Layers, label: 'Modalidades' },
   { to: '/contracts', icon: FileText, label: 'Contratos' },
   { to: '/occupancy', icon: PieChart, label: 'Ocupação' },
   { to: '/belts', icon: Award, label: 'Graduações' },
-  { to: '/collaborators', icon: ShieldCheck, label: 'Equipe' },
+  { to: '/collaborators', icon: ShieldCheck, label: 'Professores & Equipe' },
   { to: '/profile', icon: Settings, label: 'Meu Perfil' },
 ]
 
+// Configuração de animação de mola para suavidade premium
 const springConfig = { type: 'spring', damping: 30, stiffness: 400 }
 
-import { useApp } from '../../context/AppContext'
-
 export default function MobileNav() {
-  const { isMobileNavHidden } = useApp()
   const location = useLocation()
   const navigate = useNavigate()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
-  // Close drawer on route change
+  // Fecha o menu "Mais" automaticamente ao mudar de rota
   useEffect(() => {
     setIsDrawerOpen(false)
   }, [location])
-
-  if (isMobileNavHidden) return null
 
   const handleToggleDrawer = (e) => {
     e.preventDefault()
     setIsDrawerOpen(!isDrawerOpen)
   }
 
-  // Check if a path is active
+  // Verifica se uma aba específica está ativa para aplicar estilos de destaque
   const isTabActive = (path) => {
     if (path === '/' && location.pathname === '/') return true
     if (path !== '/' && location.pathname.startsWith(path)) return true
@@ -69,25 +68,27 @@ export default function MobileNav() {
 
   return (
     <>
+      {/* Container Principal da Barra Inferior */}
       <div className="fixed bottom-0 left-0 right-0 z-[100] px-4 pb-4 select-none">
-        {/* Main Navigation Bar */}
+        
+        {/* Estrutura da Barra com Efeito de Vidro (Glassmorphism) */}
         <div className="relative h-[72px] bg-[#0A0A0A]/95 backdrop-blur-3xl border border-white/5 rounded-3xl flex items-center justify-around px-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-          
-          {/* Active indicator bar (hidden for center button) */}
+
+          {/* Indicador de Aba Ativa (Linha colorida superior) */}
           <div className="absolute inset-0 pointer-events-none flex justify-around px-2">
             {[0, 1, 2, 3, 4].map(idx => {
-              if (idx === 2) return <div key={idx} className="w-16" /> // Spacer center
+              if (idx === 2) return <div key={idx} className="w-16" /> // Espaçador central para o botão flutuante
 
               let isActive = false;
               if (idx === 0) isActive = isTabActive('/');
               if (idx === 1) isActive = isTabActive('/students');
               if (idx === 3) isActive = isTabActive('/finance');
               if (idx === 4) isActive = isDrawerOpen;
-              
+
               return (
                 <div key={idx} className="relative flex-1 flex justify-center">
                   {isActive && (
-                    <motion.div 
+                    <motion.div
                       layoutId="active-line"
                       className="absolute -top-[1.5px] w-8 h-[3px] bg-primary rounded-full"
                       transition={springConfig}
@@ -98,18 +99,15 @@ export default function MobileNav() {
             })}
           </div>
 
-          {/* Navigation Items */}
-          {/* Item 1: Home */}
+          {/* Itens de Navegação Diretos */}
           <NavItem to="/" icon={Home} label="Início" active={isTabActive('/')} />
-          
-          {/* Item 2: Alunos */}
           <NavItem to="/students" icon={Users} label="Alunos" active={isTabActive('/students')} />
 
-          {/* Item 3: CENTRAL FLOATING BUTTON (Chamada) */}
+          {/* BOTÃO CENTRAL FLUTUANTE (Atalho Iniciar Chamada) */}
           <div className="relative w-16 h-16 flex items-center justify-center -mt-10">
-            {/* The Bulge Glow */}
+            {/* Brilho Pulsante sob o botão */}
             <div className={`absolute inset-0 rounded-full blur-2xl transition-all duration-500 ${isTabActive('/attendance') ? 'bg-primary/40' : 'bg-white/5'}`} />
-            
+
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => navigate('/attendance')}
@@ -122,10 +120,9 @@ export default function MobileNav() {
             </p>
           </div>
 
-          {/* Item 4: Finance */}
-          <NavItem to="/finance" icon={Banknote} label="Finance" active={isTabActive('/finance')} />
+          <NavItem to="/finance" icon={Banknote} label="Fluxo" active={isTabActive('/finance')} />
 
-          {/* Item 5: More */}
+          {/* Botão para abrir o menu complementar "Mais" */}
           <button
             onClick={handleToggleDrawer}
             className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
@@ -140,10 +137,11 @@ export default function MobileNav() {
         </div>
       </div>
 
-      {/* Drawer Overlay */}
+      {/* Drawer (Menu Expansível Inferior) */}
       <AnimatePresence>
         {isDrawerOpen && (
           <>
+            {/* Overlay de fundo (Escurecimento) */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -152,6 +150,7 @@ export default function MobileNav() {
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70]"
             />
 
+            {/* Painel do Drawer */}
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
@@ -159,11 +158,12 @@ export default function MobileNav() {
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
               className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-[#0A0A0A] border-t border-white/10 rounded-t-3xl z-[80] overflow-hidden flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
             >
-              {/* Drag Handle */}
+              {/* Alça visual de arraste (apenas estética) */}
               <div className="flex justify-center mt-3">
                 <div className="w-12 h-1.5 bg-white/10 rounded-full" />
               </div>
 
+              {/* Cabeçalho do Drawer */}
               <div className="p-6 flex items-center justify-between">
                 <div className="flex flex-col">
                   <span className="text-white font-black text-xl uppercase tracking-tighter">Explorar</span>
@@ -177,6 +177,7 @@ export default function MobileNav() {
                 </button>
               </div>
 
+              {/* Lista Dinâmica de Módulos Complementares */}
               <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-32 no-scrollbar px-6">
                 {drawerItems.map(({ to, icon: Icon, label }) => (
                   <NavLink
@@ -207,7 +208,7 @@ export default function MobileNav() {
   )
 }
 
-// Sub-component for Nav Items to reduce repetition
+// Sub-componente auxiliar para itens individuais da barra (evita repetição de código)
 function NavItem({ to, icon: Icon, label, active }) {
   return (
     <NavLink

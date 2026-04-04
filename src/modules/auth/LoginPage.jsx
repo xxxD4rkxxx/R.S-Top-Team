@@ -1,3 +1,6 @@
+// RESUMO: Tela de Login.
+// Suporta login por E-mail/Senha (Administradores) e por E-mail/PIN (Gestores/Professores).
+// Implementa detecção de cliques no logo para alternar entre os modos de acesso.
 import React, { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { LogIn, Lock, Mail, Eye, EyeOff, HelpCircle } from 'lucide-react'
@@ -73,8 +76,8 @@ export default function LoginPage() {
         <div className="relative">
           {/* Logo Watermark */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] flex items-center justify-center pointer-events-none z-0">
-             <div className="absolute inset-0 bg-primary/5 rounded-full blur-[80px] opacity-40 scale-110" />
-             <img
+            <div className="absolute inset-0 bg-primary/5 rounded-full blur-[80px] opacity-40 scale-110" />
+            <img
               src="/logo-nav.png"
               alt=""
               className="w-[320px] h-[320px] object-contain rounded-full opacity-[0.05] grayscale brightness-50 p-8 transition-all duration-1000"
@@ -83,7 +86,7 @@ export default function LoginPage() {
 
           {/* Actual Login Card */}
           <div
-            className="bg-[#121212]/80 border border-white/5 rounded-[10px] p-8 shadow-2xl relative z-10 backdrop-blur-3xl overflow-hidden animate-entrance"
+            className="bg-[#121212]/80 border border-white/5 rounded-2xl p-8 shadow-2xl relative z-10 backdrop-blur-3xl overflow-hidden animate-entrance"
           >
             {/* Decorative Gradient Background */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-[80px] -mr-16 -mt-16 pointer-events-none" />
@@ -101,15 +104,15 @@ export default function LoginPage() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Mail size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
                   </div>
-                  <input
-                    type="text"
-                    autoComplete="username"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-[10px] text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
-                    placeholder="Digite seu e-mail"
-                    required
-                  />
+                    <input
+                      type="text"
+                      autoComplete="username"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
+                      placeholder="Digite seu e-mail"
+                      required
+                    />
                 </div>
               </div>
 
@@ -128,7 +131,7 @@ export default function LoginPage() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-12 py-3.5 bg-black/40 border border-primary/20 rounded-[10px] text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
+                      className="block w-full pl-10 pr-12 py-3.5 bg-black/40 border border-primary/20 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
                       placeholder="••••••••"
                       required
                     />
@@ -155,7 +158,7 @@ export default function LoginPage() {
                       maxLength={6}
                       value={pin}
                       onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-[10px] text-white text-sm focus:outline-none focus:border-primary/50 tracking-[0.8em] transition-all placeholder:text-gray-800"
+                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 tracking-[0.8em] transition-all placeholder:text-gray-800"
                       placeholder="000000"
                       required
                     />
@@ -169,7 +172,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 rounded-[10px] flex items-center justify-center gap-2 font-display text-lg uppercase tracking-widest transition-all active:scale-[0.98] bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 btn-primary"
+                className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-black text-lg uppercase tracking-widest transition-all active:scale-[0.98] bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 btn-primary"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -203,3 +206,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

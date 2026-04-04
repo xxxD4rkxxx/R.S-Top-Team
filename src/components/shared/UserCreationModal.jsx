@@ -22,8 +22,6 @@ export default function UserCreationModal({ isOpen, onClose }) {
       viewFinance: false,
       managePayments: false,
       manageExpenses: false,
-      // Comunicação
-      manageWhatsApp: false,
       // Sistema
       manageUsers: false,
       manageSystem: false,
@@ -104,25 +102,25 @@ export default function UserCreationModal({ isOpen, onClose }) {
         viewStudents: true, editStudents: true, deleteStudents: true,
         manageClasses: true, manageEvents: true,
         viewFinance: true, managePayments: true, manageExpenses: true,
-        manageWhatsApp: true, manageUsers: true, manageSystem: true
+        manageUsers: true, manageSystem: true
       },
       gestor: {
         viewStudents: true, editStudents: true, deleteStudents: false,
         manageClasses: true, manageEvents: true,
         viewFinance: true, managePayments: true, manageExpenses: true,
-        manageWhatsApp: true, manageUsers: false, manageSystem: false
+        manageUsers: false, manageSystem: false
       },
       professor: {
         viewStudents: true, editStudents: false, deleteStudents: false,
         manageClasses: true, manageEvents: true,
         viewFinance: false, managePayments: false, manageExpenses: false,
-        manageWhatsApp: false, manageUsers: false, manageSystem: false
+        manageUsers: false, manageSystem: false
       },
       aluno: {
         viewStudents: false, editStudents: false, deleteStudents: false,
         manageClasses: false, manageEvents: false,
         viewFinance: false, managePayments: false, manageExpenses: false,
-        manageWhatsApp: false, manageUsers: false, manageSystem: false
+        manageUsers: false, manageSystem: false
       }
     }
 
@@ -136,11 +134,11 @@ export default function UserCreationModal({ isOpen, onClose }) {
   if (createdPin) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-        <div className="w-full max-w-sm bg-[#111] border border-emerald-500/30 rounded-3xl p-8 shadow-2xl text-center">
+        <div className="w-full max-w-sm bg-[#111] border border-emerald-500/30 rounded-2xl p-8 shadow-2xl text-center">
           <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <Check size={32} className="text-emerald-500" strokeWidth={3} />
           </div>
-          <h2 className="text-xl font-display font-bold text-white mb-2">Usuário Criado!</h2>
+          <h2 className="text-xl font-black text-white mb-2 uppercase tracking-tight">Usuário Criado!</h2>
           <p className="text-sm text-gray-500 mb-8">Passe este PIN único para o usuário realizar o primeiro acesso.</p>
           
           <div className="bg-black/40 border border-white/5 rounded-2xl p-6 mb-8 relative group">
@@ -148,7 +146,7 @@ export default function UserCreationModal({ isOpen, onClose }) {
             <p className="text-4xl font-mono font-black text-white tracking-[0.2em]">{createdPin}</p>
             <button 
               onClick={handleCopyPin}
-              className="absolute top-4 right-4 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
             >
               <Copy size={16} />
             </button>
@@ -167,11 +165,11 @@ export default function UserCreationModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 overflow-y-auto">
-      <div className="w-full max-w-lg bg-[#0d0d0d] border border-white/5 rounded-[32px] shadow-2xl relative overflow-hidden flex flex-col my-8">
+      <div className="w-full max-w-lg bg-[#0d0d0d] border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden flex flex-col my-8">
         {/* Header */}
         <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#111]/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
               <Shield size={20} className="text-primary" />
             </div>
             <div>
@@ -201,7 +199,7 @@ export default function UserCreationModal({ isOpen, onClose }) {
               />
               
               {filteredStudents.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-white/5">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden divide-y divide-white/5">
                   {filteredStudents.map(student => (
                     <button
                       key={student.id}
@@ -222,7 +220,7 @@ export default function UserCreationModal({ isOpen, onClose }) {
               )}
             </div>
             {selectedStudentId && !studentSearch && (
-              <div className="flex items-center justify-between px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg animate-in slide-in-from-top-1">
+              <div className="flex items-center justify-between px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in slide-in-from-top-1">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-tight">Aluno Selecionado</span>
@@ -279,7 +277,7 @@ export default function UserCreationModal({ isOpen, onClose }) {
                   key={role.id}
                   type="button"
                   onClick={() => handleRoleChange(role.id)}
-                  className={`flex flex-col items-start p-3.5 rounded-2xl border text-left transition-all relative overflow-hidden group ${
+                  className={`flex-col items-start p-3.5 rounded-xl border text-left transition-all relative overflow-hidden group ${
                     formData.role === role.id 
                     ? 'bg-primary/10 border-primary/30' 
                     : 'bg-white/[0.02] border-white/5 hover:border-white/10'
@@ -300,7 +298,7 @@ export default function UserCreationModal({ isOpen, onClose }) {
           </div>
 
           {/* Granular Permissions (Discord Style) */}
-          <div className="bg-[#111]/50 border border-white/5 rounded-[24px] overflow-hidden">
+          <div className="bg-[#111]/50 border border-white/5 rounded-2xl overflow-hidden">
             <div className="px-6 py-5 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
               <h3 className="text-[10px] text-gray-500 uppercase tracking-widest font-bold flex items-center gap-2">
                 <Shield size={14} className="text-emerald-500" /> Permissões Específicas
@@ -379,11 +377,10 @@ export default function UserCreationModal({ isOpen, onClose }) {
               <div className="space-y-5">
                 <div className="flex items-center gap-2 opacity-40">
                   <Shield size={12} className="text-purple-400" />
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Comunicação & Sistema</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Gestão & Sistema</p>
                 </div>
                 <div className="space-y-5 ml-1">
                   {[
-                    { key: 'manageWhatsApp', label: 'Central WhatsApp',     desc: 'Acesso ao hub de mensagens automáticas.' },
                     { key: 'manageUsers',    label: 'Gerenciar Membros',     desc: 'Permite criar e gerenciar outros colaboradores.' },
                     { key: 'manageSystem',   label: 'Configurar Sistema',    desc: 'Alterar regras de graduação e modalidades.' },
                   ].map(perm => (
@@ -427,3 +424,4 @@ export default function UserCreationModal({ isOpen, onClose }) {
     </div>
   )
 }
+
