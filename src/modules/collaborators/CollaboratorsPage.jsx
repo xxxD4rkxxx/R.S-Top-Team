@@ -8,14 +8,16 @@ import { useSystemUsers } from '../../hooks/useSystemUsers'
 import { useThemeVars } from '../../hooks/useThemeVars'
 import { useAuth } from '../../context/AuthContext'
 import UserCreationModal from '../../components/shared/UserCreationModal'
+import MobileHeader from '../../components/navigation/MobileHeader'
+import PageHeader from '../../components/shared/PageHeader'
 
 export default function CollaboratorsPage() {
-  const { users, loading, updateProfile, runMigration } = useSystemUsers()
+  const { users, loading, updateProfile } = useSystemUsers()
   const { userData } = useAuth()
-  const v = useThemeVars()
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -38,24 +40,34 @@ export default function CollaboratorsPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-8 animate-in fade-in duration-500">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-500">Equipe & Membros</p>
-          <h1 className="text-3xl font-display font-black text-white tracking-tight">COLABORADORES</h1>
-          <p className="text-sm text-gray-500 max-w-md">Gerencie os níveis de acesso, permissões e status dos membros da RS Top Team.</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col flex-1 w-full min-h-dvh bg-black overflow-x-hidden">
+      <MobileHeader 
+        title="Colaboradores" 
+        actions={
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-primary/90 transition-all shadow-lg active:scale-95"
+            className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
           >
-            <UserPlus size={16} strokeWidth={2.5} />
-            Adicionar Membro
+            <UserPlus size={20} strokeWidth={3} />
           </button>
-        </div>
-      </div>
+        }
+      />
+
+      <PageHeader
+        icon={Users}
+        title="COLABORADORES"
+        subtitle="Gestão de Equipe"
+        extra={
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="btn-primary flex items-center gap-2 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest shadow-xl"
+          >
+            <UserPlus size={18} /> ADICIONAR MEMBRO
+          </button>
+        }
+      />
+
+      <main className="flex-1 px-4 md:px-8 py-8 space-y-8 max-w-[1400px] mx-auto w-full pb-32 animate-in fade-in duration-500">
 
       {/* Filters Bar */}
       <div className="flex flex-col md:flex-row gap-4">
@@ -203,8 +215,9 @@ export default function CollaboratorsPage() {
           </div>
         )}
       </div>
+    </main>
 
-      <UserCreationModal 
+    <UserCreationModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />

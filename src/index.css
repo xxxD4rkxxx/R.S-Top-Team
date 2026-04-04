@@ -403,6 +403,9 @@ html, body {
   border-radius: 16px;
   width: 100%;
   max-width: 480px;
+  max-height: 90dvh; /* Garante que o modal caiba na tela */
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 24px 80px rgba(0,0,0,0.8), 0 0 40px color-mix(in srgb, var(--clr-primary-dark) 18%, transparent);
 }
 

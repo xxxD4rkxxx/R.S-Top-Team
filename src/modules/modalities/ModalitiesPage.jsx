@@ -85,7 +85,15 @@ export default function ModalitiesPage() {
       <MobileHeader 
         title="Modalidades" 
         showSearch 
-        onSearch={() => setShowMobileSearch(!showMobileSearch)} 
+        onSearch={() => setShowMobileSearch(!showMobileSearch)}
+        actions={
+          <button 
+            onClick={handleAddModality}
+            className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
+          >
+            <Plus size={20} strokeWidth={3} />
+          </button>
+        }
       />
 
       <PageHeader

@@ -17,6 +17,7 @@ import PageHeader from '../../components/shared/PageHeader'
 import StudentDetailsModal from '../../components/shared/StudentDetailsModal'
 import KPICard from '../../components/shared/KPICard'
 import { beltConfig } from '../../data/beltConfig'
+import MobileHeader from '../../components/navigation/MobileHeader'
 
 function normalizeStatus(status) {
   if (!status || status === 'ativo' || status === 'active') return 'ativo'
@@ -204,7 +205,7 @@ export default function StudentsPage() {
     }
     if (statusFilter !== 'todos') list = list.filter(s => normalizeStatus(s.status) === statusFilter)
     if (modalityFilter !== 'todas') list = list.filter(s => s.modality === modalityFilter)
-    if (sortBy === 'az') list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    if (sortBy === 'az') list = [...list].sort((a, b) => (a.name || '').localeCompare(a.name || ''))
     if (sortBy === 'za') list = [...list].sort((a, b) => (b.name || '').localeCompare(a.name || ''))
     return list
   }, [students, searchTerm, statusFilter, modalityFilter, sortBy])
@@ -304,6 +305,23 @@ export default function StudentsPage() {
 
   return (
     <div className="flex flex-col flex-1 w-full min-w-0 p-0">
+      {/* Header Mobile */}
+      <MobileHeader 
+        title="Alunos"
+        actions={
+          <div className="flex items-center gap-1.5">
+            {isAdminView && (
+              <button 
+                onClick={() => { setDuplicateData(null); setShowModal(true) }}
+                className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
+              >
+                <Plus size={20} strokeWidth={3} />
+              </button>
+            )}
+          </div>
+        }
+      />
+
       {/* Header Desktop */}
       <PageHeader
         icon={Users}

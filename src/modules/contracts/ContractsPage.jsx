@@ -7,6 +7,7 @@ import {
 import PageHeader from '../../components/shared/PageHeader'
 import KPICard from '../../components/shared/KPICard'
 import { useContracts } from '../../hooks/useContracts'
+import MobileHeader from '../../components/navigation/MobileHeader'
 
 export default function ContractsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -45,6 +46,14 @@ export default function ContractsPage() {
 
   return (
     <div className="flex flex-col flex-1 w-full min-w-0">
+      <MobileHeader 
+        title="Contratos" 
+        actions={
+          <button className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20">
+            <Plus size={20} strokeWidth={3} />
+          </button>
+        }
+      />
       <PageHeader 
         icon={FileText} 
         title="CONTRATOS DIGITAIS" 

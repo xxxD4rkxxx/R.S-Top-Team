@@ -185,6 +185,33 @@ export default function AttendancePage() {
         title={activeSession ? "Chamada Ativa" : "Canais de Chamada"}
         showBack={activeSession ? true : false}
         onBack={() => activeSession && setActiveSession(null)}
+        actions={
+          <div className="flex items-center gap-2">
+            {activeSession ? (
+              <button
+                onClick={handleFinalizeSession}
+                disabled={isFinishingSession}
+                title="Finalizar Chamada"
+                className="p-2.5 rounded-[5px] bg-emerald-500 text-white active:scale-90 transition-transform shadow-lg shadow-emerald-500/20"
+              >
+                {isFinishingSession ? (
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Check size={20} strokeWidth={3} />
+                )}
+              </button>
+            ) : (
+              isAdminView && (
+                <button 
+                  onClick={() => setShowModal(true)}
+                  className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
+                >
+                  <Plus size={20} strokeWidth={3} />
+                </button>
+              )
+            )}
+          </div>
+        }
       />
 
       <PageHeader

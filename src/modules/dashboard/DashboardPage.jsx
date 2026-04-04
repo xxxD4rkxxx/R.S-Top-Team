@@ -18,6 +18,7 @@ import { useEvents } from '../../hooks/useDataConnect'
 import { beltConfig } from '../../data/beltConfig'
 import SlideOver from '../../components/shared/SlideOver'
 import KPICard from '../../components/shared/KPICard'
+import MobileHeader from '../../components/navigation/MobileHeader'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
 
 // ── Custom sport PNG icon wrappers ───────────────────────────────
@@ -316,18 +317,25 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Mobile header */}
-      <div className="md:hidden flex items-center justify-between px-4 pt-4 mb-2">
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          <Activity size={18} className="text-[#DC143C]" /> Dashboard
-        </h1>
-        <button className="relative p-2 rounded-full bg-white/5 text-gray-400">
-          <Bell size={18} />
-          {absentList.filter(s => s.isCritical).length > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#DC143C] rounded-full border border-black pulse-red" />
-          )}
-        </button>
-      </div>
+      <MobileHeader
+        title="Dashboard"
+        actions={
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={refresh}
+              className="p-2.5 rounded-[5px] bg-[#1a1a1a] border border-white/5 text-gray-400 active:scale-90 transition-transform"
+            >
+              <RefreshCw size={18} />
+            </button>
+            <button className="relative p-2.5 rounded-[5px] bg-[#1a1a1a] border border-white/5 text-gray-400 active:scale-90 transition-transform">
+              <Bell size={18} />
+              {absentList.filter(s => s.isCritical).length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#DC143C] rounded-full border border-black pulse-red" />
+              )}
+            </button>
+          </div>
+        }
+      />
 
       <div className="px-4 md:px-6 py-6 space-y-6 max-w-[1500px] mx-auto w-full pb-20 fade-slide-up">
 

@@ -4,7 +4,7 @@ import { Bell, Search, User, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
-const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, onBack }) => {
+const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, onBack, actions }) => {
   const { userData } = useAuth()
   const navigate = useNavigate()
 
@@ -19,18 +19,18 @@ const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, o
       animate={{ y: 0, opacity: 1 }}
       className="md:hidden flex items-center justify-between px-4 py-4 sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 overflow-hidden mr-2">
         {showBack ? (
           <button 
             onClick={handleBack}
-            className="w-10 h-10 rounded-[5px] bg-white/5 border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform"
+            className="w-10 h-10 rounded-[5px] bg-white/5 border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform shrink-0"
           >
             <ArrowLeft size={20} strokeWidth={3} />
           </button>
         ) : (
           <div 
             onClick={() => navigate('/profile')}
-            className="w-10 h-10 rounded-[5px] overflow-hidden border border-white/10 active:scale-90 transition-transform bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"
+            className="w-10 h-10 rounded-[5px] overflow-hidden border border-white/10 active:scale-90 transition-transform bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0"
           >
             {userData?.photoURL ? (
               <img src={userData.photoURL} alt="" className="w-full h-full object-cover" />
@@ -41,15 +41,17 @@ const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, o
             )}
           </div>
         )}
-        <div className="flex flex-col">
-          <h1 className="text-lg font-black text-white leading-tight tracking-tight">{title}</h1>
-          <span className="text-[10px] text-primary font-bold uppercase tracking-widest opacity-80 leading-none mt-0.5">
+        <div className="flex flex-col min-w-0">
+          <h1 className="text-lg font-black text-white leading-tight tracking-tight truncate">{title}</h1>
+          <span className="text-[10px] text-primary font-bold uppercase tracking-widest opacity-80 leading-none mt-0.5 truncate">
             {userData?.role || 'Membro'}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
+        {actions}
+        
         {showSearch && (
           <button 
             onClick={onSearch}

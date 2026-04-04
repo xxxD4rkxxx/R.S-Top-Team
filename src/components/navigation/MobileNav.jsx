@@ -40,7 +40,10 @@ const drawerItems = [
 
 const springConfig = { type: 'spring', damping: 30, stiffness: 400 }
 
+import { useApp } from '../../context/AppContext'
+
 export default function MobileNav() {
+  const { isMobileNavHidden } = useApp()
   const location = useLocation()
   const navigate = useNavigate()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -49,6 +52,8 @@ export default function MobileNav() {
   useEffect(() => {
     setIsDrawerOpen(false)
   }, [location])
+
+  if (isMobileNavHidden) return null
 
   const handleToggleDrawer = (e) => {
     e.preventDefault()

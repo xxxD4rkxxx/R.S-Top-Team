@@ -19,6 +19,7 @@ import {
 import { useNotices } from '../../hooks/useNotices'
 import PageHeader from '../../components/shared/PageHeader'
 import KPICard from '../../components/shared/KPICard'
+import MobileHeader from '../../components/navigation/MobileHeader'
 
 // ────────────────────────────────────────────────
 //  INLINE FORM COMPONENT
@@ -234,6 +235,18 @@ export default function EventsPage() {
 
   return (
     <div className="flex flex-col min-h-full">
+      <MobileHeader 
+        title="Avisos" 
+        actions={
+          <button 
+            onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
+            className={`p-2.5 rounded-[5px] active:scale-90 transition-all shadow-lg ${showForm && !editingNotice ? 'bg-white/10 text-white' : 'bg-primary text-black shadow-primary/20'}`}
+          >
+            {showForm && !editingNotice ? <X size={20} strokeWidth={3} /> : <Plus size={20} strokeWidth={3} />}
+          </button>
+        }
+      />
+      
       {/* Header Desktop */}
       <PageHeader
         icon={Calendar}

@@ -1,15 +1,23 @@
 // Resumo: Modal para cadastrar novo aluno ou visitante, com seleção de modalidade e faixa (Jiu-Jitsu).
-import React, { useState, useRef } from 'react'
-import { X, UserPlus, Camera, RefreshCw, Trash2, Check, User, Info, Smartphone, AlertCircle } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { X, UserPlus, Camera, RefreshCw, Trash2, Check, User, Info, Smartphone, AlertCircle, ChevronDown } from 'lucide-react'
 import { beltConfig } from '../../data/beltConfig'
 import { useModalities } from '../../hooks/useModalities'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useApp } from '../../context/AppContext'
 
 const BELTS = ['none', 'white', 'blue', 'purple', 'brown', 'black']
 
 export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu-Jitsu', initialData = null }) {
   const { modalities } = useModalities()
+  const { setIsMobileNavHidden } = useApp()
   const activeModalities = (modalities || []).filter(m => m.status === 'ativo')
+
+  // Hide mobile nav when modal is open
+  useEffect(() => {
+    setIsMobileNavHidden(true)
+    return () => setIsMobileNavHidden(false)
+  }, [setIsMobileNavHidden])
 
   const [form, setForm] = useState({
     name: initialData?.name || '',
@@ -18,7 +26,7 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
     emergency: initialData?.emergency || '',
     medical: initialData?.medical || '',
     belt: initialData?.belt || 'none',
-    modality: initialModality,
+    modality: [initialModality], // Inicia com a modalidade atual em um array
     type: 'aluno',
     ageCategory: initialData?.ageCategory || 'Adulto',
     gender: initialData?.gender || 'Masculino',
@@ -34,6 +42,7 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
   const [photoPreview, setPhotoPreview] = useState(initialData?.photo || null)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false)
 
   const startCamera = async () => {
     setShowCamera(true)
@@ -78,7 +87,7 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
     const e = {}
     if (!form.name.trim()) e.name = 'Nome é obrigatório'
     if (form.type === 'aluno' && !form.email.trim()) e.email = 'Email é obrigatório'
-    if (!form.modality) e.modality = 'Escolha a modalidade'
+    if (!form.modality?.length) e.modality = 'Escolha pelo menos uma modalidade'
     if (form.ageCategory === 'Kids' || form.ageCategory === 'Juvenil') {
       if (!form.parentName.trim()) e.parentName = 'Nome do responsável obrigatório'
       if (!form.parentPhone.trim()) e.parentPhone = 'Telefone do responsável obrigatório'
@@ -91,17 +100,18 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
     const e = validate()
     if (Object.keys(e).length) { setErrors(e); return }
     const isVisitor = form.type === 'visitante'
-    const belt = (form.modality?.toLowerCase().includes('jiu') || form.modality?.toLowerCase().includes('bjj')) ? form.belt : 'none'
-    setSaving(true)
-    setErrorMsg('')
-    try {
-      await onAdd({ ...form, photo: photoPreview }, form.modality, { isVisitor, belt })
-    } catch (err) {
-      console.error('Erro ao adicionar', err)
-      setErrorMsg('Erro ao salvar. Tente novamente.')
-    } finally {
-      setSaving(false)
-    }
+      setSaving(true)
+      setErrorMsg('')
+      try {
+        const hasBJJ = form.modality.some(m => m.toLowerCase().includes('jiu') || m.toLowerCase().includes('bjj'))
+        const belt = hasBJJ ? form.belt : 'none'
+        await onAdd({ ...form, photo: photoPreview }, form.modality, { isVisitor, belt })
+      } catch (err) {
+        console.error('Erro ao adicionar', err)
+        setErrorMsg('Erro ao salvar. Tente novamente.')
+      } finally {
+        setSaving(false)
+      }
   }
 
   return (
@@ -128,23 +138,9 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8 pb-32">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-6 space-y-6 md:space-y-8 pb-32">
           <form id="add-student-form" onSubmit={handleSubmit} className="space-y-8">
             
-            {/* Photo Section */}
-            <div className="flex flex-col items-center gap-4">
-               <div className="relative w-32 h-32 rounded-3xl bg-white/[0.03] border border-white/10 overflow-hidden flex items-center justify-center group shadow-2xl">
-                 {photoPreview ? (
-                   <img src={photoPreview} alt="" className="w-full h-full object-cover" />
-                 ) : (
-                   <Camera size={40} className="text-white/10" />
-                 )}
-                 <button type="button" onClick={startCamera} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-[10px] font-black uppercase text-white tracking-widest">
-                   {photoPreview ? 'Trocar' : 'Tirar Foto'}
-                 </button>
-               </div>
-            </div>
-
             {/* Basic Info */}
             <div className="space-y-6">
               <div className="space-y-2">
@@ -154,7 +150,7 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
                     <button 
                       key={t} type="button" 
                       onClick={() => setForm(f => ({...f, type: t}))}
-                      className={`flex-1 py-4 rounded-2xl border text-xs font-black uppercase transition-all ${form.type === t ? 'bg-white border-white text-black shadow-xl ring-2 ring-white/10' : 'bg-white/[0.03] border-white/5 text-gray-500'}`}
+                      className={`flex-1 py-3 md:py-4 rounded-2xl border text-xs font-black uppercase transition-all ${form.type === t ? 'bg-white border-white text-black shadow-xl ring-2 ring-white/10' : 'bg-white/[0.03] border-white/5 text-gray-500'}`}
                     >
                       {t}
                     </button>
@@ -162,20 +158,20 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Modalidade Principal</label>
-                <div className="flex gap-2 flex-wrap">
-                  {activeModalities.map(m => (
-                    <button 
-                      key={m.id} type="button" 
-                      onClick={() => setForm(f => ({...f, modality: m.name}))}
-                      className={`px-4 py-3 rounded-xl border text-[10px] font-black uppercase transition-all ${form.modality === m.name ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20' : 'bg-white/[0.03] border-white/5 text-gray-500'}`}
-                    >
-                      {m.name}
+              {form.type === 'aluno' && (
+                <div className="flex flex-col items-center gap-4 py-2">
+                  <div className="relative w-32 h-32 rounded-3xl bg-white/[0.03] border border-white/10 overflow-hidden flex items-center justify-center group shadow-2xl">
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera size={40} className="text-white/10" />
+                    )}
+                    <button type="button" onClick={startCamera} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-[10px] font-black uppercase text-white tracking-widest">
+                      {photoPreview ? 'Trocar' : 'Tirar Foto'}
                     </button>
-                  ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Nome Completo</label>
@@ -183,7 +179,7 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
                   <input 
                     required value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))}
                     placeholder="Ex: Rafael Mendes"
-                    className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-sm focus:border-primary/50"
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 md:py-4 pl-12 pr-4 text-white text-sm focus:border-primary/50"
                   />
                   <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
                 </div>
@@ -191,43 +187,111 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Telefone / WhatsApp</label>
-                <div className="relative">
-                  <input 
-                    value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))}
-                    placeholder="(11) 99999-9999"
-                    className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-sm focus:border-primary/50"
-                  />
-                  <Smartphone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Modalidades (Selecione 1 ou mais)</label>
+                <div className="flex gap-2 flex-wrap">
+                  {activeModalities.map(m => {
+                    const isSelected = (form.modality || []).includes(m.name)
+                    return (
+                      <button 
+                        key={m.id} type="button" 
+                        onClick={() => {
+                          setForm(f => {
+                            const current = f.modality || []
+                            const next = current.includes(m.name) 
+                              ? current.filter(x => x !== m.name)
+                              : [...current, m.name]
+                            return { ...f, modality: next }
+                          })
+                        }}
+                        className={`px-4 py-3 rounded-xl border text-[10px] font-black uppercase transition-all flex items-center gap-2 ${isSelected ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20' : 'bg-white/[0.03] border-white/5 text-gray-500'}`}
+                      >
+                        {isSelected && <Check size={12} strokeWidth={3} />}
+                        {m.name}
+                      </button>
+                    )
+                  })}
                 </div>
+                {errors.modality && <p className="text-red-500 text-[10px] font-bold uppercase mt-1 px-1">{errors.modality}</p>}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Email</label>
-                <input 
-                  type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))}
-                  placeholder="aluno@email.com"
-                  className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:border-primary/50"
-                />
-              </div>
+              {form.type === 'aluno' && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Telefone / WhatsApp</label>
+                    <div className="relative">
+                      <input 
+                        value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))}
+                        placeholder="(11) 99999-9999"
+                        className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 md:py-4 pl-12 pr-4 text-white text-sm focus:border-primary/50"
+                      />
+                      <Smartphone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Email</label>
+                    <input 
+                      type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))}
+                      placeholder="aluno@email.com"
+                      className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:border-primary/50"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Categoria</label>
-                  <select value={form.ageCategory} onChange={e => setForm(f => ({...f, ageCategory: e.target.value}))} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-sm appearance-none">
-                    <option value="Adulto">Adulto</option>
-                    <option value="Juvenil">Juvenil</option>
-                    <option value="Kids">Kids</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
+                {form.type === 'aluno' && (
+                  <div className="space-y-2 relative">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Categoria</label>
+                    <button 
+                      type="button"
+                      onClick={() => setIsCategoryMenuOpen(!isCategoryMenuOpen)}
+                      className="w-full bg-black/40 input-raise border border-white/10 rounded-xl py-3 md:py-4 px-4 text-white text-sm flex items-center justify-between group active:scale-95 transition-all text-gray-300 font-medium"
+                    >
+                      <span className="truncate">{form.ageCategory}</span>
+                      <ChevronDown size={14} className={`text-gray-500 transition-transform duration-300 ${isCategoryMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                      {isCategoryMenuOpen && (
+                        <>
+                          {/* Invisible backdrop to close menu */}
+                          <div className="fixed inset-0 z-[160]" onClick={() => setIsCategoryMenuOpen(false)} />
+                          
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10, transform: 'translateY(16px)' }}
+                            animate={{ opacity: 1, y: 0, transform: 'translateY(0)' }}
+                            exit={{ opacity: 0, y: 10, transform: 'translateY(16px)' }}
+                            className="absolute left-0 right-0 bottom-[calc(100%+8px)] bg-[#0d0d0d] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[170] py-1"
+                          >
+                            {['Adulto', 'Juvenil', 'Kids'].map((cat) => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => {
+                                  setForm(f => ({ ...f, ageCategory: cat }))
+                                  setIsCategoryMenuOpen(false)
+                                }}
+                                className={`w-full px-5 py-3 text-left text-sm transition-colors hover:bg-white/5 ${form.ageCategory === cat ? 'text-white bg-white/5 font-bold' : 'text-gray-400 font-medium'}`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+                
+                <div className={`space-y-2 ${form.type === 'visitante' ? 'col-span-2' : ''}`}>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Sexo</label>
                   <div className="flex gap-2">
                     {['Masculino', 'Feminino'].map(g => (
                       <button 
                         key={g} type="button" 
                         onClick={() => setForm(f => ({...f, gender: g}))}
-                        className={`flex-1 py-4 rounded-2xl border text-[10px] font-black uppercase transition-all ${form.gender === g ? 'bg-white border-white text-black' : 'bg-white/[0.03] border-white/5 text-gray-500'}`}
+                        className={`flex-1 py-3 md:py-4 rounded-2xl border text-[10px] font-black uppercase transition-all ${form.gender === g ? 'bg-white border-white text-black' : 'bg-white/[0.03] border-white/5 text-gray-500'}`}
                       >
                         {g === 'Masculino' ? 'M' : 'F'}
                       </button>
@@ -236,8 +300,8 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
                 </div>
               </div>
 
-              {/* Belt Selection for BJJ */}
-              {(form.modality?.toLowerCase().includes('jiu') || form.modality?.toLowerCase().includes('bjj')) && (
+              {/* Belt Selection for BJJ - Only show for students */}
+              {form.type === 'aluno' && form.modality.some(m => m.toLowerCase().includes('jiu') || m.toLowerCase().includes('bjj')) && (
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-1">Graduação Atual</label>
                   <div className="grid grid-cols-3 gap-2">
@@ -245,7 +309,7 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
                       <button 
                         key={b} type="button" 
                         onClick={() => setForm(f => ({...f, belt: b}))}
-                        className={`py-4 rounded-xl border text-[10px] font-black uppercase transition-all ${form.belt === b ? 'bg-primary border-primary text-white' : 'bg-white/[0.03] border-white/5 text-gray-500'}`}
+                        className={`py-3 md:py-4 rounded-xl border text-[10px] font-black uppercase transition-all ${form.belt === b ? 'bg-primary border-primary text-white' : 'bg-white/[0.03] border-white/5 text-gray-500'}`}
                       >
                         {beltConfig[b]?.label || b}
                       </button>
@@ -255,8 +319,8 @@ export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu
               )}
             </div>
 
-            {/* Responsibility Info for Kids */}
-            {(form.ageCategory === 'Kids' || form.ageCategory === 'Juvenil') && (
+            {/* Responsibility Info for Kids Students */}
+            {form.type === 'aluno' && (form.ageCategory === 'Kids' || form.ageCategory === 'Juvenil') && (
               <div className="p-6 rounded-3xl bg-primary/5 border border-primary/20 space-y-4">
                  <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest">
                    <Info size={14} /> Dados do Responsável

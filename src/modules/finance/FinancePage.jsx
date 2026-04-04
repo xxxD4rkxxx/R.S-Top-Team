@@ -12,6 +12,8 @@ import { useFinance } from '../../hooks/useFinance'
 import ModuleUnderDevelopment from '../../components/shared/ModuleUnderDevelopment'
 import KPICard from '../../components/shared/KPICard'
 
+import MobileHeader from '../../components/navigation/MobileHeader'
+
 export default function FinancePage() {
   const { students } = useStudents()
   const { 
@@ -67,6 +69,14 @@ export default function FinancePage() {
 
   return (
     <div className="flex flex-col flex-1 w-full min-w-0">
+      <MobileHeader 
+        title="Financeiro"
+        actions={
+          <button className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20">
+            <Plus size={20} strokeWidth={3} />
+          </button>
+        }
+      />
       <PageHeader 
         icon={CreditCard} 
         title="CENTRAL FINANCEIRA" 

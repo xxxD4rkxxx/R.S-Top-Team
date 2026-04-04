@@ -141,17 +141,26 @@ export function useStudents() {
 
   async function addStudent(newStudent, modality, options = {}) {
     const { isVisitor = false, belt = 'white' } = options
-    const normalized = (modality || 'Jiu-Jitsu').toLowerCase()
-    const modalities = normalized === 'ambos' ? ['Jiu-Jitsu', 'Boxe'] : [normalized === 'boxe' ? 'Boxe' : 'Jiu-Jitsu']
+    
+    // Handle multiple modalities
+    let finalModalities = []
+    if (Array.isArray(modality)) {
+      finalModalities = modality
+    } else {
+      const normalized = (modality || 'Jiu-Jitsu').toLowerCase()
+      finalModalities = normalized === 'ambos' ? ['Jiu-Jitsu', 'Boxe'] : [normalized === 'boxe' ? 'Boxe' : 'Jiu-Jitsu']
+    }
 
-    const beltFinal = modalities.length === 1 && modalities[0] === 'Boxe' ? 'none' : belt || 'white'
+    // Default belt logic: if only Muay Thai/Boxe, none. If BJJ exists in list, use belt.
+    const hasBJJ = finalModalities.some(m => m.toLowerCase().includes('jiu') || m.toLowerCase().includes('bjj'))
+    const beltFinal = hasBJJ ? (belt || 'white') : 'none'
 
     const payload = {
       name: newStudent.name,
       initials: buildInitials(newStudent.name),
       belt: beltFinal,
-      modality: modalities[0],
-      modalities,
+      modality: finalModalities[0] || 'Jiu-Jitsu',
+      modalities: finalModalities,
       stripes: 0,
       status: null,
       isVisitor,
