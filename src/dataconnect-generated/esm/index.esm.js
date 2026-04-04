@@ -1,11 +1,10 @@
-import { queryRef, executeQuery, validateArgs } from 'firebase/data-connect';
+import { queryRef, executeQuery, validateArgsWithOptions, validateArgs } from 'firebase/data-connect';
 
 export const connectorConfig = {
   connector: 'attendance',
   service: 'academy2',
   location: 'southamerica-east1'
 };
-
 export const getLatestAttendanceRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -13,8 +12,10 @@ export const getLatestAttendanceRef = (dcOrVars, vars) => {
 }
 getLatestAttendanceRef.operationName = 'GetLatestAttendance';
 
-export function getLatestAttendance(dcOrVars, vars) {
-  return executeQuery(getLatestAttendanceRef(dcOrVars, vars));
+export function getLatestAttendance(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getLatestAttendanceRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
 }
 
 export const getAttendanceCountInRangeRef = (dcOrVars, vars) => {
@@ -24,8 +25,10 @@ export const getAttendanceCountInRangeRef = (dcOrVars, vars) => {
 }
 getAttendanceCountInRangeRef.operationName = 'GetAttendanceCountInRange';
 
-export function getAttendanceCountInRange(dcOrVars, vars) {
-  return executeQuery(getAttendanceCountInRangeRef(dcOrVars, vars));
+export function getAttendanceCountInRange(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAttendanceCountInRangeRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
 }
 
 export const getDashboardStatsRef = (dcOrVars, vars) => {
@@ -35,8 +38,10 @@ export const getDashboardStatsRef = (dcOrVars, vars) => {
 }
 getDashboardStatsRef.operationName = 'getDashboardStats';
 
-export function getDashboardStats(dcOrVars, vars) {
-  return executeQuery(getDashboardStatsRef(dcOrVars, vars));
+export function getDashboardStats(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getDashboardStatsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
 }
 
 export const getStudentAttendanceStatsRef = (dcOrVars, vars) => {
@@ -46,8 +51,10 @@ export const getStudentAttendanceStatsRef = (dcOrVars, vars) => {
 }
 getStudentAttendanceStatsRef.operationName = 'getStudentAttendanceStats';
 
-export function getStudentAttendanceStats(dcOrVars, vars) {
-  return executeQuery(getStudentAttendanceStatsRef(dcOrVars, vars));
+export function getStudentAttendanceStats(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getStudentAttendanceStatsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
 }
 
 export const getWeeklyFrequencyRef = (dcOrVars, vars) => {
@@ -57,7 +64,9 @@ export const getWeeklyFrequencyRef = (dcOrVars, vars) => {
 }
 getWeeklyFrequencyRef.operationName = 'getWeeklyFrequency';
 
-export function getWeeklyFrequency(dcOrVars, vars) {
-  return executeQuery(getWeeklyFrequencyRef(dcOrVars, vars));
+export function getWeeklyFrequency(dcOrVars, varsOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getWeeklyFrequencyRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
 }
 

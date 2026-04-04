@@ -63,7 +63,7 @@ Below are examples of how to use the `attendance` connector's generated function
 ## GetLatestAttendance
 You can execute the `GetLatestAttendance` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getLatestAttendance(vars: GetLatestAttendanceVariables): QueryPromise<GetLatestAttendanceData, GetLatestAttendanceVariables>;
+getLatestAttendance(vars: GetLatestAttendanceVariables, options?: ExecuteQueryOptions): QueryPromise<GetLatestAttendanceData, GetLatestAttendanceVariables>;
 
 interface GetLatestAttendanceRef {
   ...
@@ -74,7 +74,7 @@ export const getLatestAttendanceRef: GetLatestAttendanceRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getLatestAttendance(dc: DataConnect, vars: GetLatestAttendanceVariables): QueryPromise<GetLatestAttendanceData, GetLatestAttendanceVariables>;
+getLatestAttendance(dc: DataConnect, vars: GetLatestAttendanceVariables, options?: ExecuteQueryOptions): QueryPromise<GetLatestAttendanceData, GetLatestAttendanceVariables>;
 
 interface GetLatestAttendanceRef {
   ...
@@ -174,7 +174,7 @@ executeQuery(ref).then((response) => {
 ## GetAttendanceCountInRange
 You can execute the `GetAttendanceCountInRange` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getAttendanceCountInRange(vars: GetAttendanceCountInRangeVariables): QueryPromise<GetAttendanceCountInRangeData, GetAttendanceCountInRangeVariables>;
+getAttendanceCountInRange(vars: GetAttendanceCountInRangeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceCountInRangeData, GetAttendanceCountInRangeVariables>;
 
 interface GetAttendanceCountInRangeRef {
   ...
@@ -185,7 +185,7 @@ export const getAttendanceCountInRangeRef: GetAttendanceCountInRangeRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getAttendanceCountInRange(dc: DataConnect, vars: GetAttendanceCountInRangeVariables): QueryPromise<GetAttendanceCountInRangeData, GetAttendanceCountInRangeVariables>;
+getAttendanceCountInRange(dc: DataConnect, vars: GetAttendanceCountInRangeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceCountInRangeData, GetAttendanceCountInRangeVariables>;
 
 interface GetAttendanceCountInRangeRef {
   ...
@@ -288,7 +288,7 @@ executeQuery(ref).then((response) => {
 ## getDashboardStats
 You can execute the `getDashboardStats` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getDashboardStats(vars: GetDashboardStatsVariables): QueryPromise<GetDashboardStatsData, GetDashboardStatsVariables>;
+getDashboardStats(vars: GetDashboardStatsVariables, options?: ExecuteQueryOptions): QueryPromise<GetDashboardStatsData, GetDashboardStatsVariables>;
 
 interface GetDashboardStatsRef {
   ...
@@ -299,7 +299,7 @@ export const getDashboardStatsRef: GetDashboardStatsRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getDashboardStats(dc: DataConnect, vars: GetDashboardStatsVariables): QueryPromise<GetDashboardStatsData, GetDashboardStatsVariables>;
+getDashboardStats(dc: DataConnect, vars: GetDashboardStatsVariables, options?: ExecuteQueryOptions): QueryPromise<GetDashboardStatsData, GetDashboardStatsVariables>;
 
 interface GetDashboardStatsRef {
   ...
@@ -411,7 +411,7 @@ executeQuery(ref).then((response) => {
 ## getStudentAttendanceStats
 You can execute the `getStudentAttendanceStats` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getStudentAttendanceStats(vars: GetStudentAttendanceStatsVariables): QueryPromise<GetStudentAttendanceStatsData, GetStudentAttendanceStatsVariables>;
+getStudentAttendanceStats(vars: GetStudentAttendanceStatsVariables, options?: ExecuteQueryOptions): QueryPromise<GetStudentAttendanceStatsData, GetStudentAttendanceStatsVariables>;
 
 interface GetStudentAttendanceStatsRef {
   ...
@@ -422,7 +422,7 @@ export const getStudentAttendanceStatsRef: GetStudentAttendanceStatsRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getStudentAttendanceStats(dc: DataConnect, vars: GetStudentAttendanceStatsVariables): QueryPromise<GetStudentAttendanceStatsData, GetStudentAttendanceStatsVariables>;
+getStudentAttendanceStats(dc: DataConnect, vars: GetStudentAttendanceStatsVariables, options?: ExecuteQueryOptions): QueryPromise<GetStudentAttendanceStatsData, GetStudentAttendanceStatsVariables>;
 
 interface GetStudentAttendanceStatsRef {
   ...
@@ -525,7 +525,7 @@ executeQuery(ref).then((response) => {
 ## getWeeklyFrequency
 You can execute the `getWeeklyFrequency` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
-getWeeklyFrequency(vars: GetWeeklyFrequencyVariables): QueryPromise<GetWeeklyFrequencyData, GetWeeklyFrequencyVariables>;
+getWeeklyFrequency(vars: GetWeeklyFrequencyVariables, options?: ExecuteQueryOptions): QueryPromise<GetWeeklyFrequencyData, GetWeeklyFrequencyVariables>;
 
 interface GetWeeklyFrequencyRef {
   ...
@@ -536,7 +536,7 @@ export const getWeeklyFrequencyRef: GetWeeklyFrequencyRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getWeeklyFrequency(dc: DataConnect, vars: GetWeeklyFrequencyVariables): QueryPromise<GetWeeklyFrequencyData, GetWeeklyFrequencyVariables>;
+getWeeklyFrequency(dc: DataConnect, vars: GetWeeklyFrequencyVariables, options?: ExecuteQueryOptions): QueryPromise<GetWeeklyFrequencyData, GetWeeklyFrequencyVariables>;
 
 interface GetWeeklyFrequencyRef {
   ...

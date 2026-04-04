@@ -115,7 +115,7 @@ extend type Event {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "Event.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "Event.id", purpose: ENTITY_ID)
 }
 extend type EventParticipant {
   """
@@ -164,7 +164,7 @@ extend type EventParticipant {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "EventParticipant.eventId,studentId", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "EventParticipant.eventId,studentId", purpose: ENTITY_ID)
 }
 extend type Transaction {
   """
@@ -292,5 +292,5 @@ extend type Transaction {
   """
   A generated field that is used for caching results in SDKs.
   """
-  _id: ID! @fdc_generated(from: "Transaction.id", purpose: GLOBAL_ID)
+  _id: ID! @fdc_generated(from: "Transaction.id", purpose: ENTITY_ID)
 }

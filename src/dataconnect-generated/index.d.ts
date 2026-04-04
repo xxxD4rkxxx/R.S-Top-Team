@@ -1,4 +1,4 @@
-import { ConnectorConfig, DataConnect, QueryRef, QueryPromise } from 'firebase/data-connect';
+import { ConnectorConfig, DataConnect, QueryRef, QueryPromise, ExecuteQueryOptions } from 'firebase/data-connect';
 
 export const connectorConfig: ConnectorConfig;
 
@@ -93,8 +93,8 @@ interface GetLatestAttendanceRef {
 }
 export const getLatestAttendanceRef: GetLatestAttendanceRef;
 
-export function getLatestAttendance(vars: GetLatestAttendanceVariables): QueryPromise<GetLatestAttendanceData, GetLatestAttendanceVariables>;
-export function getLatestAttendance(dc: DataConnect, vars: GetLatestAttendanceVariables): QueryPromise<GetLatestAttendanceData, GetLatestAttendanceVariables>;
+export function getLatestAttendance(vars: GetLatestAttendanceVariables, options?: ExecuteQueryOptions): QueryPromise<GetLatestAttendanceData, GetLatestAttendanceVariables>;
+export function getLatestAttendance(dc: DataConnect, vars: GetLatestAttendanceVariables, options?: ExecuteQueryOptions): QueryPromise<GetLatestAttendanceData, GetLatestAttendanceVariables>;
 
 interface GetAttendanceCountInRangeRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -105,8 +105,8 @@ interface GetAttendanceCountInRangeRef {
 }
 export const getAttendanceCountInRangeRef: GetAttendanceCountInRangeRef;
 
-export function getAttendanceCountInRange(vars: GetAttendanceCountInRangeVariables): QueryPromise<GetAttendanceCountInRangeData, GetAttendanceCountInRangeVariables>;
-export function getAttendanceCountInRange(dc: DataConnect, vars: GetAttendanceCountInRangeVariables): QueryPromise<GetAttendanceCountInRangeData, GetAttendanceCountInRangeVariables>;
+export function getAttendanceCountInRange(vars: GetAttendanceCountInRangeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceCountInRangeData, GetAttendanceCountInRangeVariables>;
+export function getAttendanceCountInRange(dc: DataConnect, vars: GetAttendanceCountInRangeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceCountInRangeData, GetAttendanceCountInRangeVariables>;
 
 interface GetDashboardStatsRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -117,8 +117,8 @@ interface GetDashboardStatsRef {
 }
 export const getDashboardStatsRef: GetDashboardStatsRef;
 
-export function getDashboardStats(vars: GetDashboardStatsVariables): QueryPromise<GetDashboardStatsData, GetDashboardStatsVariables>;
-export function getDashboardStats(dc: DataConnect, vars: GetDashboardStatsVariables): QueryPromise<GetDashboardStatsData, GetDashboardStatsVariables>;
+export function getDashboardStats(vars: GetDashboardStatsVariables, options?: ExecuteQueryOptions): QueryPromise<GetDashboardStatsData, GetDashboardStatsVariables>;
+export function getDashboardStats(dc: DataConnect, vars: GetDashboardStatsVariables, options?: ExecuteQueryOptions): QueryPromise<GetDashboardStatsData, GetDashboardStatsVariables>;
 
 interface GetStudentAttendanceStatsRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -129,8 +129,8 @@ interface GetStudentAttendanceStatsRef {
 }
 export const getStudentAttendanceStatsRef: GetStudentAttendanceStatsRef;
 
-export function getStudentAttendanceStats(vars: GetStudentAttendanceStatsVariables): QueryPromise<GetStudentAttendanceStatsData, GetStudentAttendanceStatsVariables>;
-export function getStudentAttendanceStats(dc: DataConnect, vars: GetStudentAttendanceStatsVariables): QueryPromise<GetStudentAttendanceStatsData, GetStudentAttendanceStatsVariables>;
+export function getStudentAttendanceStats(vars: GetStudentAttendanceStatsVariables, options?: ExecuteQueryOptions): QueryPromise<GetStudentAttendanceStatsData, GetStudentAttendanceStatsVariables>;
+export function getStudentAttendanceStats(dc: DataConnect, vars: GetStudentAttendanceStatsVariables, options?: ExecuteQueryOptions): QueryPromise<GetStudentAttendanceStatsData, GetStudentAttendanceStatsVariables>;
 
 interface GetWeeklyFrequencyRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -141,6 +141,6 @@ interface GetWeeklyFrequencyRef {
 }
 export const getWeeklyFrequencyRef: GetWeeklyFrequencyRef;
 
-export function getWeeklyFrequency(vars: GetWeeklyFrequencyVariables): QueryPromise<GetWeeklyFrequencyData, GetWeeklyFrequencyVariables>;
-export function getWeeklyFrequency(dc: DataConnect, vars: GetWeeklyFrequencyVariables): QueryPromise<GetWeeklyFrequencyData, GetWeeklyFrequencyVariables>;
+export function getWeeklyFrequency(vars: GetWeeklyFrequencyVariables, options?: ExecuteQueryOptions): QueryPromise<GetWeeklyFrequencyData, GetWeeklyFrequencyVariables>;
+export function getWeeklyFrequency(dc: DataConnect, vars: GetWeeklyFrequencyVariables, options?: ExecuteQueryOptions): QueryPromise<GetWeeklyFrequencyData, GetWeeklyFrequencyVariables>;
 
