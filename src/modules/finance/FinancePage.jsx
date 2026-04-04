@@ -10,25 +10,7 @@ import PageHeader from '../../components/shared/PageHeader'
 import { useStudents } from '../../hooks/useStudents'
 import { useFinance } from '../../hooks/useFinance'
 import ModuleUnderDevelopment from '../../components/shared/ModuleUnderDevelopment'
-
-function KPICard({ title, value, description, icon: Icon, valueColor = 'text-app', onClick, active }) {
-  return (
-    <div
-      onClick={onClick}
-      className={`stat-card kpi-glow flex flex-col p-5 rounded-[10px] relative overflow-hidden group transition-all duration-300 ${onClick ? 'cursor-pointer active:scale-95' : ''} ${active ? 'ring-2 ring-primary/60' : ''}`}
-    >
-      <div className="flex items-center justify-between text-gray-400 mb-3 relative z-10">
-        <div className="flex items-center gap-2">
-          <Icon size={18} strokeWidth={1.9} />
-          <span className="text-xs uppercase tracking-widest font-bold">{title}</span>
-        </div>
-        <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-[10px] cursor-help border border-white/5 hover:bg-white/10 transition-colors" title="Ajuda">?</div>
-      </div>
-      <div className={`text-3xl font-bold mb-1 ${valueColor} relative z-10 animate-value-reveal`}>{value}</div>
-      <p className="text-[11px] text-gray-500 leading-tight pr-4 relative z-10">{description}</p>
-    </div>
-  )
-}
+import KPICard from '../../components/shared/KPICard'
 
 export default function FinancePage() {
   const { students } = useStudents()

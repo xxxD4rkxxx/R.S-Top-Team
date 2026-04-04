@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { 
-  Plus, Search, Filter, Layers, 
+  Plus, Search, Layers, 
   GraduationCap, Users, TrendingUp, X
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,6 +10,7 @@ import ModalityModal from './components/ModalityModal'
 import ClassModal from './components/ClassModal'
 import PageHeader from '../../components/shared/PageHeader'
 import MobileHeader from '../../components/navigation/MobileHeader'
+import KPICard from '../../components/shared/KPICard'
 
 export default function ModalitiesPage() {
   const { 
@@ -31,32 +32,6 @@ export default function ModalitiesPage() {
     const stringId = String(id)
     setExpandedId(prev => prev === stringId ? null : stringId)
   }
-
-  // KPI Card Component (matching premium Dashboard style)
-  const KPICard = ({ title, value, description, icon: Icon, color = 'text-primary' }) => (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="p-5 rounded-2xl border border-white/5 bg-white/[0.02] flex flex-col justify-between group active:scale-95 transition-all min-h-[140px] relative overflow-hidden"
-    >
-      <div className="flex flex-col gap-4 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-xl bg-white/5 ${color}`}>
-            <Icon size={16} strokeWidth={2.5} />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{title}</span>
-        </div>
-        
-        <div className="flex flex-col">
-          <span className="text-3xl font-black text-white tracking-tighter leading-none">{value}</span>
-          <span className="hidden md:block text-[9px] font-bold uppercase tracking-widest text-white/20 mt-2">{description}</span>
-        </div>
-      </div>
-
-      {/* Subtle light effect on hover */}
-      <div className="absolute inset-0 bg-white/[0.01] opacity-0 group-hover:opacity-100 transition-opacity" />
-    </motion.div>
-  )
 
   const handleAddModality = () => {
     setEditingModality(null)
@@ -120,14 +95,14 @@ export default function ModalitiesPage() {
         extra={
           <button 
             onClick={handleAddModality}
-            className="btn-primary flex items-center gap-2 px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest shadow-xl group"
+            className="btn-primary flex items-center gap-2 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest shadow-xl group"
           >
-            <Plus size={18} className="group-hover:rotate-90 transition-transform" /> NOVA MODALIDADE
+            <Plus size={16} className="group-hover:rotate-90 transition-transform" /> NOVA MODALIDADE
           </button>
         }
       />
 
-      <main className="flex-1 p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto w-full pb-32">
+      <main className="flex-1 px-4 md:px-6 py-6 space-y-6 max-w-[1500px] mx-auto w-full pb-20">
         
         {/* Mobile Search Expandable */}
         <AnimatePresence>
@@ -137,7 +112,7 @@ export default function ModalitiesPage() {
                 <input 
                   autoFocus value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                   placeholder="Buscar modalidade..."
-                  className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-sm"
+                  className="w-full bg-white/[0.05] border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm"
                 />
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
                 {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30"><X size={18}/></button>}
@@ -146,19 +121,19 @@ export default function ModalitiesPage() {
           )}
         </AnimatePresence>
 
-        {/* KPI Grid (Identical to Dashboard) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 px-1">
-          <KPICard title="Modalidades" value={kpis.totalModalities} description="Ativas no sistema" icon={Layers} color="text-primary" />
-          <KPICard title="Turmas" value={kpis.totalClasses} description="Horários cadastrados" icon={GraduationCap} color="text-blue-500" />
-          <KPICard title="Média" value={kpis.avgStudentsPerClass.toFixed(1)} description="Alunos por turma" icon={Users} color="text-emerald-500" />
-          <KPICard title="Ocupação" value={`${kpis.avgOccupancy}%`} description="Capacidade geral" icon={TrendingUp} color="text-amber-500" />
+        {/* KPI Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+          <KPICard title="Modalidades" value={loading ? '...' : kpis.totalModalities} desc="Ativas no sistema" icon={Layers} iconColor="text-primary" />
+          <KPICard title="Turmas" value={loading ? '...' : kpis.totalClasses} desc="Horários cadastrados" icon={GraduationCap} iconColor="text-blue-400" />
+          <KPICard title="Média" value={loading ? '...' : kpis.avgStudentsPerClass.toFixed(1)} desc="Alunos por turma" icon={Users} iconColor="text-emerald-400" />
+          <KPICard title="Ocupação" value={loading ? '...' : `${kpis.avgOccupancy}%`} desc="Capacidade geral" icon={TrendingUp} iconColor="text-amber-400" />
         </div>
 
         {/* Desktop Search & Filter */}
         <div className="hidden md:flex gap-4">
           <div className="flex-1 relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" size={18} />
-            <input type="text" placeholder="Pesquisar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#111] border border-white/5 rounded-2xl pl-12 pr-4 py-3.5 text-sm" />
+            <input type="text" placeholder="Pesquisar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm" />
           </div>
         </div>
 

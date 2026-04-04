@@ -151,13 +151,13 @@ export default function ModalityCard({
                         <div className="flex gap-2">
                           <button 
                             onClick={() => onEditClass(modality.id, turma)}
-                            className="p-2 bg-white/5 text-gray-500 hover:text-white rounded-lg transition-colors border border-white/5"
+                            className="p-2 bg-white/5 text-gray-500 hover:text-white rounded-xl transition-colors border border-white/5"
                           >
                             <Edit2 size={12} />
                           </button>
                           <button 
                             onClick={() => onDeleteClass(modality.id, turma.id)}
-                            className="p-2 bg-white/5 text-gray-500 hover:text-red-500 rounded-lg transition-colors border border-white/5"
+                            className="p-2 bg-white/5 text-gray-500 hover:text-red-500 rounded-xl transition-colors border border-white/5"
                           >
                             <Trash2 size={12} />
                           </button>

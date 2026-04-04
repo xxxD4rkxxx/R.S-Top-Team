@@ -17,30 +17,19 @@ import { useDashboardStats, parseDate, daysBetween } from '../../hooks/useDashbo
 import { useEvents } from '../../hooks/useDataConnect'
 import { beltConfig } from '../../data/beltConfig'
 import SlideOver from '../../components/shared/SlideOver'
+import KPICard from '../../components/shared/KPICard'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
 
 // ── Custom sport PNG icon wrappers ───────────────────────────────
-// These wrap PNG files so KPICard can call them as <Icon size={16} className={...} />
 function IconJiuJitsu({ size = 16, className = '' }) {
-  // CSS filter: invert black PNG to white, then colorize via color classes won't work on PNG.
-  // We use brightness+invert to turn it white and rely on opacity for dimming.
-  const style = {
-    width: size, height: size,
-    filter: 'invert(1)',  // black → white (works on dark bg)
-    objectFit: 'contain',
-  }
+  const style = { width: size, height: size, filter: 'invert(1)', objectFit: 'contain' }
   return <img src="/icon-jiujitsu.png" alt="jiujitsu" style={style} className={className} />
 }
 
 function IconBoxe({ size = 16, className = '' }) {
-  const style = {
-    width: size, height: size,
-    filter: 'invert(1)',
-    objectFit: 'contain',
-  }
+  const style = { width: size, height: size, filter: 'invert(1)', objectFit: 'contain' }
   return <img src="/icon-boxe.png" alt="boxe" style={style} className={className} />
 }
-
 
 // ── Skeleton Loader ─────────────────────────────────────────
 function Skeleton({ className = '' }) {
@@ -49,41 +38,11 @@ function Skeleton({ className = '' }) {
 
 function KPISkeleton() {
   return (
-    <div className="stat-card flex flex-col p-5 rounded-2xl h-[140px] border border-white/5 border-t-2 border-t-white/10">
-      <Skeleton className="w-24 h-3 mb-4" />
+    <div className="stat-card flex flex-col p-5 rounded-2xl h-[140px] border border-white/5">
+      <Skeleton className="w-8 h-8 mb-4 rounded-lg" />
       <div className="mt-auto">
         <Skeleton className="w-16 h-9 mb-2" />
         <Skeleton className="w-32 h-2.5" />
-      </div>
-    </div>
-  )
-}
-
-// ── KPI Card ─────────────────────────────────────────────────
-function KPICard({ title, value, desc, icon: Icon, color, iconColor, badge, onClick, highlight }) {
-  return (
-    <div
-      onClick={onClick}
-      className={`stat-card flex flex-col p-5 rounded-2xl relative overflow-hidden group h-[140px] border border-white/5 border-t-2 border-t-[#DC143C] transition-all duration-200
-        ${onClick ? 'cursor-pointer hover:border-[#DC143C]/40 hover:bg-white/[0.02]' : ''}
-        ${highlight ? 'ring-1 ring-[#DC143C]/40 bg-[#DC143C]/5' : ''}
-      `}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-red-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <div className="flex items-center justify-between text-gray-400 mb-3 relative z-10 w-full">
-        <div className="flex items-center gap-2">
-          <Icon size={16} className={iconColor || 'text-[#DC143C]'} />
-          <span className="text-[10px] uppercase tracking-widest font-bold text-gray-500">{title}</span>
-        </div>
-        {badge && (
-          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${badge.bg} ${badge.color}`}>
-            {badge.label}
-          </span>
-        )}
-      </div>
-      <div className="relative z-10 flex flex-col flex-1 justify-end">
-        <div className={`text-4xl font-bold mb-1.5 tracking-tight ${color}`}>{value}</div>
-        <p className="text-[10px] lg:text-[11px] text-gray-500 leading-tight font-medium tracking-wide">{desc}</p>
       </div>
     </div>
   )
@@ -625,7 +584,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Session History ─────────────────────────────── */}
+        {/* ── Histórico de Chamada ─────────────────────────────── */}
         {(stats?.sessions || []).length > 0 && (
           <div className="glass-card rounded-[24px] p-6 border border-white/10 fade-slide-up" style={{ animationDelay: '440ms' }}>
             <h3 className="text-sm font-bold uppercase tracking-widest text-white mb-4 flex items-center gap-2">
