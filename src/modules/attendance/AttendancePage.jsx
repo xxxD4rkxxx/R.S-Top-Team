@@ -199,72 +199,88 @@ export default function AttendancePage() {
           )
         }
       />
-
       <main className="flex-1 p-4 md:p-8 space-y-10 max-w-[1400px] mx-auto w-full pb-32">
 
         {!activeSession ? (
           <>
             {/* Header Description for Mobile Only or Sub-header */}
-            <div className="space-y-1">
-              <h2 className="text-4xl font-bold text-white tracking-tighter uppercase font-display hidden md:block">INICIAR CHAMADA</h2>
-              <p className="text-gray-500 text-sm font-medium">Defina os campos para abrir a chamada.</p>
+            {/* Centered Header Section */}
+            <div className="flex flex-col items-center justify-center text-center space-y-8 mb-14 animate-entrance">
+              {/* Circular Logo with Premium Glow */}
+              <div className="relative">
+                {/* Massive Soft Radial Glow */}
+                <div className="absolute -inset-16 bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
+                <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl animate-pulse"></div>
+                
+                <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-full border-2 border-white/10 p-2.5 bg-[#080808] shadow-[0_0_50px_rgba(225,29,72,0.2)] flex items-center justify-center overflow-hidden">
+                  <img 
+                    src="/logo-nav.png" 
+                    alt="RS Top Team" 
+                    className="w-full h-full object-contain rounded-full transition-transform duration-700 hover:scale-110"
+                  />
+                  {/* Glass Shine Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none"></div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-5xl md:text-6xl font-black text-white tracking-[0.05em] uppercase font-display leading-[0.9] drop-shadow-2xl">
+                  INICIAR CHAMADA
+                </h2>
+                <div className="flex items-center justify-center gap-4">
+                  <div className="h-px w-12 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+                  <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.4em] opacity-80">Ambiente de Aula · Rs Top Team</p>
+                  <div className="h-px w-12 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+                </div>
+              </div>
             </div>
 
             {/* Modality Selection Grid - PC & MOBILE */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {loadingModalities ? (
-                [1, 2, 3].map(i => <div key={i} className="h-40 bg-white/5 rounded-[10px] animate-pulse" />)
+                [1, 2, 3].map(i => <div key={i} className="h-44 bg-white/5 rounded-[12px] animate-pulse border border-white/5" />)
               ) : (
                 modalities.filter(m => m.status === 'ativo').map(mod => (
                   <motion.button
                     key={mod.id}
-                    whileTap={{ scale: 0.97 }}
+                    whileTap={{ scale: 0.96 }}
+                    whileHover={{ y: -5 }}
                     onClick={() => {
                       setSessionModality(mod.name)
                       setCurrentModality(mod.name)
                       if (window.innerWidth < 768) setShowMobileConfig(true)
                     }}
-                    className={`stat-card p-10 rounded-[10px] flex flex-col items-center justify-center gap-2 relative overflow-hidden transition-all group ${sessionModality === mod.name ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+                    className={`stat-card p-12 rounded-[12px] flex flex-col items-center justify-center gap-3 relative overflow-hidden transition-all duration-500 group ${sessionModality === mod.name ? 'ring-2 ring-primary bg-primary/5 shadow-[0_0_30px_rgba(225,29,72,0.15)]' : ''}`}
                   >
-                    <div className={`absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${sessionModality === mod.name ? 'border-primary bg-primary text-white' : 'border-white/10 text-transparent'}`}>
-                      <Check size={12} strokeWidth={4} />
+                    <div className={`absolute top-5 right-5 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${sessionModality === mod.name ? 'border-primary bg-primary text-white scale-110 shadow-lg shadow-primary/40' : 'border-white/10 text-transparent opacity-0'}`}>
+                      <Check size={14} strokeWidth={4} />
                     </div>
 
-                    <div className="text-center group-hover:scale-110 transition-transform duration-500">
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">MODALIDADE</p>
-                      <h3 className="text-3xl font-bold text-white uppercase font-display tracking-tight">{mod.name}</h3>
-                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">Sessão Regular</p>
+                    <div className="text-center group-hover:scale-105 transition-transform duration-700">
+                      <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.25em] mb-2 group-hover:text-primary transition-colors">MODALIDADE</p>
+                      <h3 className="text-4xl font-black text-white uppercase font-display tracking-tight leading-none">{mod.name}</h3>
+                      <div className="mt-3 flex items-center justify-center">
+                        <div className={`h-1 w-8 rounded-full transition-all duration-500 ${sessionModality === mod.name ? 'bg-primary w-12' : 'bg-white/10'}`}></div>
+                      </div>
                     </div>
 
-                    <p className="absolute bottom-4 text-[9px] text-gray-700 font-black uppercase tracking-[0.2em] group-hover:text-primary/50 transition-colors">ESCOLHA O HORÁRIO ABAIXO</p>
+                    <p className="absolute bottom-5 text-[8px] text-gray-700 font-black uppercase tracking-[0.3em] group-hover:text-primary/40 transition-colors">SELECIONAR HORÁRIO</p>
                   </motion.button>
                 ))
               )}
             </div>
 
-            {/* Config Form - PC ONLY (Inline) */}
-            <div className="hidden md:grid grid-cols-3 gap-6 pt-6 animate-entrance">
+            {/* Selection Form - Professors & Dates */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8">
               <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-1">DATA DA SESSÃO</label>
+                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-1">DATA DA AULA</label>
                 <div className="relative group">
                   <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary transition-colors" />
                   <input
                     type="date"
                     value={sessionDate}
                     onChange={e => setSessionDate(e.target.value)}
-                    className="w-full bg-[#111] border border-white/5 rounded-[10px] py-4 pl-12 pr-4 text-white text-sm focus:border-primary/40 transition-all outline-none"
-                  />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-1">HORÁRIO</label>
-                <div className="relative group">
-                  <Clock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary transition-colors" />
-                  <input
-                    type="time"
-                    value={sessionTime}
-                    onChange={e => setSessionTime(e.target.value)}
-                    className="w-full bg-[#111] border border-white/5 rounded-[10px] py-4 pl-12 pr-4 text-white text-sm focus:border-primary/40 transition-all outline-none"
+                    className="w-full bg-[#0d0d0d] border border-white/5 rounded-[12px] py-4 pl-12 pr-4 text-white text-sm focus:border-primary/40 transition-all outline-none font-medium"
                   />
                 </div>
               </div>
@@ -275,7 +291,7 @@ export default function AttendancePage() {
                   <select
                     value={sessionProfessor}
                     onChange={e => setSessionProfessor(e.target.value)}
-                    className="w-full bg-[#111] border border-white/5 rounded-[10px] py-4 pl-12 pr-10 text-white text-sm focus:border-primary/40 transition-all outline-none appearance-none font-medium"
+                    className="w-full bg-[#0d0d0d] border border-white/5 rounded-[12px] py-4 pl-12 pr-10 text-white text-sm focus:border-primary/40 transition-all outline-none appearance-none font-medium"
                   >
                     {staffMembers.filter(s => s.role === 'professor' || s.role === 'admin').map(s => (
                       <option key={s.id} value={s.name} className="bg-[#111]">{s.name}</option>
@@ -287,19 +303,19 @@ export default function AttendancePage() {
             </div>
 
             {/* PC Start Action */}
-            <div className="hidden md:flex justify-end gap-4 items-center animate-entrance">
-              <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">Pronta para iniciar: {new Date(sessionDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            <div className="hidden md:flex justify-end gap-6 items-center animate-entrance pt-6">
+              <p className="text-[9px] text-gray-600 font-black uppercase tracking-[0.25em]">Sessão: {new Date(sessionDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
               <button
                 onClick={handleStartSession}
                 disabled={isSavingSession || !sessionModality}
-                className="btn-primary min-w-[240px] py-5 flex items-center justify-center gap-3 relative overflow-hidden group shadow-2xl shadow-primary/20"
+                className="btn-primary min-w-[160px] py-2.5 flex items-center justify-center gap-2.5 relative overflow-hidden group shadow-xl shadow-primary/25 rounded-xl"
               >
                 {isSavingSession ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Plus size={22} strokeWidth={3} />
-                    <span className="text-lg">INICIAR SESSÃO</span>
+                    <Plus size={16} strokeWidth={3} />
+                    <span className="text-[11px] font-black uppercase tracking-widest">INICIAR SESSÃO</span>
                   </>
                 )}
               </button>

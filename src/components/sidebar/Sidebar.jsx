@@ -123,10 +123,10 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
             <img
               src="/logo-nav.png"
               alt="RS Top Team"
-              className="w-full h-full rounded-[5px] object-cover transition-transform duration-700"
+              className="w-full h-full rounded-full object-cover transition-transform duration-700"
               style={{
-                boxShadow: `0 0 25px rgba(254, 110, 0, 0.4)`,
-                border: '2px solid rgba(254, 110, 0, 0.3)'
+                boxShadow: `0 0 20px color-mix(in srgb, var(--clr-primary) 40%, transparent)`,
+                border: '2px solid color-mix(in srgb, var(--clr-primary) 30%, transparent)'
               }}
             />
           </div>

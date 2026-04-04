@@ -1,28 +1,51 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { NavLink, useLocation } from 'react-router-dom'
-import { Home, Users, CheckCircle2, Calendar, MoreHorizontal, X, ChevronRight, PieChart, Layers, Settings } from 'lucide-react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { 
+  Home, 
+  Users, 
+  CheckCircle2, 
+  Banknote, 
+  MoreHorizontal, 
+  X, 
+  ChevronRight, 
+  Layers, 
+  Settings, 
+  TrendingUp,
+  Award,
+  ShieldCheck,
+  MessageCircle,
+  FileText,
+  PieChart
+} from 'lucide-react'
 
+// Main items (Bottom Bar)
+// Main items (Bottom Bar) - Excluding the center button
 const mainNavItems = [
-  { to: '/', icon: Home, label: 'Home' },
+  { to: '/', icon: Home, label: 'Início' },
   { to: '/students', icon: Users, label: 'Alunos' },
-  { to: '/attendance', icon: CheckCircle2, label: 'Check-in' },
-  { to: '/events', icon: Calendar, label: 'Lutas' },
+  { to: '/finance', icon: Banknote, label: 'Financeiro' },
 ]
 
+// Drawer items (More menu)
 const drawerItems = [
-  { to: '/finance', icon: PieChart, label: 'Financeiro' },
+  { to: '/events', icon: TrendingUp, label: 'Lutas & Eventos' },
   { to: '/modalities', icon: Layers, label: 'Modalidades' },
-  { to: '/profile', icon: Settings, label: 'Configurações' },
+  { to: '/contracts', icon: FileText, label: 'Contratos' },
+  { to: '/occupancy', icon: PieChart, label: 'Ocupação' },
+  { to: '/belts', icon: Award, label: 'Graduações' },
+  { to: '/collaborators', icon: ShieldCheck, label: 'Equipe' },
+  { to: '/profile', icon: Settings, label: 'Meu Perfil' },
 ]
 
-const commonTransition = { type: 'spring', damping: 25, stiffness: 300 }
+const springConfig = { type: 'spring', damping: 30, stiffness: 400 }
 
 export default function MobileNav() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
-  // Close drawer when route changes
+  // Close drawer on route change
   useEffect(() => {
     setIsDrawerOpen(false)
   }, [location])
@@ -32,93 +55,85 @@ export default function MobileNav() {
     setIsDrawerOpen(!isDrawerOpen)
   }
 
+  // Check if a path is active
+  const isTabActive = (path) => {
+    if (path === '/' && location.pathname === '/') return true
+    if (path !== '/' && location.pathname.startsWith(path)) return true
+    return false
+  }
+
   return (
     <>
-      {/* Bottom Floating Bar */}
-      <motion.nav
-        initial={{ y: 100, x: '-50%' }}
-        animate={{ y: 0, x: '-50%' }}
-        transition={commonTransition}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 h-16 bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[5px] px-2 flex items-center justify-between gap-1 z-[100] shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
-      >
-        {mainNavItems.map(({ to, icon: Icon, label }) => {
-          const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to))
-          const showPill = isActive && !isDrawerOpen
+      <div className="fixed bottom-0 left-0 right-0 z-[100] px-4 pb-4 select-none">
+        {/* Main Navigation Bar */}
+        <div className="relative h-[72px] bg-[#0A0A0A]/95 backdrop-blur-3xl border border-white/5 rounded-3xl flex items-center justify-around px-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+          
+          {/* Active indicator bar (hidden for center button) */}
+          <div className="absolute inset-0 pointer-events-none flex justify-around px-2">
+            {[0, 1, 2, 3, 4].map(idx => {
+              if (idx === 2) return <div key={idx} className="w-16" /> // Spacer center
 
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              className={`relative flex items-center justify-center transition-all duration-300 rounded-[5px] h-12 no-tap-highlight ${showPill ? 'flex-grow min-w-[140px] px-3' : 'flex-initial w-12'}`}
-            >
-              {showPill && (
-                <motion.div
-                  layoutId="active-pill"
-                  className="absolute inset-0 bg-primary"
-                  transition={commonTransition}
-                  style={{ borderRadius: '5px' }}
-                />
-              )}
-
-              <div className={`relative z-10 flex items-center justify-center gap-3 transition-colors duration-300 ${showPill ? 'text-white' : 'text-gray-500/80'}`}>
-                {showPill ? (
-                  <div className="bg-black/40 p-1.5 rounded-[5px] text-white shadow-sm flex items-center justify-center scale-110">
-                    <Icon size={14} strokeWidth={3} className="shrink-0" />
-                  </div>
-                ) : (
-                  <Icon size={20} strokeWidth={2} className="shrink-0 opacity-70" />
-                )}
-
-                {showPill && (
-                  <motion.span
-                    initial={{ opacity: 0, x: -15 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={commonTransition}
-                    className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap overflow-hidden pr-1"
-                  >
-                    {label}
-                  </motion.span>
-                )}
-              </div>
-            </NavLink>
-          )
-        })}
-
-        {/* More Button */}
-        <button
-          onClick={handleToggleDrawer}
-          className={`relative flex items-center justify-center transition-all duration-300 rounded-[5px] h-12 no-tap-highlight ${isDrawerOpen ? 'flex-grow min-w-[100px] px-2' : 'flex-initial w-12'}`}
-        >
-          {isDrawerOpen && (
-            <motion.div
-              layoutId="active-pill"
-              className="absolute inset-0 bg-primary"
-              transition={commonTransition}
-              style={{ borderRadius: '5px' }}
-            />
-          )}
-          <div className={`relative z-10 flex items-center justify-center gap-2 transition-colors duration-300 ${isDrawerOpen ? 'text-white' : 'text-gray-500/80'}`}>
-            {isDrawerOpen ? (
-              <div className="bg-black/40 p-1.5 rounded-[5px] text-white shadow-sm flex items-center justify-center">
-                <X size={16} strokeWidth={3} className="shrink-0" />
-              </div>
-            ) : (
-              <MoreHorizontal size={22} strokeWidth={2} className="shrink-0" />
-            )}
-
-            {isDrawerOpen && (
-              <motion.span
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={commonTransition}
-                className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap pr-2"
-              >
-                Fechar
-              </motion.span>
-            )}
+              let isActive = false;
+              if (idx === 0) isActive = isTabActive('/');
+              if (idx === 1) isActive = isTabActive('/students');
+              if (idx === 3) isActive = isTabActive('/finance');
+              if (idx === 4) isActive = isDrawerOpen;
+              
+              return (
+                <div key={idx} className="relative flex-1 flex justify-center">
+                  {isActive && (
+                    <motion.div 
+                      layoutId="active-line"
+                      className="absolute -top-[1.5px] w-8 h-[3px] bg-primary rounded-full"
+                      transition={springConfig}
+                    />
+                  )}
+                </div>
+              )
+            })}
           </div>
-        </button>
-      </motion.nav>
+
+          {/* Navigation Items */}
+          {/* Item 1: Home */}
+          <NavItem to="/" icon={Home} label="Início" active={isTabActive('/')} />
+          
+          {/* Item 2: Alunos */}
+          <NavItem to="/students" icon={Users} label="Alunos" active={isTabActive('/students')} />
+
+          {/* Item 3: CENTRAL FLOATING BUTTON (Chamada) */}
+          <div className="relative w-16 h-16 flex items-center justify-center -mt-10">
+            {/* The Bulge Glow */}
+            <div className={`absolute inset-0 rounded-full blur-2xl transition-all duration-500 ${isTabActive('/attendance') ? 'bg-primary/40' : 'bg-white/5'}`} />
+            
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate('/attendance')}
+              className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 border-4 border-[#0A0A0A] ${isTabActive('/attendance') ? 'bg-primary text-white' : 'bg-[#151515] text-gray-500'}`}
+            >
+              <CheckCircle2 size={28} strokeWidth={2.5} />
+            </motion.button>
+            <p className={`absolute -bottom-6 text-[9px] font-black uppercase tracking-widest transition-colors duration-500 ${isTabActive('/attendance') ? 'text-primary' : 'text-gray-600'}`}>
+              Chamada
+            </p>
+          </div>
+
+          {/* Item 4: Finance */}
+          <NavItem to="/finance" icon={Banknote} label="Finance" active={isTabActive('/finance')} />
+
+          {/* Item 5: More */}
+          <button
+            onClick={handleToggleDrawer}
+            className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
+          >
+            <div className={`transition-all duration-300 ${isDrawerOpen ? 'text-primary scale-110' : 'text-gray-500 opacity-60'}`}>
+              {isDrawerOpen ? <X size={22} strokeWidth={2.5} /> : <MoreHorizontal size={22} strokeWidth={2} />}
+            </div>
+            <p className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${isDrawerOpen ? 'text-primary' : 'text-gray-600'}`}>
+              Mais
+            </p>
+          </button>
+        </div>
+      </div>
 
       {/* Drawer Overlay */}
       <AnimatePresence>
@@ -136,35 +151,46 @@ export default function MobileNav() {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-[#0F0F0F] border-t border-white/10 rounded-t-[5px] z-[80] overflow-hidden flex flex-col"
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-[#0A0A0A] border-t border-white/10 rounded-t-3xl z-[80] overflow-hidden flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
             >
-              <div className="p-4 flex items-center justify-between border-b border-white/5">
-                <span className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-2">Explorar Sistema</span>
+              {/* Drag Handle */}
+              <div className="flex justify-center mt-3">
+                <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+              </div>
+
+              <div className="p-6 flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-white font-black text-xl uppercase tracking-tighter">Explorar</span>
+                  <span className="text-gray-600 text-[10px] font-black uppercase tracking-[0.2em]">RS Top Team Academy</span>
+                </div>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
-                  className="p-2 bg-white/5 rounded-[5px] text-gray-400"
+                  className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-gray-400"
                 >
-                  <X size={18} />
+                  <X size={20} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 pb-28 no-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-32 no-scrollbar px-6">
                 {drawerItems.map(({ to, icon: Icon, label }) => (
                   <NavLink
                     key={to}
                     to={to}
                     onClick={() => setIsDrawerOpen(false)}
                     className={({ isActive }) => `
-                      flex items-center gap-4 p-4 rounded-[5px] transition-all
-                      ${isActive ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-white/[0.03] text-gray-300 border border-transparent'}
+                      flex items-center gap-5 p-4 rounded-2xl transition-all relative overflow-hidden group
+                      ${isActive ? 'bg-primary/10 text-primary border border-primary/20 shadow-lg' : 'bg-white/[0.03] text-gray-400 border border-transparent'}
                     `}
                   >
-                    <div className={`p-2 rounded-[5px] scale-110 ${location.pathname === to ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-500'}`}>
-                      <Icon size={20} />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all bg-[#151515] group-active:scale-90 ${location.pathname === to ? 'text-primary shadow-inner shadow-primary/20' : 'text-gray-600'}`}>
+                      <Icon size={22} strokeWidth={2.5} />
                     </div>
-                    <span className="flex-1 text-sm font-medium">{label}</span>
-                    <ChevronRight size={16} className="opacity-30" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black uppercase tracking-widest">{label}</span>
+                      <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest opacity-60">Acessar módulo</span>
+                    </div>
+                    <ChevronRight size={18} className="absolute right-4 text-gray-700 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" />
                   </NavLink>
                 ))}
               </div>
@@ -173,5 +199,22 @@ export default function MobileNav() {
         )}
       </AnimatePresence>
     </>
+  )
+}
+
+// Sub-component for Nav Items to reduce repetition
+function NavItem({ to, icon: Icon, label, active }) {
+  return (
+    <NavLink
+      to={to}
+      className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
+    >
+      <div className={`transition-all duration-300 ${active ? 'text-primary scale-110' : 'text-gray-500 opacity-60'}`}>
+        <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+      </div>
+      <p className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${active ? 'text-primary' : 'text-gray-600'}`}>
+        {label}
+      </p>
+    </NavLink>
   )
 }

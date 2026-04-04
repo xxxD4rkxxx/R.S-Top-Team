@@ -19,7 +19,11 @@ export default function TopBar() {
           <img 
             src="/logo-nav.png" 
             alt="RS Top Team" 
-            className="w-10 h-10 rounded-full object-cover" style={{ boxShadow: '0 0 12px color-mix(in srgb, var(--clr-primary) 50%, transparent)' }}
+            className="w-10 h-10 rounded-full object-cover" 
+            style={{ 
+              boxShadow: '0 0 15px color-mix(in srgb, var(--clr-primary) 45%, transparent)',
+              border: '1.5px solid color-mix(in srgb, var(--clr-primary) 20%, transparent)'
+            }}
           />
           <div>
             <p className="text-xs text-gray-400 leading-none tracking-widest uppercase">Rs</p>

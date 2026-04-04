@@ -19,7 +19,6 @@ import LoginPage from './modules/auth/LoginPage'
 import RegisterPage from './modules/auth/RegisterPage'
 import FinancePage from './modules/finance/FinancePage'
 import ContractsPage from './modules/contracts/ContractsPage'
-import WhatsAppHub from './modules/whatsapp/WhatsAppHub'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import ModuleUnderDevelopment from './components/shared/ModuleUnderDevelopment'
 import ModalitiesPage from './modules/modalities/ModalitiesPage'
@@ -94,7 +93,6 @@ function AppContent() {
               <Route path="/attendance/review/:sessionId" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><ReviewAttendancePage /></ProtectedRoute>} />
               <Route path="/finance" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><FinancePage /></ProtectedRoute>} />
               <Route path="/contracts" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><ContractsPage /></ProtectedRoute>} />
-              <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><WhatsAppHub /></ProtectedRoute>} />
 
               {/* Modularização / Em Desenvolvimento */}
               <Route path="/experimental" element={<ProtectedRoute><ModuleUnderDevelopment
@@ -141,7 +139,7 @@ function AppContent() {
             </Routes>
           </div>
 
-          <SiteFooter />
+          {!isMobile && <SiteFooter />}
 
           {/* Spacer to allow scrolling past the floating bottom nav */}
           {isMobile && <div className="h-32 w-full shrink-0" />}

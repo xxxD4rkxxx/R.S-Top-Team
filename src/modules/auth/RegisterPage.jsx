@@ -112,7 +112,7 @@ export default function RegisterPage() {
              <img
               src="/logo-nav.png"
               alt=""
-              className="w-[320px] h-[320px] object-contain opacity-[0.05] grayscale brightness-50 p-8 transition-all duration-1000"
+              className="w-[320px] h-[320px] object-contain rounded-full opacity-[0.05] grayscale brightness-50 p-8 transition-all duration-1000"
             />
           </div>
 
