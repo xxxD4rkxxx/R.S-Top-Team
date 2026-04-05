@@ -12,9 +12,12 @@ import {
  *  sessions: [{ id, classTitle, modality, time, date, presentes, ausentes, total, attendances[] }]
  *  loading: boolean
  */
+let sessionsCache = []
+let lastFetchTs = 0
+
 export function useTodaySessions() {
-  const [sessions, setSessions] = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [sessions, setSessions] = useState(sessionsCache)
+  const [loading, setLoading]   = useState(sessionsCache.length === 0)
 
   useEffect(() => {
     // today in YYYY-MM-DD (local)
@@ -62,6 +65,11 @@ export function useTodaySessions() {
 
         // Ordena pelo horário (campo time: "08:00", "14:00" …)
         enriched.sort((a, b) => a.time.localeCompare(b.time))
+        
+        // Atualiza Cache Singleton
+        sessionsCache = enriched
+        lastFetchTs = Date.now()
+        
         setSessions(enriched)
       } catch (err) {
         console.error('useTodaySessions error:', err)

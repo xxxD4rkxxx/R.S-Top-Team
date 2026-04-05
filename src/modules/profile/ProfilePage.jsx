@@ -1483,8 +1483,8 @@ export default function ProfilePage() {
       </div>
 
       {/* ── DESKTOP MAIN PANEL ── */}
-      <main className="hidden md:flex flex-1 overflow-y-auto px-12 py-10 justify-center">
-        <div className="w-full max-w-[900px]">
+      <main className="hidden md:flex flex-1 overflow-y-auto px-4 md:px-6 py-6 justify-center">
+        <div className="w-full">
           <div className="mb-10 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-black text-white tracking-tight leading-none mb-2">{activeSection?.label}</h1>

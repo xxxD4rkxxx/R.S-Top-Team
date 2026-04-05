@@ -1,5 +1,9 @@
 import { db } from '../firebase/config'
-import { collection, doc, addDoc, writeBatch, serverTimestamp, runTransaction, getDocs, query, orderBy, limit, collectionGroup, where } from 'firebase/firestore'
+import { 
+  collection, doc, addDoc, writeBatch, serverTimestamp, 
+  runTransaction, getDocs, query, orderBy, limit, 
+  collectionGroup, where, setDoc, deleteDoc 
+} from 'firebase/firestore'
 
 export const attendanceService = {
   /**
@@ -7,22 +11,23 @@ export const attendanceService = {
    */
   async createSession(payload) {
     try {
-      const counterRef = doc(db, 'counters', 'sessions')
-      const newSeqId = await runTransaction(db, async (transaction) => {
-        const counterSnap = await transaction.get(counterRef)
-        const currentCount = counterSnap.exists() ? counterSnap.data().count : 100
-        const nextCount = currentCount + 1
-        transaction.set(counterRef, { count: nextCount }, { merge: true })
-        return nextCount
-      })
-
-      const sessionRef = await addDoc(collection(db, 'sessions'), {
+      // Otimização: Removido await import dinâmico para ganhos de performance instantâneos
+      
+      // Gera um SeqId rápido sem transação (ex: Segundos do dia ou similar)
+      const now = new Date()
+      const simpleSeqId = `99${now.getMinutes()}${now.getSeconds()}`
+      
+      const sessionData = {
         ...payload,
-        seqId: newSeqId,
+        seqId: Number(simpleSeqId),
         createdAt: serverTimestamp(),
-      })
+      }
+      
+      // Usa setDoc com o ID já gerado no cliente (instântaneo)
+      // Note: O payload.id já foi gerado proativamente no AttendancePage.jsx
+      await setDoc(doc(db, 'sessions', payload.id), sessionData)
 
-      return { ...payload, id: sessionRef.id, seqId: newSeqId }
+      return sessionData
     } catch (error) {
       console.error('Erro ao criar sessão:', error)
       throw error
@@ -76,12 +81,12 @@ export const attendanceService = {
       const attendancesRef = collection(db, 'sessions', sessionId, 'attendances')
       const snapshot = await getDocs(attendancesRef)
       const records = {}
-      
+
       snapshot.docs.forEach(docSnap => {
         const data = docSnap.data()
         records[data.studentId] = data.status
       })
-      
+
       return records
     } catch (error) {
       console.error('Erro ao buscar presenças da sessão em:', sessionId, error)
@@ -101,7 +106,7 @@ export const attendanceService = {
         orderBy('timestamp', 'desc'),
         limit(1)
       )
-      
+
       const snapshot = await getDocs(q)
       if (!snapshot.empty) {
         return snapshot.docs[0].data()
@@ -109,6 +114,20 @@ export const attendanceService = {
       return null
     } catch (error) {
       console.error('Erro ao buscar a ultima presença (CollectionGroup):', error)
+      throw error
+    }
+  },
+
+  /**
+   * Remove uma sessão do banco (Cancelar Chamada)
+   */
+  async deleteSession(sessionId) {
+    try {
+      // Otimização: Removido await import dinâmico
+      await deleteDoc(doc(db, 'sessions', sessionId))
+      return true
+    } catch (error) {
+      console.error('Erro ao deletar sessão:', error)
       throw error
     }
   }

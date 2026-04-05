@@ -255,10 +255,10 @@ export default function EventsPage() {
         loading={loading}
       />
 
-      <div className="flex-1 px-4 md:px-8 py-6 w-full mx-auto max-w-[1100px]">
+      <div className="flex-1 px-4 md:px-6 py-6 w-full pb-20 space-y-6">
 
         {/* ── KPIs ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 fade-slide-up">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 fade-slide-up">
           <KPICard 
             title="Total" 
             value={loading ? '...' : totalNotices} 

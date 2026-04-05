@@ -65,7 +65,7 @@ export default function ContractsPage() {
         }
       />
 
-      <div className="px-4 md:px-6 py-6 space-y-6 max-w-7xl mx-auto w-full pb-12">
+      <div className="px-4 md:px-6 py-6 space-y-6 w-full pb-12">
         
         {/* Stats Grid */}
          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

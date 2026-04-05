@@ -131,43 +131,44 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // 0. Ensure Firebase Auth persistence is set to LOCAL
-    setPersistence(auth, browserLocalPersistence).catch(err => console.error("Persistence error:", err))
+    // Garante persistência local da sessão Firebase Auth
+    setPersistence(auth, browserLocalPersistence).catch(err =>
+      console.error('Erro ao definir persistência:', err)
+    )
 
+    // Verifica modo setup e autenticação EM PARALELO (não mais em waterfall)
+    // Antes: checkSetupMode() bloqueava antes do onAuthStateChanged → tela em branco
+    // Agora: ambos disparam simultaneamente
     const checkSetupMode = async () => {
       try {
-        const qAdmin = query(collection(db, 'equipe', 'admin', 'membros'), limit(1))
-        const snapAdmin = await getDocs(qAdmin)
-        const foundAdmin = !snapAdmin.empty
-
-        const qGestor = query(collection(db, 'equipe', 'gestor', 'membros'), limit(1))
-        const snapGestor = await getDocs(qGestor)
+        const [snapAdmin, snapGestor] = await Promise.all([
+          getDocs(query(collection(db, 'equipe', 'admin', 'membros'), limit(1))),
+          getDocs(query(collection(db, 'equipe', 'gestor', 'membros'), limit(1))),
+        ])
+        const foundAdmin  = !snapAdmin.empty
         const foundGestor = !snapGestor.empty
-
         setHasAdmin(foundAdmin)
         setHasGestor(foundGestor)
         setIsSetupMode(!foundAdmin || !foundGestor)
       } catch (err) {
-        console.warn("Setup check ignored (likely permissions):", err)
-        // Default to false to avoid blocking UI
+        console.warn('Verificação de setup ignorada (permissões):', err)
         setIsSetupMode(false)
       }
     }
-    checkSetupMode()
+    checkSetupMode() // dispara sem await — não bloqueia o listener de auth
 
     let userUnsub = null
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (userUnsub) userUnsub() // Cleanup previous sub
+      if (userUnsub) userUnsub()
 
       try {
         if (user) {
-          // Firebase User flow ...
           localStorage.removeItem('rs-topteam-sim-user')
 
           const q = query(collectionGroup(db, 'membros'), where('uid', '==', user.uid), limit(1))
           const snap = await getDocs(q).catch(err => {
-            console.warn("Membros query error:", err)
+            console.warn('Erro na query de membros:', err)
             return { empty: true }
           })
 
@@ -194,11 +195,11 @@ export function AuthProvider({ children }) {
             }
             setLoading(false)
           }, (err) => {
-            console.error('UserData sub error:', err)
+            console.error('Erro no listener de userData:', err)
             setLoading(false)
           })
         } else {
-          // Simulated PIN User flow ...
+          // Fluxo de usuário simulado por PIN
           const savedSim = localStorage.getItem('rs-topteam-sim-user')
           if (!savedSim) {
             setUser(null)
@@ -220,25 +221,27 @@ export function AuthProvider({ children }) {
                   } else {
                     setUser(simUser)
                     setUserData({ ...data, id: snap.id })
-                    localStorage.setItem('rs-topteam-sim-user', JSON.stringify({ user: simUser, userData: { ...data, id: snap.id } }))
+                    localStorage.setItem('rs-topteam-sim-user',
+                      JSON.stringify({ user: simUser, userData: { ...data, id: snap.id } })
+                    )
                   }
                 } else {
                   setUser(simUser)
                 }
                 setLoading(false)
               }, (err) => {
-                console.error('SimSub error:', err)
+                console.error('Erro no listener de usuário simulado:', err)
                 setLoading(false)
               })
             } catch (e) {
-              console.error("Session parse error:", e)
+              console.error('Erro ao parsear sessão simulada:', e)
               localStorage.removeItem('rs-topteam-sim-user')
               setLoading(false)
             }
           }
         }
       } catch (err) {
-        console.error("Auth process fatal error:", err)
+        console.error('Erro fatal no processo de autenticação:', err)
         setLoading(false)
       }
     })
@@ -265,7 +268,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   )
 }

@@ -30,11 +30,11 @@
 :root {
   --clr-primary:      #E11D48;
   --clr-primary-dark: #9F1239;
-  --clr-bg:           #000000;
-  --clr-surface:      #0D0D0D;
-  --clr-surface-2:    #111111;
-  --clr-surface-3:    #1A1A1A;
-  --clr-sidebar:      #0B0B0B;
+  --clr-bg:           #08080B;
+  --clr-surface:      #0F0F12;
+  --clr-surface-2:    #141418;
+  --clr-surface-3:    #1A1A1F;
+  --clr-sidebar:      #0C0C0E;
   --clr-text:         #FFFFFF;
   --clr-text-muted:   #9CA3AF;
 
@@ -318,10 +318,10 @@ h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-black {
 
 /* === Animations === */
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(32px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.fade-slide-up { animation: fadeSlideUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.fade-slide-up { animation: fadeSlideUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 @keyframes fadeIn {
   from { opacity: 0; }

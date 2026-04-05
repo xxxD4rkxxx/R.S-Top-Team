@@ -23,6 +23,7 @@ import { beltConfig } from '../../data/beltConfig'
 import SlideOver from '../../components/shared/SlideOver'
 import KPICard from '../../components/shared/KPICard'
 import MobileHeader from '../../components/navigation/MobileHeader'
+import PageHeader from '../../components/shared/PageHeader'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
 
 // ── Custom sport PNG icon wrappers ───────────────────────────────
@@ -197,7 +198,7 @@ const fallbackChartData = buildFallbackChart()
 export default function DashboardPage() {
   const { students, isLoading: isLoadingStudents } = useStudents()
   const [period, setPeriod] = useState('Semana')
-  const { data: stats, loading: loadingStats, refresh } = useDashboardStats(period)
+  const { data: stats, loading: loadingStats, initialLoading, refresh } = useDashboardStats(period)
   const { events } = useEvents()
   const { sessions: todaySessions, loading: loadingTodaySessions } = useTodaySessions()
   const { users: staffMembers, loading: loadingStaff } = useSystemUsers()
@@ -209,10 +210,10 @@ export default function DashboardPage() {
   const safeStudents = Array.isArray(students) ? students : []
   const today = new Date()
 
-  // Derived (student-based)
-  const enrolledMembers = safeStudents.filter(s => !s?.isVisitor)
-  const activeMembers = enrolledMembers.filter(s => !s.status || s.status === 'active')
-  const newMembers30Days = enrolledMembers.filter(s => s.createdAt && daysBetween(parseDate(s.createdAt)) <= 30)
+  // Derived (student-based) - Memoized to prevent hang on re-render
+  const enrolledMembers = useMemo(() => safeStudents.filter(s => !s?.isVisitor), [safeStudents])
+  const activeMembers = useMemo(() => enrolledMembers.filter(s => !s.status || s.status === 'active'), [enrolledMembers])
+  const newMembers30Days = useMemo(() => enrolledMembers.filter(s => s.createdAt && daysBetween(parseDate(s.createdAt)) <= 30), [enrolledMembers])
 
   const presentCount = stats?.todayPresences || 0
   const retentionRate = stats?.retentionRate ?? 100
@@ -230,7 +231,7 @@ export default function DashboardPage() {
 
   // Today's sessions come directly from Firestore via useTodaySessions (real-time)
 
-  const KPIData = [
+  const KPIData = useMemo(() => [
     {
       title: 'Alunos Ativos', value: isLoadingStudents ? '...' : String(activeMembers.length),
       desc: 'Total de matriculados', icon: Users, color: 'text-white', iconColor: 'text-gray-400'
@@ -241,11 +242,11 @@ export default function DashboardPage() {
       badge: newMembers30Days.length > 0 ? { label: 'Novo', bg: 'bg-emerald-500/20', color: 'text-emerald-400' } : null
     },
     {
-      title: 'Presença Hoje', value: loadingStats ? '...' : String(presentCount),
+      title: 'Presença Hoje', value: initialLoading && !presentCount ? '...' : String(presentCount),
       desc: 'Check-ins registrados', icon: CalendarDays, color: 'text-white', iconColor: 'text-gray-400'
     },
     {
-      title: 'Ausentes +10D', value: loadingStats ? '...' : String(absentList.length),
+      title: 'Ausentes +10D', value: initialLoading && !absentList.length ? '...' : String(absentList.length),
       desc: 'Clique p/ ver lista', icon: UserX, color: absentList.length > 0 ? 'text-yellow-400' : 'text-gray-400', iconColor: 'text-gray-400',
       onClick: () => setShowAbsents(true),
       badge: absentList.filter(s => s.isCritical).length > 0
@@ -256,10 +257,14 @@ export default function DashboardPage() {
       desc: 'Módulo Financeiro', icon: DollarSign, color: 'text-gray-600', iconColor: 'text-gray-600'
     },
     {
-      title: 'Taxa de Retenção', value: loadingStats ? '...' : `${retentionRate}%`,
+      title: 'Taxa de Retenção', value: initialLoading && !retentionRate ? '...' : `${retentionRate}%`,
       desc: `${absentList.filter(s => s.isCritical).length} evasões críticas`,
       icon: TrendingUp, color: retentionRate >= 80 ? 'text-emerald-400' : 'text-red-400', iconColor: 'text-gray-400',
-      badge: { label: `${weekGrowth >= 0 ? '+' : ''}${weekGrowth}% vs ant.`, bg: weekGrowth >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20', color: weekGrowth >= 0 ? 'text-emerald-400' : 'text-red-400' }
+      badge: { 
+        label: `${weekGrowth >= 0 ? '+' : ''}${weekGrowth}% vs ant.`, 
+        bg: weekGrowth >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20', 
+        color: weekGrowth >= 0 ? 'text-emerald-400' : 'text-red-400' 
+      }
     },
     {
       title: 'Pgtos Atrasados', value: '—',
@@ -270,7 +275,7 @@ export default function DashboardPage() {
       desc: 'Módulo Financeiro', icon: Percent, color: 'text-gray-600', iconColor: 'text-gray-600'
     },
     {
-      title: 'Grad. Próximas', value: loadingStats ? '...' : String(graduations.length),
+      title: 'Grad. Próximas', value: initialLoading && !graduations.length ? '...' : String(graduations.length),
       desc: 'Aptos a graduar', icon: Award, color: 'text-white', iconColor: 'text-[#DC143C]'
     },
     {
@@ -289,42 +294,18 @@ export default function DashboardPage() {
       title: 'Boxe', value: isLoadingStudents ? '...' : String(activeMembers.filter(s => s.modality?.includes('Boxe') || s.modality?.includes('box')).length),
       desc: 'Alunos matriculados', icon: IconBoxe, color: 'text-yellow-400', iconColor: 'text-yellow-400'
     },
-  ]
+  ], [isLoadingStudents, activeMembers, newMembers30Days, initialLoading, presentCount, absentList, retentionRate, weekGrowth, graduations, loadingStaff, staffMembers, safeStudents])
 
   return (
     <div className="flex flex-col flex-1 w-full min-w-0 text-white">
       {/* Header */}
-      <div className="content-header hidden md:flex items-center justify-between px-8 py-6 z-20 sticky top-0 bg-[#000]/80 border-b border-white/5">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center border border-white/10 text-[#DC143C]">
-            <Activity size={20} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-wide">Dashboard Acadêmico</h1>
-            <p className="text-[11px] text-gray-500 mt-0.5">Gestão de performance e presença</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <button onClick={refresh} title="Atualizar" className="p-2.5 rounded-full hover:bg-white/10 text-gray-500 hover:text-white transition-colors">
-            <RefreshCw size={16} />
-          </button>
-          <button className="relative p-2.5 rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white">
-            <Bell size={18} />
-            {absentList.filter(s => s.isCritical).length > 0 && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-[#DC143C] rounded-full border border-black pulse-red" />
-            )}
-          </button>
-          <div className="flex items-center gap-3 pl-5 border-l border-white/10">
-            <div className="text-right hidden md:block">
-              <p className="text-sm font-bold text-white">Administrador</p>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Rs Top Team</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center border border-white/20 shadow-lg">
-              <Users size={18} className="text-[#DC143C]" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        icon={Activity}
+        title="DASHBOARD ACADÊMICO"
+        subtitle="GESTÃO DE PERFORMANCE E PRESENÇA"
+        onRefresh={refresh}
+        loading={loadingStats}
+      />
 
       <MobileHeader
         title="Dashboard"
@@ -346,11 +327,11 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="px-4 md:px-6 py-6 space-y-6 max-w-[1500px] mx-auto w-full pb-20 fade-slide-up">
+      <div className="flex-1 px-4 md:px-6 py-6 w-full pb-20 space-y-6 fade-slide-up">
 
         {/* ── KPIs ───────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-          {(isLoadingStudents || loadingStats)
+          {(isLoadingStudents || initialLoading)
             ? Array.from({ length: 12 }).map((_, i) => <KPISkeleton key={i} />)
             : KPIData.map((kpi, idx) => (
               <div key={idx} style={{ animationDelay: `${idx * 35}ms` }} className="fade-slide-up">
@@ -398,7 +379,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="h-[260px] w-full">
-            {loadingStats ? (
+            {(initialLoading && (!stats?.chartData || stats.chartData.length === 0)) ? (
               <div className="h-full flex items-center justify-center">
                 <Skeleton className="w-full h-full" />
               </div>

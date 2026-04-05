@@ -93,7 +93,7 @@ export default function FinancePage() {
         }
       />
 
-      <div className="px-4 md:px-6 py-6 space-y-6 max-w-7xl mx-auto w-full">
+      <div className="px-4 md:px-6 py-6 space-y-6 w-full">
         
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

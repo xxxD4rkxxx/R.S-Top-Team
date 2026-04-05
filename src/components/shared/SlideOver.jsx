@@ -1,13 +1,24 @@
 import React, { useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useApp } from '../../context/AppContext'
 
 export default function SlideOver({ isOpen, onClose, title, subtitle, children, width = 'max-w-lg' }) {
-  // Bloqueia scroll do body enquanto a gaveta está aberta
+  const { setIsMobileNavHidden } = useApp()
+
+  // Bloqueia scroll do body e esconde navegação mobile enquanto a gaveta está aberta
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden'
-    else document.body.style.overflow = ''
-    return () => { document.body.style.overflow = '' }
-  }, [isOpen])
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      setIsMobileNavHidden(true)
+    } else {
+      document.body.style.overflow = ''
+      setIsMobileNavHidden(false)
+    }
+    return () => {
+      document.body.style.overflow = ''
+      setIsMobileNavHidden(false)
+    }
+  }, [isOpen, setIsMobileNavHidden])
 
   if (!isOpen) return null
 

@@ -64,10 +64,19 @@ const AssiduityCard = ({ student }) => {
   )
 }
 
+import { useApp } from '../../context/AppContext'
+
 export default function StudentDetailsModal({ student, onClose, onUpdate }) {
+  const { setIsMobileNavHidden } = useApp()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [errorAlert, setErrorAlert] = useState('')
+
+  // Esconder barra de navegação mobile enquanto o modal estiver aberto
+  React.useEffect(() => {
+    setIsMobileNavHidden(true)
+    return () => setIsMobileNavHidden(false)
+  }, [setIsMobileNavHidden])
   const [formData, setFormData] = useState(() => ({
     name: student?.name || '',
     email: student?.email || '',

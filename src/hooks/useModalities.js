@@ -10,7 +10,9 @@ import { useStudents } from './useStudents'
 const COLLECTION_MODALITIES = 'modalities'
 
 /**
- * Hook para gerenciar Modalidades e Turmas
+ * Hook para gerenciar Modalidades e Turmas.
+ * OTIMIZAÇÃO: subcoleções de turmas agora carregadas em paralelo (Promise.all)
+ * em vez de um loop serial com await, eliminando N queries sequenciais.
  */
 export function useModalities() {
   const [modalities, setModalities] = useState([])
@@ -19,24 +21,26 @@ export function useModalities() {
 
   useEffect(() => {
     const q = query(collection(db, COLLECTION_MODALITIES), orderBy('createdAt', 'desc'))
-    
-    // Escuta modalidades
+
     const unsub = onSnapshot(q, async (snap) => {
-      const modalitiesData = []
-      
-      for (const d of snap.docs) {
-        const modality = { id: d.id, ...d.data() }
-        
-        // Buscar turmas como subcoleção de cada modalidade
-        const turmasRef = collection(db, COLLECTION_MODALITIES, d.id, 'turmas')
-        const turmasSnap = await getDocs(turmasRef)
-        modality.turmas = turmasSnap.docs.map(td => ({ id: td.id, ...td.data() }))
-        
-        modalitiesData.push(modality)
+      try {
+        // Busca todas as subcoleções de turmas em paralelo — antes era serial (N+1)
+        const modalitiesData = await Promise.all(
+          snap.docs.map(async (d) => {
+            const modality = { id: d.id, ...d.data() }
+            const turmasSnap = await getDocs(
+              collection(db, COLLECTION_MODALITIES, d.id, 'turmas')
+            )
+            modality.turmas = turmasSnap.docs.map(td => ({ id: td.id, ...td.data() }))
+            return modality
+          })
+        )
+        setModalities(modalitiesData)
+      } catch (err) {
+        console.error('Erro ao carregar turmas das modalidades:', err)
+      } finally {
+        setLoading(false)
       }
-      
-      setModalities(modalitiesData)
-      setLoading(false)
     }, (err) => {
       console.error('Erro ao carregar modalidades:', err)
       setLoading(false)
@@ -44,6 +48,7 @@ export function useModalities() {
 
     return unsub
   }, [])
+
 
   // Função para criar modalidade
   const addModality = async (data) => {

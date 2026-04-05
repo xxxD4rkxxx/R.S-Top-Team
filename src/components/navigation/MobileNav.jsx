@@ -66,13 +66,22 @@ export default function MobileNav() {
     return false
   }
 
+  const { isMobileNavHidden } = useApp()
+
   return (
     <>
-      {/* Container Principal da Barra Inferior */}
-      <div className="fixed bottom-0 left-0 right-0 z-[100] px-4 pb-4 select-none">
-        
-        {/* Estrutura da Barra com Efeito de Vidro (Glassmorphism) */}
-        <div className="relative h-[72px] bg-[#0A0A0A]/95 backdrop-blur-3xl border border-white/5 rounded-3xl flex items-center justify-around px-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+      {/* Container Principal da Barra Inferior com animação de entrada/saída */}
+      <AnimatePresence>
+        {!isMobileNavHidden && (
+          <motion.div
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed bottom-0 left-0 right-0 z-[120] px-6 pb-6 select-none"
+          >
+            {/* Estrutura da Barra com Efeito de Vidro (Glassmorphism) */}
+            <div className="relative h-[68px] bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[32px] flex items-center justify-around px-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
 
           {/* Indicador de Aba Ativa (Linha colorida superior) */}
           <div className="absolute inset-0 pointer-events-none flex justify-around px-2">
@@ -90,7 +99,7 @@ export default function MobileNav() {
                   {isActive && (
                     <motion.div
                       layoutId="active-line"
-                      className="absolute -top-[1.5px] w-8 h-[3px] bg-primary rounded-full"
+                      className="absolute -top-[1.5px] w-8 h-[3px] bg-rose-600 rounded-full"
                       transition={springConfig}
                     />
                   )}
@@ -106,16 +115,17 @@ export default function MobileNav() {
           {/* BOTÃO CENTRAL FLUTUANTE (Atalho Iniciar Chamada) */}
           <div className="relative w-16 h-16 flex items-center justify-center -mt-10">
             {/* Brilho Pulsante sob o botão */}
-            <div className={`absolute inset-0 rounded-full blur-2xl transition-all duration-500 ${isTabActive('/attendance') ? 'bg-primary/40' : 'bg-white/5'}`} />
+            <div className={`absolute inset-0 rounded-full blur-2xl transition-all duration-700 ${isTabActive('/attendance') ? 'bg-rose-600/30' : 'bg-white/5'}`} />
 
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => navigate('/attendance')}
-              className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 border-4 border-[#0A0A0A] ${isTabActive('/attendance') ? 'bg-primary text-white' : 'bg-[#151515] text-gray-500'}`}
+              className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 border-[6px] border-bg-app ${isTabActive('/attendance') ? 'bg-rose-600 text-white' : 'bg-[#121212] text-gray-500'}`}
+              style={{ boxShadow: isTabActive('/attendance') ? '0 10px 20px rgba(225, 29, 72, 0.3)' : 'none' }}
             >
-              <CheckCircle2 size={28} strokeWidth={2.5} />
+              <CheckCircle2 size={26} strokeWidth={2.5} />
             </motion.button>
-            <p className={`absolute -bottom-6 text-[9px] font-black uppercase tracking-widest transition-colors duration-500 ${isTabActive('/attendance') ? 'text-primary' : 'text-gray-600'}`}>
+            <p className={`absolute -bottom-5 text-[9px] font-black uppercase tracking-[0.15em] transition-colors duration-500 ${isTabActive('/attendance') ? 'text-rose-500' : 'text-gray-500'}`}>
               Chamada
             </p>
           </div>
@@ -127,15 +137,17 @@ export default function MobileNav() {
             onClick={handleToggleDrawer}
             className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
           >
-            <div className={`transition-all duration-300 ${isDrawerOpen ? 'text-primary scale-110' : 'text-gray-500 opacity-60'}`}>
+            <div className={`transition-all duration-300 ${isDrawerOpen ? 'text-rose-500 scale-110' : 'text-gray-500 opacity-60'}`}>
               {isDrawerOpen ? <X size={22} strokeWidth={2.5} /> : <MoreHorizontal size={22} strokeWidth={2} />}
             </div>
-            <p className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${isDrawerOpen ? 'text-primary' : 'text-gray-600'}`}>
+            <p className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${isDrawerOpen ? 'text-rose-500' : 'text-gray-600'}`}>
               Mais
             </p>
           </button>
         </div>
-      </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
 
       {/* Drawer (Menu Expansível Inferior) */}
       <AnimatePresence>
@@ -186,10 +198,10 @@ export default function MobileNav() {
                     onClick={() => setIsDrawerOpen(false)}
                     className={({ isActive }) => `
                       flex items-center gap-5 p-4 rounded-2xl transition-all relative overflow-hidden group
-                      ${isActive ? 'bg-primary/10 text-primary border border-primary/20 shadow-lg' : 'bg-white/[0.03] text-gray-400 border border-transparent'}
+                      ${isActive ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20 shadow-lg' : 'bg-white/[0.03] text-gray-400 border border-transparent'}
                     `}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all bg-[#151515] group-active:scale-90 ${location.pathname === to ? 'text-primary shadow-inner shadow-primary/20' : 'text-gray-600'}`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all bg-[#151515] group-active:scale-90 ${location.pathname === to ? 'text-rose-500 shadow-inner shadow-rose-500/20' : 'text-gray-600'}`}>
                       <Icon size={22} strokeWidth={2.5} />
                     </div>
                     <div className="flex flex-col">
@@ -215,10 +227,10 @@ function NavItem({ to, icon: Icon, label, active }) {
       to={to}
       className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
     >
-      <div className={`transition-all duration-300 ${active ? 'text-primary scale-110' : 'text-gray-500 opacity-60'}`}>
+      <div className={`transition-all duration-300 ${active ? 'text-rose-500 scale-110' : 'text-gray-500 opacity-60'}`}>
         <Icon size={22} strokeWidth={active ? 2.5 : 2} />
       </div>
-      <p className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${active ? 'text-primary' : 'text-gray-600'}`}>
+      <p className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${active ? 'text-rose-500' : 'text-gray-600'}`}>
         {label}
       </p>
     </NavLink>

@@ -404,8 +404,8 @@ export default function TeacherDashboard() {
               <tr className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
                 <th className="px-4 py-2">Data</th>
                 <th className="px-4 py-2">Turma / Modalidade</th>
-                <th className="px-4 py-2">Alunos</th>
-                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2 text-center">Alunos</th>
+                <th className="px-4 py-2 text-center">Status</th>
                 <th className="px-4 py-2 text-right">Ação</th>
               </tr>
             </thead>
@@ -420,13 +420,13 @@ export default function TeacherDashboard() {
                     <p className="text-sm font-bold text-white">{s.classTitle || s.title || 'Aula'}</p>
                     <p className="text-[10px] text-gray-500 mt-0.5 uppercase tracking-widest">{s.modality || 'Regular'}</p>
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
+                  <td className="px-4 py-4 text-center">
+                    <div className="flex items-center justify-center gap-2">
                       <span className="text-lg font-black text-emerald-400 animate-value-reveal">{s.presencasCount}</span>
                       <span className="text-[9px] text-gray-600 uppercase font-bold">Presentes</span>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-4 text-center">
                     <span className="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 uppercase tracking-tighter border border-emerald-500/20">Finalizada</span>
                   </td>
                   <td className="px-4 py-4 last:rounded-r-2xl text-right">

@@ -2,8 +2,11 @@ import React, { useState } from 'react'
 import { X, User, Users, Mail, Shield, Check, Copy, AlertCircle, Info, Search, GraduationCap } from 'lucide-react'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
 import { useStudents } from '../../hooks/useStudents'
+import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 
 export default function UserCreationModal({ isOpen, onClose }) {
+  // Ocultar navegação mobile quando aberto
+  useHideMobileNav(isOpen)
   const { createNewUser } = useSystemUsers()
   const { students, deleteStudent } = useStudents()
   

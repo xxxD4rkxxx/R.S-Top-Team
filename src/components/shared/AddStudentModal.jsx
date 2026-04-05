@@ -54,13 +54,15 @@ function CustomSelect({ label, value, onChange, options }) {
 
 export default function AddStudentModal({ onClose, onAdd, initialModality = 'Jiu-Jitsu', initialData = null }) {
   const { modalities } = useModalities()
-  const { setMobileOpen } = useApp()
+  const { setMobileOpen, setIsMobileNavHidden } = useApp()
   const activeModalities = (modalities || []).filter(m => m.status === 'ativo')
 
-  // Fechar sidebar no mobile quando abrir o modal
+  // Fechar sidebar no mobile quando abrir o modal e esconder navegação inferior
   useEffect(() => {
     setMobileOpen(false)
-  }, [setMobileOpen])
+    setIsMobileNavHidden(true)
+    return () => setIsMobileNavHidden(false)
+  }, [setMobileOpen, setIsMobileNavHidden])
 
   const [form, setForm] = useState({
     name: initialData?.name || '',

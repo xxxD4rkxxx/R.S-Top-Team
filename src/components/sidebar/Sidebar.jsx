@@ -24,7 +24,7 @@ export const navGroups = [
     items: [
       { to: '/students', icon: Contact, label: 'Alunos', roles: ['admin', 'gestor', 'professor'] },
       { to: '/collaborators', icon: Users, label: 'Equipe & Professores', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/attendance', icon: CheckCircle2, label: 'Controle de Presença', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/attendance', icon: CheckCircle2, label: 'Chamada', roles: ['admin', 'gestor', 'professor'] },
       { to: '/events', icon: CalendarRange, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'] },
       { to: '/experimental', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
       { to: '/modalities', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'] },

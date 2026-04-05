@@ -13,7 +13,7 @@ export default function ModuleUnderDevelopment({
   const navigate = useNavigate()
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in duration-700">
+    <div className="flex-1 w-full flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in duration-700 min-h-[60vh]">
       <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-white/[0.05] to-white/[0.01] border border-white/10 flex items-center justify-center mb-8 relative group shadow-2xl">
         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
         <Icon size={48} className="text-gray-500 relative z-10 group-hover:text-primary transition-colors duration-500" strokeWidth={1.5} />

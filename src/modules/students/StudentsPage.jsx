@@ -310,7 +310,7 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 p-0">
+    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505]">
       {/* Header Mobile */}
       <MobileHeader
         title="Alunos"
@@ -356,7 +356,7 @@ export default function StudentsPage() {
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
           <KPICard title="Ativos" value={stats.active} description="Alunos matriculados e frequentando" icon={UserCheck} valueColor="text-emerald-400"
             onClick={() => setStatusFilter(statusFilter === 'ativo' ? 'todos' : 'ativo')} active={statusFilter === 'ativo'} />
           <KPICard title="Inativos" value={stats.inactive} description="Alunos que cancelaram ou pararam" icon={UserX}
@@ -367,26 +367,28 @@ export default function StudentsPage() {
             onClick={() => setStatusFilter(statusFilter === 'arquivado' ? 'todos' : 'arquivado')} active={statusFilter === 'arquivado'} />
         </div>
 
-        <div className="glass-card rounded-2xl p-5 md:p-6 border border-white/10">
-          {/* Busca */}
-          <div className="flex flex-col lg:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-              <input
-                className="form-input bg-black/40 input-raise pl-11 w-full text-base rounded-xl"
-                placeholder="Buscar por nome, email, telefone..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-              <Search size={18} strokeWidth={1.9} className="text-gray-600 absolute left-4 top-1/2 -translate-y-1/2" />
-            </div>
-            {(statusFilter !== 'todos' || modalityFilter !== 'todas' || searchTerm) && (
-              <button onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setSearchTerm('') }}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-black bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 whitespace-nowrap">
-                <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
-              </button>
-            )}
+        {/* Elite Search Bar (Outside) */}
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 relative group">
+            <Search size={18} strokeWidth={1.9} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" />
+            <input
+              className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium"
+              placeholder="Buscar por nome, email, telefone..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
           </div>
+          {(statusFilter !== 'todos' || modalityFilter !== 'todas' || searchTerm) && (
+            <button 
+              onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setSearchTerm('') }}
+              className="flex items-center justify-center gap-2 px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+            >
+              <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
+            </button>
+          )}
+        </div>
 
+        <div className="bg-black/40 backdrop-blur-md rounded-2xl p-5 md:p-6 border border-white/5">
           {/* Filtros */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
@@ -413,19 +415,19 @@ export default function StudentsPage() {
                 <thead>
                   <tr className="border-b border-white/10 text-[10px] uppercase font-black text-gray-500 tracking-wider bg-white/5">
                     <th className="py-3 px-5">Aluno</th>
-                    <th className="py-3 px-5">Telefone</th>
-                    <th className="py-3 px-5">PIN</th>
-                    <th className="py-3 px-5">Modalidade</th>
-                    <th className="py-3 px-5">Pagamento</th>
+                    <th className="py-3 px-5 text-center">Telefone</th>
+                    <th className="py-3 px-5 text-center">PIN</th>
+                    <th className="py-3 px-5 text-center">Modalidade</th>
+                    <th className="py-3 px-5 text-center">Pagamento</th>
                     <th className="py-3 px-5 w-12 text-center text-gray-500">CTO</th>
-                    <th className="py-3 px-5">Status</th>
-                    <th className="py-3 px-5 w-12 text-center">Ações</th>
+                    <th className="py-3 px-5 text-center">Status</th>
+                    <th className="py-3 px-5 w-12 text-center text-gray-500">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {filtered.map((student) => (
                     <tr key={student.id} className="hover:bg-white/5 transition-colors group cursor-pointer" onClick={() => setSelectedStudent(student)}>
-                      <td className="py-4 px-5">
+                    <td className="py-4 px-5">
                         <div className="flex items-center gap-4">
                           {renderAvatar(student)}
                           <div>
@@ -437,18 +439,22 @@ export default function StudentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-5 text-sm text-gray-300">{student.phone || '--'}</td>
-                      <td className="py-4 px-5 text-sm font-mono text-emerald-400/80 tracking-widest">{student.pin || '---'}</td>
-                      <td className="py-4 px-5 text-sm text-gray-400">{student.modality || '--'}</td>
-                      <td className="py-4 px-5">
+                      <td className="py-4 px-5 text-center text-sm text-gray-300">{student.phone || '--'}</td>
+                      <td className="py-4 px-5 text-center">
+                        <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-emerald-400/80 tracking-widest min-w-[80px]">
+                          {student.pin || '---'}
+                        </div>
+                      </td>
+                      <td className="py-4 px-5 text-center text-sm text-gray-400">{student.modality || '--'}</td>
+                      <td className="py-4 px-5 text-center">
                         <span className="px-3 py-1.5 rounded-xl bg-gray-500/10 text-gray-400 text-[10px] font-black uppercase border border-gray-500/20">Em breve</span>
                       </td>
-                      <td className="py-4 px-5">
-                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                      <td className="py-4 px-5 text-center">
+                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 mx-auto">
                           <FileText size={18} strokeWidth={1.9} className="text-gray-500" />
                         </div>
                       </td>
-                      <td className="py-4 px-5">{renderStatusBadge(student)}</td>
+                      <td className="py-4 px-5 text-center">{renderStatusBadge(student)}</td>
                       <td className="py-4 px-5 text-center relative">
                         <button
                           onClick={e => handleOpenMenu(e, student.id)}

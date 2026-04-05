@@ -211,7 +211,7 @@ export default function ReviewAttendancePage() {
       </div>
 
       {/* Search and Main List */}
-      <div className="max-w-5xl mx-auto w-full">
+      <div className="w-full">
         <div className="relative mb-6">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
           <input

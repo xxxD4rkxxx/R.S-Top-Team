@@ -113,7 +113,7 @@ export default function ModalitiesPage() {
         }
       />
 
-      <main className="flex-1 px-4 md:px-6 py-6 space-y-6 max-w-[1500px] mx-auto w-full pb-20">
+      <main className="flex-1 px-4 md:px-6 py-6 space-y-6 w-full pb-20">
         
         {/* Mobile Search Expandable */}
         <AnimatePresence>
