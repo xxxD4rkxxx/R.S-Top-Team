@@ -1,14 +1,24 @@
+/**
+ * Provedor de Contexto para Alunos (Arquitetura Unificada)
+ * 
+ * Este contexto mantém uma escuta em tempo real (onSnapshot) de todos os usuários
+ * que possuem o papel 'aluno' ativo no sistema.
+ */
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import {
   collection,
   onSnapshot,
   orderBy,
-  query
+  query,
+  where
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
 const StudentsContext = createContext()
 
+/**
+ * Gera as iniciais do nome para exibição quando não há foto.
+ */
 function buildInitials(name) {
   return (name || '')
     .split(' ')
@@ -19,6 +29,9 @@ function buildInitials(name) {
     .toUpperCase()
 }
 
+/**
+ * Utilitário para converter Timestamps do Firestore ou Strings ISO em objetos Date.
+ */
 function parseFirestoreDate(value) {
   if (!value) return null
   if (typeof value.toDate === 'function') return value.toDate()
@@ -31,18 +44,27 @@ export function StudentsProvider({ children }) {
   const [isLoadingStudents, setIsLoadingStudents] = useState(true)
 
   useEffect(() => {
-    // Escuta global única para todos os alunos
-    const studentsRef = collection(db, 'students')
-    const studentsQuery = query(studentsRef, orderBy('createdAt', 'asc'))
+    /**
+     * ESCUTA UNIFICADA DE ALUNOS
+     * 🎯 Fonte da Verdade: Coleção 'users'
+     * 🔍 Filtro: Apenas usuários onde a flag 'roles.aluno' é verdadeira.
+     */
+    const usersRef = collection(db, 'users')
+    const studentsQuery = query(
+      usersRef, 
+      where('roles.aluno', '==', true) // Filtro de Papel (RBAC) - Sem orderBy para garantir visibilidade total de legados
+    )
 
     const unsubscribe = onSnapshot(
       studentsQuery,
       snapshot => {
         const fromDb = snapshot.docs.map(item => {
           const data = item.data()
+          // Garante retrocompatibilidade com modalidades antigas
           const modalities = data.modalities || [data.modality || 'Jiu-Jitsu']
+          
           return {
-            id: item.id,
+            id: item.id, // O ID agora é preferencialmente o e-mail
             name: data.name || '',
             initials: data.initials || buildInitials(data.name),
             belt: data.belt || 'white',
@@ -69,14 +91,17 @@ export function StudentsProvider({ children }) {
             lastStatusAt: parseFirestoreDate(data.lastStatusAt),
             statusReason: data.statusReason || '',
             statusReturnDate: data.statusReturnDate || '',
+            roles: data.roles || {} // Inclui os papéis para checagem na UI
           }
         })
-
-        setStudents(fromDb)
+        
+        // ORDENAÇÃO NO CLIENTE: Garante visibilidade total mesmo em registros legados sem createdAt
+        const sorted = fromDb.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        setStudents(sorted)
         setIsLoadingStudents(false)
       },
       error => {
-        console.error('Erro ao carregar alunos (Context):', error)
+        console.error('Erro ao carregar alunos unificados (Context):', error)
         setIsLoadingStudents(false)
       }
     )
@@ -91,6 +116,9 @@ export function StudentsProvider({ children }) {
   )
 }
 
+/**
+ * Hook customizado para consumir o contexto de alunos.
+ */
 export const useStudentsContext = () => {
   const context = useContext(StudentsContext)
   if (!context) {
@@ -98,3 +126,4 @@ export const useStudentsContext = () => {
   }
   return context
 }
+

@@ -60,8 +60,17 @@ export default function LoginPage() {
         <div className="text-center mb-10">
           <button
             onClick={handleLogoClick}
-            className="group relative inline-block transition-transform active:scale-95"
+            className="group relative inline-flex flex-col items-center transition-all active:scale-95"
           >
+            <div className="relative mb-4">
+              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <img 
+                src="/logo.png" 
+                alt="Logo Academy" 
+                className="w-20 h-20 object-cover rounded-full border-2 border-white/10 shadow-2xl relative z-10 transition-transform duration-500 group-hover:scale-110"
+                style={{ boxShadow: '0 0 30px color-mix(in srgb, var(--clr-primary) 30%, transparent)' }}
+              />
+            </div>
             <div className="flex flex-col items-center">
               <span className="text-[12px] text-gray-500 uppercase tracking-[0.3em] font-medium leading-none mb-1">Rs</span>
               <h1 className="text-5xl font-display font-bold tracking-tighter animate-text-reveal">
@@ -78,7 +87,7 @@ export default function LoginPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] flex items-center justify-center pointer-events-none z-0">
             <div className="absolute inset-0 bg-primary/5 rounded-full blur-[80px] opacity-40 scale-110" />
             <img
-              src="/logo-nav.png"
+              src="/logo.png"
               alt=""
               className="w-[320px] h-[320px] object-contain rounded-full opacity-[0.05] grayscale brightness-50 p-8 transition-all duration-1000"
             />

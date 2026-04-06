@@ -48,14 +48,18 @@ export default function RegisterPage() {
 
       const user = userCredential.user
       const trimmedName = name.trim()
+      const emailLower = email.toLowerCase()
       const now = new Date()
       const since = now.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
 
-      await setDoc(doc(db, 'equipe', role, 'membros', trimmedName), {
+      // SSoT: Grava na coleção unificada 'users' usando email como ID
+      await setDoc(doc(db, 'users', emailLower), {
         uid: user.uid,
-        email,
+        email: emailLower,
         name: trimmedName,
-        role,
+        roles: {
+          [role]: true
+        },
         status: 'Ativo',
         since,
         pin: isGestorPhase ? pin : '123456',
@@ -113,7 +117,7 @@ export default function RegisterPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] flex items-center justify-center pointer-events-none z-0">
              <div className="absolute inset-0 bg-primary/5 rounded-full blur-[80px] opacity-40 scale-110" />
              <img
-              src="/logo-nav.png"
+              src="/logo.png"
               alt=""
               className="w-[320px] h-[320px] object-contain rounded-full opacity-[0.05] grayscale brightness-50 p-8 transition-all duration-1000"
             />

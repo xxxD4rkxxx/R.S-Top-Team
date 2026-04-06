@@ -112,11 +112,24 @@ function SectionConta({ user, onUpdateProfile }) {
             <span className="px-3 py-1.5 rounded-md text-xs font-semibold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>🥋 RS Top Team</span>
             <span className="px-3 py-1.5 rounded-md text-xs font-semibold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
               📅 Desde {
-                user?.startDate 
-                  ? (typeof user.startDate === 'string' ? new Date(user.startDate + 'T00:00:00').toLocaleDateString('pt-BR') : user.startDate.toDate().toLocaleDateString('pt-BR'))
-                  : user?.createdAt
-                  ? (typeof user.createdAt === 'string' || typeof user.createdAt === 'number' ? new Date(user.createdAt).toLocaleDateString('pt-BR') : user.createdAt.toDate().toLocaleDateString('pt-BR'))
-                  : '—'
+                (() => {
+                  const raw = user?.startDate || user?.createdAt
+                  if (!raw) return '—'
+                  try {
+                    // Função auxiliar para converter qualquer formato de data do Firebase/JS
+                    const date = (raw && typeof raw.toDate === 'function') 
+                      ? raw.toDate() 
+                      : (typeof raw === 'string' || typeof raw === 'number')
+                        ? new Date(raw)
+                        : raw
+                    
+                    return date instanceof Date && !isNaN(date) 
+                      ? date.toLocaleDateString('pt-BR') 
+                      : '—'
+                  } catch (e) {
+                    return '—'
+                  }
+                })()
               }
             </span>
           </div>

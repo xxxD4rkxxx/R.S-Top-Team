@@ -1,46 +1,52 @@
-// Resumo: hook para carregar, adicionar e atualizar alunos no Firestore; converte datas e trata iniciais.
-import { useEffect, useState } from 'react'
+/**
+ * Hook para gerenciar as operações de Alunos na arquitetura unificada.
+ * Agora todas as mutações são direcionadas para a coleção 'users' com o papel 'aluno'.
+ */
+import { useState } from 'react'
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
-  orderBy,
-  query,
   serverTimestamp,
   updateDoc,
   setDoc,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { useStudentsContext } from '../context/StudentsContext'
 
-const sanitizeId = (name) => {
-  if (!name) return 'unknown_' + Math.random().toString(36).substring(7)
-  return name.replace(/\//g, '-').trim()
+// Nome da coleção unificada
+const USERS_COLLECTION = 'users'
+
+/**
+ * Normaliza o ID do usuário (E-mail ou Nome sanitizado).
+ */
+const sanitizeId = (identifier) => {
+  if (!identifier) return 'student_' + Math.random().toString(36).substring(7)
+  return identifier.toLowerCase().trim().replace(/[@.]/g, '_').replace(/\//g, '-')
 }
 
+/**
+ * Gera iniciais a partir do nome completo para o avatar visual.
+ */
 function buildInitials(name) {
   return (name || '')
     .split(' ')
+    .filter(Boolean)
     .map(part => part[0])
     .join('')
     .slice(0, 2)
     .toUpperCase()
 }
 
-function parseFirestoreDate(value) {
-  if (!value) return null
-  if (typeof value.toDate === 'function') return value.toDate()
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-import { useStudentsContext } from '../context/StudentsContext'
-
 export function useStudents() {
+  // Obtém a lista de alunos filtrada do contexto global (que já lê da coleção 'users')
   const { students, isLoadingStudents } = useStudentsContext()
-  const [isUpdating, setIsUpdating] = useState(false) // added a separate state for writing
+  const [isUpdating, setIsUpdating] = useState(false)
 
+  /**
+   * Atualiza o status de presença rápida do aluno (Marcando presença no dia).
+   */
   async function updateStudentStatus(id, newStatus) {
     const student = students.find(s => s.id === id)
     const payload = {
@@ -52,10 +58,10 @@ export function useStudents() {
       payload.lastAttendanceAt = serverTimestamp()
     }
 
-    // Update student document
-    await updateDoc(doc(db, 'students', id), payload)
+    // Atualiza o documento na coleção unificada 'users'
+    await updateDoc(doc(db, USERS_COLLECTION, id), payload)
 
-    // Log to attendance history if status changed to a valid state
+    // Registra no histórico de chamadas (coleção separada para relatórios)
     if (newStatus) {
       await addDoc(collection(db, 'attendance'), {
         studentId: id,
@@ -68,7 +74,7 @@ export function useStudents() {
   }
 
   /**
-   * Altera o status do aluno (ativo, inativo, suspenso, arquivado)
+   * Altera o status administrativo do aluno (Ativo, Inativo, Suspenso).
    */
   async function changeStudentStatus(id, newStatus, extra = {}) {
     const payload = {
@@ -78,20 +84,24 @@ export function useStudents() {
     if (extra.reason !== undefined) payload.statusReason = extra.reason
     if (extra.returnDate !== undefined) payload.statusReturnDate = extra.returnDate
 
-    await updateDoc(doc(db, 'students', id), payload)
+    await updateDoc(doc(db, USERS_COLLECTION, id), payload)
   }
 
   /**
-   * Remove permanentemente o aluno do Firestore
+   * Remove permanentemente o registro do usuário (Cuidado: remove todas as roles).
    */
   async function deleteStudent(id) {
-    await deleteDoc(doc(db, 'students', id))
+    await deleteDoc(doc(db, USERS_COLLECTION, id))
   }
 
+  /**
+   * ADICIONAR NOVO ALUNO
+   * 🎯 Agora cria o documento na coleção 'users' com 'roles.aluno: true'.
+   */
   async function addStudent(newStudent, modality, options = {}) {
     const { isVisitor = false, belt = 'white' } = options
     
-    // Handle multiple modalities
+    // Normalização de modalidades
     let finalModalities = []
     if (Array.isArray(modality)) {
       finalModalities = modality
@@ -100,7 +110,7 @@ export function useStudents() {
       finalModalities = normalized === 'ambos' ? ['Jiu-Jitsu', 'Boxe'] : [normalized === 'boxe' ? 'Boxe' : 'Jiu-Jitsu']
     }
 
-    // Default belt logic: if only Muay Thai/Boxe, none. If BJJ exists in list, use belt.
+    // Lógica de faixa padrão
     const hasBJJ = finalModalities.some(m => m.toLowerCase().includes('jiu') || m.toLowerCase().includes('bjj'))
     const beltFinal = hasBJJ ? (belt || 'white') : 'none'
 
@@ -111,7 +121,7 @@ export function useStudents() {
       modality: finalModalities[0] || 'Jiu-Jitsu',
       modalities: finalModalities,
       stripes: 0,
-      status: null,
+      status: 'Ativo',
       isVisitor,
       photo: null,
       email: newStudent.email || '',
@@ -122,34 +132,40 @@ export function useStudents() {
       gender: newStudent.gender || 'Masculino',
       parentName: newStudent.parentName || '',
       parentPhone: newStudent.parentPhone || '',
-      pin: Math.floor(100000 + Math.random() * 900000).toString(),
+      pin: newStudent.pin || Math.floor(100000 + Math.random() * 900000).toString(),
+      roles: isVisitor ? { visitante: true } : { aluno: true }, // Define o papel baseado no tipo de ingresso
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     }
 
-    const nameId = sanitizeId(newStudent.name)
-    await setDoc(doc(db, 'students', nameId), payload)
+    // Define o ID do documento baseado no e-mail (se existir) ou nome
+    const docId = newStudent.email ? newStudent.email.toLowerCase().trim() : sanitizeId(newStudent.name)
+    await setDoc(doc(db, USERS_COLLECTION, docId), payload)
   }
 
+  /**
+   * Atualiza dados cadastrais do perfil.
+   */
   async function updateStudentProfile(id, data) {
-    const payload = {}
+    const payload = { updatedAt: serverTimestamp() }
+    
     if (data.name !== undefined) {
       payload.name = data.name
       payload.initials = buildInitials(data.name)
     }
-    if (data.belt !== undefined) payload.belt = data.belt
-    if (data.stripes !== undefined) payload.stripes = Number(data.stripes)
-    if (data.email !== undefined) payload.email = data.email
-    if (data.phone !== undefined) payload.phone = data.phone
-    if (data.emergency !== undefined) payload.emergency = data.emergency
-    if (data.medical !== undefined) payload.medical = data.medical
-    if (data.birthday !== undefined) payload.birthday = data.birthday
-    if (data.medicalExamDate !== undefined) payload.medicalExamDate = data.medicalExamDate
-    if (data.ageCategory !== undefined) payload.ageCategory = data.ageCategory
-    if (data.gender !== undefined) payload.gender = data.gender
-    if (data.parentName !== undefined) payload.parentName = data.parentName
-    if (data.parentPhone !== undefined) payload.parentPhone = data.parentPhone
+    
+    // Mapeamento de campos permitidos para atualização
+    const updatableFields = [
+      'belt', 'stripes', 'email', 'phone', 'emergency', 'medical', 
+      'birthday', 'medicalExamDate', 'ageCategory', 'gender', 
+      'parentName', 'parentPhone', 'pin'
+    ]
 
-    await updateDoc(doc(db, 'students', id), payload)
+    updatableFields.forEach(field => {
+      if (data[field] !== undefined) payload[field] = data[field]
+    })
+
+    await updateDoc(doc(db, USERS_COLLECTION, id), payload)
   }
 
   return {
@@ -163,3 +179,4 @@ export function useStudents() {
     updateStudentProfile,
   }
 }
+

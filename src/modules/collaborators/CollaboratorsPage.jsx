@@ -108,18 +108,19 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
 }
 
 export default function CollaboratorsPage() {
-  const { users, loading, updateProfile } = useSystemUsers()
-  const { userData, loading: authLoading } = useAuth()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [showPinModal, setShowPinModal] = useState(false)
-  const [isUnlocked, setIsUnlocked] = useState(false)
-  const [sortBy, setSortBy] = useState('recente')
-  const [statusFilter, setStatusFilter] = useState('todos')
-  const [menuOpenId, setMenuOpenId] = useState(null)
-  const [menuAnchor, setMenuAnchor] = useState({ top: 0, left: 0 })
-  const menuRef = useRef(null)
+    const { users, loading, updateProfile, runDeepMigration } = useSystemUsers()
+    const { userData, loading: authLoading } = useAuth()
+    const [searchTerm, setSearchTerm] = useState('')
+    const [roleFilter, setRoleFilter] = useState('all')
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [showPinModal, setShowPinModal] = useState(false)
+    const [isUnlocked, setIsUnlocked] = useState(false)
+    const [sortBy, setSortBy] = useState('recente')
+    const [statusFilter, setStatusFilter] = useState('todos')
+    const [menuOpenId, setMenuOpenId] = useState(null)
+    const [menuAnchor, setMenuAnchor] = useState({ top: 0, left: 0 })
+    const [isMigrating, setIsMigrating] = useState(false)
+    const menuRef = useRef(null)
 
   const isLoading = loading || authLoading
 
@@ -136,22 +137,46 @@ export default function CollaboratorsPage() {
     }
   }, [menuOpenId])
 
+  /**
+   * CÁLCULO DE ESTATÍSTICAS (KPIs)
+   * 📊 Baseado no estado reativo de 'users'.
+   * 🎯 Filtra por 'roles' para garantir precisão no modelo Multi-Role.
+   */
   const stats = useMemo(() => {
     const active = users.filter(u => u.status === 'Ativo').length
-    const professors = users.filter(u => u.role === 'professor').length
-    const gestors = users.filter(u => u.role === 'gestor' || u.role === 'admin').length
-    return { total: users.length, active, professors, gestors }
+    const professors = users.filter(u => u.roles?.professor).length
+    const gestors = users.filter(u => u.roles?.gestor || u.roles?.admin).length
+    // Total de equipe: qualquer usuário que tenha uma role administrativa/docente
+    const team = users.filter(u => u.roles?.admin || u.roles?.gestor || u.roles?.professor).length
+    return { total: team, active, professors, gestors }
   }, [users])
 
+  /**
+   * MOTOR DE FILTRAGEM (SEARCH & RBAC)
+   * 🔍 Processa a lista em tempo real com base nos inputs do usuário.
+   */
   const filteredUsers = useMemo(() => {
     let list = users.filter(user => {
-      const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesRole = roleFilter === 'all' || user.role === roleFilter
+      // 1. Regra de Negócio: Exibir apenas colaboradores na aba de Equipe
+      const hasStaffRole = user.roles?.admin || user.roles?.gestor || user.roles?.professor
+      if (!hasStaffRole) return false
+
+      // 2. Filtro Textual (Nome/Email)
+      const matchesSearch = (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+      
+      // 3. Filtro por Categoria de Cargo
+      const matchesRole = roleFilter === 'all' || 
+                         (roleFilter === 'professor' && user.roles?.professor) ||
+                         (roleFilter === 'gestor' && (user.roles?.gestor || user.roles?.admin))
+      
+      // 4. Filtro por Status da Conta
       const matchesStatus = statusFilter === 'todos' || user.status === statusFilter
+      
       return matchesSearch && matchesRole && matchesStatus
     })
 
+    // Ordenação alfabética
     if (sortBy === 'az') list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     if (sortBy === 'za') list = [...list].sort((a, b) => (b.name || '').localeCompare(a.name || ''))
     return list
@@ -230,9 +255,6 @@ export default function CollaboratorsPage() {
         subtitle="CONTROLE DE COLABORADORES E PROFESSORES"
         extra={
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider bg-black/20 text-gray-500 hover:bg-white/10 hover:text-white transition-all border border-white/5 active:scale-95">
-              <RefreshCcw size={18} strokeWidth={1.9} /> SINCRONIZAR
-            </button>
             <button
               onClick={() => setIsModalOpen(true)}
               className="bg-primary text-white flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95"
@@ -332,13 +354,20 @@ export default function CollaboratorsPage() {
                     </td>
 
                     <td className="py-4 px-5 text-center">
-                       <span className={`px-2.5 py-1 rounded-sm text-[9px] font-black uppercase tracking-[0.2em] inline-block border ${
-                        member.role === 'professor' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
-                        member.role === 'gestor' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                        'bg-red-500/10 text-red-500 border-red-500/20'
-                      }`}>
-                        {member.role || 'COLABORADOR'}
-                      </span>
+                       <div className="flex flex-wrap justify-center gap-1.5">
+                         {Object.entries(member.roles || {}).map(([role, active]) => {
+                           if (!active) return null
+                           const cfg = roleStyles[role] || roleStyles.professor
+                           return (
+                             <span key={role} className={`px-2 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                               {cfg.label}
+                             </span>
+                           )
+                         })}
+                         {(!member.roles || Object.keys(member.roles).length === 0) && (
+                           <span className="text-[10px] text-gray-700 font-bold italic">Sem Roles</span>
+                         )}
+                       </div>
                     </td>
 
                     <td className="py-4 px-5 text-center">

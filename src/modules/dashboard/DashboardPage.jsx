@@ -327,7 +327,7 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="flex-1 px-4 md:px-6 py-6 w-full pb-20 space-y-6 fade-slide-up">
+      <div className="flex-1 px-4 md:px-6 pt-6 pb-0 w-full space-y-6 fade-slide-up">
 
         {/* ── KPIs ───────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">

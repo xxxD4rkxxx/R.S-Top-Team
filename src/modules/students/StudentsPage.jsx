@@ -211,7 +211,7 @@ export default function StudentsPage() {
     }
     if (statusFilter !== 'todos') list = list.filter(s => normalizeStatus(s.status) === statusFilter)
     if (modalityFilter !== 'todas') list = list.filter(s => s.modality === modalityFilter)
-    if (sortBy === 'az') list = [...list].sort((a, b) => (a.name || '').localeCompare(a.name || ''))
+    if (sortBy === 'az') list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     if (sortBy === 'za') list = [...list].sort((a, b) => (b.name || '').localeCompare(a.name || ''))
     return list
   }, [students, searchTerm, statusFilter, modalityFilter, sortBy])

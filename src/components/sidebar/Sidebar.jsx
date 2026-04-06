@@ -131,7 +131,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
         >
           <div className={`${effectivelyCollapsed ? 'w-10 h-10' : 'w-12 h-12'} flex-shrink-0 relative flex items-center justify-center transition-all duration-500`}>
             <img
-              src="/logo-nav.png"
+              src="/logo.png"
               alt="RS Top Team"
               className="w-full h-full rounded-full object-cover transition-transform duration-700"
               style={{

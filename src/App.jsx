@@ -120,12 +120,9 @@ function AppContent() {
           setMobileOpen={setMobileOpen}
         />
 
-        {/* Área de Conteúdo Dinâmico */}
+          {/* Área de Conteúdo Dinâmico */}
         <div className="main-content flex flex-col flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden transition-all relative">
           
-          {/* Espaçamento extra para telas mobile (Safe Area) */}
-          {isMobile && <div className="h-6 w-full shrink-0" />}
-
           <div className="flex-1 flex flex-col relative w-full min-h-0">
             {/* Wrapper Centralizado para as Páginas e Rodapé */}
             <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col">
@@ -188,7 +185,7 @@ function AppContent() {
                 </AnimatePresence>
               </Suspense>
 
-              {!isMobile && <div className="mt-auto shrink-0 pb-6"><SiteFooter /></div>}
+              {!isMobile && <SiteFooter />}
             </div>
           </div>
 

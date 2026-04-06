@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   ClipboardCheck, Search, Check, X, Plus, Clock, Calendar,
   User, History, Trophy, Eye, Info, AlertTriangle, Clock3, ChevronDown, 
-  Edit3, ChevronRight, RefreshCcw, LayoutGrid, List
+  Edit3, ChevronRight, RefreshCcw, LayoutGrid, List, UserPlus
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
@@ -230,14 +230,19 @@ export default function AttendancePage() {
               </button>
             </>
           ) : (
-            null
+            <button
+              onClick={() => setShowModal(true)}
+              className="p-2.5 rounded-xl bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
+            >
+              <Plus size={20} strokeWidth={3} />
+            </button>
           )}
         </div>}
       />
 
       {!isMobile && <PageHeader icon={ClipboardCheck} title="INICIAR CHAMADA" subtitle="NOVA SESSÃO" />}
 
-      <main className="flex-1 px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6 animate-in fade-in duration-500">
+      <main className="flex-1 px-4 md:px-6 pt-6 pb-0 fade-slide-up space-y-6 animate-in fade-in duration-500">
         {!activeSession ? (
           <>
             {/* DESKTOP HEADER & MODALITIES */}
@@ -706,7 +711,15 @@ export default function AttendancePage() {
         )}
       </AnimatePresence>
 
-      {showModal && <AddStudentModal onClose={() => setShowModal(false)} onAdd={addStudent} />}
+      {showModal && (
+        <AddStudentModal 
+          onClose={() => setShowModal(false)} 
+          onAdd={async (data, mod, opts) => {
+            await addStudent(data, mod, opts)
+            setShowModal(false)
+          }} 
+        />
+      )}
     </div>
   )
 }

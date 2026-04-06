@@ -1,20 +1,25 @@
+/**
+ * Serviço de Gestão de Presenças (Chamadas)
+ * 
+ * Responsável por criar sessões de aula e registrar a assiduidade dos usuários.
+ */
 import { db } from '../firebase/config'
 import { 
   collection, doc, addDoc, writeBatch, serverTimestamp, 
-  runTransaction, getDocs, query, orderBy, limit, 
+  getDocs, query, orderBy, limit, 
   collectionGroup, where, setDoc, deleteDoc 
 } from 'firebase/firestore'
 
+const USERS_COLLECTION = 'users'
+
 export const attendanceService = {
   /**
-   * Cria uma nova sessão (aula) configurando um SeqId de forma atômica
+   * Cria uma nova sessão (aula) no banco de dados.
    */
   async createSession(payload) {
     try {
-      // Otimização: Removido await import dinâmico para ganhos de performance instantâneos
-      
-      // Gera um SeqId rápido sem transação (ex: Segundos do dia ou similar)
       const now = new Date()
+      // Gera um SeqId simples para ordenação visual rápida
       const simpleSeqId = `99${now.getMinutes()}${now.getSeconds()}`
       
       const sessionData = {
@@ -23,10 +28,8 @@ export const attendanceService = {
         createdAt: serverTimestamp(),
       }
       
-      // Usa setDoc com o ID já gerado no cliente (instântaneo)
-      // Note: O payload.id já foi gerado proativamente no AttendancePage.jsx
+      // O ID da sessão já vem gerado do frontend para persistência imediata
       await setDoc(doc(db, 'sessions', payload.id), sessionData)
-
       return sessionData
     } catch (error) {
       console.error('Erro ao criar sessão:', error)
@@ -35,7 +38,8 @@ export const attendanceService = {
   },
 
   /**
-   * Registra Múltiplas Chamadas (Assiduidades) dentro da sessão específica usando Sub-coleções
+   * REGISTRO DE CHAMADA EM LOTE (Batch)
+   * 🎯 Agora atualiza a coleção unificada 'users' para marcar a última presença.
    */
   async markAttendanceBatch(activeSession, activeList) {
     try {
@@ -44,7 +48,7 @@ export const attendanceService = {
 
       activeList.forEach(student => {
         if (student.status) {
-          // Usa o ID do aluno como chave do documento dentro da sub-coleção "attendances"
+          // 1. Grava o registro individual de presença na sub-coleção da sessão
           const recordRef = doc(collection(sessionRef, 'attendances'), student.id)
           batch.set(recordRef, {
             studentId: student.id,
@@ -52,29 +56,34 @@ export const attendanceService = {
             status: student.status,
             modality: activeSession.modality,
             date: activeSession.date,
-            timestamp: serverTimestamp() // Usado pela Collection-group para calcular faltas
+            timestamp: serverTimestamp() 
           })
 
-          // Se a marcação for de Presença, atualiza o perfil do aluno com a última chamada
+          /**
+           * 2. ATUALIZAÇÃO NO PERFIL UNIFICADO
+           * Se estiver presente, marca a data de última atividade no documento 'users/{id}'
+           */
           if (student.status === 'present') {
-            const studentRef = doc(db, 'students', student.id)
-            batch.update(studentRef, {
-              lastAttendanceAt: serverTimestamp()
+            const userRef = doc(db, USERS_COLLECTION, student.id)
+            batch.update(userRef, {
+              lastAttendanceAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
             })
           }
         }
       })
 
+      // Executa todas as operações de forma atômica
       await batch.commit()
       return true
     } catch (error) {
-      console.error('Erro ao salvar lote de chamadas na sub-coleção:', error)
+      console.error('Erro ao salvar lote de chamadas unificado:', error)
       throw error
     }
   },
 
   /**
-   * Busca as presenças de uma determinada sessão/aula (Para repovoamento visual)
+   * Recupera a lista de presenças de uma sessão específica.
    */
   async getSessionAttendances(sessionId) {
     try {
@@ -89,17 +98,16 @@ export const attendanceService = {
 
       return records
     } catch (error) {
-      console.error('Erro ao buscar presenças da sessão em:', sessionId, error)
+      console.error('Erro ao buscar presenças da sessão:', error)
       throw error
     }
   },
 
   /**
-   * Dashboard Global Query: Busca a última aula registrada para determinado aluno em qualquer sessão.
+   * Busca a última presença global de um usuário usando Collection Group.
    */
   async getLastAttendance(studentId) {
     try {
-      // Usa Collection-Group para varrer "attendances" em qualquer lugar da árvore Firebase
       const q = query(
         collectionGroup(db, 'attendances'),
         where('studentId', '==', studentId),
@@ -113,17 +121,16 @@ export const attendanceService = {
       }
       return null
     } catch (error) {
-      console.error('Erro ao buscar a ultima presença (CollectionGroup):', error)
+      console.error('Erro ao buscar última presença (CollectionGroup):', error)
       throw error
     }
   },
 
   /**
-   * Remove uma sessão do banco (Cancelar Chamada)
+   * Remove uma sessão de aula completa.
    */
   async deleteSession(sessionId) {
     try {
-      // Otimização: Removido await import dinâmico
       await deleteDoc(doc(db, 'sessions', sessionId))
       return true
     } catch (error) {
@@ -132,3 +139,4 @@ export const attendanceService = {
     }
   }
 }
+

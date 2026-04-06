@@ -1,3 +1,9 @@
+/**
+ * Provedor de Autenticação e Gestão de Sessão (Single Source of Truth)
+ * 
+ * Este contexto gerencia o estado global do usuário, permitindo o login tanto
+ * via Firebase Auth (E-mail/Senha) quanto via Identificador/PIN (Simulado).
+ */
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import {
   onAuthStateChanged,
@@ -14,32 +20,41 @@ import {
   getDocs,
   limit,
   where,
-  orderBy,
-  collectionGroup,
   onSnapshot
 } from 'firebase/firestore'
 import { auth, db } from '../firebase/config'
 
 const AuthContext = createContext()
 
+// Nome da coleção unificada
+const USERS_COLLECTION = 'users'
+
 export function AuthProvider({ children }) {
+  // Estado do usuário Auth (Firebase) ou Simulado (PIN)
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('rs-topteam-sim-user')
     return saved ? JSON.parse(saved).user : null
   })
+
+  // Dados detalhados do perfil (vindos do Firestore)
   const [userData, setUserData] = useState(() => {
     const saved = localStorage.getItem('rs-topteam-sim-user')
     return saved ? JSON.parse(saved).userData : null
   })
+
   const [loading, setLoading] = useState(true)
   const [simulatedRole, setSimulatedRole] = useState(null)
   const [isSetupMode, setIsSetupMode] = useState(false)
   const [hasAdmin, setHasAdmin] = useState(true)
   const [hasGestor, setHasGestor] = useState(true)
 
-  // Memoized effective role for the UI
-  const effectiveRole = simulatedRole || userData?.role || 'aluno'
+  /** 
+   * Determina o papel do usuário para a interface.
+   * Prioridade: Role Simulada > Role Principal do Usuário > Aluno (Padrão)
+   */
+  const effectiveRole = simulatedRole || userData?.role || (userData?.roles?.admin ? 'admin' : userData?.roles?.gestor ? 'gestor' : userData?.roles?.professor ? 'professor' : 'aluno')
 
+  /** Finaliza a sessão e limpa caches */
   const logout = () => {
     localStorage.removeItem('rs-topteam-sim-user')
     setUser(null)
@@ -48,47 +63,47 @@ export function AuthProvider({ children }) {
     return signOut(auth)
   }
 
+  /**
+   * PROCESSO DE LOGIN UNIFICADO
+   * 1. Resolve o identificador (E-mail ou Nome) para um E-mail único.
+   * 2. Tenta autenticar via Firebase Auth.
+   * 3. Fallback: Busca na coleção 'users' e valida o PIN.
+   */
   const login = async (identifier, password) => {
-    let email = identifier
-    const field = identifier.includes('@') ? 'email' : 'name'
+    let email = identifier.toLowerCase().trim()
+    const isEmail = identifier.includes('@')
 
-    // 1. Resolve identifier to email for Auth login
-    if (field === 'name') {
-      // Try new Equipe first
-      const qEquipe = query(collectionGroup(db, 'membros'), where('name', '==', identifier), limit(1))
-      const snapEquipe = await getDocs(qEquipe)
-      if (!snapEquipe.empty) {
-        email = snapEquipe.docs[0].data().email
-      } else {
-        // Try Students
-        const qStudents = query(collection(db, 'students'), where('name', '==', identifier), limit(1))
-        const snapStudents = await getDocs(qStudents)
-        if (!snapStudents.empty) {
-          email = snapStudents.docs[0].data().email
-        } else {
-          // Fallback legacy users
-          const qUsers = query(collection(db, 'users'), where('name', '==', identifier), limit(1))
-          const snapUsers = await getDocs(qUsers)
-          if (!snapUsers.empty) email = snapUsers.docs[0].data().email
-        }
+    // Se não for e-mail, tenta resolver o nome para e-mail na coleção unificada
+    if (!isEmail) {
+      const q = query(
+        collection(db, USERS_COLLECTION), 
+        where('name', '==', identifier), 
+        limit(1)
+      )
+      const snap = await getDocs(q)
+      if (!snap.empty) {
+        email = snap.docs[0].data().email || email
       }
     }
 
     try {
-      // Try standard Firebase Auth first
+      // 1. TENTA FIREBASE AUTH (E-mail/Senha)
       return await signInWithEmailAndPassword(auth, email, password)
     } catch (err) {
-      // 2. PIN LOGIN FALLBACK
-      // Important for students and staff who don't have an Auth account or forgot password
+      /**
+       * 2. PIN LOGIN FALLBACK
+       * Essencial para alunos e professores que usam apenas o PIN de 6 dígitos.
+       */
+      const userRef = doc(db, USERS_COLLECTION, email)
+      const snap = await getDoc(userRef)
 
-      // Search in New Equipe Structure
-      const qEquipe = query(collectionGroup(db, 'membros'), where(field, '==', identifier), limit(1))
-      const snapEquipe = await getDocs(qEquipe)
-      if (!snapEquipe.empty) {
-        const data = snapEquipe.docs[0].data()
+      if (snap.exists()) {
+        const data = snap.data()
+        // Validação de PIN (Simples e Direta)
         if (data.pin === password) {
-          const simUser = { uid: snapEquipe.docs[0].id, email: data.email, isSimulated: true }
-          const simData = { ...data, id: snapEquipe.docs[0].id, role: data.role || 'professor' }
+          const simUser = { uid: snap.id, email: data.email, isSimulated: true }
+          const simData = { ...data, id: snap.id }
+          
           localStorage.setItem('rs-topteam-sim-user', JSON.stringify({ user: simUser, userData: simData }))
           setUser(simUser)
           setUserData(simData)
@@ -96,54 +111,22 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // Search in Students
-      const qStudents = query(collection(db, 'students'), where(field, '==', identifier), limit(1))
-      const snapStudents = await getDocs(qStudents)
-      if (!snapStudents.empty) {
-        const data = snapStudents.docs[0].data()
-        if (data.pin === password) {
-          const simUser = { uid: snapStudents.docs[0].id, email: data.email, isSimulated: true }
-          const simData = { ...data, id: snapStudents.docs[0].id, role: 'aluno' }
-          localStorage.setItem('rs-topteam-sim-user', JSON.stringify({ user: simUser, userData: simData }))
-          setUser(simUser)
-          setUserData(simData)
-          return { user: simUser }
-        }
-      }
-
-      // Search in Legacy Users
-      const qUsers = query(collection(db, 'users'), where(field, '==', identifier), limit(1))
-      const snapUsers = await getDocs(qUsers)
-      if (!snapUsers.empty) {
-        const data = snapUsers.docs[0].data()
-        if (data.pin === password) {
-          const simUser = { uid: snapUsers.docs[0].id, email: data.email, isSimulated: true }
-          const simData = { ...data, id: snapUsers.docs[0].id, role: data.role || 'aluno' }
-          localStorage.setItem('rs-topteam-sim-user', JSON.stringify({ user: simUser, userData: simData }))
-          setUser(simUser)
-          setUserData(simData)
-          return { user: simUser }
-        }
-      }
-
-      throw err
+      throw err // Se falhar em ambos, propaga o erro
     }
   }
 
   useEffect(() => {
-    // Garante persistência local da sessão Firebase Auth
+    // Configura persistência local
     setPersistence(auth, browserLocalPersistence).catch(err =>
       console.error('Erro ao definir persistência:', err)
     )
 
-    // Verifica modo setup e autenticação EM PARALELO (não mais em waterfall)
-    // Antes: checkSetupMode() bloqueava antes do onAuthStateChanged → tela em branco
-    // Agora: ambos disparam simultaneamente
+    /** Verifica se o sistema precisa de configuração inicial (Falta de Admin/Gestor) */
     const checkSetupMode = async () => {
       try {
         const [snapAdmin, snapGestor] = await Promise.all([
-          getDocs(query(collection(db, 'equipe', 'admin', 'membros'), limit(1))),
-          getDocs(query(collection(db, 'equipe', 'gestor', 'membros'), limit(1))),
+          getDocs(query(collection(db, USERS_COLLECTION), where('roles.admin', '==', true), limit(1))),
+          getDocs(query(collection(db, USERS_COLLECTION), where('roles.gestor', '==', true), limit(1))),
         ])
         const foundAdmin  = !snapAdmin.empty
         const foundGestor = !snapGestor.empty
@@ -151,97 +134,72 @@ export function AuthProvider({ children }) {
         setHasGestor(foundGestor)
         setIsSetupMode(!foundAdmin || !foundGestor)
       } catch (err) {
-        console.warn('Verificação de setup ignorada (permissões):', err)
-        setIsSetupMode(false)
+        console.warn('Erro ao verificar setup:', err)
       }
     }
-    checkSetupMode() // dispara sem await — não bloqueia o listener de auth
+    checkSetupMode()
 
     let userUnsub = null
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    /** MONITOR DE ESTADO DE AUTENTICAÇÃO (Auth + Firestore Sync) */
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (userUnsub) userUnsub()
 
       try {
-        if (user) {
+        if (fbUser) {
+          // Usuário logado via Firebase Auth
           localStorage.removeItem('rs-topteam-sim-user')
 
-          const q = query(collectionGroup(db, 'membros'), where('uid', '==', user.uid), limit(1))
-          const snap = await getDocs(q).catch(err => {
-            console.warn('Erro na query de membros:', err)
-            return { empty: true }
-          })
-
-          let path = null
-          if (!snap.empty) {
-            const role = snap.docs[0].data().role
-            path = `equipe/${role}/membros/${snap.docs[0].id}`
-          } else {
-            path = `users/${user.uid}`
-          }
-
-          userUnsub = onSnapshot(doc(db, path), (snap) => {
+          // O ID do documento é o e-mail (lowercase)
+          const userId = fbUser.email.toLowerCase()
+          
+          userUnsub = onSnapshot(doc(db, USERS_COLLECTION, userId), (snap) => {
             if (snap.exists()) {
               const data = snap.data()
               if (data.status === 'Inativo') {
                 logout()
               } else {
-                setUser(user)
+                setUser(fbUser)
                 setUserData({ ...data, id: snap.id })
               }
             } else {
-              setUser(user)
+              setUser(fbUser)
               setUserData(null)
             }
             setLoading(false)
-          }, (err) => {
-            console.error('Erro no listener de userData:', err)
-            setLoading(false)
           })
         } else {
-          // Fluxo de usuário simulado por PIN
+          // Fluxo de Usuário por PIN (Simulado do LocalStorage)
           const savedSim = localStorage.getItem('rs-topteam-sim-user')
           if (!savedSim) {
-            setUser(null)
-            setUserData(null)
-            setSimulatedRole(null)
-            setLoading(false)
+            setUser(null); setUserData(null); setSimulatedRole(null); setLoading(false)
           } else {
-            try {
-              const { user: simUser, userData: simData } = JSON.parse(savedSim)
-              const path = simData.role === 'aluno'
-                ? `students/${simUser.uid}`
-                : (simData.role ? `equipe/${simData.role}/membros/${simUser.uid}` : `users/${simUser.uid}`)
-
-              userUnsub = onSnapshot(doc(db, path), (snap) => {
-                if (snap.exists()) {
-                  const data = snap.data()
-                  if (data.status === 'Inativo') {
-                    logout()
-                  } else {
-                    setUser(simUser)
-                    setUserData({ ...data, id: snap.id })
-                    localStorage.setItem('rs-topteam-sim-user',
-                      JSON.stringify({ user: simUser, userData: { ...data, id: snap.id } })
-                    )
-                  }
+            const { user: simUser, userData: simData } = JSON.parse(savedSim)
+            
+            userUnsub = onSnapshot(doc(db, USERS_COLLECTION, simUser.uid), (snap) => {
+              if (snap.exists()) {
+                const data = snap.data()
+                if (data.status === 'Inativo') {
+                  logout()
                 } else {
                   setUser(simUser)
+                  setUserData({ ...data, id: snap.id })
+                  localStorage.setItem('rs-topteam-sim-user', 
+                    JSON.stringify({ user: simUser, userData: { ...data, id: snap.id } })
+                  )
                 }
-                setLoading(false)
-              }, (err) => {
-                console.error('Erro no listener de usuário simulado:', err)
-                setLoading(false)
-              })
-            } catch (e) {
-              console.error('Erro ao parsear sessão simulada:', e)
-              localStorage.removeItem('rs-topteam-sim-user')
+              } else {
+                setUser(simUser)
+              }
               setLoading(false)
-            }
+            }, (err) => {
+              console.error('Erro no monitor de perfil simulado:', err)
+              setLoading(false)
+            })
           }
         }
       } catch (err) {
-        console.error('Erro fatal no processo de autenticação:', err)
+        console.error('Erro fatal no AuthContext:', err)
         setLoading(false)
       }
     })
@@ -274,3 +232,4 @@ export function AuthProvider({ children }) {
 }
 
 export const useAuth = () => useContext(AuthContext)
+
