@@ -7,7 +7,7 @@ import { db } from '../firebase/config'
 import { 
   collection, doc, addDoc, writeBatch, serverTimestamp, 
   getDocs, query, orderBy, limit, 
-  collectionGroup, where, setDoc, deleteDoc 
+  collectionGroup, where, setDoc, deleteDoc, increment
 } from 'firebase/firestore'
 
 const USERS_COLLECTION = 'users'
@@ -67,6 +67,7 @@ export const attendanceService = {
             const userRef = doc(db, USERS_COLLECTION, student.id)
             batch.update(userRef, {
               lastAttendanceAt: serverTimestamp(),
+              'tech_journey.sessions_since_last_promotion': increment(1), // Incrementa para graduação
               updatedAt: serverTimestamp()
             })
           }

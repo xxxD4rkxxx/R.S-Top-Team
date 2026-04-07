@@ -16,11 +16,12 @@ import {
   Layers,
   Settings,
   TrendingUp,
-  Award,
+  Activity,
   ShieldCheck,
   MessageCircle,
   FileText,
-  PieChart
+  PieChart,
+  GraduationCap
 } from 'lucide-react'
 
 // Itens principais da barra inferior (Excluindo o botão central)
@@ -36,7 +37,6 @@ const drawerItems = [
   { to: '/modalities', icon: Layers, label: 'Modalidades' },
   { to: '/contracts', icon: FileText, label: 'Contratos' },
   { to: '/occupancy', icon: PieChart, label: 'Ocupação' },
-  { to: '/belts', icon: Award, label: 'Graduações' },
   { to: '/collaborators', icon: ShieldCheck, label: 'Professores & Equipe' },
   { to: '/profile', icon: Settings, label: 'Meu Perfil' },
 ]
@@ -168,7 +168,7 @@ export default function MobileNav() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-[#0A0A0A] border-t border-white/10 rounded-t-3xl z-[80] overflow-hidden flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+              className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-[#0A0A0A] border-t border-white/10 rounded-t-[32px] z-[80] overflow-hidden flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
             >
               {/* Alça visual de arraste (apenas estética) */}
               <div className="flex justify-center mt-3">

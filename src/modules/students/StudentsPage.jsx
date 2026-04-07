@@ -9,7 +9,9 @@ import {
   Edit2, Copy, CalendarDays, GraduationCap, CreditCard, Trash2,
   FileText, RefreshCcw, ChevronDown
 } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import { useStudents } from '../../hooks/useStudents'
+import { useStudentJourney } from '../../hooks/useStudentJourney'
 import { useApp } from '../../context/AppContext'
 import AddStudentModal from '../../components/shared/AddStudentModal'
 import GraduationHistoryModal from '../../components/students/GraduationHistoryModal'
@@ -21,6 +23,7 @@ import StudentDetailsModal from '../../components/shared/StudentDetailsModal'
 import KPICard from '../../components/shared/KPICard'
 import { beltConfig } from '../../data/beltConfig'
 import MobileHeader from '../../components/navigation/MobileHeader'
+import { Award, Target } from 'lucide-react'
 
 function normalizeStatus(status) {
   if (!status || status === 'ativo' || status === 'active') return 'ativo'
@@ -120,7 +123,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
         <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
@@ -147,7 +150,9 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
 // Gere o estado global da lista de alunos e os modais de ação específica.
 export default function StudentsPage() {
   const { currentModality, isAdminView } = useApp()
+  const { user, userData } = useAuth()
   const { students, isLoadingStudents, addStudent, updateStudentProfile, changeStudentStatus, deleteStudent } = useStudents()
+  const journeyStats = useStudentJourney()
 
   const [showModal, setShowModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
@@ -246,6 +251,17 @@ export default function StudentsPage() {
   }
 
   async function handleConfirmDelete() {
+    // PROTEÇÃO DE AUTO-EXCLUSÃO: Impede que o usuário logado se delete por acidente.
+    const isSelf = 
+      deleteDialogStudent.id.toLowerCase() === (user?.email || '').toLowerCase() || 
+      deleteDialogStudent.id === user?.uid
+    
+    if (isSelf) {
+      alert("🛑 SEGURANÇA: Você não pode excluir sua própria conta administrativa enquanto estiver logado no sistema.")
+      setDeleteDialogStudent(null)
+      return
+    }
+
     await deleteStudent(deleteDialogStudent.id)
     setDeleteDialogStudent(null)
   }
@@ -265,12 +281,19 @@ export default function StudentsPage() {
   }
 
   function renderAvatar(student) {
-    const bgClass = beltConfig[student.belt]?.bgClass || 'belt-white'
-    return student.photo ? (
-      <img src={student.photo} alt={student.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
-    ) : (
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass}`}>
-        {student.initials || student.name?.[0] || 'A'}
+    const bgClass = beltConfig[student.belt]?.bgClass || 'belt-none'
+    const initials = student.initials || student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
+    
+    if (student.photo || student.photoURL) {
+      return <img src={student.photo || student.photoURL} alt="" className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
+    }
+    
+    return (
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black ring-1 ring-white/5 shadow-2xl ${bgClass} relative overflow-hidden group-hover:ring-white/20 transition-all`}>
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent opacity-40" />
+        <span className="relative z-10 drop-shadow-md text-white">
+          {initials}
+        </span>
       </div>
     )
   }
@@ -335,16 +358,16 @@ export default function StudentsPage() {
         subtitle="CONTROLE DE MATRÍCULAS E PRESENÇA"
         extra={
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
               <FileDown size={18} strokeWidth={1.9} /> IMPORTAR
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
               <FileUp size={18} strokeWidth={1.9} /> EXPORTAR
             </button>
             {isAdminView && (
               <button
                 onClick={() => { setDuplicateData(null); setShowModal(true) }}
-                className="btn-primary flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95"
+                className="btn-primary flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95"
               >
                 <Plus size={18} strokeWidth={1.9} /> NOVO ALUNO
               </button>
@@ -361,10 +384,20 @@ export default function StudentsPage() {
             onClick={() => setStatusFilter(statusFilter === 'ativo' ? 'todos' : 'ativo')} active={statusFilter === 'ativo'} />
           <KPICard title="Inativos" value={stats.inactive} description="Alunos que cancelaram ou pararam" icon={UserX}
             onClick={() => setStatusFilter(statusFilter === 'inativo' ? 'todos' : 'inativo')} active={statusFilter === 'inativo'} />
-          <KPICard title="Suspensos" value={stats.suspended} description="Alunos temporariamente afastados" icon={UserMinus} valueColor="text-yellow-400"
-            onClick={() => setStatusFilter(statusFilter === 'suspenso' ? 'todos' : 'suspenso')} active={statusFilter === 'suspenso'} />
-          <KPICard title="Arquivados" value={stats.archived} description="Histórico de alunos inativados" icon={Archive}
-            onClick={() => setStatusFilter(statusFilter === 'arquivado' ? 'todos' : 'arquivado')} active={statusFilter === 'arquivado'} />
+          <KPICard 
+            title="Graduados" 
+            value={journeyStats?.totalGraduated || 0} 
+            description="Total de alunos com faixa" 
+            icon={Award} 
+            valueColor="text-blue-400"
+          />
+          <KPICard 
+            title="Aptos a Avaliar" 
+            value={journeyStats?.dueForAssessment || 0} 
+            description="Alunos em período de troca" 
+            icon={Target} 
+            valueColor="text-rose-500"
+          />
         </div>
 
         {/* Elite Search Bar (Outside) */}
@@ -372,7 +405,7 @@ export default function StudentsPage() {
           <div className="flex-1 relative group">
             <Search size={18} strokeWidth={1.9} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" />
             <input
-              className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium"
+              className="w-full bg-[#111] border border-white/5 rounded-[24px] pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium"
               placeholder="Buscar por nome, email, telefone..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -381,14 +414,15 @@ export default function StudentsPage() {
           {(statusFilter !== 'todos' || modalityFilter !== 'todas' || searchTerm) && (
             <button 
               onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setSearchTerm('') }}
-              className="flex items-center justify-center gap-2 px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+              className="flex items-center justify-center gap-2 px-6 h-[54px] rounded-[24px] text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 text-gray-400 hover:bg-white/10 border border-white/5"
             >
-              <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
+              <RefreshCcw size={16} strokeWidth={2.5} /> Limpar
             </button>
           )}
         </div>
 
-        <div className="bg-black/40 backdrop-blur-md rounded-2xl p-5 md:p-6 border border-white/5">
+        <div className="bg-[#0B0B0D]/80 backdrop-blur-md rounded-[24px] p-6 md:p-8 border border-white/5 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-50" />
           {/* Filtros */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[

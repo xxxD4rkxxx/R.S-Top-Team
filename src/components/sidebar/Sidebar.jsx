@@ -12,7 +12,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 
-export const navGroups = [
+const navGroups = [
   {
     title: 'Visão Geral',
     items: [
@@ -28,8 +28,6 @@ export const navGroups = [
       { to: '/events', icon: CalendarRange, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'] },
       { to: '/experimental', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
       { to: '/modalities', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/occupancy', icon: Gauge, label: 'Matrículas e Ocupação', roles: ['admin', 'gestor'] },
-      { to: '/belts', icon: Medal, label: 'Jornada Técnica', roles: ['admin', 'gestor', 'professor'] },
     ]
   },
   {
@@ -64,7 +62,7 @@ const NavTooltip = ({ content, visible }) => (
         animate={{ opacity: 1, x: 0, scale: 1 }}
         exit={{ opacity: 0, x: -10, scale: 0.9 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#121212] border border-white/10 rounded-xl shadow-2xl z-[100] pointer-events-none whitespace-nowrap"
+        className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#121212] border border-white/10 rounded-2xl shadow-2xl z-[100] pointer-events-none whitespace-nowrap"
         style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
       >
         <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-[#121212] border-l border-b border-white/10 rotate-45" />
@@ -186,8 +184,8 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                     className={({ isActive }) => `
                       nav-item transition-all duration-300 relative flex items-center group
                       ${effectivelyCollapsed
-                        ? 'w-[44px] h-[44px] justify-center p-0 rounded-xl mx-auto'
-                        : 'px-4 py-2.5 rounded-xl w-full mx-auto'
+                        ? 'w-[44px] h-[44px] justify-center p-0 rounded-2xl mx-auto'
+                        : 'px-4 py-2.5 rounded-2xl w-full mx-auto'
                       }
                       ${isActive
                         ? 'active bg-primary/10 text-primary'
@@ -255,7 +253,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
             <div className="relative">
               <button
                 onClick={() => setShowSimMenu(!showSimMenu)}
-                className={`flex items-center rounded-xl transition-all h-11 px-[20px] w-full flex-nowrap ${simulatedRole ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-white/5'}`}
+                className={`flex items-center rounded-2xl transition-all h-11 px-[20px] w-full flex-nowrap ${simulatedRole ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-white/5'}`}
               >
                 <div className="w-7 flex-shrink-0 flex justify-center items-center">
                   <ShieldCheck size={19} strokeWidth={2} />
@@ -283,7 +281,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full left-0 w-full mb-2 border border-white/5 rounded-xl shadow-2xl overflow-hidden glass-card z-50 p-1"
+                    className="absolute bottom-full left-0 w-full mb-2 border border-white/5 rounded-2xl shadow-2xl overflow-hidden glass-card z-50 p-1"
                   >
                     {simulationOptions.map(opt => (
                       <button
@@ -309,7 +307,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
             onClick={() => isMobile ? setMobileOpen(false) : setCollapsed(v => !v)}
             onMouseEnter={() => setHoveredItem('collapse-btn')}
             onMouseLeave={() => setHoveredItem(null)}
-            className={`nav-item flex items-center text-gray-500 hover:bg-white/5 hover:text-white transition-all w-full relative ${effectivelyCollapsed ? 'h-[44px] w-[44px] justify-center p-0 rounded-xl mx-auto' : 'h-11 px-5 rounded-xl'}`}
+            className={`nav-item flex items-center text-gray-500 hover:bg-white/5 hover:text-white transition-all w-full relative ${effectivelyCollapsed ? 'h-[44px] w-[44px] justify-center p-0 rounded-2xl mx-auto' : 'h-11 px-5 rounded-2xl'}`}
           >
             <div className={`${effectivelyCollapsed ? 'w-auto' : 'w-7'} flex-shrink-0 flex justify-center items-center transition-all duration-300`}>
               {collapsed && !isMobile ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}

@@ -207,7 +207,7 @@ export default function UserCreationModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="w-full max-w-lg bg-[#0d0d0d] border border-white/5 sm:rounded-2xl shadow-2xl relative flex flex-col h-full sm:h-auto max-h-[92vh] overflow-hidden">
+      <div className="w-full max-w-lg bg-[#0d0d0d] border border-white/5 sm:rounded-[32px] rounded-t-[32px] shadow-2xl relative flex flex-col h-full sm:h-auto max-h-[92vh] overflow-hidden">
         
         {/* CABEÇALHO FIXO */}
         <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#0d0d0d] shrink-0">

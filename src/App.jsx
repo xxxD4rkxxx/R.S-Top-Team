@@ -2,7 +2,7 @@
 // Gerencia o roteamento, provedores de contexto (Auth, Theme, App),
 // barra lateral, navegação mobile e proteção de rotas por perfis de acesso.
 import React, { useState, useEffect, lazy, Suspense } from 'react'
-import { Menu, CalendarDays, GraduationCap, Target, Award, Banknote, TrendingDown, Activity } from 'lucide-react'
+import { Menu, CalendarDays, Target, Award, Banknote, TrendingDown, Activity } from 'lucide-react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AppProvider, useApp } from './context/AppContext'
@@ -31,7 +31,6 @@ const FinancePage           = lazy(() => import('./modules/finance/FinancePage')
 const ContractsPage         = lazy(() => import('./modules/contracts/ContractsPage'))
 const ModuleUnderDevelopment= lazy(() => import('./components/shared/ModuleUnderDevelopment'))
 const ModalitiesPage        = lazy(() => import('./modules/modalities/ModalitiesPage'))
-
 // ─── ScrollToTop Helper ───────────────────────────────────────────────────────
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -147,23 +146,6 @@ function AppContent() {
                     /></AnimatedPage></ProtectedRoute>} />
 
                     <Route path="/modalities" element={<ProtectedRoute><AnimatedPage><ModalitiesPage /></AnimatedPage></ProtectedRoute>} />
-
-                    <Route path="/occupancy" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
-                      icon={Target}
-                      title="Controle de Ocupação"
-                      description="Visualize a ocupação real de todas as turmas baseada em frequência."
-                      features={[
-                        'Ocupação real por check-ins únicos',
-                        'Alertas de superlotação e baixa ocupação',
-                        'Card \'Ações da Semana\' automático',
-                        'Destaque de alunos ativos na turma'
-                      ]}
-                    /></AnimatedPage></ProtectedRoute>} />
-
-                    <Route path="/belts" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
-                      icon={Award} title="Faixas e Graduações"
-                      features={['Controle de graus e faixas', 'Certificados digitais', 'Hitorico de evolução']}
-                    /></AnimatedPage></ProtectedRoute>} />
 
                     <Route path="/plans" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
                       icon={Banknote} title="Planos"

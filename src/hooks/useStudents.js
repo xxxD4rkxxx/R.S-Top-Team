@@ -134,6 +134,17 @@ export function useStudents() {
       parentPhone: newStudent.parentPhone || '',
       pin: newStudent.pin || Math.floor(100000 + Math.random() * 900000).toString(),
       roles: isVisitor ? { visitante: true } : { aluno: true }, // Define o papel baseado no tipo de ingresso
+      tech_journey: {
+        current_belt: beltFinal,
+        current_stripes: 0,
+        sessions_since_last_promotion: 0,
+        last_promotion_date: serverTimestamp(),
+        history: [{
+          belt: beltFinal,
+          date: serverTimestamp(),
+          reason: 'Ingresso na Academia'
+        }]
+      },
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
