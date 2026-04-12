@@ -9,15 +9,26 @@ export function useHideMobileNav(isOpen) {
   const { setIsMobileNavHidden } = useApp()
 
   useEffect(() => {
+    const mainContent = document.querySelector('.main-content')
+
     if (isOpen) {
       setIsMobileNavHidden(true)
+      document.body.style.overflow = 'hidden'
+      if (mainContent) mainContent.style.overflow = 'hidden'
     } else {
       setIsMobileNavHidden(false)
+      document.body.style.overflow = ''
+      if (mainContent) mainContent.style.overflow = ''
     }
-    
-    // Cleanup ensures the nav is restored when the component unmounts
+
     return () => {
       setIsMobileNavHidden(false)
+      document.body.style.overflow = ''
+      if (mainContent) mainContent.style.overflow = ''
     }
   }, [isOpen, setIsMobileNavHidden])
 }
+
+
+
+

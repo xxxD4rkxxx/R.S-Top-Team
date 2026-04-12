@@ -8,9 +8,10 @@ import {
   Activity, Contact, CheckCircle2, CalendarRange, Clock, Layers, Gauge, Medal,
   Gem, FileDigit, Zap, PiggyBank, ArrowDownRight, PieChart, MessageSquare, Users
 } from 'lucide-react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
+import { useApp } from '../../context/AppContext'
 
 const navGroups = [
   {
@@ -75,8 +76,11 @@ const NavTooltip = ({ content, visible }) => (
 function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
   // Hook de autenticação para controle de acesso e simulação de roles
   const { userData, effectiveRole, setSimulatedRole, simulatedRole } = useAuth()
+  const { isNavLocked } = useApp()
   const [showSimMenu, setShowSimMenu] = useState(false)
   const [hoveredItem, setHoveredItem] = useState(null)
+
+  const navigate = useNavigate()
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
   const effectivelyCollapsed = collapsed && !isMobile
@@ -177,7 +181,13 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                 <div key={to} className="relative flex items-center justify-center w-full">
                   <NavLink
                     to={to}
-                    onClick={() => setMobileOpen(false)}
+                    onClick={(e) => {
+                      if (isNavLocked) {
+                        e.preventDefault()
+                        return
+                      }
+                      setMobileOpen(false)
+                    }}
                     onMouseEnter={() => setHoveredItem(to)}
                     onMouseLeave={() => setHoveredItem(null)}
                     end={to === '/'}
@@ -252,7 +262,10 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
           {isActuallyAdmin && (
             <div className="relative">
               <button
-                onClick={() => setShowSimMenu(!showSimMenu)}
+                onClick={() => {
+                  if (isNavLocked) return
+                  setShowSimMenu(!showSimMenu)
+                }}
                 className={`flex items-center rounded-2xl transition-all h-11 px-[20px] w-full flex-nowrap ${simulatedRole ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-white/5'}`}
               >
                 <div className="w-7 flex-shrink-0 flex justify-center items-center">

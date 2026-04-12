@@ -32,7 +32,7 @@ export default function SlideOver({ isOpen, onClose, title, subtitle, children, 
 
       {/* Painel */}
       <div
-        className={`relative h-full ${width} w-full bg-[#0d0d0d] border-l border-white/10 flex flex-col shadow-[−24px_0_80px_rgba(0,0,0,0.8)]`}
+        className={`relative h-full ${width} w-full bg-[#0d0d0d] border-l border-white/10 flex flex-col shadow-[-24px_0_80px_rgba(0,0,0,0.8)]`}
         style={{ animation: 'slideFromRight 0.28s cubic-bezier(0.32,0.72,0,1) both' }}
       >
         {/* Header */}

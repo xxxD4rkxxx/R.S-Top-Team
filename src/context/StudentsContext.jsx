@@ -13,6 +13,7 @@ import {
   where
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { useAuth } from './AuthContext'
 
 const StudentsContext = createContext()
 
@@ -38,21 +39,24 @@ function parseFirestoreDate(value) {
   const parsed = new Date(value)
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
-
 export function StudentsProvider({ children }) {
   const [students, setStudents] = useState([])
   const [isLoadingStudents, setIsLoadingStudents] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
-    /**
-     * ESCUTA UNIFICADA DE ALUNOS
-     * 🎯 Fonte da Verdade: Coleção 'users'
-     * 🔍 Filtro: Apenas usuários onde a flag 'roles.aluno' é verdadeira.
-     */
+    // 🛡️ PROTEÇÃO: Só iniciamos a escuta se houver um utilizador autenticado.
+    // Isso evita erros de "Permission Denied" na tela de login.
+    if (!user) {
+      setStudents([])
+      setIsLoadingStudents(false)
+      return
+    }
+
     const usersRef = collection(db, 'users')
     const studentsQuery = query(
       usersRef, 
-      where('roles.aluno', '==', true) // Filtro de Papel (RBAC) - Sem orderBy para garantir visibilidade total de legados
+      where('roles.aluno', '==', true)
     )
 
     const unsubscribe = onSnapshot(
@@ -60,11 +64,10 @@ export function StudentsProvider({ children }) {
       snapshot => {
         const fromDb = snapshot.docs.map(item => {
           const data = item.data()
-          // Garante retrocompatibilidade com modalidades antigas
           const modalities = data.modalities || [data.modality || 'Jiu-Jitsu']
           
           return {
-            id: item.id, // O ID agora é preferencialmente o e-mail
+            id: item.id,
             name: data.name || '',
             initials: data.initials || buildInitials(data.name),
             belt: data.belt || 'white',
@@ -91,11 +94,10 @@ export function StudentsProvider({ children }) {
             lastStatusAt: parseFirestoreDate(data.lastStatusAt),
             statusReason: data.statusReason || '',
             statusReturnDate: data.statusReturnDate || '',
-            roles: data.roles || {} // Inclui os papéis para checagem na UI
+            roles: data.roles || {}
           }
         })
         
-        // ORDENAÇÃO NO CLIENTE: Garante visibilidade total mesmo em registros legados sem createdAt
         const sorted = fromDb.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         setStudents(sorted)
         setIsLoadingStudents(false)
@@ -107,7 +109,7 @@ export function StudentsProvider({ children }) {
     )
 
     return () => unsubscribe()
-  }, [])
+  }, [user])
 
   return (
     <StudentsContext.Provider value={{ students, isLoadingStudents }}>

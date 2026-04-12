@@ -410,28 +410,54 @@ h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-black {
   border-color: color-mix(in srgb, var(--clr-primary) 55%, transparent);
 }
 
-/* === Modal === */
+/* Base Modal Backdrop */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.8);
-  backdrop-filter: blur(4px);
-  z-index: 100;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  animation: fadeIn 0.3s ease-out;
 }
+
+/* Default Modal Content - Responsive */
 .modal-content {
   background: var(--clr-surface);
-  border: 1px solid color-mix(in srgb, var(--clr-primary-dark) 50%, transparent);
-  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 32px;
   width: 100%;
   max-width: 480px;
-  max-height: 90dvh; /* Garante que o modal caiba na tela */
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.8), 0 0 40px color-mix(in srgb, var(--clr-primary-dark) 18%, transparent);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+/* BOTTOM SHEET RESPONSIVE - THE NEW STANDARD */
+@media (max-width: 768px) {
+  .modal-backdrop {
+    align-items: flex-end; /* Aligns to bottom for sheets */
+    padding: 0;
+  }
+  
+  .modal-content-bottom-sheet {
+    border-radius: 32px 32px 0 0;
+    max-height: 94vh;
+    animation: sheetSlideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    border-bottom: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 /* Input styles */
@@ -486,4 +512,23 @@ h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-black {
 .recharts-surface,
 .recharts-responsive-container {
   outline: none !important;
+}
+
+
+/* === Acessibilidade + Performance em Dispositivos Lentos ===
+   prefers-reduced-motion: desactiva TODAS as animações e transições CSS
+   para utilizadores que preferem movimento reduzido (ex: epilepsia, vertigem)
+   ou dispositivos com GPU limitada que ativam esta setting automaticamente.
+   Animações JS (framer-motion) têm tratamento separado no componente. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior:           auto   !important;
+  }
+  .fade-slide-up, .fade-in, .slide-in,
+  .animate-value-reveal, .pulse-red {
+    animation: none !important;
+  }
 }

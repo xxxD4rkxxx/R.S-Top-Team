@@ -1,39 +1,50 @@
-// Resumo: inicializa Firebase (Auth, Firestore e Storage).
-// OTIMIZAÇÃO: persistência offline do Firestore ativada via IndexedDB.
-// Na segunda visita, dados são servidos do cache local instantaneamente
-// enquanto o Firebase sincroniza em background — sem tela em branco.
+/**
+ * Configuração e inicialização do Firebase SDK.
+ *
+ * OTIMIZAÇÃO DE PERFORMANCE:
+ * A persistência offline é activada via IndexedDB usando a API moderna
+ * `persistentLocalCache` (substitui `enableIndexedDbPersistence` que foi
+ * removida no Firebase SDK v12+).
+ * Na segunda visita, dados são servidos do cache local instantaneamente
+ * enquanto o Firebase sincroniza em background — sem tela em branco.
+ *
+ * SEGURANÇA:
+ * A chave de API aqui presente é segura de expor no cliente pelo design do
+ * Firebase — o acesso real aos dados é controlado pelas Firestore Security Rules.
+ * Nunca colocar chaves de service account (firebase-key.json) no cliente.
+ */
 
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore'
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBjDGUmUVWOXIqzITiG9g9dalAGshQDgww",
-  authDomain: "academia-rstopteam.firebaseapp.com",
-  projectId: "academia-rstopteam",
-  storageBucket: "academia-rstopteam.firebasestorage.app",
+  apiKey:            "AIzaSyBjDGUmUVWOXIqzITiG9g9dalAGshQDgww",
+  authDomain:        "academia-rstopteam.firebaseapp.com",
+  projectId:         "academia-rstopteam",
+  storageBucket:     "academia-rstopteam.firebasestorage.app",
   messagingSenderId: "427455835491",
-  appId: "1:427455835491:web:83c029a7e400c35e1c7756"
+  appId:             "1:427455835491:web:83c029a7e400c35e1c7756"
 }
 
 const app = initializeApp(firebaseConfig)
 
-export const auth    = getAuth(app)
-export const db      = getFirestore(app)
-export const storage = getStorage(app)
+export const auth = getAuth(app)
 
-// Ativa persistência offline — dados em cache para carregamento instantâneo
-// na segunda visita. Erros são ignorados silenciosamente (ex: múltiplas abas).
-enableIndexedDbPersistence(db).catch(err => {
-  if (err.code === 'failed-precondition') {
-    // Múltiplas abas abertas — cache desativado nesta aba
-    console.warn('Persistência offline desativada (múltiplas abas)')
-  } else if (err.code === 'unimplemented') {
-    // Navegador não suporta IndexedDB
-    console.warn('Este navegador não suporta cache offline do Firestore')
-  }
+// Inicializa Firestore com cache persistente em IndexedDB.
+// persistentMultipleTabManager: permite uso em múltiplas abas sem erros
+// (substitui a antiga enableIndexedDbPersistence que era incompatível com múltiplas abas).
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
 })
 
-export default app
+export const storage = getStorage(app)
 
+export default app

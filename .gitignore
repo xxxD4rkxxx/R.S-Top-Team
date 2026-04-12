@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Credenciais e ficheiros sensíveis — NUNCA commitar estes ficheiros
+# A chave de service account dá acesso admin total ao Firebase
+firebase-key.json
+*.key.json
+service-account*.json
+.env
+.env.local
+.env.*.local

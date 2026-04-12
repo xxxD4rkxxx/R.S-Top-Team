@@ -1,6 +1,10 @@
 [
   {
-    "origin": ["*"],
+    "origin": [
+      "https://academia-rstopteam.web.app",
+      "https://academia-rstopteam.firebaseapp.com",
+      "http://localhost:5173"
+    ],
     "method": ["GET", "OPTIONS"],
     "responseHeader": ["Content-Type", "Authorization", "x-goog-meta-token"],
     "maxAgeSeconds": 3600

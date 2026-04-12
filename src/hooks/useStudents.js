@@ -169,7 +169,7 @@ export function useStudents() {
     const updatableFields = [
       'belt', 'stripes', 'email', 'phone', 'emergency', 'medical', 
       'birthday', 'medicalExamDate', 'ageCategory', 'gender', 
-      'parentName', 'parentPhone', 'pin'
+      'parentName', 'parentPhone', 'pin', 'modality', 'modalities'
     ]
 
     updatableFields.forEach(field => {

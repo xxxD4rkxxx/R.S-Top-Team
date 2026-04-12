@@ -10,6 +10,7 @@ export function AppProvider({ children }) {
   const [isMobileNavHidden, setIsMobileNavHidden] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isNavLocked, setIsNavLocked] = useState(false)
 
   return (
     <AppContext.Provider value={{
@@ -23,6 +24,8 @@ export function AppProvider({ children }) {
       setCollapsed,
       mobileOpen,
       setMobileOpen,
+      isNavLocked,
+      setIsNavLocked,
     }}>
       {children}
     </AppContext.Provider>

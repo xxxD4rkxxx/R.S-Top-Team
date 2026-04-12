@@ -9,11 +9,10 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import SlideOver from '../shared/SlideOver'
 
 const DAYS_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
-const DAYS_FULL  = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+const DAYS_FULL = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const MONTHS_FULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
-const MODALITY_COLORS = { 'Jiu-Jitsu': 'var(--clr-primary)', 'Boxe': '#f59e0b', Ambos: '#8b5cf6' }
 
 // ── helpers ────────────────────────────────────────────────────
 function buildStreak(sortedDatesAsc) {
@@ -46,37 +45,37 @@ function CustomBarTooltip({ active, payload, label }) {
 
 // ── Component ────────────────────────────────────────────────
 export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
-  const [records, setRecords]       = useState([]) // { date: Date, modality, status, sessionId }
-  const [notes, setNotes]           = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [viewDate, setViewDate]     = useState(() => new Date())
-  const [activeTab, setActiveTab]   = useState('calendar') // 'calendar' | 'charts' | 'notes'
+  const [records, setRecords] = useState([]) // { date: Date, modality, status, sessionId }
+  const [notes, setNotes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [viewDate, setViewDate] = useState(() => new Date())
+  const [activeTab, setActiveTab] = useState('calendar') // 'calendar' | 'charts' | 'notes'
   const [showNoteForm, setShowNoteForm] = useState(false)
-  const [noteText, setNoteText]     = useState('')
+  const [noteText, setNoteText] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [selectedDayInfo, setSelectedDayInfo] = useState(null)
 
   // ── Load data ───────────────────────────────────────────────
   const loadData = useCallback(async () => {
     if (!student?.id) return
     setLoading(true)
     try {
-      // All attendance records for this student
+      // All attendance records for this student (from sessions -> attendances)
       const q = query(
         collectionGroup(db, 'attendances'),
-        where('studentId', '==', student.id),
-        orderBy('timestamp', 'asc')
+        where('studentId', '==', student.id)
       )
       const snap = await getDocs(q)
       const recs = snap.docs.map(d => {
         const data = d.data()
-        const ts = data.timestamp
+        const ts = data.timestamp || data.date // Suporta campo timestamp ou date legados
         return {
-          date:     ts?.toDate ? ts.toDate() : new Date(ts),
+          date: ts?.toDate ? ts.toDate() : new Date(ts),
           modality: data.modality || 'Jiu-Jitsu',
-          status:   data.status  || 'present',
+          status: data.status || 'present',
           sessionId: d.ref.parent.parent?.id || '',
         }
-      }).filter(r => !isNaN(r.date))
+      }).filter(r => !isNaN(r.date)).sort((a, b) => a.date.getTime() - b.date.getTime())
       setRecords(recs)
 
       // Professor notes
@@ -141,6 +140,24 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
   const isAbsenceDay = useCallback((day) =>
     absenceRanges.some(r => day >= r.start && day <= r.end), [absenceRanges])
 
+  // Cores dinâmicas por modalidade
+  const modalityColors = useMemo(() => {
+    const baseColors = { 'Jiu-Jitsu': 'var(--clr-primary)', 'Boxe': '#f59e0b', 'Muay Thai': '#10b981', 'Crossfit': '#ec4899', 'submission': '#8b5cf6' }
+    const palette = ['#06b6d4', '#f43f5e', '#84cc16', '#a855f7', '#14b8a6']
+    let i = 0
+    records.forEach(r => {
+      if (r.modality && !baseColors[r.modality]) {
+        baseColors[r.modality] = palette[i % palette.length]
+        i++
+      }
+    })
+    return baseColors
+  }, [records])
+
+  const uniqueModalities = useMemo(() => {
+    return [...new Set(records.map(r => r.modality).filter(Boolean))]
+  }, [records])
+
   // Calendar grid
   const calendarGrid = useMemo(() => {
     const year = viewDate.getFullYear(), month = viewDate.getMonth()
@@ -152,7 +169,8 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
     return cells
   }, [viewDate])
 
-  // ── Monthly bar chart data ───────────────────────────────────
+  // ... (keeping other memos intact, they are above this block usually)
+  // Let's ensure we are replacing the correct lines. I will replace from `// Calendar grid` down to the legend closure.
   const monthlyData = useMemo(() => {
     const counts = {}
     presentRecords.forEach(r => {
@@ -174,10 +192,10 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
     const grid = Array.from({ length: 7 }, () => ({ morning: 0, afternoon: 0, evening: 0 }))
     presentRecords.forEach(r => {
       const dow = r.date.getDay()
-      const h   = r.date.getHours()
-      if (h < 12)       grid[dow].morning++
-      else if (h < 17)  grid[dow].afternoon++
-      else              grid[dow].evening++
+      const h = r.date.getHours()
+      if (h < 12) grid[dow].morning++
+      else if (h < 17) grid[dow].afternoon++
+      else grid[dow].evening++
     })
     return grid
   }, [presentRecords])
@@ -196,8 +214,8 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
     const n = thisMonthCount
     if (n >= 20) return { label: 'Top Atleta 🥇', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' }
     if (n >= 14) return { label: 'Assíduo 🥈', color: 'text-gray-300', bg: 'bg-gray-500/10', border: 'border-gray-500/20' }
-    if (n >= 8)  return { label: 'Regular 🥉', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' }
-    if (n >= 4)  return { label: 'Iniciante', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' }
+    if (n >= 8) return { label: 'Regular 🥉', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' }
+    if (n >= 4) return { label: 'Iniciante', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' }
     return null
   }, [thisMonthCount])
 
@@ -220,9 +238,18 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
   // ── Print ────────────────────────────────────────────────────
   function handlePrint() {
     const w = window.open('', '_blank')
-    const rows = presentRecords.slice().reverse().map(r =>
-      `<tr><td>${r.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</td><td>${r.modality}</td><td>✅ Presente</td></tr>`
-    ).join('')
+    const rows = [...records].reverse().map(r => {
+      const isPresence = r.status === 'present'
+      const isAbsence = r.status === 'absent'
+      const statusIcon = isPresence ? '✅' : isAbsence ? '❌' : 'ℹ️'
+      const statusLabel = isPresence ? 'Presente' : isAbsence ? 'Falta' : 'Justificado'
+      
+      return `<tr>
+        <td>${r.date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+        <td style="font-weight:bold">${r.modality}</td>
+        <td>${statusIcon} ${statusLabel}</td>
+      </tr>`
+    }).join('')
     w.document.write(`
       <html><head><title>Frequência — ${student.name}</title><style>
         body{font-family:sans-serif;padding:32px;color:#111}
@@ -249,8 +276,8 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
 
   const tabs = [
     { id: 'calendar', label: 'Calendário' },
-    { id: 'charts',   label: 'Gráficos'  },
-    { id: 'notes',    label: `Notas${notes.length ? ` (${notes.length})` : ''}` },
+    { id: 'charts', label: 'Gráficos' },
+    { id: 'notes', label: `Notas${notes.length ? ` (${notes.length})` : ''}` },
   ]
 
   return (
@@ -260,11 +287,11 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
         <div className="px-5 pt-5 pb-4 border-b border-white/10 space-y-4">
           <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: Activity,  color:'text-emerald-400', label:'Este Mês',  value: loading ? '—' : thisMonthCount },
-              { icon: Award,     color:'text-primary',   label:'Total',     value: loading ? '—' : presentRecords.length },
-              { icon: Star,      color:'text-yellow-400',  label:'Sequência', value: loading ? '—' : `${streak}s` },
+              { icon: Activity, color: 'text-emerald-400', label: 'Este Mês', value: loading ? '—' : thisMonthCount },
+              { icon: Award, color: 'text-primary', label: 'Total', value: loading ? '—' : presentRecords.length },
+              { icon: Star, color: 'text-yellow-400', label: 'Sequência', value: loading ? '—' : `${streak}s` },
             ].map(({ icon: Icon, color, label, value }) => (
-              <div key={label} className="bg-white/5 rounded-xll p-3 border border-white/10 text-center">
+              <div key={label} className="bg-white/5 rounded-2xl p-3 border border-white/10 text-center">
                 <Icon size={18} strokeWidth={1.9} className={`${color} mx-auto mb-1`} />
                 <p className={`text-2xl font-black ${color}`}>{value}</p>
                 <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-0.5">{label}</p>
@@ -289,7 +316,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
               )}
             </div>
             <button onClick={handlePrint} title="Exportar PDF"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xll text-[11px] font-bold bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-[11px] font-bold bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
               <FileDown size={13} /> Exportar
             </button>
           </div>
@@ -314,8 +341,8 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
               {/* ══ CALENDAR TAB ══ */}
               {activeTab === 'calendar' && (
                 <div className="space-y-5">
-                  <div className="bg-white/5 rounded-xll border border-white/10 overflow-hidden">
-                    {/* Nav */}
+                  <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
+                    {/* Calendar Navigation */}
                     <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
                       <button onClick={() => setViewDate(p => new Date(p.getFullYear(), p.getMonth() - 1, 1))}
                         className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white">
@@ -338,117 +365,171 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                         ))}
                       </div>
 
-                      {/* Cells */}
+                      {/* Calendar Cells */}
                       <div className="grid grid-cols-7 gap-1">
                         {calendarGrid.map((day, i) => {
                           if (!day) return <div key={`e-${i}`} />
-                          const dayRecs  = monthPresentMap[day] || []
-                          const hasPresent  = dayRecs.some(r => r.status === 'present')
+
+                          const dayRecs = monthPresentMap[day] || []
+                          const isToday = viewDate.getFullYear() === today.getFullYear() &&
+                            viewDate.getMonth() === today.getMonth() &&
+                            day === today.getDate()
+
+                          const hasPresent = dayRecs.some(r => r.status === 'present')
                           const hasJustified = dayRecs.some(r => r.status === 'justified')
-                          const isToday  = viewDate.getFullYear() === today.getFullYear() &&
-                                           viewDate.getMonth()    === today.getMonth()    &&
-                                           day === today.getDate()
-                          const absence  = isAbsenceDay(day) && !hasPresent && !hasJustified
-                          const modality = dayRecs[0]?.modality
+                          const hasAbsent = dayRecs.some(r => r.status === 'absent')
+
+                          const details = dayRecs.map(r => {
+                            const status = r.status === 'present' ? 'Presente' : r.status === 'absent' ? 'Falta' : 'Justificado'
+                            return `${r.modality}: ${status}`
+                          }).join(' | ')
+
+                          let cellStyle = 'text-gray-500 bg-white/[0.04] border border-transparent hover:bg-white/10'
+                          
+                          if (hasPresent) {
+                            cellStyle = 'bg-[#10b981]/15 text-[#10b981] border-2 border-[#10b981] shadow-[inset_0_0_12px_rgba(16,185,129,0.5)] cursor-help scale-[1.02]'
+                          } else if (hasJustified) {
+                            cellStyle = 'bg-[#3b82f6]/15 text-[#3b82f6] border-2 border-[#3b82f6] shadow-[inset_0_0_12px_rgba(59,130,246,0.5)] cursor-help scale-[1.02]'
+                          } else if (hasAbsent) {
+                            // "um cinza, sem borda"
+                            cellStyle = 'bg-white/10 text-gray-400 border-none cursor-help'
+                          } else if (isToday) {
+                            // Subtle today marker
+                            cellStyle = 'bg-white/20 text-white font-black border border-white/20'
+                          }
 
                           return (
-                            <div key={day} title={hasPresent ? `✅ ${modality || ''}` : absence ? '⚠️ Ausência prolongada' : ''}
-                              className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10px] font-bold transition-all relative
-                                ${hasPresent
-                                  ? 'text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-                                  : hasJustified
-                                    ? 'border border-blue-400/50 text-blue-400'
-                                    : absence
-                                      ? 'bg-red-500/5 text-red-900 border border-red-500/10'
-                                      : isToday
-                                        ? 'border border-primary/60 text-primary'
-                                        : 'text-gray-500 hover:bg-white/5'
-                                }`}
-                              style={hasPresent ? { background: `${MODALITY_COLORS[modality || 'Jiu-Jitsu']}30`, borderColor: `${MODALITY_COLORS[modality]}50`, border: '1px solid' } : {}}
+                            <div key={day} 
+                              title={details}
+                              onClick={() => {
+                                if (dayRecs.length > 0) {
+                                  setSelectedDayInfo(selectedDayInfo?.day === day ? null : { day, details: dayRecs })
+                                }
+                              }}
+                              className={`aspect-square flex items-center justify-center rounded-xl text-[10px] font-bold transition-all relative cursor-pointer ${cellStyle}`}
                             >
-                              <span>{day}</span>
-                              {hasPresent && (
-                                <div className="w-1.5 h-1.5 rounded-full mt-0.5 shrink-0"
-                                  style={{ background: MODALITY_COLORS[modality || 'Jiu-Jitsu'] }} />
-                              )}
-                              {hasJustified && <span className="text-[7px] leading-none">JUS</span>}
+                               {day}
                             </div>
                           )
                         })}
                       </div>
 
-                      {/* Legenda */}
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 justify-center">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-sm" style={{ background: 'color-mix(in srgb, var(--clr-primary) 33%, transparent)', border: '1px solid var(--clr-primary)' }} />
-                          <span className="text-[10px] text-gray-400">Jiu-Jitsu</span>
+                      {/* Selected Day Details Overlay */}
+                      {selectedDayInfo && (
+                        <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="flex items-center justify-between mb-2">
+                             <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Detalhes: Dia {selectedDayInfo.day}</span>
+                             <button onClick={() => setSelectedDayInfo(null)} className="text-primary/60 hover:text-primary"><X size={12} /></button>
+                          </div>
+                          <div className="space-y-1.5">
+                            {selectedDayInfo.details.map((d, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-[11px]">
+                                <span className="text-white font-medium">{d.modality}</span>
+                                <span className={`font-bold px-2 py-0.5 rounded-lg text-[9px] uppercase ${
+                                  d.status === 'present' ? 'bg-[#10b981]/20 text-[#10b981]' : 
+                                  d.status === 'absent' ? 'bg-[#ef4444]/20 text-[#ef4444]' : 'bg-[#3b82f6]/20 text-[#3b82f6]'
+                                }`}>
+                                  {d.status === 'present' ? 'Presente' : d.status === 'absent' ? 'Falta' : 'Justificado'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-sm" style={{ background: '#f59e0b55', border: '1px solid #f59e0b' }} />
-                          <span className="text-[10px] text-gray-400">Boxe</span>
+                      )}
+
+                      {/* Legend Container */}
+                      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 mt-4 justify-center bg-black/40 p-2.5 rounded-2xl border border-white/5 shadow-inner">
+                        <div className="w-full text-center text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-1 opacity-50">Legenda de Status</div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 rounded-sm border-2 border-[#10b981] bg-[#10b981]/10" />
+                          <span className="text-[10px] text-gray-400">Presença</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-sm" style={{ background: '#3b82f655', border: '1px solid #3b82f6' }} />
+                        <div className="flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 rounded-sm bg-white/10" />
+                          <span className="text-[10px] text-gray-400">Falta</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 rounded-sm border-2 border-[#3b82f6] bg-[#3b82f6]/10" />
                           <span className="text-[10px] text-gray-400">Justificado</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-sm" style={{ background: '#f9731620', border: '1px solid #f97316' }} />
-                          <span className="text-[10px] text-gray-400">Ausência longa</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-sm" style={{ border: '1.5px solid #e5e7eb' }} />
+                        <div className="flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 rounded-sm border-2 border-primary/60 bg-white/5" />
                           <span className="text-[10px] text-gray-400">Hoje</span>
                         </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Últimos Treinos */}
-                  {presentRecords.length > 0 && (
-                    <div>
-                      <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">Últimos Treinos</h3>
-                      <div className="space-y-2">
-                        {[...presentRecords].reverse().slice(0, 8).map((r, i) => (
-                          <div key={i} className="flex items-center gap-3 bg-white/5 rounded-xll px-4 py-2.5 border border-white/5">
-                            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: MODALITY_COLORS[r.modality] || 'var(--clr-primary)' }} />
-                            <span className="text-sm text-white font-medium flex-1">
-                              {r.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-                            </span>
-                            <span className="text-[10px] text-gray-600 font-bold uppercase">{r.modality}</span>
+                        <div className="w-full h-px bg-white/5 my-1" />
+                        <div className="w-full text-center text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-1 opacity-50">Modalidades</div>
+                        {uniqueModalities.map(m => (
+                          <div key={m} className="flex items-center gap-2">
+                            <div className="w-3.5 h-3.5 rounded-sm border-2" style={{ borderColor: modalityColors[m], backgroundColor: `${modalityColors[m]}20` }} />
+                            <span className="text-[10px] text-gray-400">{m}</span>
                           </div>
                         ))}
                       </div>
                     </div>
-                  )}
+                  </div>
 
-                  {presentRecords.length === 0 && (
-                    <div className="text-center py-10 text-gray-600">
-                      <CalendarDays size={40} className="mx-auto mb-3 opacity-30" />
-                      <p className="text-sm">Nenhum treino registrado ainda.</p>
-                    </div>
-                  )}
+                  {/* Detailed History */}
+                  <div>
+                    <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">Histórico Detalhado</h3>
+                    {records.length > 0 ? (
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                        {[...records].reverse().slice(0, 15).map((r, i) => {
+                          const mColor = modalityColors[r.modality] || 'var(--clr-primary)'
+                          const isPresent = r.status === 'present'
+                          const isJustified = r.status === 'justified'
+                          const isAbsent = r.status === 'absent'
+
+                          return (
+                            <div key={i} className={`flex items-center gap-3 bg-white/5 rounded-2xl px-4 py-2.5 border border-white/5 ${isAbsent ? 'opacity-70' : ''}`}>
+                              {isPresent && <div className="w-2 h-2 rounded-full shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.4)] bg-[#10b981]" />}
+                              {isAbsent && <div className="w-2 h-2 rounded-full shrink-0 border-2 border-[#ef4444] bg-transparent" />}
+                              {isJustified && <div className="w-2 h-2 rounded-full shrink-0 bg-[#3b82f6] shadow-[0_0_8px_rgba(59,130,246,0.3)]" />}
+                              <div className="flex-1">
+                                <div className={`text-sm font-medium ${isAbsent ? 'text-gray-400 line-through' : 'text-white'}`}>
+                                  {r.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[10px] font-bold uppercase" style={{ color: mColor }}>{r.modality}</span>
+                                  <span className="text-[9px] text-gray-500 uppercase tracking-wider bg-white/5 px-1.5 py-0.5 rounded-lg">
+                                    {isPresent ? 'Presente' : isAbsent ? 'Falta' : 'Justificado'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 text-gray-600">
+                        <CalendarDays size={40} className="mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">Nenhum treino registrado ainda.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
+
 
               {/* ══ CHARTS TAB ══ */}
               {activeTab === 'charts' && (
                 <div className="space-y-6">
                   {/* Bar: Consistência Mensal */}
-                  <div className="bg-white/5 rounded-xll border border-white/10 p-4">
+                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
                     <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Consistência Mensal</h3>
                     <ResponsiveContainer width="100%" height={140}>
                       <BarChart data={monthlyData} barSize={14}>
                         <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false} />
                         <YAxis hide />
                         <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                        <Bar dataKey="count" fill="var(--clr-primary)" radius={[4, 4, 0, 0]}
+                        <Bar dataKey="count" fill="var(--clr-primary)" radius={[6, 6, 0, 0]}
                           label={{ position: 'top', fill: '#6b7280', fontSize: 9, formatter: v => v || '' }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
                   {/* Line: Rumo à Graduação */}
-                  <div className="bg-white/5 rounded-xll border border-white/10 p-4">
+                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Rumo à Graduação</h3>
                       <span className="text-[10px] text-purple-400 font-bold">{Math.min(presentRecords.length, PROMO_TARGET)}/{PROMO_TARGET} treinos</span>
@@ -466,14 +547,14 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
 
                   {/* Pie: Modalidades */}
                   {modalityData.length > 1 && (
-                    <div className="bg-white/5 rounded-xll border border-white/10 p-4">
+                    <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
                       <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Divisão por Modalidade</h3>
                       <div className="flex items-center gap-4">
                         <ResponsiveContainer width={120} height={120}>
                           <PieChart>
                             <Pie data={modalityData} cx="50%" cy="50%" innerRadius={30} outerRadius={52} paddingAngle={3} dataKey="value">
                               {modalityData.map((entry, i) => (
-                                <Cell key={i} fill={MODALITY_COLORS[entry.name] || '#8b5cf6'} />
+                                <Cell key={i} fill={modalityColors[entry.name] || '#8b5cf6'} />
                               ))}
                             </Pie>
                           </PieChart>
@@ -485,10 +566,10 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                               <div key={m.name}>
                                 <div className="flex items-center justify-between text-xs mb-1">
                                   <span className="text-gray-300 font-medium">{m.name}</span>
-                                  <span className="font-black" style={{ color: MODALITY_COLORS[m.name] }}>{pct}%</span>
+                                  <span className="font-black" style={{ color: modalityColors[m.name] }}>{pct}%</span>
                                 </div>
                                 <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
-                                  <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: MODALITY_COLORS[m.name] }} />
+                                  <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: modalityColors[m.name] }} />
                                 </div>
                               </div>
                             )
@@ -499,7 +580,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                   )}
 
                   {/* Heatmap GitHub-style */}
-                  <div className="bg-white/5 rounded-xll border border-white/10 p-4">
+                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
                     <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Mapa de Frequência (Horário)</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-[9px]">
@@ -516,15 +597,15 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                             const row = heatmapData[i]
                             return (
                               <tr key={day}>
-                                <td className="text-gray-600 pr-3 font-bold py-1">{day.slice(0,3)}</td>
-                                {['morning','afternoon','evening'].map(period => {
+                                <td className="text-gray-600 pr-3 font-bold py-1">{day.slice(0, 3)}</td>
+                                {['morning', 'afternoon', 'evening'].map(period => {
                                   const v = row[period]
                                   const intensity = v / heatMax
                                   return (
                                     <td key={period} className="py-1 px-1 text-center">
                                       <div
                                         title={`${v} treino${v !== 1 ? 's' : ''}`}
-                                        className="w-8 h-8 rounded-md mx-auto flex items-center justify-center text-[10px] font-bold transition-all"
+                                        className="w-8 h-8 rounded-lg mx-auto flex items-center justify-center text-[10px] font-bold transition-all"
                                         style={{
                                           background: v > 0 ? `color-mix(in srgb, var(--clr-primary) ${Math.round((0.1 + intensity * 0.8) * 100)}%, transparent)` : 'rgba(255,255,255,0.04)',
                                           color: intensity > 0.5 ? '#fff' : intensity > 0 ? 'var(--clr-primary)' : '#374151',
@@ -544,7 +625,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                     </div>
                     <div className="flex items-center gap-2 mt-3 justify-end">
                       <span className="text-[9px] text-gray-600">Menos</span>
-                      {[0.05,0.3,0.55,0.8,1].map(v => (
+                      {[0.05, 0.3, 0.55, 0.8, 1].map(v => (
                         <div key={v} className="w-3 h-3 rounded-sm" style={{ background: `color-mix(in srgb, var(--clr-primary) ${Math.round(v * 100)}%, transparent)` }} />
                       ))}
                       <span className="text-[9px] text-gray-600">Mais</span>

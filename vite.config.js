@@ -10,15 +10,20 @@ export default defineConfig({
   build: {
     // Alvo browsers modernos — saída menor com async/await nativo
     target: 'esnext',
-    // Aviso de chunk a partir de 1MB (padrão 500KB era muito restritivo)
-    chunkSizeWarningLimit: 1000,
+
+    // Source maps desactivados em produção — evita exposição do código fonte.
+    // NOTE: Para o deploy final de produção, adicionar: drop: ['console', 'debugger']
+    sourcemap: false,
+
+    // Aviso de chunk a partir de 800KB
+    chunkSizeWarningLimit: 800,
+
     rollupOptions: {
       output: {
-        // Vite 8 (rolldown) exige manualChunks como FUNÇÃO, não objeto
-        // Separa dependências pesadas do bundle inicial para download paralelo
+        // Separa dependências pesadas do bundle inicial para download paralelo.
+        // Cada serviço Firebase fica no seu próprio chunk — tree-shaking eficaz.
         manualChunks(id) {
           if (id.includes('node_modules/firebase/')) {
-            // Divide SDK do Firebase por serviço para tree-shaking eficaz
             if (id.includes('/auth'))      return 'firebase-auth'
             if (id.includes('/firestore')) return 'firebase-firestore'
             if (id.includes('/storage'))   return 'firebase-storage'
@@ -33,5 +38,3 @@ export default defineConfig({
     }
   }
 })
-
-

@@ -18,19 +18,19 @@ import ErrorBoundary from './components/shared/ErrorBoundary'
 // ─── Lazy-loaded pages ───────────────────────────────────────────────────────
 // Each route gets its own chunk — only loaded when navigated to.
 // This cuts the initial bundle by ~80% (800KB → ~150KB).
-const DashboardPage         = lazy(() => import('./modules/dashboard/DashboardPage'))
-const AttendancePage        = lazy(() => import('./modules/attendance/AttendancePage'))
-const StudentsPage          = lazy(() => import('./modules/students/StudentsPage'))
-const CollaboratorsPage     = lazy(() => import('./modules/collaborators/CollaboratorsPage'))
-const EventsPage            = lazy(() => import('./modules/events/EventsPage'))
-const ProfilePage           = lazy(() => import('./modules/profile/ProfilePage'))
-const ReviewAttendancePage  = lazy(() => import('./modules/attendance/ReviewAttendancePage'))
-const LoginPage             = lazy(() => import('./modules/auth/LoginPage'))
-const RegisterPage          = lazy(() => import('./modules/auth/RegisterPage'))
-const FinancePage           = lazy(() => import('./modules/finance/FinancePage'))
-const ContractsPage         = lazy(() => import('./modules/contracts/ContractsPage'))
-const ModuleUnderDevelopment= lazy(() => import('./components/shared/ModuleUnderDevelopment'))
-const ModalitiesPage        = lazy(() => import('./modules/modalities/ModalitiesPage'))
+const DashboardPage = lazy(() => import('./modules/dashboard/DashboardPage'))
+const AttendancePage = lazy(() => import('./modules/attendance/AttendancePage'))
+const StudentsPage = lazy(() => import('./modules/students/StudentsPage'))
+const CollaboratorsPage = lazy(() => import('./modules/collaborators/CollaboratorsPage'))
+const EventsPage = lazy(() => import('./modules/events/EventsPage'))
+const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'))
+const ReviewAttendancePage = lazy(() => import('./modules/attendance/ReviewAttendancePage'))
+const LoginPage = lazy(() => import('./modules/auth/LoginPage'))
+const RegisterPage = lazy(() => import('./modules/auth/RegisterPage'))
+const FinancePage = lazy(() => import('./modules/finance/FinancePage'))
+const ContractsPage = lazy(() => import('./modules/contracts/ContractsPage'))
+const ModuleUnderDevelopment = lazy(() => import('./components/shared/ModuleUnderDevelopment'))
+const ModalitiesPage = lazy(() => import('./modules/modalities/ModalitiesPage'))
 // ─── ScrollToTop Helper ───────────────────────────────────────────────────────
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -43,14 +43,21 @@ function ScrollToTop() {
 }
 
 // ─── Route-level skeleton (ultra-lightweight fallback) ───────────────────────
-// ─── Animated Wrapper for Smooth Transitions ─────────────────────────────────
+// ─── Transição de Página ─────────────────────────────────────────────────────
+// Mobile: apenas opacity (sem y translation) — evita reflows e jank em
+// dispositivos com GPU limitada. Desktop: slide-up suave completo.
+const isMobileDevice = typeof window !== 'undefined' && window.innerWidth <= 768
+
 function AnimatedPage({ children }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
-      transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+      // Em mobile, animar apenas opacity (propriedade GPU-accelerated).
+      // Em desktop, manter o slide-up premium sem comprometer performance.
+      initial={isMobileDevice ? { opacity: 0 } : { opacity: 0, y: 24 }}
+      animate={isMobileDevice ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      exit={{ opacity: 0, transition: { duration: 0.12 } }}
+      transition={{ duration: isMobileDevice ? 0.2 : 0.35, ease: [0.4, 0, 0.2, 1] }}
+      style={{ willChange: 'opacity, transform' }}
       className="flex-1 w-full flex flex-col origin-top"
     >
       {children}
@@ -119,9 +126,9 @@ function AppContent() {
           setMobileOpen={setMobileOpen}
         />
 
-          {/* Área de Conteúdo Dinâmico */}
+        {/* Área de Conteúdo Dinâmico */}
         <div className="main-content flex flex-col flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden transition-all relative">
-          
+
           <div className="flex-1 flex flex-col relative w-full min-h-0">
             {/* Wrapper Centralizado para as Páginas e Rodapé */}
             <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col">

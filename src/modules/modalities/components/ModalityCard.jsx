@@ -29,6 +29,11 @@ export default function ModalityCard({
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-sm md:text-base font-black text-white uppercase tracking-wider truncate">{modality.name}</h3>
             <span className={`w-1.5 h-1.5 rounded-full ${modality.status === 'ativo' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-gray-600'}`}></span>
+            {modality.hasBelt && (
+              <span className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-[8px] font-black uppercase tracking-widest ml-1">
+                Faixas
+              </span>
+            )}
           </div>
           
           <div className="flex items-center gap-4 text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-widest">

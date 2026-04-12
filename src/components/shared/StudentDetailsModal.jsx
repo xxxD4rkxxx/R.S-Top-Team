@@ -1,9 +1,15 @@
 import React, { useState } from 'react'
-import { X, Mail, Phone, AlertCircle, HeartPulse, Calendar, Edit2, Save, Users, Smartphone, AlertTriangle } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { X, Mail, Phone, AlertCircle, HeartPulse, Calendar, Edit2, Save, Users, Smartphone, AlertTriangle, Key } from 'lucide-react'
 import { beltConfig } from '../../data/beltConfig'
 import { useAttendanceAlerts } from '../../hooks/useAttendanceAlerts'
+import { useAuth } from '../../context/AuthContext'
+import { useApp } from '../../context/AppContext'
+import { useHideMobileNav } from '../../hooks/useHideMobileNav'
+
 
 const AssiduityCard = ({ student }) => {
+
   const { status, lastAttendance, monthlyCount, isLoading } = useAttendanceAlerts(student.id, student.createdAt)
 
   if (isLoading) return (
@@ -64,42 +70,22 @@ const AssiduityCard = ({ student }) => {
   )
 }
 
-import { useApp } from '../../context/AppContext'
 
-export default function StudentDetailsModal({ student, onClose, onUpdate }) {
-  const { setIsMobileNavHidden } = useApp()
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [errorAlert, setErrorAlert] = useState('')
 
-  // Esconder barra de navegação mobile enquanto o modal estiver aberto
-  React.useEffect(() => {
-    setIsMobileNavHidden(true)
-    return () => setIsMobileNavHidden(false)
-  }, [setIsMobileNavHidden])
-  const [formData, setFormData] = useState(() => ({
-    name: student?.name || '',
-    email: student?.email || '',
-    phone: student?.phone || '',
-    emergency: student?.emergency || '',
-    medical: student?.medical || '',
-    belt: student?.belt || 'white',
-    stripes: student?.stripes || 0,
-    ageCategory: student?.ageCategory || 'Adulto',
-    gender: student?.gender || 'Masculino',
-    parentName: student?.parentName || '',
-    parentPhone: student?.parentPhone || '',
-  }))
+export default function StudentDetailsModal({ student, onClose, onEdit }) {
+  useHideMobileNav(!!student)
+  const { userData, isAdmin, isGestor } = useAuth()
+  const canSeePIN = isAdmin || isGestor || userData?.permissions?.viewStudentPins
 
   if (!student) return null;
 
   const {
-    modality, modalities = [],
-    isVisitor, createdAt, lastAttendanceAt
+    name, email, phone, modality, modalities = [],
+    isVisitor, createdAt, lastAttendanceAt, belt, stripes, ageCategory, gender
   } = student;
 
-  const bgClass = beltConfig[formData.belt]?.bgClass || 'belt-white'
-  const textColor = beltConfig[formData.belt]?.textColor || '#000'
+  const bgClass = beltConfig[belt]?.bgClass || 'belt-white'
+  const textColor = beltConfig[belt]?.textColor || '#000'
   const primaryMod = modality || modalities[0] || 'Não informada'
   
   function formatDate(d) {
@@ -110,224 +96,118 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
     return 'Data inválida'
   }
 
-  function handleChange(field, value) {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
 
-  async function handleSave() {
-    if (!onUpdate) return
-
-    if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()) {
-      setErrorAlert('Atenção: Nome, E-mail e Telefone não podem ficar em branco!')
-      setTimeout(() => setErrorAlert(''), 3500)
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      await onUpdate(student.id, formData)
-      setIsEditing(false)
-      // The local student object will be updated via the firestore snapshot!
-    } catch(err) {
-      console.error(err)
-      alert("Falha ao salvar. Verifique a conexão.")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div 
-        className="modal-content relative max-w-3xl w-full max-h-[90dvh] flex flex-col rounded-[32px] overflow-hidden animate-value-reveal border border-white/10"
         onClick={e => e.stopPropagation()}
+        className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
       >
         {/* Mobile Drag Handle */}
-        <div className="md:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-white/10 rounded-full" />
+        <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+          <div className="w-12 h-1.5 bg-white/10 rounded-full" />
         </div>
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10" style={{ background: 'rgba(255,255,255,0.03)' }}>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            Detalhes do Aluno
-            {isVisitor && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-md border border-blue-500/30 shadow-lg shadow-blue-500/10 uppercase font-black">VISITANTE</span>}
-          </h2>
-          <div className="flex items-center gap-2">
-            {!isEditing && onUpdate && (
-              <button 
-                onClick={() => setIsEditing(true)} 
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-gray-300 bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-              >
-                <Edit2 size={14} /> Editar
-              </button>
-            )}
-            <button onClick={onClose} className="p-2 text-gray-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg">
-              <X size={20} />
+
+        {/* CABEÇALHO PREMIUM FIXO */}
+        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-lg shadow-primary/5">
+              <Users size={28} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+                Perfil do Aluno
+                {isVisitor && <span className="ml-3 text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-md border border-blue-500/30 uppercase font-black tracking-widest">VISITANTE</span>}
+              </h2>
+              <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                <span className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                Matrícula Ativa
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10 border border-white/5">
+              <X size={24} />
             </button>
           </div>
         </div>
 
-        <div className="p-4 md:p-6 overflow-y-auto space-y-6">
-          {errorAlert && (
-            <div className="bg-red-500/20 text-red-400 p-3 rounded-2xl border border-red-500/30 flex items-center gap-2 text-sm font-bold animate-pulse shadow-lg">
-              <AlertTriangle size={16} />
-              {errorAlert}
-            </div>
-          )}
-
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar">
           {/* Header Info */}
-          <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 shrink-0 rounded-full flex items-center justify-center font-bold text-xl shadow-lg ring-2 ring-white/10 ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
+          <div className="flex items-center gap-6">
+            <div className={`w-24 h-24 shrink-0 rounded-3xl flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
               {student.photo ? (
-                <img src={student.photo} alt={formData.name} className="w-full h-full rounded-full object-cover" />
+                <img src={student.photo} alt={name} className="w-full h-full rounded-2xl object-cover" />
               ) : (
-                student.initials || formData.name.charAt(0) || 'A'
+                student.initials || name.charAt(0) || 'A'
               )}
             </div>
             <div className="min-w-0 flex-1">
-              {isEditing ? (
-                <input 
-                  value={formData.name} 
-                  onChange={e => handleChange('name', e.target.value)}
-                  className="w-full bg-black/40 border border-white/20 rounded px-2 py-1 text-white font-bold"
-                  placeholder="Nome do aluno"
-                />
-              ) : (
-                <p className="text-xl font-bold text-white truncate">{formData.name}</p>
-              )}
+              <p className="text-2xl md:text-3xl font-black text-white truncate leading-tight tracking-tight">{name}</p>
               
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="text-xs font-semibold px-2 py-1 rounded-md border border-white/10 text-gray-300" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                <span className="text-[9px] font-black px-3 py-1.5 rounded-xl border border-white/10 text-gray-400 uppercase tracking-[0.1em]" style={{ background: 'rgba(255,255,255,0.05)' }}>
                   {primaryMod}
                 </span>
-                
-                {isEditing ? (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select 
-                      value={formData.ageCategory} 
-                      onChange={e => handleChange('ageCategory', e.target.value)}
-                      className="bg-black border border-white/20 rounded px-2 py-1 text-xs text-white"
-                    >
-                      <option value="Adulto">Adulto</option>
-                      <option value="Juvenil">Juvenil</option>
-                      <option value="Kids">Kids</option>
-                    </select>
-                    <select 
-                      value={formData.gender} 
-                      onChange={e => handleChange('gender', e.target.value)}
-                      className="bg-black border border-white/20 rounded px-2 py-1 text-xs text-white"
-                    >
-                      <option value="Masculino">Masc</option>
-                      <option value="Feminino">Fem</option>
-                    </select>
-                    <select 
-                      value={formData.belt} 
-                      onChange={e => handleChange('belt', e.target.value)}
-                      className="bg-black border border-white/20 rounded px-2 py-1 text-xs text-white"
-                    >
-                      {Object.keys(beltConfig).map(b => (
-                        <option key={b} value={b}>{beltConfig[b].label.toUpperCase()}</option>
-                      ))}
-                    </select>
-                    <input 
-                      type="number" min="0" max="4"
-                      value={formData.stripes} 
-                      onChange={e => handleChange('stripes', e.target.value)}
-                      className="bg-black border border-white/20 rounded px-2 py-1 text-xs text-white w-16"
-                      placeholder="Graus"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-sm bg-white/10 text-gray-300" style={{ letterSpacing: '0.05em' }}>
-                      {formData.ageCategory.toUpperCase()}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-sm bg-white/10 text-gray-300" style={{ letterSpacing: '0.05em' }}>
-                      {formData.gender === 'Masculino' ? 'MASC' : 'FEM'}
-                    </span>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-sm ${bgClass}`} style={{ color: textColor, letterSpacing: '0.05em' }}>
-                      {beltConfig[formData.belt]?.label?.toUpperCase() || formData.belt?.toUpperCase() || 'SEM FAIXA'} {formData.stripes ? `· ${formData.stripes} GRAUS` : ''}
-                    </span>
-                  </>
-                )}
+                <span className="text-[9px] font-black px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-gray-500 uppercase tracking-[0.1em]">
+                  {ageCategory?.toUpperCase() || 'ADULTO'}
+                </span>
+                <span className="text-[9px] font-black px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-gray-500 uppercase tracking-[0.1em]">
+                  {gender === 'Masculino' ? 'MASC' : 'FEM'}
+                </span>
+                <span className={`text-[9px] font-black px-3 py-1.5 rounded-xl border uppercase tracking-[0.1em] ${bgClass}`} style={{ color: textColor }}>
+                  {beltConfig[belt]?.label?.toUpperCase() || belt?.toUpperCase() || 'SEM FAIXA'} {stripes ? `· ${stripes} GRAUS` : ''}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Contact Info */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Contato</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-2 shrink-0 md:w-8">
-                  <Mail size={16} className="text-gray-400" />
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
+              Informações de Contato
+              <div className="h-px flex-1 bg-white/5" />
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-4 bg-white/[0.02] p-5 rounded-2xl border border-white/5 shadow-inner transition-all hover:bg-white/[0.04]">
+                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
+                  <Mail size={20} />
                 </div>
-                <div className="flex-1 min-w-0 w-full">
-                  <p className="text-[10px] text-gray-500 uppercase">E-mail</p>
-                  {isEditing ? (
-                    <input 
-                      value={formData.email} 
-                      onChange={e => handleChange('email', e.target.value)}
-                      className="w-full bg-black/40 border border-white/20 rounded px-2 mt-1 text-sm text-white"
-                    />
-                  ) : (
-                    <p className="text-sm text-white truncate mt-0.5">{formData.email || 'Não informado'}</p>
-                  )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">E-mail</p>
+                  <p className="text-sm text-white truncate font-bold font-mono mt-0.5">{email || 'Não informado'}</p>
                 </div>
               </div>
               
-              <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-2 shrink-0 md:w-8">
-                  <Phone size={16} className="text-gray-400" />
+              <div className="flex items-center gap-4 bg-white/[0.02] p-5 rounded-2xl border border-white/5 shadow-inner transition-all hover:bg-white/[0.04]">
+                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-emerald-400/60">
+                  <Phone size={20} />
                 </div>
-                <div className="flex-1 min-w-0 w-full">
-                  <p className="text-[10px] text-gray-500 uppercase">Telefone</p>
-                  {isEditing ? (
-                    <input 
-                      value={formData.phone} 
-                      onChange={e => handleChange('phone', e.target.value)}
-                      className="w-full bg-black/40 border border-white/20 rounded px-2 mt-1 text-sm text-white"
-                    />
-                  ) : (
-                    <p className="text-sm text-white truncate mt-0.5">{formData.phone || 'Não informado'}</p>
-                  )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Telefone</p>
+                  <p className="text-sm text-white truncate font-bold font-mono mt-0.5">{phone || 'Não informado'}</p>
                 </div>
               </div>
 
-              {(formData.ageCategory === 'Kids' || formData.ageCategory === 'Juvenil') && (
+              {(ageCategory === 'Kids' || ageCategory === 'Juvenil') && (
                 <>
-                  <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
-                    <div className="flex items-center gap-2 shrink-0 md:w-8">
-                      <Users size={16} className="text-gray-400" />
+                  <div className="flex items-center gap-4 bg-white/[0.02] p-5 rounded-2xl border border-white/5 shadow-inner transition-all hover:bg-white/[0.04]">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
+                      <Users size={20} />
                     </div>
-                    <div className="flex-1 min-w-0 w-full">
-                      <p className="text-[10px] text-gray-500 uppercase">Nome do Responsável</p>
-                      {isEditing ? (
-                        <input 
-                          value={formData.parentName} 
-                          onChange={e => handleChange('parentName', e.target.value)}
-                          className="w-full bg-black/40 border border-white/20 rounded px-2 mt-1 text-sm text-white"
-                        />
-                      ) : (
-                        <p className="text-sm text-white truncate mt-0.5">{formData.parentName || 'Não informado'}</p>
-                      )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Responsável</p>
+                      <p className="text-sm text-white truncate font-bold mt-0.5">{student.parentName || 'Não informado'}</p>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col md:flex-row md:items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
-                    <div className="flex items-center gap-2 shrink-0 md:w-8">
-                      <Smartphone size={16} className="text-gray-400" />
+                  <div className="flex items-center gap-4 bg-white/[0.02] p-5 rounded-2xl border border-white/5 shadow-inner transition-all hover:bg-white/[0.04]">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
+                      <Smartphone size={20} />
                     </div>
-                    <div className="flex-1 min-w-0 w-full">
-                      <p className="text-[10px] text-gray-500 uppercase">Tel. Responsável</p>
-                      {isEditing ? (
-                        <input 
-                          value={formData.parentPhone} 
-                          onChange={e => handleChange('parentPhone', e.target.value)}
-                          className="w-full bg-black/40 border border-white/20 rounded px-2 mt-1 text-sm text-white"
-                        />
-                      ) : (
-                        <p className="text-sm text-white truncate mt-0.5">{formData.parentPhone || 'Não informado'}</p>
-                      )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Tel. Responsável</p>
+                      <p className="text-sm text-white truncate font-bold font-mono mt-0.5">{student.parentPhone || 'Não informado'}</p>
                     </div>
                   </div>
                 </>
@@ -336,107 +216,94 @@ export default function StudentDetailsModal({ student, onClose, onUpdate }) {
           </div>
 
           {/* Medical & Emergency */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Emergência e Saúde</h3>
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col md:flex-row md:items-start gap-3 bg-white/5 p-3 rounded-xll border border-red-900/30">
-                <AlertCircle size={16} style={{ color: 'var(--clr-primary)' }} className="mt-0.5 shrink-0" />
-                <div className="flex-1 w-full">
-                  <p className="text-[10px] text-gray-500 uppercase">Contato de Emergência</p>
-                  {isEditing ? (
-                    <input 
-                      value={formData.emergency} 
-                      onChange={e => handleChange('emergency', e.target.value)}
-                      className="w-full bg-black/40 border border-primary/40 rounded px-2 mt-1 text-sm text-white"
-                    />
-                  ) : (
-                    <p className="text-sm text-white mt-0.5">{formData.emergency || 'Não informado'}</p>
-                  )}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
+              Emergência e Saúde
+              <div className="h-px flex-1 bg-white/5" />
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex items-center gap-4 bg-red-500/[0.02] p-5 rounded-2xl border border-red-500/10 shadow-inner transition-all hover:bg-red-500/[0.04]">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400">
+                  <AlertCircle size={20} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Contato de Emergência</p>
+                  <p className="text-sm text-white font-bold mt-0.5">{student.emergency || 'Não informado'}</p>
                 </div>
               </div>
-              <div className="flex flex-col md:flex-row md:items-start gap-3 bg-white/5 p-3 rounded-2xl border border-primary/30">
-                <HeartPulse size={16} className="text-primary mt-0.5 shrink-0" />
-                <div className="flex-1 w-full">
-                  <p className="text-[10px] text-gray-500 uppercase">Restrições Médicas</p>
-                  {isEditing ? (
-                    <textarea 
-                      value={formData.medical} 
-                      onChange={e => handleChange('medical', e.target.value)}
-                      className="w-full bg-black/40 border border-primary/40 rounded px-2 py-1 mt-1 text-sm text-white min-h-[60px]"
-                    />
-                  ) : (
-                    <p className="text-sm text-white mt-0.5 whitespace-pre-wrap">{formData.medical || 'Nenhuma restrição informada/conhecida.'}</p>
-                  )}
+              <div className="flex flex-col gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner transition-all hover:bg-emerald-500/[0.04]">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                    <HeartPulse size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Restrições Médicas</p>
+                    <p className="text-sm text-white font-medium mt-1 whitespace-pre-wrap leading-relaxed">{student.medical || 'Nenhuma restrição informada/conhecida.'}</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Assiduity Status */}
-          {!isEditing && <AssiduityCard student={student} />}
-
-          {/* Activity */}
-          {!isEditing && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Atividade</h3>
-              <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
-                <Calendar size={16} className="text-gray-400 shrink-0" />
-                <div className="flex-1 flex justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="text-[10px] text-gray-500 uppercase">Cadastrado em</p>
-                    <p className="text-sm text-white">{formatDate(createdAt)}</p>
-                  </div>
-                  <div className="text-right flex-1">
-                    <p className="text-[10px] text-gray-500 uppercase">Última Presença</p>
-                    <p className="text-sm text-white">{formatDate(lastAttendanceAt)}</p>
-                  </div>
+          {/* Segurança */}
+          {canSeePIN && (
+             <div className="space-y-4">
+              <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                Segurança e Credenciais
+                <div className="h-px flex-1 bg-white/5" />
+              </h3>
+              <div className="flex items-center gap-4 bg-emerald-500/5 p-5 rounded-2xl border border-emerald-500/10">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                  <Key size={20} />
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">PIN de Acesso Pessoal</p>
+                  <p className="text-xl text-emerald-400 font-mono tracking-[0.3em] font-black">{student.pin || '---'}</p>
                 </div>
               </div>
             </div>
           )}
+
+          {/* Assiduity Status */}
+          <div className="space-y-4">
+            <AssiduityCard student={student} />
+          </div>
+
+          {/* Atividade */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
+              Atividade no Sistema
+              <div className="h-px flex-1 bg-white/5" />
+            </h3>
+            <div className="flex items-center gap-5 bg-white/[0.02] p-5 rounded-2xl border border-white/5">
+              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-500">
+                <Calendar size={20} />
+              </div>
+              <div className="flex-1 flex justify-between gap-6">
+                <div>
+                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Membro desde</p>
+                  <p className="text-sm text-white font-bold">{formatDate(createdAt)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Última aula</p>
+                  <p className="text-sm text-white font-bold">{formatDate(lastAttendanceAt)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
-        <div className="p-4 border-t border-white/10 flex justify-end gap-3 bg-black/20">
-          {isEditing ? (
-            <>
-              <button 
-                onClick={() => {
-                  setIsEditing(false)
-                  setFormData({
-                    name: student?.name || '',
-                    email: student?.email || '',
-                    phone: student?.phone || '',
-                    emergency: student?.emergency || '',
-                    medical: student?.medical || '',
-                    belt: student?.belt || 'white',
-                    stripes: student?.stripes || 0,
-                    ageCategory: student?.ageCategory || 'Adulto',
-                    gender: student?.gender || 'Masculino',
-                    parentName: student?.parentName || '',
-                    parentPhone: student?.parentPhone || '',
-                  })
-                }} 
-                className="px-5 py-2 rounded-2xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 transition-colors"
-                disabled={isSaving}
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleSave} 
-                className="btn-primary flex items-center gap-2 px-6 py-2 rounded-2xl text-sm font-bold text-white transition-all disabled:opacity-50"
-                disabled={isSaving}
-              >
-                {isSaving ? 'Salvando...' : <><Save size={16}/> Salvar</>}
-              </button>
-            </>
-          ) : (
-            <button onClick={onClose} className="px-5 py-2 rounded-2xl text-sm font-bold text-white bg-white/10 hover:bg-white/20 transition-colors">
-              Fechar
-            </button>
-          )}
+        <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
+          <button 
+            onClick={onClose} 
+            className="w-full py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
+          >
+            Fechar Perfil
+          </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

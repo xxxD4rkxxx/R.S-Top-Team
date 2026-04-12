@@ -19,11 +19,12 @@ import { useAuth } from '../../context/AuthContext'
 
 // ── Ícones de role ──────────────────────────────────────────────
 const roleConfig = {
-  admin:         { label: 'ADMINISTRADOR',  icon: Crown,         color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/25' },
-  gestor:        { label: 'GESTOR',         icon: Shield,        color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25' },
-  professor:     { label: 'PROFESSOR',      icon: UserCog,       color: 'text-primary',    bg: 'bg-primary/10 border-primary/25'  },
-  aluno:         { label: 'ALUNO',          icon: GraduationCap, color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/25'    },
-  desenvolvedor: { label: 'DESENVOLVEDOR',  icon: Crown,         color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/25' },
+  admin: { label: 'ADMINISTRADOR', icon: Crown, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/25' },
+  gestor: { label: 'GESTOR', icon: Shield, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25' },
+  professor: { label: 'PROFESSOR', icon: UserCog, color: 'text-primary', bg: 'bg-primary/10 border-primary/25' },
+  aluno: { label: 'ALUNO', icon: GraduationCap, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/25' },
+  desenvolvedor: { label: 'DESENVOLVEDOR', icon: Crown, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/25' },
+  dono: { label: 'DONO', icon: Crown, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/25' },
 }
 
 // ── Seções da sidebar ───────────────────────────────────────────
@@ -31,26 +32,26 @@ const SECTIONS = [
   {
     group: 'Meu perfil',
     items: [
-      { id: 'conta',        icon: User,       label: 'Minha conta'       },
-      { id: 'seguranca',    icon: KeyRound,   label: 'Senha & acesso'    },
-      { id: 'notificacoes', icon: Bell,       label: 'Notificações'      },
-      { id: 'aparencia',    icon: Palette,    label: 'Aparência'         },
+      { id: 'conta', icon: User, label: 'Minha conta' },
+      { id: 'seguranca', icon: KeyRound, label: 'Senha & acesso' },
+      { id: 'notificacoes', icon: Bell, label: 'Notificações' },
+      { id: 'aparencia', icon: Palette, label: 'Aparência' },
     ],
   },
   {
     group: 'Sistema',
     items: [
-      { id: 'usuarios',     icon: Users,      label: 'Usuários'          },
-      { id: 'academia',     icon: Dumbbell,   label: 'Academia'          },
-      { id: 'dados',        icon: Database,   label: 'Dados & Backup'    },
-      { id: 'logs',         icon: Activity,   label: 'Logs de atividade' },
-      { id: 'erros',        icon: AlertCircle,label: 'Logs de erros'     },
+      { id: 'usuarios', icon: Users, label: 'Usuários' },
+      { id: 'academia', icon: Dumbbell, label: 'Academia' },
+      { id: 'dados', icon: Database, label: 'Dados & Backup' },
+      { id: 'logs', icon: Activity, label: 'Logs de atividade' },
+      { id: 'erros', icon: AlertCircle, label: 'Logs de erros' },
     ],
   },
   {
     group: 'Info',
     items: [
-      { id: 'sobre',        icon: Info,       label: 'Sobre o sistema'   },
+      { id: 'sobre', icon: Info, label: 'Sobre o sistema' },
     ],
   },
 ]
@@ -58,7 +59,7 @@ const SECTIONS = [
 // ════════════════════════════════════════════════════════════════
 //  PAINEL: MINHA CONTA
 // ════════════════════════════════════════════════════════════════
-function SectionConta({ user, onUpdateProfile }) {
+function SectionConta({ user, activeRole, onUpdateProfile }) {
   const [editingField, setEditingField] = useState(null)
   const [fieldValue, setFieldValue] = useState('')
   const [saving, setSaving] = useState(false)
@@ -74,12 +75,12 @@ function SectionConta({ user, onUpdateProfile }) {
 
 
   const initials = (user?.name || 'M').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
-  const role = roleConfig[user?.role] || roleConfig.dono
+  const role = roleConfig[activeRole] || roleConfig[user?.role] || roleConfig.aluno
 
   return (
     <div className="space-y-6">
       {/* PROFILE CARD */}
-      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid color-mix(in srgb, var(--clr-primary-dark) 35%, transparent)' }}>
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid color-mix(in srgb, var(--clr-primary-dark) 35%, transparent)' }}>
         {/* BANNER (STATIC GRADIENT) */}
         <div className="h-28 w-full relative">
           <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark) 0%, var(--clr-primary) 60%, #FF3057 100%)' }}>
@@ -93,7 +94,7 @@ function SectionConta({ user, onUpdateProfile }) {
             {/* AVATAR */}
             {/* AVATAR (INITIALS ONLY) */}
             <div className="relative flex-shrink-0">
-              <div className="w-20 h-20 rounded-lg flex items-center justify-center text-2xl font-black text-white ring-4 shadow-xl shadow-primary/20" style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))', ringColor: 'var(--clr-surface-2)' }}>
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white ring-4 shadow-xl shadow-primary/20" style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))', ringColor: 'var(--clr-surface-2)' }}>
                 {initials}
               </div>
             </div>
@@ -102,29 +103,36 @@ function SectionConta({ user, onUpdateProfile }) {
               <p className="text-white font-bold text-lg leading-none truncate">{user?.name || 'Anon'}</p>
             </div>
 
-            <div className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 border ${role.bg}`}>
-              <role.icon size={13} className={role.color} />
-              <span className={role.color}>{role.label}</span>
+            <div className="flex flex-wrap gap-2 justify-end">
+              {Object.entries(user?.roles || {}).filter(([_, active]) => active).map(([rKey]) => {
+                const rCfg = roleConfig[rKey] || roleConfig.aluno
+                return (
+                  <div key={rKey} className={`px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border transition-all hover:scale-105 ${rCfg.bg}`}>
+                    <rCfg.icon size={12} className={rCfg.color} />
+                    <span className={rCfg.color}>{rCfg.label}</span>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1.5 rounded-md text-xs font-semibold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>🥋 RS Top Team</span>
-            <span className="px-3 py-1.5 rounded-md text-xs font-semibold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <span className="px-3 py-1.5 rounded-2xl text-[11px] font-bold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>🥋 RS Top Team</span>
+            <span className="px-3 py-1.5 rounded-2xl text-[11px] font-bold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
               📅 Desde {
                 (() => {
                   const raw = user?.startDate || user?.createdAt
                   if (!raw) return '—'
                   try {
                     // Função auxiliar para converter qualquer formato de data do Firebase/JS
-                    const date = (raw && typeof raw.toDate === 'function') 
-                      ? raw.toDate() 
+                    const date = (raw && typeof raw.toDate === 'function')
+                      ? raw.toDate()
                       : (typeof raw === 'string' || typeof raw === 'number')
                         ? new Date(raw)
                         : raw
-                    
-                    return date instanceof Date && !isNaN(date) 
-                      ? date.toLocaleDateString('pt-BR') 
+
+                    return date instanceof Date && !isNaN(date)
+                      ? date.toLocaleDateString('pt-BR')
                       : '—'
                   } catch (e) {
                     return '—'
@@ -139,9 +147,9 @@ function SectionConta({ user, onUpdateProfile }) {
       {/* EDIT FIELDS */}
       <Section title="Informações da conta">
         {[
-          { key: 'name',   label: 'Nome',            val: user?.name   || 'Anon'      },
-          { key: 'email',  label: 'E-mail',           val: user?.email  || '—'        },
-          { key: 'phone',  label: 'Telefone',         val: user?.phone  || '—'        },
+          { key: 'name', label: 'Nome', val: user?.name || 'Anon' },
+          { key: 'email', label: 'E-mail', val: user?.email || '—' },
+          { key: 'phone', label: 'Telefone', val: user?.phone || '—' },
         ].map(f => (
           <div key={f.key}>
             {editingField === f.key ? (
@@ -152,7 +160,8 @@ function SectionConta({ user, onUpdateProfile }) {
                     autoFocus
                     value={fieldValue}
                     onChange={e => setFieldValue(e.target.value)}
-                    className="form-input text-sm py-2 px-3"
+                    className="form-input text-sm py-2 px-3 focus:border-primary/50 transition-all"
+                    placeholder={f.label}
                     onKeyDown={e => e.key === 'Enter' && saveField()}
                   />
                 </div>
@@ -197,7 +206,7 @@ function SectionSeguranca({ onChangePassword, activityLogs }) {
 
   const handleChange = async () => {
     if (next !== confirm) { setStatus('err'); setErrMsg('As senhas não coincidem'); return }
-    if (next.length < 6)  { setStatus('err'); setErrMsg('Mínimo 6 caracteres'); return }
+    if (next.length < 6) { setStatus('err'); setErrMsg('Mínimo 6 caracteres'); return }
     setLoading(true); setStatus(null)
     try {
       await onChangePassword(current, next)
@@ -215,20 +224,20 @@ function SectionSeguranca({ onChangePassword, activityLogs }) {
       <Section title="Alterar senha">
         <div className="px-5 py-4 space-y-3">
           <FormInput label="Senha atual" value={current} onChange={setCurrent} type={showPwd ? 'text' : 'password'} />
-          <FormInput label="Nova senha"  value={next}    onChange={setNext}    type={showPwd ? 'text' : 'password'} />
+          <FormInput label="Nova senha" value={next} onChange={setNext} type={showPwd ? 'text' : 'password'} />
           <FormInput label="Confirmar nova senha" value={confirm} onChange={setConfirm} type={showPwd ? 'text' : 'password'} />
 
           <div className="flex items-center justify-between pt-1">
             <button onClick={() => setShowPwd(v => !v)} className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition-colors">
-              {showPwd ? <EyeOff size={18} strokeWidth={1.9}/> : <Eye size={18} strokeWidth={1.9}/>} {showPwd ? 'Ocultar' : 'Mostrar'} senhas
+              {showPwd ? <EyeOff size={18} strokeWidth={1.9} /> : <Eye size={18} strokeWidth={1.9} />} {showPwd ? 'Ocultar' : 'Mostrar'} senhas
             </button>
             <button onClick={handleChange} disabled={loading || !current || !next || !confirm} className="btn-primary px-4 py-2 rounded-md text-sm font-bold disabled:opacity-40">
               {loading ? 'Salvando...' : 'Alterar senha'}
             </button>
           </div>
 
-          {status === 'ok' && <p className="text-emerald-400 text-xs flex items-center gap-1.5"><CheckCircle2 size={18} strokeWidth={1.9}/> Senha alterada com sucesso!</p>}
-          {status === 'err' && <p className="text-xs flex items-center gap-1.5" style={{ color: 'var(--clr-primary)' }}><AlertTriangle size={18} strokeWidth={1.9}/> {errMsg}</p>}
+          {status === 'ok' && <p className="text-emerald-400 text-xs flex items-center gap-1.5"><CheckCircle2 size={18} strokeWidth={1.9} /> Senha alterada com sucesso!</p>}
+          {status === 'err' && <p className="text-xs flex items-center gap-1.5" style={{ color: 'var(--clr-primary)' }}><AlertTriangle size={18} strokeWidth={1.9} /> {errMsg}</p>}
         </div>
       </Section>
 
@@ -236,14 +245,14 @@ function SectionSeguranca({ onChangePassword, activityLogs }) {
         {recentLogins.length === 0
           ? <p className="px-5 py-4 text-gray-600 text-sm">Nenhum login registrado ainda.</p>
           : recentLogins.map(log => (
-              <div key={log.id} className="flex items-center justify-between px-5 py-3 border-b border-white/5 last:border-0">
-                <div>
-                  <p className="text-app text-sm font-semibold">{log.userName}</p>
-                  <p className="text-gray-500 text-xs">{log.detail}</p>
-                </div>
-                <LogTime date={log.createdAt} />
+            <div key={log.id} className="flex items-center justify-between px-5 py-3 border-b border-white/5 last:border-0">
+              <div>
+                <p className="text-app text-sm font-semibold">{log.userName}</p>
+                <p className="text-gray-500 text-xs">{log.detail}</p>
               </div>
-            ))
+              <LogTime date={log.createdAt} />
+            </div>
+          ))
         }
       </Section>
     </div>
@@ -253,7 +262,7 @@ function SectionSeguranca({ onChangePassword, activityLogs }) {
 // ════════════════════════════════════════════════════════════════
 //  PAINEL: USUÁRIOS DO SISTEMA
 // ════════════════════════════════════════════════════════════════
-function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
+function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync }) {
   const [showAdd, setShowAdd] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [errors, setErrors] = useState([])
@@ -286,7 +295,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
   }
 
   const handleToggleModality = (m) => {
-    const next = form.modalities.includes(m) 
+    const next = form.modalities.includes(m)
       ? form.modalities.filter(x => x !== m)
       : [...form.modalities, m]
     updateForm({ modalities: next })
@@ -334,7 +343,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
           createdAt: new Date().toISOString()
         }
         const res = await onAddUser(payload)
-        setResult(res) 
+        setResult(res)
       }
     } catch (err) {
       console.error("Save error:", err)
@@ -368,8 +377,8 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
   const formatDate = (d) => {
     if (!d) return '—'
     try {
-      const date = (typeof d === 'string') 
-        ? (d.includes('T') ? new Date(d) : new Date(d + 'T12:00:00')) 
+      const date = (typeof d === 'string')
+        ? (d.includes('T') ? new Date(d) : new Date(d + 'T12:00:00'))
         : (d.toDate ? d.toDate() : new Date(d))
       return date.toLocaleDateString('pt-BR')
     } catch (e) {
@@ -405,7 +414,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      
+
       {/* HEADER + ACTION */}
       <div className="flex items-center justify-between pb-2 border-b border-white/5">
         <div>
@@ -413,20 +422,37 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
           <p className="text-xs text-gray-500 mt-1">Gerencie permissões e acessos de todos os usuários do sistema.</p>
         </div>
         {!showAdd && (
-          <button 
-            onClick={() => setShowAdd(true)} 
-            className="px-4 py-2 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-xs font-bold rounded-md flex items-center gap-2 transition-all active:scale-95"
-          >
-            <Plus size={16} />
-            Adicionar Membro
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                if (window.confirm('Executar sincronização profunda? Isso alinhará todos os IDs de usuários e permissões.')) {
+                  try {
+                    const stats = await onSync()
+                    alert(`Sincronização concluída!\n\nAlunos: ${stats.students}\nEquipe: ${stats.collaborators}\nCorrigidos: ${stats.merged || 0}`)
+                  } catch (e) {
+                    alert('Erro na sincronização: ' + e.message)
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 text-xs font-bold rounded-md flex items-center gap-2 transition-all active:scale-95"
+            >
+              <RefreshCw size={16} /> Sincronizar Base
+            </button>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="px-4 py-2 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-xs font-bold rounded-md flex items-center gap-2 transition-all active:scale-95"
+            >
+              <Plus size={16} />
+              Adicionar Membro
+            </button>
+          </div>
         )}
       </div>
 
       {/* FORM ADICIONAR (REFACTORADO) */}
       {showAdd && (
         <div className="rounded-xl p-6 space-y-8 bg-[#0a0a0a] border border-white/10 shadow-2xl animate-in slide-in-from-top-2 duration-300 ring-1 ring-white/5">
-          
+
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
               <UserCog size={18} /> {editingId ? 'Editar Colaborador' : 'Novo Colaborador'}
@@ -438,29 +464,29 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="space-y-2">
-              <FormInput 
-                label="Nome Completo *" 
-                value={form.name} 
-                onChange={(val) => updateForm({ name: val })} 
-                placeholder="Ex: Roberto Silva" 
+              <FormInput
+                label="Nome Completo *"
+                value={form.name}
+                onChange={(val) => updateForm({ name: val })}
+                placeholder="Ex: Roberto Silva"
                 error={errors.includes('name')}
               />
             </div>
-            
+
             <div className="space-y-2">
-              <FormInput 
-                label="CPF *" 
-                value={form.cpf} 
-                onChange={(val) => updateForm({ cpf: formatCPF(val) })} 
-                placeholder="000.000.000-00" 
+              <FormInput
+                label="CPF *"
+                value={form.cpf}
+                onChange={(val) => updateForm({ cpf: formatCPF(val) })}
+                placeholder="000.000.000-00"
                 error={errors.includes('cpf')}
               />
             </div>
 
             <div className="space-y-2">
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 pl-1">Sexo *</p>
-              <select 
-                value={form.gender} 
+              <select
+                value={form.gender}
                 onChange={(e) => updateForm({ gender: e.target.value })}
                 className={`w-full bg-white/5 border rounded-md px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-all ${errors.includes('gender') ? 'border-primary shadow-[0_0_10px_rgba(225,29,72,0.2)] animate-pulse' : 'border-white/10'}`}
               >
@@ -481,11 +507,11 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
               <div className="h-px flex-1 bg-white/5" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <FormInput 
-                label="Email *" 
-                value={form.email} 
-                onChange={(val) => updateForm({ email: val })} 
-                placeholder="roberto@email.com" 
+              <FormInput
+                label="Email *"
+                value={form.email}
+                onChange={(val) => updateForm({ email: val })}
+                placeholder="roberto@email.com"
                 error={errors.includes('email')}
               />
               <FormInput label="Telefone" value={form.phone} onChange={(val) => updateForm({ phone: formatPhone(val) })} placeholder="(51) 99999-9999" />
@@ -519,7 +545,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
               <span>Modalidades e Cargo</span>
               <div className="h-px flex-1 bg-white/5" />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Cargo Selection */}
               <div>
@@ -561,7 +587,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                   <p className="text-[10px] font-bold text-primary/60 uppercase tracking-widest mb-1 pl-1">Faixa</p>
-                  <select 
+                  <select
                     value={form.jiuJitsu.belt}
                     onChange={(e) => updateForm({ jiuJitsu: { ...form.jiuJitsu, belt: e.target.value } })}
                     className="w-full bg-black/40 border border-primary/30 rounded-md px-4 py-3 text-sm text-white"
@@ -571,17 +597,17 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                     ))}
                   </select>
                 </div>
-                <FormInput 
-                  label="Grau (0-4)" 
-                  type="number" 
-                  value={form.jiuJitsu.degree} 
-                  onChange={(val) => updateForm({ jiuJitsu: { ...form.jiuJitsu, degree: parseInt(val) || 0 } })} 
+                <FormInput
+                  label="Grau (0-4)"
+                  type="number"
+                  value={form.jiuJitsu.degree}
+                  onChange={(val) => updateForm({ jiuJitsu: { ...form.jiuJitsu, degree: parseInt(val) || 0 } })}
                 />
-                <FormInput 
-                  label="Última Graduação" 
-                  type="date" 
-                  value={form.jiuJitsu.lastGraduation} 
-                  onChange={(val) => updateForm({ jiuJitsu: { ...form.jiuJitsu, lastGraduation: val } })} 
+                <FormInput
+                  label="Última Graduação"
+                  type="date"
+                  value={form.jiuJitsu.lastGraduation}
+                  onChange={(val) => updateForm({ jiuJitsu: { ...form.jiuJitsu, lastGraduation: val } })}
                 />
               </div>
             </div>
@@ -592,9 +618,9 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
             <button onClick={handleCloseForm} className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-gray-400 font-bold rounded-md transition-all border border-white/5 active:scale-95">
               Cancelar
             </button>
-            <button 
-              onClick={handleAdd} 
-              disabled={saving} 
+            <button
+              onClick={handleAdd}
+              disabled={saving}
               className="flex-[2] py-4 bg-primary hover:bg-primary-dark disabled:opacity-50 text-white font-black rounded-md transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95"
             >
               {saving ? <RefreshCw size={20} className="animate-spin" /> : <Save size={20} />}
@@ -624,13 +650,13 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                 </div>
               </div>
               <div className="p-6 bg-white/5 flex gap-2 justify-center">
-                <button 
+                <button
                   onClick={() => { handleAdd(); setShowConfirmExit(false) }}
                   className="flex-1 py-3 bg-primary text-white rounded-md text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
                 >
                   Salvar
                 </button>
-                <button 
+                <button
                   onClick={() => { resetForm(); setShowAdd(false); setShowConfirmExit(false) }}
                   className="flex-1 py-3 bg-white/5 text-gray-400 rounded-md text-sm font-black uppercase tracking-widest hover:text-white active:scale-95 transition-all"
                 >
@@ -645,14 +671,14 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
       {/* LISTA DE USUÁRIOS (ESTILO ALUNO) */}
       <div className="bg-[#090909] rounded-xl border border-white/5 overflow-hidden shadow-2xl relative">
         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
-        
+
         <div className="hidden md:grid grid-cols-12 gap-4 px-8 py-5 bg-white/5 text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 relative z-10">
           <div className="col-span-5">Membro da Equipe</div>
           <div className="col-span-3">Função / Cargo</div>
           <div className="col-span-2">Status</div>
           <div className="col-span-2 text-right">Ações</div>
         </div>
-        
+
         <div className="divide-y divide-white/5 relative z-10">
           {users.map(u => {
             const ini = (u.name || '?').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
@@ -664,8 +690,8 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 px-8 py-5 items-center">
                   {/* Avatar + Info */}
                   <div className="col-span-12 md:col-span-5 flex items-center gap-4 cursor-pointer" onClick={() => setSelectedUser(u)}>
-                    <div className="w-12 h-12 rounded-md flex items-center justify-center text-sm font-black text-white flex-shrink-0 shadow-lg" 
-                          style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }}>
+                    <div className="w-12 h-12 rounded-md flex items-center justify-center text-sm font-black text-white flex-shrink-0 shadow-lg"
+                      style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }}>
                       {u.avatarUrl ? <img src={u.avatarUrl} className="w-full h-full rounded-md object-cover" /> : ini}
                     </div>
                     <div className="min-w-0">
@@ -688,9 +714,8 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
 
                   {/* Status */}
                   <div className="col-span-3 md:col-span-2">
-                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-sm border text-[9px] font-black uppercase tracking-widest ${
-                      u.status === 'Inativo' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                    }`}>
+                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-sm border text-[9px] font-black uppercase tracking-widest ${u.status === 'Inativo' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                      }`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${u.status === 'Inativo' ? 'bg-red-500 animate-pulse' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'}`} />
                       {u.status || 'Ativo'}
                     </div>
@@ -698,23 +723,23 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
 
                   {/* Ações */}
                   <div className="col-span-3 md:col-span-2 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                    <button 
-                      onClick={() => setSelectedUser(u)} 
-                      className="p-2.5 rounded-md bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all active:scale-95" 
+                    <button
+                      onClick={() => setSelectedUser(u)}
+                      className="p-2.5 rounded-md bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all active:scale-95"
                       title="Ver Detalhes"
                     >
                       <Eye size={16} />
                     </button>
-                    <button 
-                      onClick={() => handleEdit(u)} 
-                      className="p-2.5 rounded-md bg-white/10 border border-white/10 text-gray-300 hover:text-white hover:bg-white/20 transition-all active:scale-95" 
+                    <button
+                      onClick={() => handleEdit(u)}
+                      className="p-2.5 rounded-md bg-white/10 border border-white/10 text-gray-300 hover:text-white hover:bg-white/20 transition-all active:scale-95"
                       title="Editar"
                     >
                       <Edit2 size={16} />
                     </button>
-                    <button 
-                      onClick={() => handleDelete(u.id, u.role)} 
-                      className="p-2.5 rounded-md bg-red-500/10 border border-red-500/10 text-red-400 hover:text-white hover:bg-red-500 transition-all active:scale-95" 
+                    <button
+                      onClick={() => handleDelete(u.id, u.role)}
+                      className="p-2.5 rounded-md bg-red-500/10 border border-red-500/10 text-red-400 hover:text-white hover:bg-red-500 transition-all active:scale-95"
                       title="Excluir"
                     >
                       <Trash2 size={16} />
@@ -748,7 +773,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                 <h3 className="text-2xl font-black text-white">Pronto!</h3>
                 <p className="text-sm text-gray-400">O colaborador foi cadastrado com sucesso no sistema.</p>
               </div>
-              
+
               <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
                 <p className="text-[10px] font-black text-primary uppercase tracking-widest">PIN de Acesso Único</p>
                 <div className="flex justify-center gap-2">
@@ -761,7 +786,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Forneça este PIN ao colaborador para o primeiro acesso.</p>
               </div>
 
-              <button 
+              <button
                 onClick={() => { setResult(null); resetForm(); setShowAdd(false); }}
                 className="w-full py-4 bg-primary text-white font-black rounded-2xl text-sm uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all"
               >
@@ -775,32 +800,32 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
       {/* MODAL DE DETALHES DO COLABORADOR (REF: RS TOP TEAM STUDIO) */}
       <AnimatePresence>
         {selectedUser && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" 
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
             onClick={() => setSelectedUser(null)}
           >
             {/* Overlay linkado ao container para garantir centralização total */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ type: 'spring', damping: 25, stiffness: 500 }}
-              className="relative w-full max-w-md bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/10 ring-1 ring-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(var(--clr-primary-rgb),0.1)] flex flex-col max-h-[85vh]" 
+              className="relative w-full max-w-md bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/10 ring-1 ring-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(var(--clr-primary-rgb),0.1)] flex flex-col max-h-[85vh]"
               onClick={e => e.stopPropagation()}
             >
               {/* Header Fixo */}
               <header className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0 bg-[#0a0a0a]">
                 <h2 className="text-lg font-black text-white tracking-tight uppercase">Detalhes do Colaborador</h2>
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => { handleEdit(selectedUser); setSelectedUser(null); }} 
+                  <button
+                    onClick={() => { handleEdit(selectedUser); setSelectedUser(null); }}
                     className="flex items-center gap-2 px-3.5 py-1.5 bg-[#1a1a1a] hover:bg-[#252525] border border-white/5 rounded-2xl text-[10px] font-black text-gray-300 transition-all active:scale-95 uppercase tracking-wider"
                   >
                     <Edit2 size={11} />
                     Editar
                   </button>
-                  <button 
-                    onClick={() => setSelectedUser(null)} 
+                  <button
+                    onClick={() => setSelectedUser(null)}
                     className="p-2.5 bg-[#1a1a1a] hover:bg-[#252525] border border-white/5 rounded-2xl text-gray-400 hover:text-white transition-all active:scale-95"
                   >
                     <X size={18} />
@@ -810,7 +835,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
 
               {/* Body com Scroll Interno (Alta Densidade) */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-[#0a0a0a]">
-                
+
                 {/* Perfil Header */}
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-lg font-black text-white shadow-[0_0_20px_rgba(var(--clr-primary-rgb),0.3)] shrink-0">
@@ -821,16 +846,14 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                       {selectedUser.name}
                     </h3>
                     <div className="flex flex-wrap gap-1.5">
-                      <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
-                        selectedUser.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                      <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${selectedUser.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                         selectedUser.role === 'professor' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                        'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                      }`}>
+                          'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                        }`}>
                         {selectedUser.role || 'Staff'}
                       </span>
-                      <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black border uppercase tracking-widest ${
-                        selectedUser.status === 'Inativo' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                      }`}>
+                      <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black border uppercase tracking-widest ${selectedUser.status === 'Inativo' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                        }`}>
                         {selectedUser.status || 'Ativo'}
                       </span>
                     </div>
@@ -883,9 +906,9 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                       <div className="flex-1">
                         <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Cargo / Função</p>
                         <p className="text-sm font-bold text-gray-200">
-                          {selectedUser.role === 'admin' ? 'Administrador do Sistema' : 
-                           selectedUser.role === 'gestor' ? 'Gestor de Unidade' : 
-                           'Professor / Instrutor'}
+                          {selectedUser.role === 'admin' ? 'Administrador do Sistema' :
+                            selectedUser.role === 'gestor' ? 'Gestor de Unidade' :
+                              'Professor / Instrutor'}
                         </p>
                       </div>
                     </div>
@@ -934,10 +957,10 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                       </div>
                       <div className="flex items-center gap-5">
                         <div className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center border-2 shadow-xl"
-                              style={{ 
-                                backgroundColor: beltConfig[selectedUser.jiuJitsu.belt]?.color || '#fff',
-                                borderColor: 'rgba(255,255,255,0.2)'
-                              }}>
+                          style={{
+                            backgroundColor: beltConfig[selectedUser.jiuJitsu.belt]?.color || '#fff',
+                            borderColor: 'rgba(255,255,255,0.2)'
+                          }}>
                           <span className="text-[10px] font-black leading-none" style={{ color: (selectedUser.jiuJitsu.belt === 'white' || selectedUser.jiuJitsu.belt === 'yellow') ? '#000' : '#fff' }}>
                             {selectedUser.jiuJitsu.degree || 0}º
                           </span>
@@ -959,7 +982,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
                   </div>
                 )}
 
-               {/* Seção 4: SAÚDE & OBSERVAÇÕES */}
+                {/* Seção 4: SAÚDE & OBSERVAÇÕES */}
                 <div className="space-y-3 pb-2">
                   <h4 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.25em] ml-1">Saúde & Observações</h4>
                   <div className="bg-[#121212] border border-white/5 rounded-2xl p-4 flex items-start gap-3.5 group">
@@ -990,22 +1013,22 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser }) {
 // ════════════════════════════════════════════════════════════════
 function SectionLogs({ logs, loading }) {
   const activity = logs.filter(l => l.type === 'activity')
-  const levelIcon = { info: <Activity size={18} strokeWidth={1.9} className="text-blue-400"/>, warn: <AlertTriangle size={18} strokeWidth={1.9} className="text-yellow-400"/> }
+  const levelIcon = { info: <Activity size={18} strokeWidth={1.9} className="text-blue-400" />, warn: <AlertTriangle size={18} strokeWidth={1.9} className="text-yellow-400" /> }
   return (
     <div className="space-y-6">
       <Section title={`Atividade do sistema (${activity.length})`}>
         {loading ? <p className="px-5 py-4 text-gray-600 text-sm">Carregando...</p>
-        : activity.length === 0 ? <p className="px-5 py-4 text-gray-600 text-sm">Nenhuma atividade registrada.</p>
-        : activity.map(log => (
-            <div key={log.id} className="flex items-center gap-3 px-5 py-3 border-b border-white/5 last:border-0">
-              <span className="flex-shrink-0">{levelIcon[log.level] || levelIcon.info}</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-app text-sm font-semibold">{log.action}</p>
-                <p className="text-gray-500 text-xs truncate">{log.detail} · {log.userName}</p>
+          : activity.length === 0 ? <p className="px-5 py-4 text-gray-600 text-sm">Nenhuma atividade registrada.</p>
+            : activity.map(log => (
+              <div key={log.id} className="flex items-center gap-3 px-5 py-3 border-b border-white/5 last:border-0">
+                <span className="flex-shrink-0">{levelIcon[log.level] || levelIcon.info}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-app text-sm font-semibold">{log.action}</p>
+                  <p className="text-gray-500 text-xs truncate">{log.detail} · {log.userName}</p>
+                </div>
+                <LogTime date={log.createdAt} />
               </div>
-              <LogTime date={log.createdAt} />
-            </div>
-          ))
+            ))
         }
       </Section>
     </div>
@@ -1021,17 +1044,17 @@ function SectionErros({ logs, loading }) {
     <div className="space-y-6">
       <Section title={`Erros registrados (${errors.length})`}>
         {loading ? <p className="px-5 py-4 text-gray-600 text-sm">Carregando...</p>
-        : errors.length === 0
-          ? (
-            <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
-              <CheckCircle2 size={32} strokeWidth={1.9} className="text-emerald-500"/>
-              <p className="text-app font-semibold">Nenhum erro registrado</p>
-              <p className="text-gray-500 text-sm">O sistema está funcionando perfeitamente.</p>
-            </div>
-          )
-          : errors.map(log => (
+          : errors.length === 0
+            ? (
+              <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
+                <CheckCircle2 size={32} strokeWidth={1.9} className="text-emerald-500" />
+                <p className="text-app font-semibold">Nenhum erro registrado</p>
+                <p className="text-gray-500 text-sm">O sistema está funcionando perfeitamente.</p>
+              </div>
+            )
+            : errors.map(log => (
               <div key={log.id} className="flex items-start gap-3 px-5 py-3 border-b border-white/5 last:border-0">
-                <AlertCircle size={18} strokeWidth={1.9} style={{ color: 'var(--clr-primary)' }} className="flex-shrink-0 mt-0.5"/>
+                <AlertCircle size={18} strokeWidth={1.9} style={{ color: 'var(--clr-primary)' }} className="flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold" style={{ color: 'var(--clr-primary)' }}>{log.action}</p>
                   <p className="text-gray-500 text-xs font-mono break-all">{log.detail}</p>
@@ -1055,13 +1078,13 @@ function SectionNotificacoes() {
   return (
     <div className="space-y-6">
       <Section title="Avisos & Eventos">
-        <SettingRow label="Novos avisos"       desc="Notificar quando um aviso for publicado" action={<Toggle defaultOn />} />
-        <SettingRow label="Eventos próximos"   desc="Lembrete 24h antes de eventos"           action={<Toggle defaultOn />} />
-        <SettingRow label="Avisos urgentes"    desc="Notificação imediata para urgências"      action={<Toggle defaultOn />} />
+        <SettingRow label="Novos avisos" desc="Notificar quando um aviso for publicado" action={<Toggle defaultOn />} />
+        <SettingRow label="Eventos próximos" desc="Lembrete 24h antes de eventos" action={<Toggle defaultOn />} />
+        <SettingRow label="Avisos urgentes" desc="Notificação imediata para urgências" action={<Toggle defaultOn />} />
       </Section>
       <Section title="Alunos">
-        <SettingRow label="Novo aluno"         desc="Notificar ao registrar novo aluno"        action={<Toggle />} />
-        <SettingRow label="Alunos inativos"    desc="Alerta quando aluno ficar inativo"        action={<Toggle defaultOn />} />
+        <SettingRow label="Novo aluno" desc="Notificar ao registrar novo aluno" action={<Toggle />} />
+        <SettingRow label="Alunos inativos" desc="Alerta quando aluno ficar inativo" action={<Toggle defaultOn />} />
       </Section>
     </div>
   )
@@ -1229,14 +1252,14 @@ function SectionAcademia() {
   return (
     <div className="space-y-6">
       <Section title="Informações da academia">
-        <InlineField label="Nome"          value="RS Top Team" />
-        <InlineField label="Modalidades"   value="Jiu-Jitsu, Boxe" />
-        <InlineField label="Endereço"      value="" placeholder="Adicionar endereço..." />
-        <InlineField label="Telefone"      value="" placeholder="(51) 9xxxx-xxxx" />
+        <InlineField label="Nome" value="RS Top Team" />
+        <InlineField label="Modalidades" value="Jiu-Jitsu, Boxe" />
+        <InlineField label="Endereço" value="" placeholder="Adicionar endereço..." />
+        <InlineField label="Telefone" value="" placeholder="(51) 9xxxx-xxxx" />
       </Section>
       <Section title="Planos ativos">
         <SettingRow label="Mensalidade Jiu-Jitsu" desc="Valor padrão da mensalidade" action={<ChipButton label="R$ 180" />} />
-        <SettingRow label="Mensalidade Boxe"       desc="Valor padrão da mensalidade" action={<ChipButton label="R$ 150" />} />
+        <SettingRow label="Mensalidade Boxe" desc="Valor padrão da mensalidade" action={<ChipButton label="R$ 150" />} />
       </Section>
     </div>
   )
@@ -1246,12 +1269,12 @@ function SectionDados() {
   return (
     <div className="space-y-6">
       <Section title="Exportar dados">
-        <SettingRow label="Exportar alunos"    desc="Baixar lista completa em CSV"           action={<ChipButton label="Exportar CSV" />} />
-        <SettingRow label="Exportar presenças" desc="Histórico completo de presenças"         action={<ChipButton label="Exportar CSV" />} />
+        <SettingRow label="Exportar alunos" desc="Baixar lista completa em CSV" action={<ChipButton label="Exportar CSV" />} />
+        <SettingRow label="Exportar presenças" desc="Histórico completo de presenças" action={<ChipButton label="Exportar CSV" />} />
       </Section>
       <Section title="Firestore">
-        <SettingRow label="Projeto Firebase"   desc="academia-rstopteam"                      action={<span className="text-xs text-emerald-500 font-semibold">conectado ✓</span>} />
-        <SettingRow label="Backup automático"  desc="Exportar dados semanalmente"             action={<Toggle />} />
+        <SettingRow label="Projeto Firebase" desc="academia-rstopteam" action={<span className="text-xs text-emerald-500 font-semibold">conectado ✓</span>} />
+        <SettingRow label="Backup automático" desc="Exportar dados semanalmente" action={<Toggle />} />
       </Section>
     </div>
   )
@@ -1262,10 +1285,10 @@ function SectionSobre() {
     <Section title="RS Top Team — Sistema de Gestão">
       <div className="divide-y divide-white/5">
         {[
-          { label: 'Versão',         value: '1.0.0-beta' },
-          { label: 'Framework',      value: 'React 19 + Vite' },
+          { label: 'Versão', value: '1.0.0-beta' },
+          { label: 'Framework', value: 'React 19 + Vite' },
           { label: 'Banco de dados', value: 'Firebase Firestore' },
-          { label: 'Hospedagem',     value: 'Firebase Hosting' },
+          { label: 'Hospedagem', value: 'Firebase Hosting' },
           { label: 'Desenvolvido por', value: '@mad.exe' },
         ].map(row => (
           <div key={row.label} className="flex items-center justify-between px-5 py-3">
@@ -1292,32 +1315,38 @@ export default function ProfilePage() {
 
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
   const navigate = useNavigate()
-  const { userData, logout } = useAuth()
-  const { users, loading: usersLoading, updateProfile, uploadAvatar, uploadBanner, createNewUser, changePassword, deleteUser } = useSystemUsers()
+  const { userData, logout, effectiveRole } = useAuth()
+  const { users, loading: usersLoading, updateProfile, uploadAvatar, uploadBanner, createNewUser, changePassword, deleteUser, runDeepMigration } = useSystemUsers()
   const { logs, loading: logsLoading } = useSystemLogs('all', 100)
 
   // O 'id' do usuário logado para as operações de salvamento
   const currentUserId = userData?.id || userData?.uid || ''
-  const currentUserRole = userData?.role || 'aluno'
+  const currentUserRole = effectiveRole || 'aluno'
 
   const handleUpdateProfile = async (data) => {
     if (currentUserId && currentUserRole) await updateProfile(currentUserId, data, currentUserRole)
   }
 
   const initials = (userData?.name || 'A')[0].toUpperCase()
-  const role = roleConfig[userData?.role] || roleConfig.aluno
+  const role = roleConfig[effectiveRole] || roleConfig.aluno
 
   const panels = {
-    conta:        <SectionConta user={userData} onUpdateProfile={handleUpdateProfile} />,
-    seguranca:    <SectionSeguranca onChangePassword={changePassword} activityLogs={logs} />,
+    conta: <SectionConta user={userData} activeRole={effectiveRole} onUpdateProfile={handleUpdateProfile} />,
+    seguranca: <SectionSeguranca onChangePassword={changePassword} activityLogs={logs} />,
     notificacoes: <ModuleUnderDevelopment icon={Bell} title="Notificações" />,
-    aparencia:    <SectionAparencia />,
-    usuarios:     <SectionUsuarios users={users} onAddUser={createNewUser} onUpdateUser={(id, data, role) => updateProfile(id, data, role)} onDeleteUser={deleteUser} />,
-    academia:     <ModuleUnderDevelopment icon={Dumbbell} title="Configurações da Academia" />,
-    dados:        <ModuleUnderDevelopment icon={Database} title="Dados & Backup" />,
-    logs:         <SectionLogs logs={logs} loading={logsLoading} />,
-    erros:        <SectionErros logs={logs} loading={logsLoading} />,
-    sobre:        <SectionSobre />,
+    aparencia: <SectionAparencia />,
+    academia: <ModuleUnderDevelopment icon={Dumbbell} title="Configurações da Academia" />,
+    usuarios: <SectionUsuarios
+      users={users}
+      onAddUser={createNewUser}
+      onUpdateUser={(id, data, role) => updateProfile(id, data, role)}
+      onDeleteUser={deleteUser}
+      onSync={runDeepMigration}
+    />,
+    dados: <ModuleUnderDevelopment icon={Database} title="Dados & Backup" />,
+    logs: <SectionLogs logs={logs} loading={logsLoading} />,
+    erros: <SectionErros logs={logs} loading={logsLoading} />,
+    sobre: <SectionSobre />,
   }
 
   const activeSection = SECTIONS.flatMap(s => s.items).find(i => i.id === activeTab)
@@ -1340,7 +1369,7 @@ export default function ProfilePage() {
         style={{ background: 'var(--clr-bg)', borderRight: '1px solid rgba(255,255,255,0.03)' }}>
 
         {/* BACK BUTTON */}
-        <button 
+        <button
           onClick={goBack}
           className="group flex items-center gap-2 px-3 py-2 mb-8 text-gray-500 hover:text-white transition-all rounded-2xl hover:bg-white/5 w-fit"
         >
@@ -1353,7 +1382,7 @@ export default function ProfilePage() {
         {/* MINI PERFIL */}
         <div className="flex items-center gap-3 px-3 mb-5">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0 shadow-lg shadow-primary/10"
-                style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }}>{initials}</div>
+            style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }}>{initials}</div>
           <div className="min-w-0">
             <p className="text-white text-sm font-bold leading-none truncate">{userData?.name || 'Anon'}</p>
             <p className="text-[10px] text-gray-600 truncate">{userData?.handle || '@user'}</p>
@@ -1405,31 +1434,30 @@ export default function ProfilePage() {
 
               {/* Profile Intro */}
               <div className="flex flex-col items-center px-8 pb-10 pt-2 text-center">
-                <div 
-                  className="relative w-32 h-32 rounded-full mb-6 p-1 cursor-pointer transition-transform active:scale-95"
-                  style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }}
-                  onClick={() => avatarRef.current?.click()}
+                <div
+                  className="relative w-32 h-32 rounded-full mb-6 p-1 bg-black/20"
                 >
-                  <div className="w-full h-full rounded-full bg-[#000] p-1 overflow-hidden relative">
+                  <div className="w-full h-full rounded-full bg-[#000] p-1 overflow-hidden relative border border-white/5 shadow-2xl">
                     {userData?.avatarUrl ? (
                       <img src={userData.avatarUrl} className="w-full h-full rounded-full object-cover" alt="" />
                     ) : (
-                      <div className="w-full h-full rounded-full flex items-center justify-center text-4xl font-black text-white/20">
+                      <div className="w-full h-full rounded-full flex items-center justify-center text-4xl font-black bg-gradient-to-br from-white/10 to-white/5 text-white/20">
                         {initials}
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 active:opacity-100 transition-opacity flex items-center justify-center">
-                      <Camera size={18} strokeWidth={1.9} className="text-white" />
-                    </div>
-                  </div>
-                  <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-lg" style={{ background: 'var(--clr-primary)', border: '3px solid #000' }}>
-                    <Edit2 size={18} strokeWidth={1.9} className="text-white" />
                   </div>
                 </div>
 
-                <h1 className="text-3xl font-bold text-white tracking-tight mb-1">{userData?.name || 'Anon'}</h1>
-                <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${role.color} opacity-90`}>
-                  {role.label}
+                <h1 className="text-3xl font-bold text-white tracking-tight mb-3">{userData?.name || 'Anon'}</h1>
+                <div className="flex flex-wrap justify-center gap-2 max-w-xs">
+                  {Object.entries(userData?.roles || {}).filter(([_, active]) => active).map(([rKey]) => {
+                    const rCfg = roleConfig[rKey] || roleConfig.aluno
+                    return (
+                      <div key={rKey} className={`px-3 py-1.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.1em] border ${rCfg.bg} ${rCfg.color}`}>
+                        {rCfg.label}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -1504,10 +1532,10 @@ export default function ProfilePage() {
               <p className="text-gray-500 text-sm font-medium">Gerencie suas configurações e preferências do sistema.</p>
             </div>
             <div className="w-12 h-12 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-gray-500">
-               <activeSection.icon size={24} strokeWidth={1.5} />
+              <activeSection.icon size={24} strokeWidth={1.5} />
             </div>
           </div>
-          
+
           <div key={activeTab} className="fade-slide-up pb-20">
             {panels[activeTab]}
           </div>
@@ -1555,14 +1583,13 @@ function FormInput({ label, value, onChange, type = 'text', placeholder, error }
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full bg-white/5 border rounded-md px-5 py-3.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${
-          error ? 'border-primary shadow-[0_0_10px_rgba(225,29,72,0.15)]' : 'border-white/10 hover:border-white/20'
-        }`}
+        className={`w-full bg-white/5 border rounded-md px-5 py-3.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${error ? 'border-primary shadow-[0_0_10px_rgba(225,29,72,0.15)]' : 'border-white/10 hover:border-white/20'
+          }`}
       />
       {error && (
-        <motion.p 
-          initial={{ opacity: 0, y: -5 }} 
-          animate={{ opacity: 1, y: 0 }} 
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
           className="text-[9px] text-primary font-black uppercase tracking-widest ml-1 mt-1"
         >
           Campo obrigatório

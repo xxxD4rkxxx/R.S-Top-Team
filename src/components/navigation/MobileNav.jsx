@@ -66,7 +66,7 @@ export default function MobileNav() {
     return false
   }
 
-  const { isMobileNavHidden } = useApp()
+  const { isMobileNavHidden, isNavLocked } = useApp()
 
   return (
     <>
@@ -80,8 +80,9 @@ export default function MobileNav() {
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed bottom-0 left-0 right-0 z-[120] px-6 pb-6 select-none"
           >
-            {/* Estrutura da Barra com Efeito de Vidro (Glassmorphism) */}
-            <div className="relative h-[68px] bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[32px] flex items-center justify-around px-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
+            {/* Estrutura da Barra com Efeito de Vidro — backdrop-blur-xl (24px) em vez
+                 de backdrop-blur-3xl (64px): reduz custo de compositing no mobile */}
+            <div className="relative h-[68px] bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[32px] flex items-center justify-around px-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
 
           {/* Indicador de Aba Ativa (Linha colorida superior) */}
           <div className="absolute inset-0 pointer-events-none flex justify-around px-2">
@@ -119,7 +120,9 @@ export default function MobileNav() {
 
             <motion.button
               whileTap={{ scale: 0.9 }}
-              onClick={() => navigate('/attendance')}
+              onClick={() => {
+                if (!isNavLocked) navigate('/attendance')
+              }}
               className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 border-[6px] border-bg-app ${isTabActive('/attendance') ? 'bg-rose-600 text-white' : 'bg-[#121212] text-gray-500'}`}
               style={{ boxShadow: isTabActive('/attendance') ? '0 10px 20px rgba(225, 29, 72, 0.3)' : 'none' }}
             >
@@ -134,7 +137,10 @@ export default function MobileNav() {
 
           {/* Botão para abrir o menu complementar "Mais" */}
           <button
-            onClick={handleToggleDrawer}
+            onClick={(e) => {
+              if (isNavLocked) return
+              handleToggleDrawer(e)
+            }}
             className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
           >
             <div className={`transition-all duration-300 ${isDrawerOpen ? 'text-rose-500 scale-110' : 'text-gray-500 opacity-60'}`}>
@@ -195,7 +201,13 @@ export default function MobileNav() {
                   <NavLink
                     key={to}
                     to={to}
-                    onClick={() => setIsDrawerOpen(false)}
+                    onClick={(e) => {
+                      if (isNavLocked) {
+                        e.preventDefault()
+                        return
+                      }
+                      setIsDrawerOpen(false)
+                    }}
                     className={({ isActive }) => `
                       flex items-center gap-5 p-4 rounded-2xl transition-all relative overflow-hidden group
                       ${isActive ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20 shadow-lg' : 'bg-white/[0.03] text-gray-400 border border-transparent'}
@@ -225,6 +237,11 @@ function NavItem({ to, icon: Icon, label, active }) {
   return (
     <NavLink
       to={to}
+      onClick={(e) => {
+        if (isNavLocked) {
+          e.preventDefault()
+        }
+      }}
       className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
     >
       <div className={`transition-all duration-300 ${active ? 'text-rose-500 scale-110' : 'text-gray-500 opacity-60'}`}>

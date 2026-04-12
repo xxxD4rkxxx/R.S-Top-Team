@@ -3,13 +3,16 @@ import { GraduationCap, Calendar, Save, X, Info } from 'lucide-react'
 import { beltConfig } from '../../data/beltConfig'
 import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 
 /**
  * Modal para registro de troca de faixa (Graduação).
  * Atualiza o campo 'belt' principal e adiciona entrada no 'tech_journey.history'.
  */
 export default function GraduationChangeModal({ student, onClose, onFinish }) {
+  useHideMobileNav(!!student)
   const [newBelt, setNewBelt] = useState(student?.belt || 'white')
+
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [reason, setReason] = useState('Promoção de Graduação')
   const [loading, setLoading] = useState(false)
