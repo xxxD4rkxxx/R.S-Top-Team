@@ -88,10 +88,20 @@ export function useStudents() {
   }
 
   /**
-   * Remove permanentemente o registro do usuário (Cuidado: remove todas as roles).
+   * Remove permanentemente o registro do usuário (Cuidado: remove todas as roles e legados).
    */
   async function deleteStudent(id) {
-    await deleteDoc(doc(db, USERS_COLLECTION, id))
+    const tasks = [
+      deleteDoc(doc(db, USERS_COLLECTION, id))
+    ]
+
+    // Se o ID for um email ou tiver um email associado, limpa os legados
+    if (id.includes('@')) {
+      tasks.push(deleteDoc(doc(db, 'students', id)))
+      tasks.push(deleteDoc(doc(db, 'equipe', id)))
+    }
+
+    await Promise.all(tasks)
   }
 
   /**

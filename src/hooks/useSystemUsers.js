@@ -111,8 +111,9 @@ export function useSystemUsers() {
       setLoading(false)
     })
 
-    // ⚡ Auto-Sincronização (Auto-Healing)
-    // Roda uma vez por sessão para garantir que a base esteja alinhada sem sobrecarregar o cliente
+    // ⚡ Auto-Sincronização (Auto-Healing) - DESATIVADO para evitar "ressurreição" de usuários deletados
+    // A migração já cumpriu seu papel de unificar a base.
+    /*
     const autoSync = async () => {
       if (migrationInitialized) return
       migrationInitialized = true
@@ -122,10 +123,11 @@ export function useSystemUsers() {
         console.log('✅ Auto-sincronização concluída.')
       } catch (e) {
         console.error('❌ Falha na auto-sincronização:', e)
-        migrationInitialized = false // Permite tentar novamente se falhar
+        migrationInitialized = false 
       }
     }
     autoSync()
+    */
 
     return unsub
   }, [])
@@ -285,10 +287,21 @@ export function useSystemUsers() {
     await updatePassword(user, newPassword)
   }
 
-  /** Remove um usuário do sistema */
+  /** Remove um usuário do sistema em todas as coleções possíveis (Unified + Legacy) */
   async function deleteUser(userId) {
-    const userRef = doc(db, USERS_COLLECTION, userId)
-    await deleteDoc(userRef)
+    const email = userId.includes('@') ? userId : null
+    
+    const tasks = [
+      deleteDoc(doc(db, USERS_COLLECTION, userId))
+    ]
+
+    // Se tiver e-mail, tenta deletar dos legados também para evitar ressurreição
+    if (email) {
+      tasks.push(deleteDoc(doc(db, 'students', email)))
+      tasks.push(deleteDoc(doc(db, 'equipe', email)))
+    }
+
+    await Promise.all(tasks)
     _cachedUsers = null
   }
 
