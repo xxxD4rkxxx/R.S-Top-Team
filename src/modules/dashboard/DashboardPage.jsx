@@ -1,5 +1,6 @@
 import React from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useFinance } from '../../hooks/useFinance'
 import ManagerDashboard from './ManagerDashboard'
 import TeacherDashboard from './TeacherDashboard'
 import StudentDashboard from './StudentDashboard'
@@ -12,7 +13,9 @@ import { Activity } from 'lucide-react'
  * Ele detecta o 'effectiveRole' do usuário e renderiza o dashboard específico.
  */
 export default function DashboardPage() {
-  const { userData, effectiveRole, loading } = useAuth()
+  const { userData, effectiveRole, loading, user } = useAuth()
+  // Busca cobranças: para alunos, o hook já filtra só as deles (Zero Leaks)
+  const { bills, loading: loadingBills } = useFinance()
 
   // 1. Estado de Carregamento (Previne flashes de "acesso negado")
   if (loading) {
@@ -36,7 +39,11 @@ export default function DashboardPage() {
 
   if (effectiveRole === 'aluno') {
     // Alunos precisam de seus dados para o cálculo de graduação no dashboard
-    return <StudentDashboard user={userData} />
+    // Filtramos as cobranças APENAS do aluno logado, sem expor dos outros
+    const minhasCobrancas = bills.filter(b => b.studentId === user?.uid)
+    const temPendencia = minhasCobrancas.some(b => b.status === 'overdue' || b.status === 'pending')
+    const temAtraso = minhasCobrancas.some(b => b.status === 'overdue')
+    return <StudentDashboard user={userData} temPendencia={temPendencia} temAtraso={temAtraso} cobrancas={minhasCobrancas} />
   }
 
   // Fallback de Segurança: Se algo falhar na resolução de papel

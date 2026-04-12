@@ -260,15 +260,8 @@ export default function CollaboratorsPage() {
     setIsModalOpen(true)
   }
 
-  const handleConfirmDelete = async () => {
-    if (!deleteDialogUser) return
-    try {
-      await deleteUser(deleteDialogUser.id)
-      setDeleteDialogUser(null)
-    } catch (err) {
-      console.error("Erro ao deletar:", err)
-    }
-  }
+  // handleConfirmDelete foi removido pois estamos usando a versão inline mais robusta no componente
+
 
 
   const roleStyles = {
@@ -504,7 +497,12 @@ export default function CollaboratorsPage() {
         <DeleteConfirmDialog
           member={deleteDialogUser}
           onClose={() => setDeleteDialogUser(null)}
-          onConfirm={(member) => deleteUser(member.id)}
+          onConfirm={() => {
+            if (deleteDialogUser?.id) {
+              deleteUser(deleteDialogUser.id)
+            }
+            setDeleteDialogUser(null)
+          }}
         />
       )}
 

@@ -11,6 +11,9 @@ import {
   serverTimestamp,
   updateDoc,
   setDoc,
+  query,
+  where,
+  getDocs
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { useStudentsContext } from '../context/StudentsContext'
@@ -88,20 +91,67 @@ export function useStudents() {
   }
 
   /**
-   * Remove permanentemente o registro do usuário (Cuidado: remove todas as roles e legados).
+   * Remove permanentemente o aluno de todas as coleções do Firebase.
+   * Hardened para evitar a "ressurreição" de dados legados.
    */
-  async function deleteStudent(id) {
-    const tasks = [
-      deleteDoc(doc(db, USERS_COLLECTION, id))
-    ]
-
-    // Se o ID for um email ou tiver um email associado, limpa os legados
-    if (id.includes('@')) {
-      tasks.push(deleteDoc(doc(db, 'students', id)))
-      tasks.push(deleteDoc(doc(db, 'equipe', id)))
+  async function deleteStudent(studentId) {
+    if (!studentId) {
+      console.error('❌ Erro: Tentativa de deletar aluno sem ID válido.')
+      return
     }
 
-    await Promise.all(tasks)
+    console.log('🗑️ Iniciando Deleção Exhaustiva do Aluno:', studentId)
+    
+    // 1. Localizar o aluno no nosso estado para obter dados extras (e-mail)
+    const target = students.find(s => s.id === studentId)
+    const email = target?.email || (studentId.includes('@') ? studentId : null)
+    
+    // A. Deleção Primária (Imediata)
+    try {
+      await Promise.all([
+        deleteDoc(doc(db, 'users', studentId)),
+        deleteDoc(doc(db, 'users', studentId, 'privacy', 'secrets'))
+      ])
+    } catch (e) {
+      console.error('Falha na deleção principal:', e)
+      throw e
+    }
+
+    // B. Limpeza de Legados em Background (Non-blocking)
+    const bgCleanup = async () => {
+      const tasks = []
+      
+      if (email) {
+        const cleanEmail = email.toLowerCase().trim()
+        tasks.push(deleteDoc(doc(db, 'users', cleanEmail)))
+        tasks.push(deleteDoc(doc(db, 'users', cleanEmail, 'privacy', 'secrets')))
+        tasks.push(deleteDoc(doc(db, 'students', cleanEmail)))
+        tasks.push(deleteDoc(doc(db, 'students', cleanEmail, 'privacy', 'secrets')))
+        tasks.push(deleteDoc(doc(db, 'equipe', cleanEmail)))
+        tasks.push(deleteDoc(doc(db, 'equipe', cleanEmail, 'privacy', 'secrets')))
+        
+        try {
+          const qStudents = query(collection(db, 'students'), where('email', '==', cleanEmail))
+          const qEquipe = query(collection(db, 'equipe'), where('email', '==', cleanEmail))
+          
+          const [snapS, snapE] = await Promise.all([getDocs(qStudents), getDocs(qEquipe)])
+          snapS.forEach(d => tasks.push(deleteDoc(d.ref)))
+          snapE.forEach(d => tasks.push(deleteDoc(d.ref)))
+        } catch (e) {
+          console.warn('Erro na busca de legados:', e)
+        }
+      }
+
+      if (target?.name) {
+        tasks.push(deleteDoc(doc(db, 'students', target.name)))
+        tasks.push(deleteDoc(doc(db, 'students', target.name, 'privacy', 'secrets')))
+      }
+
+      await Promise.allSettled(tasks)
+      console.log('Background cleanup finished for student:', studentId)
+    }
+
+    bgCleanup()
   }
 
   /**
@@ -142,6 +192,8 @@ export function useStudents() {
       gender: newStudent.gender || 'Masculino',
       parentName: newStudent.parentName || '',
       parentPhone: newStudent.parentPhone || '',
+      isPaymentExempt: newStudent.isPaymentExempt || false,
+      planValue: newStudent.planValue || '',
       pin: newStudent.pin || Math.floor(100000 + Math.random() * 900000).toString(),
       roles: isVisitor ? { visitante: true } : { aluno: true }, // Define o papel baseado no tipo de ingresso
       tech_journey: {
@@ -179,7 +231,8 @@ export function useStudents() {
     const updatableFields = [
       'belt', 'stripes', 'email', 'phone', 'emergency', 'medical', 
       'birthday', 'medicalExamDate', 'ageCategory', 'gender', 
-      'parentName', 'parentPhone', 'pin', 'modality', 'modalities'
+      'parentName', 'parentPhone', 'pin', 'modality', 'modalities',
+      'isPaymentExempt', 'planValue'
     ]
 
     updatableFields.forEach(field => {

@@ -50,7 +50,7 @@ export default function KPICard({
 
       {/* Valor + Descrição */}
       <div className="relative z-10 flex flex-col flex-1 justify-end">
-        <div className={`text-4xl font-bold mb-1.5 tracking-tight ${displayColor}`}>
+        <div className={`text-2xl sm:text-3xl lg:text-4xl font-black mb-1.5 tracking-tight ${displayColor}`}>
           {value}
         </div>
         <p className="text-[10px] lg:text-[11px] text-gray-500 leading-tight font-medium tracking-wide">

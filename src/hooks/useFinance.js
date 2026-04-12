@@ -5,74 +5,273 @@ import {
   orderBy, getDocs, limit, addDoc, doc, 
   updateDoc, deleteDoc, serverTimestamp 
 } from 'firebase/firestore'
+import { useAuth } from '../context/AuthContext'
 
+/**
+ * Hook para gerenciar as operações financeiras (Receitas e Despesas).
+ * Possui proteções no lado do cliente para evitar que Alunos acessem
+ * ou modifiquem dados confidenciais financeiros.
+ */
 export function useFinance() {
-  const [bills, setBills] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { user, effectiveRole } = useAuth()
+  
+  // ==========================================
+  // ESTADOS - RECEITAS (Cobranças / Billing)
+  // ==========================================
+  const [cobrancas, setCobrancas] = useState([]) // bills
+  const [carregandoCobrancas, setCarregandoCobrancas] = useState(true)
 
+  // ==========================================
+  // ESTADOS - DESPESAS (Expenses)
+  // ==========================================
+  const [despesas, setDespesas] = useState([]) // expenses
+  const [carregandoDespesas, setCarregandoDespesas] = useState(true)
+
+  // -------------------------------------------------------------
+  // EFEITO: BUCAR COBRANÇAS (SEGURANÇA POR ROLE)
+  // -------------------------------------------------------------
   useEffect(() => {
-    const billsRef = collection(db, 'billing')
-    const q = query(billsRef, orderBy('dueDate', 'desc'))
+    if (!user) {
+      setCarregandoCobrancas(false)
+      return
+    }
+
+    const cobrancasRef = collection(db, 'billing')
+    let q;
+
+    // Se for Aluno, busca APENAS as cobranças dele mesmo para evitar VAZAMENTO (Zero Leaks).
+    if (effectiveRole === 'aluno') {
+      q = query(cobrancasRef, where('studentId', '==', user.uid), orderBy('dueDate', 'desc'))
+    } else {
+      // Admin, Gestor ou Professor (se tiver permissão) veem todas
+      q = query(cobrancasRef, orderBy('dueDate', 'desc'))
+    }
 
     const unsubscribe = onSnapshot(q, (snap) => {
       const data = snap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
-      setBills(data)
-      setLoading(false)
+      setCobrancas(data)
+      setCarregandoCobrancas(false)
     }, (err) => {
-      console.error('useFinance error:', err)
-      setLoading(false)
+      console.error('Erro ao buscar cobranças (useFinance):', err)
+      setCarregandoCobrancas(false)
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [user, effectiveRole])
 
-  const overdueBills = bills.filter(b => b.status === 'overdue')
-  const pendingBills = bills.filter(b => b.status === 'pending')
-  const paidBills = bills.filter(b => b.status === 'paid')
+  // -------------------------------------------------------------
+  // EFEITO: BUCAR DESPESAS (SOMENTE GESTORES)
+  // -------------------------------------------------------------
+  useEffect(() => {
+    if (!user) {
+      setCarregandoDespesas(false)
+      return
+    }
 
-  const totalOverdue = overdueBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
-  const totalPending = pendingBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
-  const totalPaid = paidBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+    // Alunos e professores básicos não deveriam ver despesas do negócio.
+    if (effectiveRole === 'aluno' || effectiveRole === 'professor') {
+      setDespesas([])
+      setCarregandoDespesas(false)
+      return
+    }
 
-  async function addBill(billData) {
-    const billsRef = collection(db, 'billing')
-    await addDoc(billsRef, {
-      ...billData,
+    const despesasRef = collection(db, 'expenses')
+    const q = query(despesasRef, orderBy('dueDate', 'desc'))
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setDespesas(data)
+      setCarregandoDespesas(false)
+    }, (err) => {
+      console.error('Erro ao buscar despesas (useFinance):', err)
+      setCarregandoDespesas(false)
+    })
+
+    return () => unsubscribe()
+  }, [user, effectiveRole])
+
+  // ==========================================
+  // CÁLCULOS E KPIs (RECEITAS)
+  // ==========================================
+  const cobrancasVencidas = cobrancas.filter(b => b.status === 'overdue')
+  const cobrancasPendentes = cobrancas.filter(b => b.status === 'pending')
+  const cobrancasPagas = cobrancas.filter(b => b.status === 'paid')
+
+  const totalVencido = cobrancasVencidas.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+  const totalPendente = cobrancasPendentes.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+  const totalPago = cobrancasPagas.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+
+  // ==========================================
+  // CÁLCULOS E KPIs (DESPESAS)
+  // ==========================================
+  const despesasPagas = despesas.filter(d => d.status === 'paid')
+  const despesasPendentes = despesas.filter(d => d.status === 'pending')
+
+  const totalDespesasPagas = despesasPagas.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+  const totalDespesasPendentes = despesasPendentes.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+
+  // ==========================================
+  // MÉTODOS CRUD - COBRANÇAS (RECEITAS)
+  // ==========================================
+
+  /**
+   * Adiciona uma nova cobrança. Restrito a admin/gestor.
+   */
+  async function criarCobranca(dadosCobranca) {
+    if (effectiveRole === 'aluno') {
+      throw new Error('Segurança Operacional: Acesso Negado para criar cobranças.')
+    }
+    const cobrancasRef = collection(db, 'billing')
+    await addDoc(cobrancasRef, {
+      ...dadosCobranca,
       createdAt: serverTimestamp(),
-      amount: Number(billData.amount)
+      amount: Number(dadosCobranca.amount)
     })
   }
 
-  async function updateBillStatus(billId, newStatus) {
-    const billRef = doc(db, 'billing', billId)
+  /**
+   * Gera cobranças mensais em lote para alunos ativos e não-isentos.
+   * Restrito a admin/gestor.
+   */
+  async function gerarCobrancasEmLote(alunos, mesReferencia, dataVencimento) {
+    if (effectiveRole === 'aluno' || effectiveRole === 'professor') {
+      throw new Error('Segurança Operacional: Acesso Negado para processamento em lote.')
+    }
+    
+    // Filtra alunos que são ATIVOS e NÃO SÃO isentos
+    const alunosPagantes = alunos.filter(a => 
+      a.roles?.aluno === true &&
+      a.status === 'Ativo' && 
+      !a.isPaymentExempt
+    )
+
+    const cobrancasRef = collection(db, 'billing')
+    const novasCobrancas = []
+    
+    // Criamos as pendências no banco
+    for (const aluno of alunosPagantes) {
+      // Valor base do plano do aluno, fallback para 0 se não configurado
+      const valorBase = Number(aluno.planValue) || 0
+      
+      const payload = {
+        studentId: aluno.id,
+        studentName: aluno.name,
+        amount: valorBase,
+        status: 'pending',
+        dueDate: dataVencimento, // Formato string YYYY-MM-DD
+        referenceMonth: mesReferencia, // Ex: "04/2026"
+        createdAt: serverTimestamp()
+      }
+      
+      await addDoc(cobrancasRef, payload)
+      novasCobrancas.push(payload)
+    }
+
+    return novasCobrancas.length
+  }
+
+  /**
+   * Atualiza o status (Ex: marcar como Paga). Restrito a admin/gestor.
+   */
+  async function atualizarStatusCobranca(idCobranca, novoStatus) {
+    if (effectiveRole === 'aluno') {
+      throw new Error('Segurança Operacional: Acesso Negado para alterar status.')
+    }
+    const cobrancaRef = doc(db, 'billing', idCobranca)
     const payload = { 
-      status: newStatus,
+      status: novoStatus,
       updatedAt: serverTimestamp()
     }
-    if (newStatus === 'paid') {
+    if (novoStatus === 'paid') {
       payload.paidAt = serverTimestamp()
+    } else {
+      payload.paidAt = null // Limpa se foi marcado como pendente/vencido por engano
     }
-    await updateDoc(billRef, payload)
+    await updateDoc(cobrancaRef, payload)
   }
 
-  async function deleteBill(billId) {
-    await deleteDoc(doc(db, 'billing', billId))
+  /**
+   * Deleta uma cobrança específica.
+   */
+  async function deletarCobranca(idCobranca) {
+    if (effectiveRole === 'aluno') {
+      throw new Error('Segurança Operacional: Acesso Negado para deletar.')
+    }
+    await deleteDoc(doc(db, 'billing', idCobranca))
   }
 
+  // ==========================================
+  // MÉTODOS CRUD - DESPESAS
+  // ==========================================
+
+  /**
+   * Adiciona uma nova despesa do estúdio/academia.
+   */
+  async function criarDespesa(dadosDespesa) {
+    if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
+      throw new Error('Segurança Operacional: Apenas gestores podem lançar despesas.')
+    }
+    const despesasRef = collection(db, 'expenses')
+    await addDoc(despesasRef, {
+      ...dadosDespesa,
+      createdAt: serverTimestamp(),
+      amount: Number(dadosDespesa.amount)
+    })
+  }
+
+  /**
+   * Atualiza uma despesa existente (Status de pago, etc).
+   */
+  async function atualizarDespesa(idDespesa, dadosAtualizados) {
+    if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
+      throw new Error('Segurança Operacional: Apenas gestores podem editar despesas.')
+    }
+    const despesaRef = doc(db, 'expenses', idDespesa)
+    await updateDoc(despesaRef, {
+      ...dadosAtualizados,
+      updatedAt: serverTimestamp()
+    })
+  }
+
+  /**
+   * Deleta uma despesa.
+   */
+  async function deletarDespesa(idDespesa) {
+    if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
+      throw new Error('Segurança Operacional: Acesso Negado.')
+    }
+    await deleteDoc(doc(db, 'expenses', idDespesa))
+  }
+
+  // Compatibilidade Legada (Mantendo nomes em inglês pro restante do app não quebrar instantaneamente)
   return {
-    bills,
-    loading,
-    overdueCount: overdueBills.length,
-    pendingCount: pendingBills.length,
-    totalOverdue,
-    totalPending,
-    totalPaid,
-    overdueBills,
-    addBill,
-    updateBillStatus,
-    deleteBill
+    // Legacy Exports
+    bills: cobrancas,
+    loading: carregandoCobrancas,
+    overdueBills: cobrancasVencidas,
+    overdueCount: cobrancasVencidas.length,
+    pendingCount: cobrancasPendentes.length,
+    totalOverdue: totalVencido,
+    totalPending: totalPendente,
+    totalPaid: totalPago,
+    addBill: criarCobranca,
+    generateBatchBilling: gerarCobrancasEmLote,
+    updateBillStatus: atualizarStatusCobranca,
+    deleteBill: deletarCobranca,
+    
+    // Novos Exports (Despesas)
+    expenses: despesas,
+    loadingExpenses: carregandoDespesas,
+    expensesPaidTotal: totalDespesasPagas,
+    expensesPendingTotal: totalDespesasPendentes,
+    addExpense: criarDespesa,
+    updateExpense: atualizarDespesa,
+    deleteExpense: deletarDespesa
   }
 }

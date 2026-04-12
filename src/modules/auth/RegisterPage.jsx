@@ -156,6 +156,7 @@ export default function RegisterPage() {
                   </div>
                   <input
                     type="email"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
@@ -176,6 +177,7 @@ export default function RegisterPage() {
                       type="password"
                       inputMode="numeric"
                       maxLength={6}
+                      autoComplete="new-password"
                       value={pin}
                       onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                       className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 tracking-[0.8em] font-black"
@@ -193,6 +195,7 @@ export default function RegisterPage() {
                     </div>
                     <input
                       type="password"
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-primary/20 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"

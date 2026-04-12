@@ -76,32 +76,44 @@ export function useModalities() {
   /**
    * Remove a modalidade dos alunos e os inativa se ficarem sem nenhuma.
    */
-  const cleanupStudents = async (modalityName) => {
-    const affectedStudents = students.filter(s => 
-      s.modality === modalityName || 
-      (Array.isArray(s.modalities) && s.modalities.includes(modalityName))
+  const cleanupStudents = async (modalityId) => {
+    // Buscamos a modalidade real para saber o nome exibido atual (caso o ID seja diferente do nome)
+    const modDoc = (modalities || []).find(m => m && m.id === modalityId)
+    const modName = modDoc?.name || modalityId
+
+    const affectedStudents = (students || []).filter(s => 
+      s && (s.modality === modName || s.modality === modalityId || 
+      (Array.isArray(s.modalities) && (s.modalities.includes(modName) || s.modalities.includes(modalityId))))
     )
 
     if (affectedStudents.length === 0) return
 
+    console.log(`🧹 Limpando modalidade '${modName}' de ${affectedStudents.length} alunos...`)
+
     const updates = affectedStudents.map(student => {
       const studentRef = doc(db, 'users', student.id)
       const currentModalities = Array.isArray(student.modalities) ? student.modalities : [student.modality].filter(Boolean)
-      const newModalities = currentModalities.filter(m => m !== modalityName)
+      
+      // Remove tanto pelo nome quanto pelo ID por segurança
+      const newModalities = currentModalities.filter(m => m !== modName && m !== modalityId)
       
       const payload = {
         modalities: newModalities,
         updatedAt: serverTimestamp()
       }
 
+      // Se não sobrou nenhuma modalidade, inativa o aluno
       if (newModalities.length === 0) {
         payload.status = 'Inativo'
         payload.modality = '--'
-      } else if (student.modality === modalityName) {
-        payload.modality = newModalities[0]
+      } else {
+        // Se a modalidade removida era a "principal", troca pela próxima disponível
+        if (student.modality === modName || student.modality === modalityId) {
+          payload.modality = newModalities[0]
+        }
       }
 
-      return updateDoc(studentRef, payload)
+      return updateDoc(studentRef, payload).catch(err => console.error(`Erro ao atualizar aluno ${student.id}:`, err))
     })
 
     await Promise.all(updates)

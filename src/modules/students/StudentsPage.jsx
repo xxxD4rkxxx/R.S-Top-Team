@@ -278,9 +278,14 @@ export default function StudentsPage() {
   }
 
   async function handleConfirmDelete() {
+    if (!deleteDialogStudent || !deleteDialogStudent.id) {
+      console.error('❌ Aluno não selecionado para deleção')
+      return
+    }
+
     const isSelf =
-      deleteDialogStudent.id.toLowerCase() === (user?.email || '').toLowerCase() ||
-      deleteDialogStudent.id === user?.uid
+      deleteDialogStudent.id.toLowerCase() === userData?.id?.toLowerCase() ||
+      deleteDialogStudent.email?.toLowerCase() === userData?.email?.toLowerCase()
 
     if (isSelf) {
       alert("🛑 SEGURANÇA: Você não pode excluir sua própria conta administrativa enquanto estiver logado no sistema.")

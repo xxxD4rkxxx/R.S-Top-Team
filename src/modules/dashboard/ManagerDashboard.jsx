@@ -384,7 +384,7 @@ export default function ManagerDashboard() {
                                 <Skeleton className="w-full h-full" />
                             </div>
                         ) : (
-                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                            <ResponsiveContainer width="100%" height="100%" minHeight={200}>
                                 <AreaChart data={stats?.chartData?.length > 0 ? stats.chartData : fallbackChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="gradPresencas" x1="0" y1="0" x2="0" y2="1">

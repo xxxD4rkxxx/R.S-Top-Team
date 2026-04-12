@@ -3,7 +3,8 @@ import {
   FileText, ShieldCheck, ClipboardCheck, History, 
   Bell, Award, TrendingUp, Smartphone, Clock,
   ChevronRight, Download, CheckCircle2, AlertCircle,
-  Calendar, MapPin, User as UserIcon, Activity, Zap
+  Calendar, MapPin, User as UserIcon, Activity, Zap,
+  AlertTriangle, XCircle
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { beltConfig } from '../../data/beltConfig'
@@ -64,7 +65,7 @@ function FeatureCard({ title, desc, icon: Icon, badge, color = 'text-primary' })
 
 // ── Main Page ────────────────────────────────────────────────
 
-export default function StudentDashboard({ user, notices = [] }) {
+export default function StudentDashboard({ user, notices = [], temPendencia = false, temAtraso = false, cobrancas = [] }) {
   // Graduação calculation
   const currentBelt = user?.belt || 'white'
   const cfg = beltConfig[currentBelt] || beltConfig['white']
@@ -104,8 +105,48 @@ export default function StudentDashboard({ user, notices = [] }) {
       animate="show"
       className="px-4 md:px-8 py-6 space-y-8 max-w-[1400px] mx-auto pb-24"
     >
-      
-      {/* ── TOP SECTION: PROGRESSO & RESUMO ── */}
+
+      {/* ── BANNER DE INADIMPLÊNCIA (visível só se houver pendências) ── */}
+      {temAtraso && (
+        <div className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/60 via-red-900/40 to-red-950/60 backdrop-blur-sm">
+          {/* Animated warning glow */}
+          <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-500/5 to-red-500/0 animate-pulse" />
+          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5">
+            <div className="w-12 h-12 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0 shadow-lg shadow-red-500/20">
+              <XCircle size={22} className="text-red-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black text-red-300 uppercase tracking-wider">Mensalidade em Atraso</p>
+              <p className="text-xs text-red-400/80 mt-0.5 leading-relaxed">
+                Você possui {cobrancas.filter(b => b.status === 'overdue').length} cobrança(s) vencida(s). 
+                Entre em contato com a academia para regularizar sua situação e manter o acesso.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/20 border border-red-500/30 text-[10px] font-black text-red-300 uppercase tracking-widest animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                Regularizar
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!temAtraso && temPendencia && (
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-950/50 via-amber-900/30 to-amber-950/50 backdrop-blur-sm">
+          <div className="relative z-10 flex items-center gap-4 p-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center shrink-0">
+              <AlertTriangle size={18} className="text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-black text-amber-300 uppercase tracking-wider">Mensalidade Pendente</p>
+              <p className="text-[11px] text-amber-400/70 mt-0.5">Você tem uma cobrança aguardando pagamento. Efetue antes do vencimento para evitar mora.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* PROGRESSO DE GRADUAÇÃO */}

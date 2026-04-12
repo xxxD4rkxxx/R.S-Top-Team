@@ -16,15 +16,24 @@ export default function PinVerificationModal({ onConfirm, onClose, title = "Segu
     const [pin, setPin] = useState('')
 
     const [error, setError] = useState(false)
+    const [loading, setLoading] = useState(false)
     const { verifyPIN } = useAuth()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        const isValid = await verifyPIN(pin)
-        if (isValid) {
-            onConfirm(pin)
-        } else {
-            setError(true)
+        if (loading || pin.length < 4) return
+
+        setLoading(true)
+        setError(false)
+        try {
+            const isValid = await verifyPIN(pin)
+            if (isValid) {
+                onConfirm(pin)
+            } else {
+                setError(true)
+            }
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -43,10 +52,13 @@ export default function PinVerificationModal({ onConfirm, onClose, title = "Segu
                 <p className="text-[11px] text-gray-400 mb-8 font-medium leading-relaxed">
                     {message}
                 </p>
-
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Campos ocultos para acessibilidade e gerenciadores de senha */}
+                    <input type="text" name="username" autoComplete="username" className="hidden" value="admin" readOnly />
                     <input
+                        id="pin-verification-input"
                         type="password"
+                        autoComplete="current-password"
                         maxLength={6}
                         value={pin}
                         onChange={(e) => { setPin(e.target.value); setError(false) }}
@@ -57,7 +69,13 @@ export default function PinVerificationModal({ onConfirm, onClose, title = "Segu
                     {error && <p className="text-[10px] text-red-500 font-black uppercase tracking-widest animate-pulse">PIN Incorreto</p>}
                     <div className="flex gap-3">
                         <button type="button" onClick={onClose} className="flex-1 py-4 rounded-xl bg-white/5 text-gray-400 font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all">Cancelar</button>
-                        <button type="submit" className="flex-1 py-4 rounded-xl bg-orange-500 text-black font-black text-[10px] uppercase tracking-widest hover:shadow-lg hover:shadow-orange-500/20 transition-all active:scale-95">Verificar</button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className={`flex-1 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${loading ? 'bg-gray-700 text-gray-500 cursor-wait' : 'bg-orange-500 text-black hover:shadow-lg hover:shadow-orange-500/20'}`}
+                        >
+                            {loading ? 'Verificando...' : 'Verificar'}
+                        </button>
                     </div>
                 </form>
             </motion.div>

@@ -12,6 +12,7 @@ import { useStudents } from '../../hooks/useStudents'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
 import { useNotices } from '../../hooks/useNotices'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
+import { useFinance } from '../../hooks/useFinance'
 import { 
   collection, query, where, getDocs, 
   addDoc, serverTimestamp, doc, updateDoc, 
@@ -67,6 +68,21 @@ export default function TeacherDashboard() {
   const { sessions: todaySessions, loading: loadingToday } = useTodaySessions()
   const { notices, loading: loadingNotices, addNotice } = useNotices()
   const { data: stats, loading: loadingStats } = useDashboardStats('Mês')
+  const { bills } = useFinance()
+
+  // Mapa: studentId -> status financeiro (sem expor valores)
+  // Professor só vê 'ok' | 'pendente' | 'atrasado'
+  const statusFinanceiro = useMemo(() => {
+    const mapa = {}
+    bills.forEach(b => {
+      const atual = mapa[b.studentId]
+      // Prioridade: atrasado > pendente > ok
+      if (b.status === 'overdue') mapa[b.studentId] = 'atrasado'
+      else if (b.status === 'pending' && atual !== 'atrasado') mapa[b.studentId] = 'pendente'
+      else if (!atual) mapa[b.studentId] = 'ok'
+    })
+    return mapa
+  }, [bills])
   
   // Local state for features
   const [notes, setNotes] = useState([])
@@ -472,16 +488,39 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
 
-                <div className="flex -space-x-3 mb-6 overflow-hidden">
-                  {turmStudents.slice(0, 6).map((st, idx) => (
-                    <div key={idx} className="w-10 h-10 rounded-full border-2 border-[#000] bg-white/10 flex items-center justify-center font-bold text-xs text-gray-400">
-                      {st.name?.charAt(0)}
-                    </div>
-                  ))}
-                  {turmStudents.length > 6 && (
-                    <div className="w-10 h-10 rounded-full border-2 border-[#000] bg-white/20 flex items-center justify-center font-black text-[10px] text-white">
-                      +{turmStudents.length - 6}
-                    </div>
+                {/* Mini-lista de alunos com badge de situação financeira */}
+                <div className="space-y-1.5 mb-6 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                  {turmStudents.slice(0, 8).map((st, idx) => {
+                    const situacao = statusFinanceiro[st.id]
+                    return (
+                      <div key={idx} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg hover:bg-white/5 transition-colors group">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-white/10 border border-white/5 flex items-center justify-center font-bold text-[10px] text-gray-400 shrink-0">
+                            {st.name?.charAt(0)}
+                          </div>
+                          <span className="text-[11px] text-gray-300 font-medium truncate">{st.name?.split(' ')[0]}</span>
+                        </div>
+                        {/* Badge: só texto/cor, sem valores */}
+                        {situacao === 'atrasado' && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 uppercase tracking-tight shrink-0">
+                            Atrasado
+                          </span>
+                        )}
+                        {situacao === 'pendente' && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20 uppercase tracking-tight shrink-0">
+                            Pendente
+                          </span>
+                        )}
+                        {(situacao === 'ok' || !situacao) && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 uppercase tracking-tight shrink-0">
+                            Em dia
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {turmStudents.length > 8 && (
+                    <p className="text-[9px] text-gray-600 text-center pt-1 font-bold uppercase tracking-widest">+{turmStudents.length - 8} alunos</p>
                   )}
                 </div>
 

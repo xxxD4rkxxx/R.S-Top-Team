@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useStudents } from '../../hooks/useStudents'
 import { useModalities } from '../../hooks/useModalities'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
+import { useAuth } from '../../context/AuthContext'
 
 /**
  * Seletor Customizado Premium (Reutilizado do padrão de Colaboradores)
@@ -63,6 +64,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
 export default function AddStudentModal({ isOpen, onClose, onAdd, initialModality = 'Jiu-Jitsu', initialData = null }) {
   const { modalities, loading: loadingModalities } = useModalities()
   const activeModalities = (modalities || []).filter(m => m.status === 'ativo')
+  const { effectiveRole } = useAuth()
   
   // Oculta a navegação mobile para evitar conflitos visuais (Padrão SSoT)
   useHideMobileNav(isOpen)
@@ -80,6 +82,8 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
     gender: 'Masculino',
     parentName: '',
     parentPhone: '',
+    isPaymentExempt: false,
+    planValue: '',
   })
 
   useEffect(() => {
@@ -110,6 +114,8 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           gender: initialData.gender || 'Masculino',
           parentName: initialData.parentName || '',
           parentPhone: initialData.parentPhone || '',
+          isPaymentExempt: initialData.isPaymentExempt || false,
+          planValue: initialData.planValue || '',
         })
       } else {
         setForm({
@@ -117,6 +123,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           belt: 'none', modality: [initialModality], type: 'aluno',
           ageCategory: 'Adulto', gender: 'Masculino',
           parentName: '', parentPhone: '',
+          isPaymentExempt: false, planValue: '',
         })
       }
       setErrorMsg('')
@@ -393,6 +400,47 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
               <Info size={16} className="text-gray-500 shrink-0" />
               <p className="text-[9px] text-gray-500 leading-tight uppercase font-black">Certifique-se de que os dados de e-mail e telefone estão corretos para a sincronização da matrícula.</p>
             </div>
+
+            {/* Configurações Financeiras (Apenas Gestores/Admin) */}
+            {(effectiveRole === 'admin' || effectiveRole === 'gestor') && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                  <Landmark size={14} />
+                  Contrato e Financeiro
+                  <div className="h-px flex-1 bg-emerald-500/10" />
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 flex flex-col justify-end">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Isenção de Mensalidade</label>
+                    <button 
+                      type="button" 
+                      onClick={() => setForm(f => ({ ...f, isPaymentExempt: !f.isPaymentExempt }))}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${form.isPaymentExempt ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-black/40 border-white/10 text-gray-400 hover:border-white/20'}`}
+                    >
+                      <span className="text-sm font-medium">Conceder Bolsa/Isenção</span>
+                      <div className={`w-9 h-5 rounded-full relative transition-all ${form.isPaymentExempt ? 'bg-emerald-500' : 'bg-gray-800'}`}>
+                        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${form.isPaymentExempt ? 'translate-x-4' : ''}`} />
+                      </div>
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Valor do Plano Base Mensal</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-black text-sm">R$</span>
+                      <input 
+                        type="number"
+                        step="0.01" 
+                        disabled={form.isPaymentExempt}
+                        value={form.planValue} 
+                        onChange={e => setForm({ ...form, planValue: e.target.value })} 
+                        className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/30 transition-all font-medium font-mono disabled:opacity-40 disabled:cursor-not-allowed" 
+                        placeholder="Ex: 150.00" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* RODAPÉ PREMIUM (STICKY) */}

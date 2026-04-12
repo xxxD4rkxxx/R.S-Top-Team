@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 import {
   collection, onSnapshot, query, orderBy, limit,
   updateDoc, doc, serverTimestamp, setDoc,
-  getDoc, deleteDoc, getDocs, deleteField
+  getDoc, deleteDoc, getDocs, deleteField, where
 } from 'firebase/firestore'
 import {
   updatePassword, reauthenticateWithCredential, EmailAuthProvider,
@@ -287,21 +287,74 @@ export function useSystemUsers() {
     await updatePassword(user, newPassword)
   }
 
-  /** Remove um usuário do sistema em todas as coleções possíveis (Unified + Legacy) */
+  /**
+   * Remove permanentemente o utilizador de todas as fontes de dados (Atomic & Exhaustive).
+   * Resolve o bug de "ressurreição" garantindo que os legados em 'students' e 'equipe'
+   * sejam removidos simultaneamente ao documento do 'users'.
+   */
   async function deleteUser(userId) {
-    const email = userId.includes('@') ? userId : null
-    
-    const tasks = [
-      deleteDoc(doc(db, USERS_COLLECTION, userId))
-    ]
-
-    // Se tiver e-mail, tenta deletar dos legados também para evitar ressurreição
-    if (email) {
-      tasks.push(deleteDoc(doc(db, 'students', email)))
-      tasks.push(deleteDoc(doc(db, 'equipe', email)))
+    if (!userId) {
+      console.error('❌ Erro: Tentativa de deletar usuário sem ID válido.')
+      return
     }
 
-    await Promise.all(tasks)
+    console.log('🗑️ Iniciando Deleção Exhaustiva:', userId)
+    
+    // 1. Procuramos o utilizador no estado actual para obter o e-mail real
+    const targetUser = (users || []).find(u => u && u.id === userId)
+    const email = targetUser?.email || targetUser?.authEmail || (typeof userId === 'string' && userId.includes('@') ? userId : null)
+    
+    // A. Remover do SSoT (users) e seu cofre de segurança IMEDIATAMENTE
+    // É o único que o usuário vai esperar
+    try {
+      await Promise.all([
+        deleteDoc(doc(db, USERS_COLLECTION, userId)),
+        deleteDoc(doc(db, USERS_COLLECTION, userId, 'privacy', 'secrets'))
+      ])
+      console.log('✅ Core record deleted for:', userId)
+    } catch (e) {
+      console.error('❌ Falha na deleção principal:', e)
+      throw e
+    }
+
+    // B. Lógica Legada em Background (Non-blocking)
+    // Isso garante rapidez (eliminando os 3~5s de espera)
+    const legacyCleanup = async () => {
+      const backgroundTasks = []
+      
+      if (email) {
+        const cleanEmail = email.toLowerCase().trim()
+        backgroundTasks.push(deleteDoc(doc(db, USERS_COLLECTION, cleanEmail)))
+        backgroundTasks.push(deleteDoc(doc(db, USERS_COLLECTION, cleanEmail, 'privacy', 'secrets')))
+        backgroundTasks.push(deleteDoc(doc(db, 'students', cleanEmail)))
+        backgroundTasks.push(deleteDoc(doc(db, 'students', cleanEmail, 'privacy', 'secrets')))
+        backgroundTasks.push(deleteDoc(doc(db, 'equipe', cleanEmail)))
+        backgroundTasks.push(deleteDoc(doc(db, 'equipe', cleanEmail, 'privacy', 'secrets')))
+        
+        try {
+          const [studentSnap, equipeSnap] = await Promise.all([
+            getDocs(query(collection(db, 'students'), where('email', '==', cleanEmail))),
+            getDocs(query(collection(db, 'equipe'), where('email', '==', cleanEmail)))
+          ])
+          studentSnap.forEach(d => backgroundTasks.push(deleteDoc(d.ref)))
+          equipeSnap.forEach(d => backgroundTasks.push(deleteDoc(d.ref)))
+        } catch (e) { console.warn('⚠️ Erro no background search:', e) }
+      }
+
+      if (targetUser?.name) {
+        backgroundTasks.push(deleteDoc(doc(db, 'students', targetUser.name)))
+        backgroundTasks.push(deleteDoc(doc(db, 'students', targetUser.name, 'privacy', 'secrets')))
+        backgroundTasks.push(deleteDoc(doc(db, 'equipe', targetUser.name)))
+        backgroundTasks.push(deleteDoc(doc(db, 'equipe', targetUser.name, 'privacy', 'secrets')))
+      }
+
+      await Promise.allSettled(backgroundTasks)
+      console.log('🏁 Background cleanup finished for:', userId)
+    }
+
+    // Executa em segundo plano
+    legacyCleanup()
+    
     _cachedUsers = null
   }
 

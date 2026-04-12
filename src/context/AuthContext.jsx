@@ -18,8 +18,12 @@ import {
   signInAnonymously,
   signOut,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  getAuth,
+  inMemoryPersistence
 } from 'firebase/auth'
+import { initializeApp, getApps } from 'firebase/app'
+import { firebaseConfig } from '../firebase/config'
 import {
   doc,
   getDoc,
@@ -37,6 +41,18 @@ import {
 import { auth, db } from '../firebase/config'
 
 const AuthContext = createContext()
+
+// Inicialização Silenciosa de Auth Secundário para Verificações de PIN
+// Isso evita o swap da identidade principal do app e previne re-renders globais.
+const getVerifyAuth = () => {
+  const apps = getApps()
+  const verifyApp = apps.find(a => a.name === 'verify') || initializeApp(firebaseConfig, 'verify')
+  const vAuth = getAuth(verifyApp)
+  // Garantimos que o PIN não persista e não interfira com o login principal
+  setPersistence(vAuth, inMemoryPersistence)
+  return vAuth
+}
+const verifyAuth = getVerifyAuth()
 
 // Nome da colecção unificada de utilizadores
 const USERS_COLLECTION = 'users'
@@ -68,6 +84,21 @@ export function AuthProvider({ children }) {
 
   // Referência ao temporizador de inactividade
   const inactivityTimerRef = useRef(null)
+
+  // 🚀 CACHE DE SESSÃO: Armazena o hash do PIN validado para rapidez instantânea em ações subsequentes.
+  // Isso evita chamadas de rede repetidas para o Firebase Auth durante a mesma sessão.
+  const sessionPinHashRef = useRef(null)
+
+  // Função simples de hash para o cache de sessão (não precisa ser criptograficamente inquebrável, 
+  // pois é apenas para cache de memória de curta duração em uma sessão já autenticada).
+  const getHash = (str) => {
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i)
+      hash |= 0
+    }
+    return hash.toString()
+  }
 
   /**
    * Determina o papel efectivo do utilizador para a interface.
@@ -109,12 +140,29 @@ export function AuthProvider({ children }) {
     const email = user.email || userData.authEmail
     const pinAuthEmail = getPinAuthEmail(email)
     const securePIN = pinToVerify.length >= 6 ? pinToVerify : pinToVerify.padEnd(6, '0')
+    const currentHash = getHash(securePIN)
+
+    // ⚡ VERIFICAÇÃO INSTANTÂNEA: Se o PIN já foi validado nesta sessão, retornamos true imediatamente.
+    if (sessionPinHashRef.current && sessionPinHashRef.current === currentHash) {
+      console.log('⚡ PIN Validado via Cache de Sessão (Instantâneo)')
+      return true
+    }
 
     try {
-      // Tenta validar o PIN através do Auth
-      await signInWithEmailAndPassword(auth, pinAuthEmail, securePIN)
+      console.time('verify-pin-network')
+      // Tenta validar o PIN através do Auth Secundário (SILENCIOSO)
+      // Não afeta o usuário logado no auth principal.
+      await signInWithEmailAndPassword(verifyAuth, pinAuthEmail, securePIN)
+      console.timeEnd('verify-pin-network')
+
+      // 🔥 POPULAMOS O CACHE: Próximas verificações serão instantâneas
+      sessionPinHashRef.current = currentHash
+
+      // Opcional: Desloga imediatamente do secundário para limpar recursos
+      signOut(verifyAuth).catch(() => {})
       return true
-    } catch {
+    } catch (e) {
+      console.warn('❌ PIN Inválido (Silent Auth):', e.code)
       return false
     }
   }
@@ -131,6 +179,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     setUserData(null)
     setSimulatedRole(null)
+    sessionPinHashRef.current = null // 🛡️ LIMPA CACHE DE PIN NO LOGOUT
     return signOut(auth)
   }, [])
 

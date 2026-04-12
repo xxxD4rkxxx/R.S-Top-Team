@@ -1,0 +1,443 @@
+/**
+ * BillingPage.jsx
+ * Página de Cobrança — design padronizado com a aba Alunos.
+ * Rota: /billing
+ * Responsabilidade: entradas de dinheiro (mensalidades, vínculos com alunos).
+ */
+
+import React, { useState, useMemo, useEffect, useRef } from 'react'
+import {
+  CreditCard, Plus, Search, Trash2, X,
+  CheckCircle2, Clock, AlertCircle, DollarSign,
+  ChevronDown, Loader2, Users, RefreshCcw
+} from 'lucide-react'
+import PageHeader    from '../../components/shared/PageHeader'
+import MobileHeader  from '../../components/navigation/MobileHeader'
+import KPICard       from '../../components/shared/KPICard'
+import { useFinance } from '../../hooks/useFinance'
+import { useStudents } from '../../hooks/useStudents'
+import { beltConfig } from '../../data/beltConfig'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const R$ = (v) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+
+const dataBR = (str) => {
+  if (!str) return '--'
+  return new Date(str + 'T12:00:00').toLocaleDateString('pt-BR')
+}
+
+const STATUS_STYLE = {
+  paid:    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  pending: 'bg-amber-500/10  text-amber-400  border-amber-500/20',
+  overdue: 'bg-rose-500/10   text-rose-400   border-rose-500/20',
+}
+const STATUS_LABEL = { paid: 'Pago', pending: 'Pendente', overdue: 'Atrasado' }
+
+// ─── CustomSelect — mesmo componente da página Alunos ─────────────────────────
+
+function CustomSelect({ label, value, onChange, options }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find(o => o[0] === value) || options[0]
+
+  return (
+    <div className="flex flex-col gap-1.5 relative" ref={ref}>
+      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+      >
+        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2"
+          style={{ animation: 'fadeSlideUp 0.15s ease-out forwards' }}>
+          {options.map(([v, l]) => (
+            <button
+              key={v}
+              onClick={() => { onChange(v); setIsOpen(false) }}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-black' : 'text-gray-400 font-medium'}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Modal de Nova Cobrança ───────────────────────────────────────────────────
+
+function ModalNovaCobranca({ students, onClose, onSave, loading }) {
+  const [form, setForm] = useState({ studentId: '', amount: '', dueDate: '', referenceMonth: '' })
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!form.studentId || !form.amount || !form.dueDate) return
+    const aluno = students.find(s => s.id === form.studentId)
+    onSave({ studentId: form.studentId, studentName: aluno?.name || 'Aluno', amount: Number(form.amount), dueDate: form.dueDate, referenceMonth: form.referenceMonth, status: 'pending' })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/[0.02]">
+          <div>
+            <h3 className="text-sm font-black text-white uppercase tracking-widest">Nova Cobrança</h3>
+            <p className="text-[10px] text-gray-500 font-bold mt-0.5 uppercase tracking-wider">Vincule ao aluno e defina o valor</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+            <X size={18} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Aluno</label>
+            <div className="relative">
+              <select required value={form.studentId} onChange={e => set('studentId', e.target.value)}
+                className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 pr-8">
+                <option value="">Selecione o aluno...</option>
+                {students.filter(s => !s.isPaymentExempt).map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Valor (R$)</label>
+              <input required type="number" step="0.01" min="0" placeholder="0,00"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
+                value={form.amount} onChange={e => set('amount', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento</label>
+              <input required type="date"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
+            <input type="month"
+              className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+              value={form.referenceMonth} onChange={e => set('referenceMonth', e.target.value)} />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-3 rounded-2xl bg-white/5 border border-white/10 text-sm font-medium text-gray-400 hover:text-white transition-all font-inter">
+              Cancelar
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black uppercase tracking-wide transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-emerald-900/30 font-inter">
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <DollarSign size={16} />}
+              {loading ? 'Salvando...' : 'Criar Cobrança'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Página Principal ─────────────────────────────────────────────────────────
+
+export default function BillingPage() {
+  const { bills, loading, updateBillStatus, deleteBill, addBill } = useFinance()
+  const { students } = useStudents()
+
+  const [showModal, setShowModal]   = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('todos')
+
+  // KPIs
+  const kpis = useMemo(() => {
+    const recebido      = bills.filter(b => b.status === 'paid').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    const aReceber      = bills.filter(b => b.status === 'pending').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    const vencido       = bills.filter(b => b.status === 'overdue').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    
+    const countPaid     = bills.filter(b => b.status === 'paid').length
+    const countPending  = bills.filter(b => b.status === 'pending').length
+    const countOverdue  = bills.filter(b => b.status === 'overdue').length
+    
+    const inadimplentes = new Set(bills.filter(b => b.status === 'overdue').map(b => b.studentId)).size
+    const totalPagantes = students.filter(s => !s.isPaymentExempt).length
+
+    return { 
+      recebido, aReceber, vencido, inadimplentes, 
+      total: bills.length, totalPagantes,
+      countPaid, countPending, countOverdue
+    }
+  }, [bills, students])
+
+  const hasFilters = searchTerm || statusFilter !== 'todos'
+
+  const filtered = useMemo(() => bills.filter(b => {
+    const byName = b.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
+    const byStatus = statusFilter === 'todos' || b.status === statusFilter
+    return byName && byStatus
+  }), [bills, searchTerm, statusFilter])
+
+  const handleSave = async (data) => {
+    setSaving(true)
+    try { await addBill(data); setShowModal(false) }
+    catch (err) { console.error('Erro ao criar cobrança:', err) }
+    finally { setSaving(false) }
+  }
+
+  function renderAvatar(student) {
+    if (!student) return (
+      <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+        <Users size={18} className="text-gray-600" />
+      </div>
+    )
+
+    const bgClass = beltConfig[student.belt]?.bgClass || 'belt-none'
+    const initials = student.initials || student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
+
+    return (
+      <div className="flex items-center justify-center p-0.5 shrink-0 relative">
+        {student.photo ? (
+          <img src={student.photo} alt={student.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
+        ) : (
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black ring-1 ring-white/10 ${bgClass} text-white shadow-inner relative overflow-hidden`}>
+            <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent opacity-40" />
+            <span className="relative z-10 drop-shadow-md">{initials}</span>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505]">
+      {showModal && (
+        <ModalNovaCobranca students={students} onClose={() => setShowModal(false)} onSave={handleSave} loading={saving} />
+      )}
+
+      <MobileHeader
+        title="Cobrança"
+        actions={
+          <button onClick={() => setShowModal(true)}
+            className="p-2.5 rounded-xl bg-emerald-600 text-white active:scale-90 transition-transform shadow-lg shadow-emerald-900/30">
+            <Plus size={20} strokeWidth={3} />
+          </button>
+        }
+      />
+      <PageHeader
+        icon={CreditCard}
+        title="COBRANÇA"
+        subtitle="GESTÃO DE MENSALIDADES E RECEBIMENTOS"
+        extra={
+          <button onClick={() => setShowModal(true)}
+            className="btn-primary flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95">
+            <Plus size={18} strokeWidth={1.9} /> NOVA COBRANÇA
+          </button>
+        }
+      />
+
+      <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
+
+        {/* KPIs — mesmo grid 2/4 cols da página Alunos */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+          <KPICard
+            title="Recebido"
+            value={R$(kpis.recebido)}
+            description="Mensalidades pagas"
+            icon={CheckCircle2}
+            valueColor="text-emerald-400"
+            onClick={() => setStatusFilter(statusFilter === 'paid' ? 'todos' : 'paid')}
+            active={statusFilter === 'paid'}
+          />
+          <KPICard
+            title="A Receber"
+            value={R$(kpis.aReceber)}
+            description="Dentro do prazo"
+            icon={Clock}
+            valueColor="text-amber-400"
+            onClick={() => setStatusFilter(statusFilter === 'pending' ? 'todos' : 'pending')}
+            active={statusFilter === 'pending'}
+          />
+          <KPICard
+            title="Inadimplência"
+            value={R$(kpis.vencido)}
+            description={`${kpis.inadimplentes} aluno(s) em atraso`}
+            icon={AlertCircle}
+            valueColor="text-rose-400"
+            onClick={() => setStatusFilter(statusFilter === 'overdue' ? 'todos' : 'overdue')}
+            active={statusFilter === 'overdue'}
+          />
+          <KPICard
+            title="Total Cobranças"
+            value={kpis.total}
+            description="Lançamentos no sistema"
+            icon={Users}
+            valueColor="text-blue-400"
+          />
+        </div>
+
+        {/* Search bar — mesma estrutura da página Alunos */}
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 relative group">
+            <Search size={18} strokeWidth={1.9} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" />
+            <input
+              className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium"
+              placeholder="Buscar por nome do aluno..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {hasFilters && (
+            <button
+              onClick={() => { setSearchTerm(''); setStatusFilter('todos') }}
+              className="flex items-center justify-center gap-2 px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+            >
+              <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
+            </button>
+          )}
+        </div>
+
+        {/* Container principal — mesmo estilo da página Alunos */}
+        <div className="bg-[#0B0B0D]/80 backdrop-blur-md rounded-[24px] p-6 md:p-8 border border-white/5 shadow-2xl relative overflow-hidden">
+          {/* Linha decorativa de topo */}
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-50" />
+
+          {/* Filtros — grid igual ao da página Alunos */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <CustomSelect
+              label="Status"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                ['todos',   'Todos'],
+                ['paid',    'Pagos'],
+                ['pending', 'Pendentes'],
+                ['overdue', 'Atrasados'],
+              ]}
+            />
+            <CustomSelect
+              label="Ordenar por"
+              value="recente"
+              onChange={() => {}}
+              options={[['recente', 'Mais Recente']]}
+            />
+            <div className="col-span-2 flex items-end">
+              <p className="text-[11px] text-gray-600 font-bold ml-1">
+                Exibindo <span className="text-gray-400">{filtered.length}</span> de <span className="text-gray-400">{bills.length}</span> cobranças
+              </p>
+            </div>
+          </div>
+
+          {/* Tabela — cabeçalho e linhas iguais à página Alunos */}
+          <div className="w-full overflow-x-auto rounded-2xl border border-white/5 bg-black/20">
+            {loading ? (
+              <div className="text-center py-16 text-gray-500">Carregando cobranças...</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-16 text-gray-500">
+                <CreditCard size={48} strokeWidth={1.5} className="mx-auto mb-4 opacity-20" />
+                <p className="text-sm font-medium">Nenhuma cobrança encontrada.</p>
+                <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.2em] mt-2">
+                  Exibindo {filtered.length} de {bills.length} lançamentos
+                </p>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse min-w-[640px]">
+                <thead>
+                  <tr className="border-b border-white/10 text-[10px] uppercase font-black text-gray-500 tracking-wider bg-white/5">
+                    <th className="py-3 px-5">Aluno</th>
+                    <th className="py-3 px-5 text-center hidden sm:table-cell">Referência</th>
+                    <th className="py-3 px-5 text-center hidden sm:table-cell">Vencimento</th>
+                    <th className="py-3 px-5 text-right">Valor</th>
+                    <th className="py-3 px-5 text-center">Status</th>
+                    <th className="py-3 px-5 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filtered.map(b => {
+                    const student = students.find(s => s.id === b.studentId)
+                    return (
+                      <tr key={b.id} className="hover:bg-white/5 transition-colors group">
+                        <td className="py-4 px-5">
+                          <div className="flex items-center gap-4">
+                            {renderAvatar(student)}
+                            <div className="flex flex-col">
+                              <span className="text-sm text-app font-medium uppercase tracking-tight group-hover:text-primary transition-colors">
+                                {b.studentName}
+                              </span>
+                              {student && (
+                                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
+                                  {beltConfig[student.belt]?.label || 'Sem faixa'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-5 text-center text-xs text-gray-400 font-medium hidden sm:table-cell">
+                          {b.referenceMonth || '—'}
+                        </td>
+                        <td className="py-4 px-5 text-center font-mono text-xs text-gray-400 hidden sm:table-cell">
+                          {dataBR(b.dueDate)}
+                        </td>
+                        <td className="py-4 px-5 text-right font-black text-sm text-white font-mono">
+                          {R$(b.amount)}
+                        </td>
+                        <td className="py-4 px-5 text-center">
+                          <span className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border inline-flex ${STATUS_STYLE[b.status] || ''}`}>
+                            {STATUS_LABEL[b.status] || b.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {b.status !== 'paid' && (
+                              <button onClick={() => updateBillStatus(b.id, 'paid')} title="Marcar como pago"
+                                className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/20">
+                                <CheckCircle2 size={14} />
+                              </button>
+                            )}
+                            <button onClick={() => deleteBill(b.id)}
+                              className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all border border-red-500/20">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+          
+          {/* Contador de Rodapé quando há dados */}
+          {filtered.length > 0 && (
+            <div className="mt-6 flex justify-end">
+              <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.2em]">
+                Exibindo <span className="text-gray-400">{filtered.length}</span> de <span className="text-gray-400">{bills.length}</span> lançamentos
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`@keyframes fadeSlideUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }`}</style>
+    </div>
+  )
+}

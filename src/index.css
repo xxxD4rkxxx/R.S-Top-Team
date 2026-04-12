@@ -10,7 +10,7 @@
   - Botões/Inputs/Elementos interativos: 12px (rounded-xl)
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;900&family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;900&family=Bebas+Neue&display=swap');
 @import "tailwindcss";
 
 /* ── Tailwind theme extension: mapeamos 'primary' e 'primary-dark' para CSS vars ── */

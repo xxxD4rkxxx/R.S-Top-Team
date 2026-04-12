@@ -2,7 +2,7 @@
 // Gerencia o roteamento, provedores de contexto (Auth, Theme, App),
 // barra lateral, navegação mobile e proteção de rotas por perfis de acesso.
 import React, { useState, useEffect, lazy, Suspense } from 'react'
-import { Menu, CalendarDays, Target, Award, Banknote, TrendingDown, Activity } from 'lucide-react'
+import { Menu, CalendarDays, Banknote } from 'lucide-react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AppProvider, useApp } from './context/AppContext'
@@ -18,19 +18,22 @@ import ErrorBoundary from './components/shared/ErrorBoundary'
 // ─── Lazy-loaded pages ───────────────────────────────────────────────────────
 // Each route gets its own chunk — only loaded when navigated to.
 // This cuts the initial bundle by ~80% (800KB → ~150KB).
-const DashboardPage = lazy(() => import('./modules/dashboard/DashboardPage'))
-const AttendancePage = lazy(() => import('./modules/attendance/AttendancePage'))
-const StudentsPage = lazy(() => import('./modules/students/StudentsPage'))
-const CollaboratorsPage = lazy(() => import('./modules/collaborators/CollaboratorsPage'))
-const EventsPage = lazy(() => import('./modules/events/EventsPage'))
-const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'))
+const DashboardPage        = lazy(() => import('./modules/dashboard/DashboardPage'))
+const AttendancePage       = lazy(() => import('./modules/attendance/AttendancePage'))
+const StudentsPage         = lazy(() => import('./modules/students/StudentsPage'))
+const CollaboratorsPage    = lazy(() => import('./modules/collaborators/CollaboratorsPage'))
+const EventsPage           = lazy(() => import('./modules/events/EventsPage'))
+const ProfilePage          = lazy(() => import('./modules/profile/ProfilePage'))
 const ReviewAttendancePage = lazy(() => import('./modules/attendance/ReviewAttendancePage'))
-const LoginPage = lazy(() => import('./modules/auth/LoginPage'))
-const RegisterPage = lazy(() => import('./modules/auth/RegisterPage'))
-const FinancePage = lazy(() => import('./modules/finance/FinancePage'))
-const ContractsPage = lazy(() => import('./modules/contracts/ContractsPage'))
+const LoginPage            = lazy(() => import('./modules/auth/LoginPage'))
+const RegisterPage         = lazy(() => import('./modules/auth/RegisterPage'))
+const ContractsPage        = lazy(() => import('./modules/contracts/ContractsPage'))
 const ModuleUnderDevelopment = lazy(() => import('./components/shared/ModuleUnderDevelopment'))
-const ModalitiesPage = lazy(() => import('./modules/modalities/ModalitiesPage'))
+const ModalitiesPage       = lazy(() => import('./modules/modalities/ModalitiesPage'))
+// Módulo Financeiro — 3 páginas independentes com responsabilidade única
+const BillingPage          = lazy(() => import('./modules/finance/BillingPage'))   // Cobrança
+const ExpensesPage         = lazy(() => import('./modules/finance/ExpensesPage'))  // Despesas
+const ReportsPage          = lazy(() => import('./modules/finance/ReportsPage'))   // Relatórios Financeiros
 // ─── ScrollToTop Helper ───────────────────────────────────────────────────────
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -144,8 +147,14 @@ function AppContent() {
                     <Route path="/events" element={<ProtectedRoute><AnimatedPage><EventsPage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute><AnimatedPage><ProfilePage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/attendance/review/:sessionId" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReviewAttendancePage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/finance" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><FinancePage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/contracts" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ContractsPage /></AnimatedPage></ProtectedRoute>} />
+
+                    {/* Módulo Financeiro — páginas independentes por intenção */}
+                    <Route path="/billing"  element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/expenses" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/reports"  element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ReportsPage /></AnimatedPage></ProtectedRoute>} />
+                    {/* Rota legada /finance redireciona para /billing */}
+                    <Route path="/finance"  element={<Navigate to="/billing" replace />} />
 
                     <Route path="/experimental" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
                       icon={CalendarDays} title="Aulas Experimentais"
@@ -157,16 +166,6 @@ function AppContent() {
                     <Route path="/plans" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
                       icon={Banknote} title="Planos"
                       features={['Planos recorrentes', 'Gestão de benefícios', 'Cobrança automática']}
-                    /></AnimatedPage></ProtectedRoute>} />
-
-                    <Route path="/expenses" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
-                      icon={TrendingDown} title="Despesas"
-                      features={['Lançamento de custos fixos', 'Gestão de fornecedores', 'Fluxo de caixa']}
-                    /></AnimatedPage></ProtectedRoute>} />
-
-                    <Route path="/reports" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
-                      icon={Activity} title="Relatórios Financeiros"
-                      features={['DRE Mensal', 'Comparativo anual', 'Exportação contábil']}
                     /></AnimatedPage></ProtectedRoute>} />
 
                     <Route path="*" element={<Navigate to="/" replace />} />

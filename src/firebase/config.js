@@ -23,7 +23,7 @@ import {
 } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey:            "AIzaSyBjDGUmUVWOXIqzITiG9g9dalAGshQDgww",
   authDomain:        "academia-rstopteam.firebaseapp.com",
   projectId:         "academia-rstopteam",

@@ -41,9 +41,9 @@ const navGroups = [
   {
     title: 'Inteligência Financeira',
     items: [
-      { to: '/finance', icon: PiggyBank, label: 'Receitas', roles: ['admin', 'gestor'] },
-      { to: '/expenses', icon: ArrowDownRight, label: 'Despesas', roles: ['admin', 'gestor'] },
-      { to: '/reports', icon: PieChart, label: 'Relatórios Financeiros', roles: ['admin', 'gestor'] },
+      { to: '/billing',  icon: PiggyBank,      label: 'Cobrança',               roles: ['admin', 'gestor'] },
+      { to: '/expenses', icon: ArrowDownRight,  label: 'Despesas',               roles: ['admin', 'gestor'] },
+      { to: '/reports',  icon: PieChart,        label: 'Relatórios Financeiros', roles: ['admin', 'gestor'] },
     ]
   },
   {

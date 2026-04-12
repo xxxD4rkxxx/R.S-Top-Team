@@ -245,6 +245,38 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
             </div>
           </div>
 
+          {/* Financeiro e Contrato */}
+          {(isAdmin || isGestor) && (
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                Financeiro & Contrato
+                <div className="h-px flex-1 bg-emerald-500/10" />
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner hover:bg-emerald-500/[0.04]">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Condição Especial</p>
+                    <p className="text-sm text-white font-bold mt-0.5">{student.isPaymentExempt ? 'Bolsista / Isento' : 'Pagante Regular'}</p>
+                  </div>
+                </div>
+                {!student.isPaymentExempt && (
+                  <div className="flex items-center gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner hover:bg-emerald-500/[0.04]">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                      <span className="font-bold text-lg">R$</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Valor Base (Plano)</p>
+                      <p className="text-sm text-white font-bold mt-0.5 font-mono">{student.planValue ? `R$ ${Number(student.planValue).toFixed(2)}` : 'Não definido'}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Segurança */}
           {canSeePIN && (
              <div className="space-y-4">
