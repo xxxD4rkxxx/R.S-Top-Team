@@ -20,7 +20,8 @@ import {
   setPersistence,
   browserLocalPersistence,
   getAuth,
-  inMemoryPersistence
+  inMemoryPersistence,
+  sendPasswordResetEmail
 } from 'firebase/auth'
 import { initializeApp, getApps } from 'firebase/app'
 import { firebaseConfig } from '../firebase/config'
@@ -211,204 +212,194 @@ export function AuthProvider({ children }) {
 
   /**
    * PROCESSO DE LOGIN UNIFICADO com protecção anti-brute force.
-   *
-   * Fluxo:
-   * 1. Resolve o identificador (E-mail ou Nome) para um E-mail.
-   * 2. Tenta autenticar via Firebase Auth (email/senha).
-   * 3. Fallback: valida PIN no documento Firestore.
    */
   const login = async (identifier, password) => {
-    console.log('🔐 Iniciando tentativa de login para:', identifier)
+    console.log('🔐 Iniciando tentativa de login normal para:', identifier)
     const failCount = parseInt(sessionStorage.getItem('_lfc') || '0', 10)
     if (failCount > 0) {
       const delayMs = Math.min(500 * Math.pow(2, failCount - 1), 8000)
-      console.log(`⏳ Delay anti-brute force: ${delayMs}ms`)
       await new Promise(resolve => setTimeout(resolve, delayMs))
     }
 
     let email = identifier.toLowerCase().trim()
     const isEmail = identifier.includes('@')
-
-    // 1. Resolvemos o e-mail se o identificador for um NOME
-    if (!isEmail) {
-      console.log('🔍 Identificador não é e-mail, buscando por nome...')
-      const q = query(
-        collection(db, USERS_COLLECTION),
-        where('name', '==', identifier),
-        limit(1)
-      )
-      const snap = await getDocs(q)
-      if (!snap.empty) {
-        email = snap.docs[0].id // O ID do documento é o e-mail real
-        console.log('✅ Nome resolvido para o e-mail:', email)
-      } else {
-        console.warn('⚠️ Nome não encontrado no sistema.')
-      }
-    }
-
     const pinAuthEmail = getPinAuthEmail(email)
     const securePIN = password.length >= 6 ? password : password.padEnd(6, '0')
 
-    // Estratégia de tentativa:
-    // Passo A: Tentar PIN/Identidade Interna (Gestores/Alunos/Membros)
-    // Passo B: Tentar E-mail/Senha (Admins/Equipe com conta vinculada)
-    // Passo C: Tentar Migração (Se usuário tem PIN no Firestore mas não no Auth)
-
     try {
-      console.log('🔑 Tentando Acesso A (PIN/Identidade Interna)...')
-      try {
-        const result = await signInWithEmailAndPassword(auth, pinAuthEmail, securePIN)
-        console.log('✅ Acesso A bem-sucedido!')
-        sessionStorage.removeItem('_lfc')
-        return result
-      } catch (firstErr) {
-        // Se falhou e o PIN era curto, tentamos sem o padding (compatibilidade legada)
-        if (password.length < 6) {
-          console.log('⚠️ Acesso A (Padded) falhou, tentando Versão Curta (Legada)...')
-          const result = await signInWithEmailAndPassword(auth, pinAuthEmail, password)
-          console.log('✅ Acesso A (Legado) bem-sucedido!')
-          sessionStorage.removeItem('_lfc')
-          return result
-        }
-        throw firstErr
-      }
-    } catch (pinErr) {
-      console.log('❌ Acesso A falhou (Código:', pinErr.code, ')')
-
-      // Se for e-mail real, tentamos Acesso B (Standard Email/Password)
-      if (isEmail) {
+      const result = await signInWithEmailAndPassword(auth, pinAuthEmail, securePIN)
+      console.log('✅ Login realizado com sucesso!')
+      
+      setSimulatedRole('aluno')
+      sessionStorage.removeItem('_lfc')
+      return result
+    } catch (err) {
+      // 🚀 AUTO-PROVISIONAMENTO (Just-in-Time Access)
+      const isAuthMissing = err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential'
+      
+      if (isAuthMissing) {
+        console.log('🔍 Usuário/Acesso não encontrado no Auth. Verificando Firestore...')
+        
         try {
-          console.log('🔑 Tentando Acesso B (E-mail/Senha padrão)...')
-          const result = await signInWithEmailAndPassword(auth, email, password)
-          console.log('✅ Acesso B bem-sucedido!')
-          sessionStorage.removeItem('_lfc')
-          return result
-        } catch (emailErr) {
-          console.log('❌ Acesso B falhou (Código:', emailErr.code, ')')
-        }
-      }
-
-      // Se ambos falharam, verificamos se o usuário existe no Firestore para migrar (Passo C)
-      if (pinErr.code === 'auth/user-not-found' || pinErr.code === 'auth/invalid-credential' || pinErr.code === 'auth/invalid-email') {
-        console.log('🔄 Verificando necessidade de migração no Firestore...')
-
-        // Tenta encontrar o perfil pelo ID interno novo, antigo (u_) ou pelo e-mail real
-        const pinAuthEmail = getPinAuthEmail(email)
-        const legacyPinEmail = `u_${pinAuthEmail}`
-
-        let docSnap = await getDoc(doc(db, USERS_COLLECTION, pinAuthEmail))
-
-        if (!docSnap.exists()) {
-          docSnap = await getDoc(doc(db, USERS_COLLECTION, legacyPinEmail))
-        }
-
-        if (!docSnap.exists()) {
-          docSnap = await getDoc(doc(db, USERS_COLLECTION, email))
-        }
-
-        if (docSnap.exists()) {
-          const data = docSnap.data()
-          console.log('📄 Documento encontrado. Verificando cofre de segurança (Vault)...')
-
-          // 🔐 Busca o PIN no cofre isolado (se existir e tivermos acesso)
-          let secrets = {}
-          try {
-            const secretsSnap = await getDoc(doc(db, USERS_COLLECTION, docSnap.id, 'privacy', 'secrets'))
-            secrets = secretsSnap.exists() ? secretsSnap.data() : {}
-          } catch (secErr) {
-            console.log('Cofre inacessível, utilizando PIN do documento principal.')
+          // Busca o perfil no Firestore tentando todas as variações de ID possíveis
+          const possibleIds = [pinAuthEmail, email, identifier.trim().toLowerCase()]
+          let targetDoc = null
+          
+          for (const id of possibleIds) {
+            const docRef = doc(db, USERS_COLLECTION, id)
+            const snap = await getDoc(docRef)
+            if (snap.exists()) {
+              targetDoc = snap
+              break
+            }
           }
-          const pinFound = secrets.pin || data.pin // Fallback para compatibilidade durate a sincronização
 
-          if (pinFound === password) {
-            console.log('✨ PIN confirmado no cofre! Iniciando migração...')
-            try {
-              console.log('✅ Identidade Auth criada. Sincronizando cofre de segurança...');
-              
-              // 🛡️ BACKUP DO PIN NO COFRE ANTES DE DELETAR (Garante visibilidade administrativa)
-              const secretRef = doc(db, USERS_COLLECTION, docSnap.id, 'privacy', 'secrets');
-              await setDoc(secretRef, { 
-                pin: password, 
-                updatedAt: new Date().toISOString() 
-              }, { merge: true });
+          if (!targetDoc) {
+            // Fallback final: busca por campo de e-mail
+            const q = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
+            const qSnap = await getDocs(q)
+            if (!qSnap.empty) targetDoc = qSnap.docs[0]
+          }
 
-              await updateDoc(docSnap.ref, {
-                pin: deleteField(),
-                authEmail: pinAuthEmail,
-                migratedAt: new Date().toISOString()
-              })
-              console.log('✅ Migração e backup do cofre concluídos!');
+          if (targetDoc?.exists()) {
+            const dbData = targetDoc.data()
+            const dbPin = String(dbData.pin || '').trim()
+            const typedPin = String(password || '').trim()
+            
+            console.log(`📡 Comparando PINs: Digitado=${typedPin} | Banco=${dbPin}`)
 
-              sessionStorage.removeItem('_lfc')
-              return res
-            } catch (createErr) {
-              if (createErr.code === 'auth/email-already-in-use') {
-                console.log('💡 Conta já existe no Auth. Tentando acesso direto para concluir sincronização...')
-                
-                // Tenta logar primeiro para obter permissões de escrita no Firestore
-                let loginRes
-                try {
-                  loginRes = await signInWithEmailAndPassword(auth, pinAuthEmail, securePIN)
-                } catch (finalErr) {
-                  console.warn('❌ Senha Auth inconsistente com Firestore. Tentando Recuperação V2...')
-                  
-                  // 🔥 RECUPERAÇÃO V2: Se a conta existe mas a senha (PIN) mudou no Firestore 
-                  // e o Auth não deixou atualizar, criamos uma identidade secundária v2.
-                  const v2Email = pinAuthEmail.replace('@rstopteam.internal', '_v2@rstopteam.internal')
-                  try {
-                    // Tenta logar se já fizemos isso antes
-                    return await signInWithEmailAndPassword(auth, v2Email, securePIN)
-                  } catch (v2Err) {
-                    if (v2Err.code === 'auth/user-not-found') {
-                       // Cria a nova identidade vinculada ao mesmo doc
-                       const v2Res = await createUserWithEmailAndPassword(auth, v2Email, securePIN)
-                       await updateDoc(docSnap.ref, {
-                         authEmail: v2Email,
-                         migratedAt: new Date().toISOString(),
-                         recoveryMode: 'v2'
-                       })
-                       return v2Res
-                    }
-                    throw v2Err
-                  }
-                }
-
-                // Se logou com sucesso, agora temos permissão para limpar o PIN legada no Firestore
-                if (loginRes?.user) {
-                  try {
-                    // 🛡️ BACKUP DO PIN NO COFRE (Garante visibilidade administrativa nos logins subsequentes)
-                    const secretRef = doc(db, USERS_COLLECTION, docSnap.id, 'privacy', 'secrets');
-                    await setDoc(secretRef, { 
-                      pin: password, 
-                      updatedAt: new Date().toISOString() 
-                    }, { merge: true });
-
-                    await updateDoc(docSnap.ref, {
-                      pin: deleteField(),
-                      authEmail: pinAuthEmail,
-                      syncedAt: new Date().toISOString()
-                    })
-
-                    console.log('✅ Metadados sincronizados após login.')
-                  } catch (syncErr) {
-                    console.warn('⚠️ Falha ao limpar PIN legado, mas login mantido:', syncErr)
-                  }
-                }
-                return loginRes
+            if (dbPin && (dbPin === typedPin || dbPin === securePIN)) {
+              console.log('✨ PIN verificado no Firestore. Provisionando conta no Auth...')
+              try {
+                const newUser = await createUserWithEmailAndPassword(auth, pinAuthEmail, securePIN)
+                console.log('✅ Conta JIT criada e logada!')
+                setSimulatedRole(null) // Deixa assumir o cargo real do Firestore
+                sessionStorage.removeItem('_lfc')
+                return newUser
+              } catch (createErr) {
+                if (createErr.code === 'auth/email-already-in-use') {
+                   console.log('ℹ️ Conta já existe no Auth. Tentando login direto agora...')
+                   return await signInWithEmailAndPassword(auth, pinAuthEmail, securePIN)
+                } 
+                throw createErr
               }
-              console.error('❌ Erro crítico na migração:', createErr)
-              throw createErr
+            } else {
+              console.log('❌ PIN do banco não confere.')
             }
           } else {
-            console.warn('❌ PIN incorreto ou não encontrado no cofre.')
+            console.log('❌ Perfil não localizado após todas as tentativas de busca.')
           }
-        } else {
-          console.warn('❌ Usuário não existe no Firestore.')
+        } catch (provisionErr) {
+          console.error('❌ Erro crítico no auto-provisionamento:', provisionErr)
         }
       }
 
-      sessionStorage.setItem('_lfc', String(failCount + 1))
-      throw new Error('Identificação inválida ou senha incorreta.')
+      // Tentar login com email padrão se falhar o interno (legado)
+      if (isEmail) {
+        try {
+          const result = await signInWithEmailAndPassword(auth, email, password)
+          setSimulatedRole('aluno')
+          sessionStorage.removeItem('_lfc')
+          return result
+        } catch (e) {}
+      }
+      
+      throw new Error('Usuário ou PIN incorretos. Fale com seu Professor.')
+    }
+  }
+
+  /**
+   * LOGIN ADMINISTRATIVO (Via Segredo do Logo)
+   */
+  const loginAdmin = async (identifier, adminPin) => {
+    console.log('🛡️ Tentativa de Login Administrativo:', identifier)
+    
+    let email = identifier.toLowerCase().trim()
+    const pinAuthEmail = getPinAuthEmail(email)
+    const inputPin = String(adminPin || '').trim()
+    
+    try {
+      // 1. Localização do Perfil no Firestore (Robusta)
+      const possibleIds = [pinAuthEmail, email, identifier.trim().toLowerCase()]
+      let targetDoc = null
+      
+      for (const id of possibleIds) {
+        const docRef = doc(db, USERS_COLLECTION, id)
+        const snap = await getDoc(docRef)
+        if (snap.exists()) {
+          targetDoc = snap
+          break
+        }
+      }
+
+      if (!targetDoc) {
+        const q = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
+        const qSnap = await getDocs(q)
+        if (!qSnap.empty) targetDoc = qSnap.docs[0]
+      }
+
+      if (!targetDoc?.exists()) {
+        throw new Error('Conta administrativa não localizada.')
+      }
+
+      const adminData = targetDoc.data()
+      
+      // 2. Validação Estrita de Permissão
+      // Expandido para incluir 'professor' na entrada administrativa
+      const isAuthorized = 
+        ['admin', 'gestor', 'professor'].includes(String(adminData.role || '').toLowerCase()) ||
+        adminData.roles?.admin === true ||
+        adminData.roles?.gestor === true ||
+        adminData.roles?.professor === true
+
+      if (!isAuthorized) {
+        console.warn('🚫 Tentativa de login adm por usuário sem permissão staff:', adminData.role)
+        throw new Error('Este acesso é exclusivo para membros da equipe autorizados.')
+      }
+
+      // 3. Comparação de PIN Administrativo
+      const dbAdminPin = String(adminData.adminPin || adminData['adminPin '] || adminData.pin || '').trim()
+      const typedAdminPin = String(adminPin || '').trim()
+
+      console.log(`🛡️ Validando PIN Adm: Digitado=${typedAdminPin} | Banco=${dbAdminPin}`)
+
+      if (!dbAdminPin || typedAdminPin !== dbAdminPin) {
+        throw new Error('PIN de Administrador incorreto.')
+      }
+
+      // 4. Preparação do PIN de Acesso para o Auth
+      const accessPin = adminData.pin || adminData.password
+      if (!accessPin) throw new Error('Falha na sincronização de segurança.')
+      const securePin = String(accessPin).length >= 6 ? String(accessPin) : String(accessPin).padEnd(6, '0')
+      
+      // 5. Autenticação Firebase Auth com JIT
+      try {
+        const result = await signInWithEmailAndPassword(auth, pinAuthEmail, securePin)
+        console.log('✅ Admin logado com sucesso.')
+        setSimulatedRole(null) // Libera o papel real
+        return result
+      } catch (authErr) {
+        if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') {
+          console.log('✨ Admin verificado no Firestore mas sem Auth. Provisionando...')
+          try {
+            const result = await createUserWithEmailAndPassword(auth, pinAuthEmail, securePin)
+            console.log('✅ Conta administrativa criada e logada.')
+            setSimulatedRole(null)
+            return result
+          } catch (createErr) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              // Tenta login de novo, talvez senha no Auth esteja diferente do doc?
+              // Se chegar aqui, é problema de sincronização de senha
+              throw new Error('Erro de sincronização. O PIN no banco não bate com a senha do Auth.')
+            }
+            throw createErr
+          }
+        }
+        throw authErr
+      }
+    } catch (err) {
+      console.error('❌ Erro no login administrativo:', err)
+      throw new Error(err.message || 'Falha na autenticação administrativa.')
     }
   }
 
@@ -431,7 +422,7 @@ export function AuthProvider({ children }) {
         setHasGestor(foundGestor)
         setIsSetupMode(!foundAdmin || !foundGestor)
       } catch (err) {
-        console.warn('⚠️ Erro ao verificar setup (Desta vez, assumimos que já existe gestor/admin):', err)
+        console.warn('⚠️ Erro ao verificar setup:', err)
         setIsSetupMode(false)
       }
     }
@@ -449,48 +440,19 @@ export function AuthProvider({ children }) {
 
           // 🚀 SMART LOOKUP: Resolvemos qual documento do Firestore pertence ao fbUser logado
           const resolveProfileId = async () => {
-            // A. Tentativa por ID Directo (Email original, para contas não migradas)
+            // A. Tentativa por ID Directo (Email original)
             const directDoc = await getDoc(doc(db, USERS_COLLECTION, email))
             if (directDoc.exists()) return directDoc.id
 
-            // B. Tentativa pela Identidade Sanitizada (Novo Padrão Unificado)
+            // B. Tentativa pela Identidade Sanitizada
             const sanitizedId = getPinAuthEmail(email)
             const sanitizedDoc = await getDoc(doc(db, USERS_COLLECTION, sanitizedId))
             if (sanitizedDoc.exists()) return sanitizedDoc.id
 
-            // C. Tentativa por Campo 'email' original
+            // C. Tentativa por Campo 'email' 
             const q2 = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
             const qSnap2 = await getDocs(q2)
             if (!qSnap2.empty) return qSnap2.docs[0].id
-
-            // D. Tentativa por Campo 'authEmail' legado
-            const q = query(collection(db, USERS_COLLECTION), where('authEmail', '==', email), limit(1))
-            const qSnap = await getDocs(q)
-            if (!qSnap.empty) return qSnap.docs[0].id
-
-            // E. GUESS & RESOLVE (Fallback para e-mails legados do Auth)
-            if (email.endsWith('@rstopteam.internal')) {
-              console.log('🔍 Tentando reconstruir ID a partir de identidade interna:', email)
-              const isLegacy = email.startsWith('u_')
-              const prefixOffset = isLegacy ? 2 : 0
-              const parts = email.split('@')[0].substring(prefixOffset).split('_')
-
-              if (parts.length >= 3) {
-                const tld = parts.pop()      // com
-                const domain = parts.pop()   // gmail
-                const userPart = parts.join('.') // max ou joao.zinho
-
-                // Tentativa 1: user.name@domain.com
-                const guess1 = `${userPart}@${domain}.${tld}`
-                const snap1 = await getDoc(doc(db, USERS_COLLECTION, guess1))
-                if (snap1.exists()) return snap1.id
-
-                // Tentativa 2: user_name@domain.com
-                const guess2 = `${parts.join('_')}@${domain}.${tld}`
-                const snap2 = await getDoc(doc(db, USERS_COLLECTION, guess2))
-                if (snap2.exists()) return snap2.id
-              }
-            }
 
             return null
           }
@@ -498,7 +460,6 @@ export function AuthProvider({ children }) {
           const targetId = await resolveProfileId()
 
           if (targetId) {
-            console.log('👤 Perfil resolvido para:', targetId)
             userUnsub = onSnapshot(doc(db, USERS_COLLECTION, targetId), (snap) => {
               if (snap.exists()) {
                 const data = snap.data()
@@ -509,7 +470,6 @@ export function AuthProvider({ children }) {
                   setUserData({ ...extractSafeProfile(data), id: snap.id })
                 }
               } else {
-                console.warn('⚠️ Documento do perfil não encontrado! Forçando logout.')
                 logout()
               }
               setLoading(false)
@@ -536,11 +496,33 @@ export function AuthProvider({ children }) {
     }
   }, [logout])
 
+  const sendResetEmail = async (email) => {
+    return sendPasswordResetEmail(auth, email)
+  }
+
+  const checkUserExists = async (email) => {
+    try {
+      const q = query(
+        collection(db, USERS_COLLECTION),
+        where('email', '==', email.toLowerCase().trim()),
+        limit(1)
+      )
+      const snap = await getDocs(q)
+      if (!snap.empty) return true
+      const docSnap = await getDoc(doc(db, USERS_COLLECTION, email.toLowerCase().trim()))
+      return docSnap.exists()
+    } catch (err) {
+      console.error('Erro ao verificar usuário:', err)
+      return false
+    }
+  }
+
   const value = {
     user,
     userData,
     loading,
     login,
+    loginAdmin,
     logout,
     verifyPIN,
     effectiveRole,
@@ -548,7 +530,9 @@ export function AuthProvider({ children }) {
     setSimulatedRole,
     isSetupMode,
     hasAdmin,
-    hasGestor
+    hasGestor,
+    sendResetEmail,
+    checkUserExists
   }
 
   return (

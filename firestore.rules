@@ -3,73 +3,66 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Funções Auxiliares ────────────────────────────────────────────────────
-    function isAuth() { return request.auth != null; }
+    function isAuth() {
+      return request.auth != null;
+    }
 
-    function getProfileData(email) {
-      return get(/databases/$(database)/documents/users/$(email)).data;
+    function getRole(email, role) {
+      return get(/databases/$(database)/documents/users/$(email)).data.roles.get(role, false) == true ||
+             get(/databases/$(database)/documents/users/$(email)).data.role == role;
     }
 
     function hasRole(role) {
-      let email = isAuth() ? request.auth.token.email.lower() : '';
-      // Sanitização robusta para múltiplos pontos (até 4)
-      let sanitized = isAuth() ? email.replace('@', '_').replace('\\.', '_').replace('\\.', '_').replace('\\.', '_').replace('\\.', '_') + '@rstopteam.internal' : '';
-      
-      let hasDirect = isAuth() && exists(/databases/$(database)/documents/users/$(email)) && get(/databases/$(database)/documents/users/$(email)).data.roles.get(role, false) == true;
-      
-      let hasSanitized = isAuth() && exists(/databases/$(database)/documents/users/$(sanitized)) && get(/databases/$(database)/documents/users/$(sanitized)).data.roles.get(role, false) == true;
-      
-      return hasDirect || hasSanitized;
+      return isAuth() && (
+        exists(/databases/$(database)/documents/users/$(request.auth.token.email.lower())) &&
+        getRole(request.auth.token.email.lower(), role)
+      );
     }
 
-    function isStaff() { 
-       return hasRole('admin') || hasRole('gestor') || hasRole('professor'); 
+    function isStaff() {
+      return hasRole('admin') || hasRole('gestor') || hasRole('professor');
     }
 
     function hasPermission(key) {
-      let email = isAuth() ? request.auth.token.email.lower() : '';
-      let sanitized = isAuth() ? email.replace('@', '_').replace('\\.', '_').replace('\\.', '_').replace('\\.', '_').replace('\\.', '_') + '@rstopteam.internal' : '';
-      
-      let hasDirect = isAuth() && exists(/databases/$(database)/documents/users/$(email)) && get(/databases/$(database)/documents/users/$(email)).data.permissions.get(key, false) == true;
-      
-      let hasSanitized = isAuth() && exists(/databases/$(database)/documents/users/$(sanitized)) && get(/databases/$(database)/documents/users/$(sanitized)).data.permissions.get(key, false) == true;
-      
-      return hasDirect || hasSanitized;
+      return isAuth() && (
+        exists(/databases/$(database)/documents/users/$(request.auth.token.email.lower())) &&
+        get(/databases/$(database)/documents/users/$(request.auth.token.email.lower())).data.permissions.get(key, false) == true
+      );
     }
 
-    // ── Utilizadores (POLÍTICA DE TOLERÂNCIA ZERO A VAZAMENTOS) ────────────────
+    // ── Coleção de Usuários ──────────────────────────────────────────────────
     match /users/{userId} {
-      allow get: if true; 
-      allow list: if isStaff() || request.query.limit <= 1;
-      
-      // 🔐 COFRE DE SEGURANÇA (VAULT): Proteção máxima para PINs
+      allow get: if true;
+      allow list: if isAuth();
+
       match /privacy/secrets {
         allow read: if isAuth() && (
-          (request.auth.token.email == userId) ||
-          (request.auth.token.email.replace('u_', '') == userId) ||
+          (request.auth.token.email.lower() == userId.lower()) ||
           hasRole('admin') ||
           hasRole('gestor') ||
-          hasPermission('viewStaffPins') ||
-          hasPermission('viewStudentPins')
+          hasPermission('viewStaffPins')
         );
-        allow write: if isAuth() && hasRole('admin');
+        allow write: if isAuth() && (hasRole('admin') || hasRole('gestor'));
       }
 
-      // Criação: Apenas Admins, Gestores ou o próprio utilizador
       allow create: if isAuth() && (
         hasRole('admin') || 
         hasRole('gestor') ||
         hasPermission('manageUsers') ||
-        (request.auth.token.email.lower() == userId.lower()) ||
-        (request.auth.token.email.replace('u_', '').lower() == userId.lower())
+        (request.auth.token.email.lower() == userId.lower())
       );
       
-      // Atualização: Admins/Gestores total, ou o próprio para campos não sensíveis
-      allow update: if isAuth() && (hasRole('admin') || hasRole('gestor') || hasPermission('manageUsers') || request.auth.token.email.lower() == userId.lower());
+      allow update: if isAuth() && (
+        hasRole('admin') || 
+        hasRole('gestor') || 
+        hasPermission('manageUsers') || 
+        request.auth.token.email.lower() == userId.lower()
+      );
       
-      allow delete: if isAuth() && (hasRole('admin') || hasPermission('deleteStudents') || hasPermission('manageUsers'));
+      allow delete: if isAuth() && (hasRole('admin') || hasPermission('manageUsers'));
     }
 
-    // ── Modalidades e Turmas (PROTEÇÃO TOTAL) ─────────────────────────────────
+    // ── Modalidades e Turmas ──────────────────────────────────────────────────
     match /modalities/{modalityId} {
       allow read:  if isAuth(); 
       allow write: if isStaff(); 
@@ -80,12 +73,7 @@ service cloud.firestore {
       }
     }
 
-    // ── Inteligência e Configurações ──────────────────────────────────────────
-    match /tech_journey_configs/{docId} { 
-      allow read: if isAuth(); 
-    }
-
-    // ── Sessões e Chamadas ───────────────────────────────────────────────────
+    // ── Sessões e Presenças ───────────────────────────────────────────────────
     match /sessions/{sessionId} {
       allow read:  if isAuth();
       allow write: if isStaff() || isAuth();
@@ -95,27 +83,26 @@ service cloud.firestore {
       }
     }
 
-    // ── Presenças (Histórico) ──────────────────────────────────────────────────
     match /attendance/{docId} {
       allow read:  if isAuth();
       allow write: if isStaff() || isAuth();
     }
 
-    // ── Outras coleções (Restritas) ──────────────────────────────────────────
-    match /finance/{docId}  { allow read, write: if hasRole('admin') || hasRole('gestor'); }
-    match /billing/{docId}  { allow read, write: if hasRole('admin') || hasRole('gestor'); }
+    // ── Coleções Restritas ────────────────────────────────────────────────────
+    match /finance/{docId}   { allow read, write: if hasRole('admin') || hasRole('gestor'); }
+    match /billing/{docId}   { allow read, write: if hasRole('admin') || hasRole('gestor'); }
     match /systemLogs/{docId} { allow write: if isAuth(); allow read: if isStaff(); }
 
     match /{document=**} {
       allow read, write: if isAuth() && hasRole('admin');
     }
 
-    // ── Cofres Legados (Fallback PINs) ───────────────────────────────────────
-    match /equipe/{userId}/privacy/secrets {
-      allow read: if isAuth() && (hasRole('admin') || hasRole('gestor') || request.auth.token.email.replace('u_', '') == userId);
+    // ── Cofres Legados ───────────────────────────────────────────────────────
+    match /equipe/{uId}/privacy/secrets {
+      allow read: if isAuth() && (hasRole('admin') || hasRole('gestor') || request.auth.token.email.lower() == uId.lower());
     }
-    match /students/{userId}/privacy/secrets {
-      allow read: if isAuth() && (hasRole('admin') || hasRole('gestor') || request.auth.token.email.replace('u_', '') == userId);
+    match /students/{uId}/privacy/secrets {
+      allow read: if isAuth() && (hasRole('admin') || hasRole('gestor') || request.auth.token.email.lower() == uId.lower());
     }
   }
 }

@@ -12,13 +12,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [pin, setPin] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showPin, setShowPin] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
 
   const [clickCount, setClickCount] = useState(0)
   const [isAdminMode, setIsAdminMode] = useState(false)
 
-  const { login, isSetupMode } = useAuth()
+  const { login, loginAdmin, isSetupMode, sendResetEmail, checkUserExists } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from?.pathname || '/'
@@ -39,13 +41,42 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setSuccess(null)
     try {
-      const credential = isAdminMode ? password : pin
-      await login(email, credential)
+      if (isAdminMode) {
+        // Usa o PIN de Administrador (adminPin no Firestore)
+        await loginAdmin(email, password)
+      } else {
+        // Usa o PIN Normal (pin no Firestore)
+        await login(email, pin)
+      }
       navigate(from, { replace: true })
     } catch (err) {
       console.error(err)
-      setError('Credenciais inválidas ou conta inativa.')
+      setError(err.message || 'Credenciais inválidas.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotPin = async () => {
+    if (!email) {
+      setError('Por favor, informe seu e-mail para recuperar o PIN.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const exists = await checkUserExists(email)
+      if (!exists) {
+        setError('Este e-mail não está cadastrado no sistema. Verifique a digitação ou fale com seu Gestor.')
+        return
+      }
+      await sendResetEmail(email)
+      setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.')
+    } catch (err) {
+      setError('Erro ao enviar e-mail. Verifique se o endereço está correto.')
     } finally {
       setLoading(false)
     }
@@ -102,13 +133,19 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
               {error && (
-                <div className="p-3 rounded-[10px] bg-red-500/10 border border-red-500/20 text-red-500 text-xs text-center animate-shake">
+                <div className="p-3 rounded-[10px] bg-red-500/10 border border-red-500/20 text-red-500 text-[11px] leading-relaxed text-center animate-shake">
                   {error}
                 </div>
               )}
 
+              {success && (
+                <div className="p-3 rounded-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[11px] leading-relaxed text-center">
+                  {success}
+                </div>
+              )}
+
               <div className="space-y-2">
-                <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold ml-1">E-mail ou Usuário</label>
+                <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold ml-1">Seu E-mail</label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Mail size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
@@ -126,10 +163,10 @@ export default function LoginPage() {
               </div>
 
               {isAdminMode ? (
-                <div className="space-y-2">
+                <div className="space-y-2 animate-pulse-slow">
                   <div className="flex justify-between items-center ml-1">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold">Senha de Administrador</label>
-                    <button type="button" className="text-[10px] text-primary hover:text-primary-dark transition-colors uppercase font-bold tracking-tighter">Esqueci Senha</button>
+                    <label className="text-[10px] text-primary uppercase tracking-[0.2em] font-bold">PIN de Administrador</label>
+                    <button type="button" className="text-[10px] text-gray-600 hover:text-white transition-colors uppercase font-bold tracking-tighter">Acesso Restrito</button>
                   </div>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -138,10 +175,11 @@ export default function LoginPage() {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
+                      maxLength={6}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-12 py-3.5 bg-black/40 border border-primary/20 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
-                      placeholder="••••••••"
+                      onChange={(e) => setPassword(e.target.value.replace(/\D/g, ''))}
+                      className="block w-full pl-10 pr-12 py-3.5 bg-primary/5 border border-primary/30 rounded-xl text-white text-sm focus:outline-none focus:border-primary/60 transition-all font-sans tabular-nums tracking-[0.8em] placeholder:font-inter placeholder:tracking-normal"
+                      placeholder="000000"
                       required
                     />
                     <button
@@ -155,25 +193,38 @@ export default function LoginPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold ml-1">PIN de Acesso (6 Dígitos)</label>
+                  <div className="flex justify-between items-center ml-1">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold">PIN de Acesso (6 Dígitos)</label>
+                    <button 
+                      type="button" 
+                      onClick={handleForgotPin}
+                      className="text-[10px] text-primary hover:text-primary-dark transition-colors uppercase font-bold tracking-tighter"
+                    >
+                      Esqueci meu PIN
+                    </button>
+                  </div>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                       <Lock size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
                     </div>
                     <input
-                      type="password"
+                      type={showPin ? 'text' : 'password'}
                       inputMode="numeric"
                       autoComplete="current-password"
                       maxLength={6}
                       value={pin}
                       onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 tracking-[0.8em] transition-all placeholder:text-gray-800"
+                      className="block w-full pl-10 pr-12 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800 font-sans tabular-nums tracking-[0.8em] placeholder:font-inter placeholder:tracking-normal"
                       placeholder="000000"
                       required
                     />
-                    <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
-                      <HelpCircle size={14} className="text-gray-800" />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPin(!showPin)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-600 hover:text-white transition-colors"
+                    >
+                      {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
               )}
@@ -187,7 +238,7 @@ export default function LoginPage() {
                   <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    Acessar Dashboard
+                    LOGIN
                     <LogIn size={20} />
                   </>
                 )}

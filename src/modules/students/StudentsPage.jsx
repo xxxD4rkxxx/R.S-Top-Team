@@ -161,21 +161,7 @@ export default function StudentsPage() {
   const canSeeStudents = isAdmin || isGestor || userData?.permissions?.viewStudentPins
   const journeyStats = useStudentJourney()
 
-  useEffect(() => {
-    if (!canSeeStudents) return
-    students.forEach(async (student) => {
-      if (!student.pin && !fetchedPins[student.id]) {
-        try {
-          const pin = await fetchUserPin(student.id)
-          if (pin) {
-            setFetchedPins(prev => ({ ...prev, [student.id]: pin }))
-          }
-        } catch (e) {
-          console.error("Erro ao buscar pin:", e)
-        }
-      }
-    })
-  }, [students, canSeeStudents, fetchUserPin])
+
 
   const [showModal, setShowModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
@@ -597,10 +583,7 @@ export default function StudentsPage() {
       {
         selectedStudent && (
           <StudentDetailsModal
-            student={{
-              ...selectedStudent,
-              pin: selectedStudent.pin || fetchedPins[selectedStudent.id]
-            }}
+            student={selectedStudent}
             onClose={() => setSelectedStudent(null)}
             onUpdate={updateStudentProfile}
           />

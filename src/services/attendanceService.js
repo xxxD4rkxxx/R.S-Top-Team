@@ -17,9 +17,9 @@ export const attendanceService = {
    * Cria uma nova sessão (aula) no banco de dados.
    */
   async createSession(payload) {
+    console.log('📅 Criando nova sessão:', payload.id, payload.classTitle)
     try {
       const now = new Date()
-      // Gera um SeqId simples para ordenação visual rápida
       const simpleSeqId = `99${now.getMinutes()}${now.getSeconds()}`
       
       const sessionData = {
@@ -28,11 +28,11 @@ export const attendanceService = {
         createdAt: serverTimestamp(),
       }
       
-      // O ID da sessão já vem gerado do frontend para persistência imediata
       await setDoc(doc(db, 'sessions', payload.id), sessionData)
+      console.log('✅ Sessão criada com sucesso no Firestore.')
       return sessionData
     } catch (error) {
-      console.error('Erro ao criar sessão:', error)
+      console.error('❌ Erro ao criar sessão:', error)
       throw error
     }
   },
@@ -42,13 +42,21 @@ export const attendanceService = {
    * 🎯 Agora atualiza a coleção unificada 'users' para marcar a última presença.
    */
   async markAttendanceBatch(activeSession, activeList) {
+    console.log(`📝 Iniciando registro em lote para ${activeList.length} registros...`)
     try {
       const batch = writeBatch(db)
       const sessionRef = doc(db, 'sessions', activeSession.id)
 
+      let presences = 0
+      let absents = 0
+      let justified = 0
+
       activeList.forEach(student => {
         if (student.status) {
-          // 1. Grava o registro individual de presença na sub-coleção da sessão
+          if (student.status === 'present') presences++
+          else if (student.status === 'absent') absents++
+          else if (student.status === 'justified') justified++
+
           const recordRef = doc(collection(sessionRef, 'attendances'), student.id)
           batch.set(recordRef, {
             studentId: student.id,
@@ -59,26 +67,33 @@ export const attendanceService = {
             timestamp: serverTimestamp() 
           })
 
-          /**
-           * 2. ATUALIZAÇÃO NO PERFIL UNIFICADO
-           * Se estiver presente, marca a data de última atividade no documento 'users/{id}'
-           */
           if (student.status === 'present') {
             const userRef = doc(db, USERS_COLLECTION, student.id)
             batch.update(userRef, {
               lastAttendanceAt: serverTimestamp(),
-              'tech_journey.sessions_since_last_promotion': increment(1), // Incrementa para graduação
+              'tech_journey.sessions_since_last_promotion': increment(1),
               updatedAt: serverTimestamp()
             })
           }
         }
       })
 
-      // Executa todas as operações de forma atômica
+      console.log(`📊 Totais da sessão: ${presences} presenças, ${absents} faltas.`)
+      
+      batch.update(sessionRef, {
+        presencasCount: presences,
+        faltasCount: absents,
+        justificadosCount: justified,
+        totalCount: activeList.length,
+        isFinished: true,
+        updatedAt: serverTimestamp()
+      })
+
       await batch.commit()
+      console.log('✅ Lote de presença persistido com sucesso.')
       return true
     } catch (error) {
-      console.error('Erro ao salvar lote de chamadas unificado:', error)
+      console.error('❌ Erro fatal ao salvar lote de chamadas:', error)
       throw error
     }
   },

@@ -1,11 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Mail, Phone, AlertCircle, HeartPulse, Calendar, Edit2, Save, Users, Smartphone, AlertTriangle, Key } from 'lucide-react'
+import { X, Mail, Phone, AlertCircle, HeartPulse, Calendar, Edit2, Save, Users, Smartphone, AlertTriangle, Key, Loader2 } from 'lucide-react'
 import { beltConfig } from '../../data/beltConfig'
 import { useAttendanceAlerts } from '../../hooks/useAttendanceAlerts'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
+import { useSystemUsers } from '../../hooks/useSystemUsers'
 
 
 const AssiduityCard = ({ student }) => {
@@ -75,7 +76,25 @@ const AssiduityCard = ({ student }) => {
 export default function StudentDetailsModal({ student, onClose, onEdit }) {
   useHideMobileNav(!!student)
   const { userData, isAdmin, isGestor } = useAuth()
+  const { fetchUserPin } = useSystemUsers()
+  const [pin, setPin] = useState(student?.pin || null)
+  const [loadingPin, setLoadingPin] = useState(false)
+
   const canSeePIN = isAdmin || isGestor || userData?.permissions?.viewStudentPins
+
+  useEffect(() => {
+    if (student && !student.pin && canSeePIN) {
+      const loadPin = async () => {
+        setLoadingPin(true)
+        const p = await fetchUserPin(student.id)
+        setPin(p)
+        setLoadingPin(false)
+      }
+      loadPin()
+    } else if (student?.pin) {
+      setPin(student.pin)
+    }
+  }, [student, canSeePIN, fetchUserPin])
 
   if (!student) return null;
 
@@ -290,7 +309,11 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">PIN de Acesso Pessoal</p>
-                  <p className="text-xl text-emerald-400 font-mono tracking-[0.3em] font-black">{student.pin || '---'}</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <p className="text-xl text-emerald-400 font-mono tracking-[0.3em] font-black">
+                      {loadingPin ? <Loader2 size={16} className="animate-spin" /> : (pin || '---')}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

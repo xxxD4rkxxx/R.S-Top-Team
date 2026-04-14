@@ -171,22 +171,7 @@ export default function CollaboratorsPage() {
 
   const isLoading = loading || authLoading
 
-  useEffect(() => {
-    if (!canSeeStaff) return
-    users.forEach(async (member) => {
-      // Se não tem PIN no doc principal, busca no cofre
-      if (!member.pin && !fetchedPins[member.id]) {
-        try {
-          const pin = await fetchUserPin(member.id)
-          if (pin) {
-            setFetchedPins(prev => ({ ...prev, [member.id]: pin }))
-          }
-        } catch (e) {
-          console.error("Erro ao buscar pin:", e)
-        }
-      }
-    })
-  }, [users, canSeeStaff, fetchUserPin])
+
   /**
    * CÁLCULO DE ESTATÍSTICAS (KPIs)
    * 📊 Baseado no estado reativo de 'users'.
@@ -426,8 +411,15 @@ export default function CollaboratorsPage() {
 
                     <td className="py-4 px-5 text-center">
                       {canSeeStaff ? (
-                        <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-emerald-400 tracking-[0.2em] min-w-[80px]">
-                          {member.pin || fetchedPins[member.id] || '---'}
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-emerald-400 tracking-[0.2em] min-w-[80px]">
+                            {member.pin || fetchedPins[member.id] || '---'}
+                          </div>
+                          {member.adminPin && (
+                            <span className="text-[9px] font-black text-primary/50 uppercase tracking-widest">
+                              Admin: {member.adminPin}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-gray-700 tracking-widest min-w-[80px]">
@@ -485,10 +477,7 @@ export default function CollaboratorsPage() {
       />
 
       <CollaboratorDetailsModal
-        collaborator={selectedCollaborator ? {
-          ...selectedCollaborator,
-          pin: selectedCollaborator.pin || fetchedPins[selectedCollaborator.id]
-        } : null}
+        collaborator={selectedCollaborator}
         onClose={() => setSelectedCollaborator(null)}
         onEdit={handleEdit}
       />

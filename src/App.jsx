@@ -27,6 +27,7 @@ const ProfilePage          = lazy(() => import('./modules/profile/ProfilePage'))
 const ReviewAttendancePage = lazy(() => import('./modules/attendance/ReviewAttendancePage'))
 const LoginPage            = lazy(() => import('./modules/auth/LoginPage'))
 const RegisterPage         = lazy(() => import('./modules/auth/RegisterPage'))
+const ResetPasswordPage    = lazy(() => import('./modules/auth/ResetPasswordPage'))
 const ContractsPage        = lazy(() => import('./modules/contracts/ContractsPage'))
 const ModuleUnderDevelopment = lazy(() => import('./components/shared/ModuleUnderDevelopment'))
 const ModalitiesPage       = lazy(() => import('./modules/modalities/ModalitiesPage'))
@@ -109,11 +110,14 @@ function AppContent() {
   }
 
   // 3. ROTAS PÚBLICAS (AUTENTICAÇÃO)
-  if (isAuthPage) {
+  const isPublicAuthPage = isAuthPage || location.pathname === '/reset-password'
+
+  if (isPublicAuthPage) {
     return (
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     )
   }
@@ -188,14 +192,18 @@ function AppContent() {
   )
 }
 
+import { CollaboratorsProvider } from './context/CollaboratorsContext'
+
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <StudentsProvider>
-          <AppProvider>
-            <AppContent />
-          </AppProvider>
+          <CollaboratorsProvider>
+            <AppProvider>
+              <AppContent />
+            </AppProvider>
+          </CollaboratorsProvider>
         </StudentsProvider>
       </AuthProvider>
     </ThemeProvider>

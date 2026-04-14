@@ -36,8 +36,29 @@ function toYMD(d) {
 // Antes: loop serial com await getDocs dentro → 1 query por sessão, bloqueante
 // Agora: Promise.all → todas as queries disparadas simultaneamente
 async function fetchAttendanceCounts(sessionDocs) {
+  console.log(`📊 Processando contagens para ${sessionDocs.length} sessões...`)
   const results = await Promise.all(
     sessionDocs.map(async (s) => {
+      const data = s.data()
+      // Otimização: Se já temos os totais salvos no documento, usamos e evitamos query na subcoleção
+      if (typeof data.presencasCount === 'number' && typeof data.totalCount === 'number') {
+        console.log(`⚡ Cache Match para sessão: ${s.id} (${data.classTitle || 'Sem Título'})`)
+        return { 
+          id: s.id, 
+          ref: s.ref, 
+          presencas: data.presencasCount, 
+          presencasCount: data.presencasCount,
+          faltas: data.faltasCount || (data.totalCount - data.presencasCount), 
+          ausentes: data.faltasCount || (data.totalCount - data.presencasCount),
+          justificados: data.justificadosCount || 0, 
+          total: data.totalCount, 
+          totalCount: data.totalCount,
+          ...data 
+        }
+      }
+
+      // Fallback para sessões legadas que não possuem os contadores denormalizados
+      console.log(`🔍 Buscando subcoleção (Legacy) para sessão: ${s.id}`)
       const attSnap = await getDocs(collection(s.ref, 'attendances'))
       let presencas = 0, faltas = 0, justificados = 0, total = 0
       attSnap.forEach(a => {
@@ -47,9 +68,22 @@ async function fetchAttendanceCounts(sessionDocs) {
         else if (st === 'absent') faltas++
         else if (st === 'justified') justificados++
       })
-      return { id: s.id, ref: s.ref, presencas, faltas, justificados, total, ...s.data() }
+      
+      return { 
+        id: s.id, 
+        ref: s.ref, 
+        presencas, 
+        presencasCount: presencas,
+        faltas, 
+        ausentes: faltas,
+        justificados, 
+        total, 
+        totalCount: total,
+        ...data 
+      }
     })
   )
+  console.log('✅ Processamento de estatísticas concluído.')
   return results
 }
 

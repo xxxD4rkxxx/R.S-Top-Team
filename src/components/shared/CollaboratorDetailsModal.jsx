@@ -1,15 +1,33 @@
-import { X, Mail, Phone, Shield, Calendar, Edit2, User, Key, CheckCircle2, XCircle } from 'lucide-react'
+import { X, Mail, Phone, Shield, Calendar, Edit2, User, Key, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
+import { useSystemUsers } from '../../hooks/useSystemUsers'
+import { useState, useEffect } from 'react'
 
 export default function CollaboratorDetailsModal({ collaborator, onClose, onEdit }) {
   useHideMobileNav(!!collaborator)
   const { userData, isAdmin, isGestor } = useAuth()
+  const { fetchUserPin } = useSystemUsers()
+  const [pin, setPin] = useState(collaborator?.pin || null)
+  const [loadingPin, setLoadingPin] = useState(false)
+
   const canSeeStaff = isAdmin || isGestor || userData?.permissions?.viewStaffPins
 
-
+  useEffect(() => {
+    if (collaborator && !collaborator.pin && canSeeStaff) {
+      const loadPin = async () => {
+        setLoadingPin(true)
+        const p = await fetchUserPin(collaborator.id)
+        setPin(p)
+        setLoadingPin(false)
+      }
+      loadPin()
+    } else if (collaborator?.pin) {
+      setPin(collaborator.pin)
+    }
+  }, [collaborator, canSeeStaff, fetchUserPin])
 
   if (!collaborator) return null;
 
@@ -141,7 +159,11 @@ export default function CollaboratorDetailsModal({ collaborator, onClose, onEdit
                   </div>
                   <div>
                     <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">PIN de Acesso Pessoal</p>
-                    <p className="text-xl text-emerald-400 font-mono tracking-[0.3em] font-black">{collaborator.pin || '---'}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-xl text-emerald-400 font-mono tracking-[0.3em] font-black">
+                        {loadingPin ? <Loader2 size={16} className="animate-spin" /> : (pin || '---')}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

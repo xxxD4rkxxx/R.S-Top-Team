@@ -13,9 +13,22 @@ import {
 } from 'firebase/firestore'
 import {
   updatePassword, reauthenticateWithCredential, EmailAuthProvider,
+  getAuth, initializeApp, getApps, setPersistence, inMemoryPersistence,
+  createUserWithEmailAndPassword
 } from 'firebase/auth'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, auth, storage } from '../firebase/config'
+import { db, auth, storage, firebaseConfig } from '../firebase/config'
+
+// Inicialização Silenciosa de Auth Secundário para Criação de Contas
+// Isso permite criar o acesso de outra pessoa sem deslogar o Admin atual.
+const getVerifyAuth = () => {
+  const apps = getApps()
+  const verifyApp = apps.find(a => a.name === 'verify') || initializeApp(firebaseConfig, 'verify')
+  const vAuth = getAuth(verifyApp)
+  setPersistence(vAuth, inMemoryPersistence)
+  return vAuth
+}
+const vAuth = getVerifyAuth()
 
 // Nome da coleção unificada no Firestore
 const USERS_COLLECTION = 'users'
@@ -177,16 +190,33 @@ export function useSystemUsers() {
         phone: userData.phone || existingData.phone || '',
         name: userData.name || existingData.name || ''
       }
+      
+      const targetPin = userData.pin || existingData.pin
       if (userData.pin) updateData.pin = userData.pin
 
       await updateDoc(userRef, updateData)
 
-      return { id: emailId, pin: userData.pin || existingData.pin, isExisting: true }
+      // 🚀 AUTO-PROVISIONAMENTO NO UPDATE: Garante que o Auth exista
+      if (targetPin) {
+        try {
+          const pinAuthEmail = getPinAuthEmail(emailId)
+          const securePIN = targetPin.length >= 6 ? targetPin : targetPin.padEnd(6, '0')
+          await createUserWithEmailAndPassword(vAuth, pinAuthEmail, securePIN)
+          console.log('✅ Acesso Authentication criado/garantido para usuário existente.')
+        } catch (authErr) {
+          // Se já existir, tudo bem, o importante é que a conta existe
+          if (authErr.code !== 'auth/email-already-in-use') {
+            console.warn('⚠️ Erro ao provisionar auth no update:', authErr.code)
+          }
+        }
+      }
+
+      return { id: emailId, pin: targetPin, isExisting: true }
     } else {
       const pin = userData.pin || generatePIN()
       const newUser = {
         ...userData,
-        pin, // VOLTA PARA O PRINCIPAL
+        pin, 
         status: 'Ativo',
         roles: rolesObj,
         authEmail: emailId,
@@ -196,6 +226,19 @@ export function useSystemUsers() {
       }
 
       await setDoc(userRef, newUser)
+
+      // 🚀 AUTO-PROVISIONAMENTO NA CRIAÇÃO: Cria o acesso no Authentication agora!
+      try {
+        const pinAuthEmail = getPinAuthEmail(emailId)
+        const securePIN = pin.length >= 6 ? pin : pin.padEnd(6, '0')
+        console.log(`✨ Criando acesso Authentication para: ${pinAuthEmail}`)
+        await createUserWithEmailAndPassword(vAuth, pinAuthEmail, securePIN)
+        console.log('✅ Conta criada com sucesso no Firebase Authentication!')
+      } catch (authErr) {
+        if (authErr.code !== 'auth/email-already-in-use') {
+          console.warn('⚠️ Erro ao provisionar auth na criação:', authErr.code)
+        }
+      }
 
       _cachedUsers = null
       return { id: emailId, pin, isExisting: false }
@@ -278,13 +321,41 @@ export function useSystemUsers() {
     return url
   }
 
-  /** Altera senha (apenas para usuários com conta Firebase Auth vinculada) */
+  /** Altera senha e sincroniza com o PIN no Firestore */
   async function changePassword(currentPassword, newPassword) {
     const user = auth.currentUser
     if (!user) throw new Error('Usuário não autenticado no Firebase Auth')
+    
+    // 1. Reautenticação necessária pelo Firebase para troca de senha
     const credential = EmailAuthProvider.credential(user.email, currentPassword)
     await reauthenticateWithCredential(user, credential)
+    
+    // 2. Atualiza no Firebase Auth (o que permite o login)
     await updatePassword(user, newPassword)
+    
+    // 3. 🎯 SINCRONIZAÇÃO: Atualiza o PIN no documento Firestore
+    const emailId = sanitizeId(user.email)
+    
+    // Buscamos os dados atuais para saber se ele é admin/gestor
+    const userDoc = await getDoc(doc(db, USERS_COLLECTION, emailId))
+    const userData = userDoc.exists() ? userDoc.data() : {}
+    
+    const updateData = { 
+      pin: newPassword,
+      updatedAt: serverTimestamp() 
+    }
+
+    // Se for admin ou gestor, atualiza também o PIN de segurança administrativa
+    if (userData.roles?.admin || userData.roles?.gestor || userData.role === 'admin' || userData.role === 'gestor') {
+      updateData.adminPin = newPassword
+      // Limpa também o campo com erro de digitação caso exista
+      updateData['adminPin '] = deleteField()
+      console.log('🛡️ Sincronizando também o Admin PIN...')
+    }
+
+    await updateDoc(doc(db, USERS_COLLECTION, emailId), updateData)
+    
+    console.log(`✅ Senha, PIN e Admin PIN sincronizados para: ${emailId}`)
   }
 
   /**
