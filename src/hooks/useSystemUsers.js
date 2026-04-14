@@ -11,9 +11,10 @@ import {
   updateDoc, doc, serverTimestamp, setDoc,
   getDoc, deleteDoc, getDocs, deleteField, where
 } from 'firebase/firestore'
+import { initializeApp, getApps } from 'firebase/app'
 import {
   updatePassword, reauthenticateWithCredential, EmailAuthProvider,
-  getAuth, initializeApp, getApps, setPersistence, inMemoryPersistence,
+  getAuth, setPersistence, inMemoryPersistence,
   createUserWithEmailAndPassword
 } from 'firebase/auth'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
