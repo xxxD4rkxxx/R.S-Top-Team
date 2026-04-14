@@ -89,8 +89,14 @@ service cloud.firestore {
     }
 
     // ── Coleções Restritas ────────────────────────────────────────────────────
-    match /finance/{docId}   { allow read, write: if hasRole('admin') || hasRole('gestor'); }
-    match /billing/{docId}   { allow read, write: if hasRole('admin') || hasRole('gestor'); }
+    match /finance/{docId}   { 
+      allow read: if isStaff(); 
+      allow write: if hasRole('admin') || hasRole('gestor'); 
+    }
+    match /billing/{docId}   { 
+      allow read: if isStaff();
+      allow write: if hasRole('admin') || hasRole('gestor'); 
+    }
     match /systemLogs/{docId} { allow write: if isAuth(); allow read: if isStaff(); }
 
     match /{document=**} {

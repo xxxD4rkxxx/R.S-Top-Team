@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import {
   Home,
   Users,
@@ -21,24 +22,28 @@ import {
   MessageCircle,
   FileText,
   PieChart,
-  GraduationCap
+  GraduationCap,
+  ArrowDownRight,
+  Clock
 } from 'lucide-react'
 
 // Itens principais da barra inferior (Excluindo o botão central)
 const mainNavItems = [
   { to: '/', icon: Home, label: 'Início' },
   { to: '/students', icon: Users, label: 'Alunos' },
-  { to: '/finance', icon: Banknote, label: 'Fluxo' },
+  { to: '/events', icon: TrendingUp, label: 'Eventos' },
 ]
 
 // Itens do menu "Mais" (Drawer lateral/inferior)
 const drawerItems = [
-  { to: '/events', icon: TrendingUp, label: 'Lutas & Eventos' },
-  { to: '/modalities', icon: Layers, label: 'Modalidades' },
-  { to: '/contracts', icon: FileText, label: 'Contratos' },
-  { to: '/occupancy', icon: PieChart, label: 'Ocupação' },
-  { to: '/collaborators', icon: ShieldCheck, label: 'Professores & Equipe' },
-  { to: '/profile', icon: Settings, label: 'Meu Perfil' },
+  { to: '/billing', icon: Banknote, label: 'Cobrança', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de mensalidades' },
+  { to: '/expenses', icon: ArrowDownRight, label: 'Despesas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Saídas e custos' },
+  { to: '/reports', icon: PieChart, label: 'Relatórios', roles: ['admin', 'gestor', 'professor'], subtitle: 'Análise financeira' },
+  { to: '/modalities', icon: Layers, label: 'Turmas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Modalidades e horários' },
+  { to: '/experimental', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'], subtitle: 'Aulas experimentais' },
+  { to: '/contracts', icon: FileText, label: 'Contratos', roles: ['admin', 'gestor'], subtitle: 'Documentos e termos' },
+  { to: '/collaborators', icon: ShieldCheck, label: 'Equipe', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de professores' },
+  { to: '/profile', icon: Settings, label: 'Perfil', roles: ['admin', 'gestor', 'professor', 'aluno'], subtitle: 'Minha conta' },
 ]
 
 // Configuração de animação de mola para suavidade premium
@@ -67,6 +72,12 @@ export default function MobileNav() {
   }
 
   const { isMobileNavHidden, isNavLocked } = useApp()
+  const { effectiveRole } = useAuth()
+
+  // Filtra os itens da gaveta baseado no cargo do usuário
+  const filteredDrawerItems = drawerItems.filter(item => 
+    !item.roles || item.roles.includes(effectiveRole)
+  )
 
   return (
     <>
@@ -92,7 +103,7 @@ export default function MobileNav() {
               let isActive = false;
               if (idx === 0) isActive = isTabActive('/');
               if (idx === 1) isActive = isTabActive('/students');
-              if (idx === 3) isActive = isTabActive('/finance');
+              if (idx === 3) isActive = isTabActive('/events');
               if (idx === 4) isActive = isDrawerOpen;
 
               return (
@@ -110,8 +121,8 @@ export default function MobileNav() {
           </div>
 
           {/* Itens de Navegação Diretos */}
-          <NavItem to="/" icon={Home} label="Início" active={isTabActive('/')} />
-          <NavItem to="/students" icon={Users} label="Alunos" active={isTabActive('/students')} />
+          <NavItem to="/" icon={Home} label="Início" active={isTabActive('/')} locked={isNavLocked} />
+          <NavItem to="/students" icon={Users} label="Alunos" active={isTabActive('/students')} locked={isNavLocked} />
 
           {/* BOTÃO CENTRAL FLUTUANTE (Atalho Iniciar Chamada) */}
           <div className="relative w-16 h-16 flex items-center justify-center -mt-10">
@@ -133,7 +144,7 @@ export default function MobileNav() {
             </p>
           </div>
 
-          <NavItem to="/finance" icon={Banknote} label="Fluxo" active={isTabActive('/finance')} />
+          <NavItem to="/events" icon={TrendingUp} label="Eventos" active={isTabActive('/events')} locked={isNavLocked} />
 
           {/* Botão para abrir o menu complementar "Mais" */}
           <button
@@ -197,7 +208,7 @@ export default function MobileNav() {
 
               {/* Lista Dinâmica de Módulos Complementares */}
               <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-32 no-scrollbar px-6">
-                {drawerItems.map(({ to, icon: Icon, label }) => (
+                {filteredDrawerItems.map(({ to, icon: Icon, label, subtitle }) => (
                   <NavLink
                     key={to}
                     to={to}
@@ -218,7 +229,7 @@ export default function MobileNav() {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-black uppercase tracking-widest">{label}</span>
-                      <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest opacity-60">Acessar módulo</span>
+                      <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest opacity-60">{subtitle || 'Acessar módulo'}</span>
                     </div>
                     <ChevronRight size={18} className="absolute right-4 text-gray-700 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" />
                   </NavLink>
@@ -233,12 +244,12 @@ export default function MobileNav() {
 }
 
 // Sub-componente auxiliar para itens individuais da barra (evita repetição de código)
-function NavItem({ to, icon: Icon, label, active }) {
+function NavItem({ to, icon: Icon, label, active, locked }) {
   return (
     <NavLink
       to={to}
       onClick={(e) => {
-        if (isNavLocked) {
+        if (locked) {
           e.preventDefault()
         }
       }}

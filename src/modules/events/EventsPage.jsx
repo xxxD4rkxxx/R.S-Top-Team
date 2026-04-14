@@ -189,10 +189,15 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
 // ────────────────────────────────────────────────
 export default function EventsPage() {
   const { notices, loading, addNotice, updateNotice, deleteNotice } = useNotices()
+  const { effectiveRole } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingNotice, setEditingNotice] = useState(null)
   const [activeDropdown, setActiveDropdown] = useState(null)
+  const [activeTab, setActiveTab] = useState('todos') // 'todos', 'eventos', 'avisos'
+
+  // Permissões
+  const canEdit = ['admin', 'gestor', 'professor'].includes(effectiveRole)
 
   // ── KPIs ──
   const totalNotices = notices.length
@@ -200,10 +205,14 @@ export default function EventsPage() {
   const urgents = notices.filter(n => n.priority === 'urgente').length
   const totalViews = notices.reduce((acc, n) => acc + (n.views || 0), 0)
 
-  const filteredNotices = notices.filter(n =>
-    n.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    n.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredNotices = notices.filter(n => {
+    const matchesSearch = n.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        n.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesTab = activeTab === 'todos' || 
+                      (activeTab === 'eventos' && n.type === 'evento') ||
+                      (activeTab === 'avisos' && n.type !== 'evento')
+    return matchesSearch && matchesTab
+  })
 
   const handleSave = async (data) => {
     if (editingNotice) {
@@ -216,12 +225,14 @@ export default function EventsPage() {
   }
 
   const handleEdit = (notice) => {
+    if (!canEdit) return
     setEditingNotice(notice)
     setShowForm(true)
     setActiveDropdown(null)
   }
 
   const handleDelete = async (id) => {
+    if (!canEdit) return
     if (window.confirm('Apagar este aviso permanentemente?')) {
       await deleteNotice(id)
     }
@@ -234,16 +245,21 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full bg-[#050505] relative overflow-hidden">
+      {/* Background Decorativo */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] -mr-64 -mt-64 pointer-events-none" />
+
       <MobileHeader 
-        title="Avisos" 
+        title="Eventos & Avisos" 
         actions={
-          <button 
-            onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
-            className={`p-2.5 rounded-[5px] active:scale-90 transition-all shadow-lg ${showForm && !editingNotice ? 'bg-white/10 text-white' : 'bg-primary text-black shadow-primary/20'}`}
-          >
-            {showForm && !editingNotice ? <X size={20} strokeWidth={3} /> : <Plus size={20} strokeWidth={3} />}
-          </button>
+          canEdit && (
+            <button 
+              onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
+              className={`p-2.5 rounded-xl active:scale-90 transition-all shadow-lg ${showForm && !editingNotice ? 'bg-white/10 text-white' : 'bg-primary text-black shadow-primary/40'}`}
+            >
+              {showForm && !editingNotice ? <X size={20} strokeWidth={3} /> : <Plus size={20} strokeWidth={3} />}
+            </button>
+          )
         }
       />
       
@@ -251,173 +267,220 @@ export default function EventsPage() {
       <PageHeader
         icon={Calendar}
         title="Avisos & Eventos"
-        subtitle="Comunique-se com seus alunos em tempo real"
+        subtitle="Comunicados oficiais e calendário da academia"
         loading={loading}
       />
 
-      <div className="flex-1 px-4 md:px-6 py-6 w-full pb-20 space-y-6">
+      <div className="flex-1 px-4 md:px-6 py-6 w-full pb-32 space-y-8 max-w-7xl mx-auto">
 
         {/* ── KPIs ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 fade-slide-up">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 fade-slide-up">
           <KPICard 
             title="Total" 
             value={loading ? '...' : totalNotices} 
-            description="Avisos e eventos" 
+            description="Ativos no sistema" 
             icon={BellRing} 
           />
           <KPICard 
-            title="Alta Prioridade" 
+            title="Atenção" 
             value={loading ? '...' : highPriority} 
-            description="Requer atenção" 
+            description="Prioridade alta" 
             icon={AlertTriangle} 
             valueColor="text-yellow-400"
           />
           <KPICard 
             title="Urgentes" 
             value={loading ? '...' : urgents} 
-            description="Críticos / Alertas" 
+            description="Alertas críticos" 
             icon={Siren} 
             valueColor="text-primary"
           />
           <KPICard 
-            title="Visualizações" 
+            title="Engajamento" 
             value={loading ? '...' : totalViews} 
-            description="Total acumulado" 
+            description="Visualizações totais" 
             icon={Eye} 
           />
         </div>
 
-        {/* ── ACTION BAR ── */}
-        <div className="flex items-center gap-3 mb-6 fade-slide-up">
-          <button
-            onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
-            className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-[5px] text-sm font-bold transition-all"
-          >
-            {showForm && !editingNotice ? <X size={18} strokeWidth={1.9} /> : <Plus size={18} strokeWidth={1.9} />}
-            {showForm && !editingNotice ? 'Cancelar' : 'Novo evento'}
-          </button>
+        {/* ── ACTION BAR & FILTERS ── */}
+        <div className="flex flex-col md:flex-row items-center gap-4 fade-slide-up">
+          {canEdit && (
+            <button
+              onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
+              className="w-full md:w-auto btn-primary flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all shadow-xl shadow-primary/10"
+            >
+              {showForm && !editingNotice ? <X size={20} /> : <Plus size={20} />}
+              {showForm && !editingNotice ? 'Cancelar' : 'Novo aviso'}
+            </button>
+          )}
 
           <div
-            className="flex-1 flex items-center gap-3 px-4 py-2.5 rounded-[5px] transition-colors"
-            style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)' }}
+            className="flex-1 w-full flex items-center gap-3 px-5 py-3 rounded-xl transition-all border border-white/5 focus-within:border-primary/40 bg-[#111]/80 backdrop-blur-xl"
           >
-            <Search size={18} strokeWidth={1.9} className="text-gray-600 flex-shrink-0" />
+            <Search size={19} strokeWidth={2.2} className="text-gray-600 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Buscar avisos e eventos..."
+              placeholder="Pesquisar comunicados..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="bg-transparent outline-none text-white text-sm placeholder-gray-600 w-full"
+              className="bg-transparent outline-none text-white text-sm placeholder-gray-700 w-full font-medium"
             />
+          </div>
+
+          {/* Tab Filter */}
+          <div className="flex bg-white/5 p-1 rounded-xl w-full md:w-auto">
+            {['todos', 'eventos', 'avisos'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 md:w-24 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  activeTab === tab 
+                    ? 'bg-primary text-white shadow-lg' 
+                    : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* ── INLINE FORM ── */}
         <AnimatePresence>
           {showForm && (
-            <InlinePostForm
-              key={editingNotice?.id || 'new'}
-              initialData={editingNotice}
-              onSave={handleSave}
-              onCancel={() => { setShowForm(false); setEditingNotice(null) }}
-            />
+            <div className="fade-slide-down">
+              <InlinePostForm
+                key={editingNotice?.id || 'new'}
+                initialData={editingNotice}
+                onSave={handleSave}
+                onCancel={() => { setShowForm(false); setEditingNotice(null) }}
+              />
+            </div>
           )}
         </AnimatePresence>
 
         {/* ── LISTA DE AVISOS ── */}
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
           {loading ? (
-            <p className="text-center text-gray-600 py-10">Carregando avisos...</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sincronizando Avisos...</p>
+            </div>
           ) : filteredNotices.length === 0 ? (
-            <div className="text-center py-16 stat-card rounded-[5px]">
-              <BellRing size={48} strokeWidth={1.5} className="text-gray-700 mx-auto mb-4" />
-              <p className="text-white font-semibold">Nenhum aviso por aqui.</p>
-              <p className="text-gray-500 text-sm mt-1">Clique em "Novo evento" para criar o primeiro.</p>
+            <div className="text-center py-20 bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-sm">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                <BellRing size={32} className="text-gray-700" />
+              </div>
+              <p className="text-white font-black uppercase tracking-widest text-lg">Nada por aqui</p>
+              <p className="text-gray-500 text-xs mt-2 font-medium">Nenhum comunicado encontrado para esta busca.</p>
             </div>
           ) : (
             filteredNotices.map((notice, i) => {
               const badge = priorityBadge[notice.priority]
               const isEvento = notice.type === 'evento'
-              const dateStr = notice.createdAt?.toLocaleDateString?.('pt-BR', { day: 'numeric', month: 'short' }) || ''
+              const dateStr = notice.createdAt?.toLocaleDateString?.('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' }) || ''
               const timeStr = notice.createdAt?.toLocaleTimeString?.('pt-BR', { hour: '2-digit', minute: '2-digit' }) || ''
 
               return (
                 <motion.div
                   key={notice.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="relative bg-white/5 border border-white/5 hover:border-white/10 p-6 rounded-[5px] group transition-all"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="relative group lg:flex items-start gap-8 bg-white/[0.03] border border-white/5 hover:border-primary/20 p-6 md:p-8 rounded-[32px] transition-all hover:bg-white/[0.05]"
                 >
-                  {/* DROPDOWN MENU */}
-                  <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setActiveDropdown(activeDropdown === notice.id ? null : notice.id)}
-                      className="text-gray-600 hover:text-white transition-colors p-1"
-                    >
-                      <MoreVertical size={18} />
-                    </button>
-                    <AnimatePresence>
-                      {activeDropdown === notice.id && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                          transition={{ duration: 0.1 }}
-                          className="absolute right-0 mt-1 w-36 shadow-xl rounded-lg overflow-hidden z-20"
-                          style={{ background: 'var(--clr-surface)', border: '1px solid color-mix(in srgb, var(--clr-primary-dark) 40%, transparent)' }}
-                        >
-                          <button
-                            onClick={() => handleEdit(notice)}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                  {/* DROPDOWN MENU (Staff Only) */}
+                  {canEdit && (
+                    <div className="absolute top-6 right-6 z-10 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setActiveDropdown(activeDropdown === notice.id ? null : notice.id)}
+                        className="w-10 h-10 bg-black/40 backdrop-blur-lg flex items-center justify-center rounded-full text-gray-500 hover:text-white transition-colors"
+                      >
+                        <MoreVertical size={20} />
+                      </button>
+                      <AnimatePresence>
+                        {activeDropdown === notice.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, x: 20 }}
+                            animate={{ opacity: 1, scale: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, x: 20 }}
+                            className="absolute right-12 top-0 w-44 bg-[#151515] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-20"
                           >
-                            <Edit2 size={18} strokeWidth={1.9} /> Editar
-                          </button>
-                          <button
-                            onClick={() => handleDelete(notice.id)}
-                            className="w-full flex items-center gap-2.5 px-4 py-3 text-sm hover:bg-primary/10 transition-colors border-t border-white/5"
-                            style={{ color: 'var(--clr-primary)' }}
-                          >
-                            <Trash2 size={18} strokeWidth={1.9} /> Excluir
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                            <button
+                              onClick={() => handleEdit(notice)}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                            >
+                              <Edit2 size={16} /> Editar
+                            </button>
+                            <button
+                              onClick={() => handleDelete(notice.id)}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/10 transition-colors border-t border-white/5"
+                            >
+                              <Trash2 size={16} /> Excluir
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+
+                  {/* Icon Section (Desktop Style) */}
+                  <div className={`hidden lg:flex w-16 h-16 rounded-[22px] items-center justify-center flex-shrink-0 ${isEvento ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary/10 text-primary'}`}>
+                    {isEvento ? <Calendar size={28} /> : <BellRing size={28} />}
                   </div>
 
-                  <div className="pr-8">
+                  <div className="flex-1 pr-6">
                     {/* TITLE + BADGES */}
-                    <div className="flex items-center gap-2.5 mb-2 flex-wrap">
-                      <h3 className="text-xl font-bold text-white tracking-tight">{notice.title}</h3>
+                    <div className="flex items-center gap-3 mb-3 flex-wrap">
+                      {isEvento && (
+                        <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-black uppercase tracking-widest border border-emerald-500/20">
+                          Evento
+                        </span>
+                      ) || (
+                        <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase tracking-widest border border-blue-500/20">
+                          Aviso
+                        </span>
+                      )}
+                      
                       {badge && (
-                        <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-wider ${badge.cls}`}>
+                        <span className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest ${badge.cls}`}>
                           {badge.label}
                         </span>
                       )}
-                      {isEvento && (
-                        <span className="px-2 py-0.5 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-[9px] font-black uppercase tracking-wider">
-                          Evento
-                        </span>
-                      )}
-                    </div>
 
-                    {/* META */}
-                    <div className="flex items-center gap-4 text-[11px] text-gray-500 font-medium mb-4">
-                      {dateStr && (
-                        <span className="flex items-center gap-1.5 opacity-80">
-                          <Calendar size={14} strokeWidth={1.9} className="text-gray-600" /> {dateStr} às {timeStr}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1.5 opacity-80">
-                        <Eye size={14} strokeWidth={1.9} className="text-gray-600" /> {notice.views || 0} views
+                      <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest ml-auto lg:ml-0">
+                         {dateStr} • {timeStr}
                       </span>
                     </div>
 
+                    <h3 className="text-2xl font-black text-white tracking-tight mb-4 group-hover:text-primary transition-colors">{notice.title}</h3>
+                    
                     {/* DESCRIPTION */}
-                    <p className="text-sm text-gray-400 leading-relaxed max-w-[90%] whitespace-pre-line">
-                      {notice.description}
-                    </p>
+                    <div className="relative">
+                      <p className="text-gray-400 leading-relaxed whitespace-pre-line text-base font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+                        {notice.description}
+                      </p>
+                    </div>
+
+                    {/* Stats bar */}
+                    <div className="mt-6 flex items-center gap-6 pt-4 border-t border-white/5">
+                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-600">
+                        <Eye size={14} className="text-gray-700" />
+                        <span>{notice.views || 0} visualizações</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-600">
+                        <Activity size={14} className="text-gray-700" />
+                        <span>Relevância {isEvento ? 'Alta' : 'Padrão'}</span>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Visual Decoration for priority */}
+                  {notice.priority === 'urgente' && (
+                    <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-primary rounded-l-full" />
+                  )}
                 </motion.div>
               )
             })

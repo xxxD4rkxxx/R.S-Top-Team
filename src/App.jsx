@@ -154,9 +154,9 @@ function AppContent() {
                     <Route path="/contracts" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ContractsPage /></AnimatedPage></ProtectedRoute>} />
 
                     {/* Módulo Financeiro — páginas independentes por intenção */}
-                    <Route path="/billing"  element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/expenses" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/reports"  element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ReportsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/billing"  element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/expenses" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/reports"  element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReportsPage /></AnimatedPage></ProtectedRoute>} />
                     {/* Rota legada /finance redireciona para /billing */}
                     <Route path="/finance"  element={<Navigate to="/billing" replace />} />
 

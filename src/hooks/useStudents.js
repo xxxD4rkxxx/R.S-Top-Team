@@ -239,6 +239,20 @@ export function useStudents() {
       if (data[field] !== undefined) payload[field] = data[field]
     })
 
+    // 🔐 SINCRONIZAÇÃO DE SEGURANÇA: Se o próprio aluno estiver alterando o PIN
+    if (data.pin !== undefined && auth.currentUser) {
+      const emailId = id.includes('@') ? id : (data.email || '')
+      if (auth.currentUser.email === emailId.toLowerCase().trim()) {
+        try {
+          const securePIN = data.pin.length >= 6 ? data.pin : data.pin.padEnd(6, '0')
+          await updatePassword(auth.currentUser, securePIN)
+          console.log('✅ PIN do Aluno sincronizado no Authentication.')
+        } catch (e) {
+          console.warn('⚠️ Sincronização direta falhou. O sistema JIT resolverá no próximo login.')
+        }
+      }
+    }
+
     await updateDoc(doc(db, USERS_COLLECTION, id), payload)
   }
 

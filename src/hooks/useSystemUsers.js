@@ -156,11 +156,39 @@ export function useSystemUsers() {
    * Não depende mais de 'role' no caminho do documento, pois tudo está em /users/{userId}
    */
   async function updateProfile(userId, data) {
-    const userRef = doc(db, USERS_COLLECTION, sanitizeId(userId))
-    await updateDoc(userRef, {
+    const emailId = sanitizeId(userId)
+    const userRef = doc(db, USERS_COLLECTION, emailId)
+    
+    const payload = {
       ...data,
       updatedAt: serverTimestamp(),
-    })
+    }
+
+    // 🛡️ SINCRONIZAÇÃO ADMINISTRATIVA: Se mudar o PIN, garante que o adminPin acompanhe
+    // (Apenas para usuários que podem ter acesso administrativo)
+    if (data.pin !== undefined) {
+      const userDoc = await getDoc(userRef)
+      const userData = userDoc.exists() ? userDoc.data() : {}
+      const isStaff = userData.roles?.admin || userData.roles?.gestor || userData.roles?.professor
+      
+      if (isStaff) {
+        payload.adminPin = data.pin
+        payload['adminPin '] = deleteField() // Limpeza de legacy typo
+      }
+
+      // 🔐 SE FOR O PRÓPRIO USUÁRIO: Tenta atualizar a senha no Auth também
+      if (auth.currentUser && auth.currentUser.email === (userData.email || emailId)) {
+        try {
+          const securePIN = data.pin.length >= 6 ? data.pin : data.pin.padEnd(6, '0')
+          await updatePassword(auth.currentUser, securePIN)
+          console.log('✅ Auth Password sincronizado automaticamente via Profile Update.')
+        } catch (e) {
+          console.warn('⚠️ Não foi possível sincronizar Auth Password (requer re-login recente). Use login JIT na próxima sessão.')
+        }
+      }
+    }
+
+    await updateDoc(userRef, payload)
   }
 
   /** 
