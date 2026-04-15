@@ -279,7 +279,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505] text-white">
+    <div className="flex-1 w-full bg-[#050505] text-white">
       <MobileHeader
         title="Avisos & Eventos"
         actions={canEdit && (
@@ -291,7 +291,7 @@ export default function EventsPage() {
 
       <PageHeader icon={BellRing} title="AVISOS & EVENTOS" subtitle="Gestão de comunicados e calendário" />
 
-      <div className="flex-1 px-4 md:px-6 py-6 w-full max-w-[1600px] mx-auto space-y-8">
+      <div className="px-4 md:px-6 py-6 w-full max-w-[1600px] mx-auto space-y-8">
         
         {/* FILTERS */}
         <div className="flex flex-col md:flex-row items-center gap-4">
@@ -341,15 +341,15 @@ export default function EventsPage() {
           )}
         </AnimatePresence>
 
-        {/* NOTICES GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
+        {/* NOTICES LIST (ALONGADO COMO ANTES) */}
+        <div className="flex flex-col gap-6 pb-20">
           {filteredNotices.map((notice, i) => {
             const isEvento = notice.types?.includes('evento')
             const isAviso = notice.types?.includes('aviso')
             const pMap = {
                 urgente: { cls: 'bg-red-500/20 text-red-500 border-red-500/30', icon: <Flame size={10} /> },
                 alta: { cls: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: <Zap size={10} /> },
-                normal: { cls: 'bg-white/5 text-gray-500 border-white/10', icon: null }
+                normal: { cls: 'bg-white/5 text-gray-500 border-white/10', icon: <div className="w-1.5 h-1.5 rounded-full bg-gray-500" /> }
             }
             const pStyle = pMap[notice.priority] || pMap.normal
 
@@ -359,31 +359,23 @@ export default function EventsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="group relative bg-[#0D0D0D] border border-white/5 hover:border-white/10 p-10 rounded-[32px] transition-all flex flex-col gap-8"
+                className="relative group bg-white/[0.03] border border-white/5 hover:border-white/10 p-10 rounded-[32px] transition-all flex flex-col gap-6"
               >
-                {/* 1. CATEGORY & PRIORITY ROW (TOP) */}
-                <div className="flex flex-wrap items-center gap-2">
-                    {isEvento && (
-                        <div className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[8px] font-black uppercase tracking-widest">
-                            EVENTO
+                {/* 1. TOP ROW (DIVIDER LINE + TAGS) */}
+                <div className="flex items-center gap-4">
+                    <div className="flex-1 h-px bg-white/5" />
+                    <div className="flex items-center gap-2">
+                        <div className={`px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 ${pStyle.cls}`}>
+                            {pStyle.icon}
+                            {notice.priority}
                         </div>
-                    )}
-                    {isAviso && (
-                        <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase tracking-widest">
-                            AVISO
+                        <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-700 text-[8px] font-black uppercase tracking-widest">
+                            {getRelativeTime(new Date(notice.createdAt))}
                         </div>
-                    )}
-                    <div className={`px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 ${pStyle.cls}`}>
-                        {pStyle.icon}
-                        {notice.priority}
-                    </div>
-                    
-                    <div className="ml-auto flex items-center gap-4">
-                        <span className="text-[9px] font-black text-gray-700 uppercase tracking-widest">{getRelativeTime(new Date(notice.createdAt))}</span>
                         {canEdit && (
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => { setEditingNotice(notice); setShowForm(true) }} className="p-2 hover:bg-white/10 rounded-xl text-gray-500"><Edit2 size={14} /></button>
-                                <button onClick={() => deleteNotice(notice.id)} className="p-2 hover:bg-red-500/10 rounded-xl text-gray-500 hover:text-red-500"><Trash2 size={14} /></button>
+                            <div className="flex gap-1 ml-2">
+                                <button onClick={() => { setEditingNotice(notice); setShowForm(true) }} className="p-2 hover:bg-white/10 rounded-xl text-gray-600"><Edit2 size={12} /></button>
+                                <button onClick={() => deleteNotice(notice.id)} className="p-2 hover:bg-red-500/10 rounded-xl text-gray-600 hover:text-red-500"><Trash2 size={12} /></button>
                             </div>
                         )}
                     </div>
@@ -394,12 +386,11 @@ export default function EventsPage() {
                     {notice.title}
                 </h3>
 
-                {/* 3. DESCRIPTION (NO DIVIDERS) */}
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em]">{formatDisplayName(notice.authorName)} :</span>
-                        <div className="h-px flex-1 bg-white/5" />
-                    </div>
+                {/* 3. DESCRIPTION (FORMATO SOLICITADO) */}
+                <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                        {formatDisplayName(notice.authorName)} :
+                    </span>
                     <div 
                       className="text-[#DCDCDF] text-sm font-medium leading-relaxed rich-content"
                       dangerouslySetInnerHTML={{ __html: notice.description }}
@@ -408,14 +399,14 @@ export default function EventsPage() {
 
                 {/* 4. EVENT DATE MINI BAR */}
                 {(notice.startDate || notice.startTime) && (
-                    <div className="flex items-center gap-6 pt-6 border-t border-white/5 mt-4">
-                        <div className="flex items-center gap-2 text-[10px] font-black text-gray-600 uppercase">
-                            <Calendar size={14} className="text-primary/50" />
+                    <div className="flex items-center gap-6 pt-6 border-t border-white/5 mt-2">
+                        <div className="flex items-center gap-2 text-[10px] font-black text-gray-700 uppercase">
+                            <Calendar size={14} className="text-primary/30" />
                             <span>{new Date(notice.startDate).toLocaleDateString('pt-BR')}</span>
                         </div>
                         {!notice.isAllDay && (
-                            <div className="flex items-center gap-2 text-[10px] font-black text-gray-600 uppercase">
-                                <Clock size={14} className="text-primary/50" />
+                            <div className="flex items-center gap-2 text-[10px] font-black text-gray-700 uppercase">
+                                <Clock size={14} className="text-primary/30" />
                                 <span>{notice.startTime} - {notice.endTime}</span>
                             </div>
                         )}
