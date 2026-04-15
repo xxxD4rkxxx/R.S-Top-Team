@@ -48,6 +48,7 @@ service cloud.firestore {
       allow create: if isAuth() && (
         hasRole('admin') || 
         hasRole('gestor') ||
+        hasRole('professor') ||
         hasPermission('manageUsers') ||
         (request.auth.token.email.lower() == userId.lower())
       );
@@ -55,11 +56,12 @@ service cloud.firestore {
       allow update: if isAuth() && (
         hasRole('admin') || 
         hasRole('gestor') || 
+        hasRole('professor') ||
         hasPermission('manageUsers') || 
         request.auth.token.email.lower() == userId.lower()
       );
       
-      allow delete: if isAuth() && (hasRole('admin') || hasPermission('manageUsers'));
+      allow delete: if isAuth() && (hasRole('admin') || hasRole('gestor') || hasPermission('manageUsers'));
     }
 
     // ── Modalidades e Turmas ──────────────────────────────────────────────────

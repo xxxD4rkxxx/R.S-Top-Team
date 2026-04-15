@@ -15,7 +15,8 @@ import {
   where,
   getDocs
 } from 'firebase/firestore'
-import { db } from '../firebase/config'
+import { db, auth } from '../firebase/config'
+import { updatePassword } from 'firebase/auth'
 import { useStudentsContext } from '../context/StudentsContext'
 
 // Nome da coleção unificada
@@ -26,7 +27,12 @@ const USERS_COLLECTION = 'users'
  */
 const sanitizeId = (identifier) => {
   if (!identifier) return 'student_' + Math.random().toString(36).substring(7)
-  return identifier.toLowerCase().trim().replace(/[@.]/g, '_').replace(/\//g, '-')
+  const safeId = identifier.toLowerCase().trim()
+    .replace(/[@.]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_{2,}/g, '_')
+  
+  return `${safeId}@rstopteam.internal`
 }
 
 /**
@@ -211,8 +217,8 @@ export function useStudents() {
       updatedAt: serverTimestamp(),
     }
 
-    // Define o ID do documento baseado no e-mail (se existir) ou nome
-    const docId = newStudent.email ? newStudent.email.toLowerCase().trim() : sanitizeId(newStudent.name)
+    // Define o ID do documento baseado no e-mail (se existir) ou nome usando a identidade unificada
+    const docId = sanitizeId(newStudent.email || newStudent.name)
     await setDoc(doc(db, USERS_COLLECTION, docId), payload)
   }
 

@@ -5,10 +5,12 @@ import {
   BellRing,
   Plus,
   Search,
+  MoreVertical,
   Calendar,
   Trash2,
   Edit2,
   X,
+  MessageSquare,
   Clock,
   RefreshCcw,
   Bell,
@@ -28,28 +30,31 @@ import KPICard from '../../components/shared/KPICard'
 import MobileHeader from '../../components/navigation/MobileHeader'
 
 // ────────────────────────────────────────────────
-// EDITOR TOOLBAR COMPONENT (SLIM & RIGHT ALIGNED)
+//  INLINE FORM COMPONENT
+// ────────────────────────────────────────────────
+// ────────────────────────────────────────────────
+// EDITOR TOOLBAR COMPONENT
 // ────────────────────────────────────────────────
 function TextEditorToolbar({ onCommand }) {
   const tools = [
-    { cmd: 'bold', icon: <Bold size={12} />, label: 'Negrito' },
-    { cmd: 'italic', icon: <Italic size={12} />, label: 'Itálico' },
-    { cmd: 'underline', icon: <Underline size={12} />, label: 'Sublinhado' },
+    { cmd: 'bold', icon: <Bold size={14} />, label: 'Negrito' },
+    { cmd: 'italic', icon: <Italic size={14} />, label: 'Itálico' },
+    { cmd: 'underline', icon: <Underline size={14} />, label: 'Sublinhado' },
     { type: 'separator' },
-    { cmd: 'insertUnorderedList', icon: <List size={12} />, label: 'Marcadores' },
-    { cmd: 'insertOrderedList', icon: <ListOrdered size={12} />, label: 'Numerada' },
+    { cmd: 'insertUnorderedList', icon: <List size={14} />, label: 'Lista Marcadores' },
+    { cmd: 'insertOrderedList', icon: <ListOrdered size={14} />, label: 'Lista Numerada' },
   ]
 
   return (
-    <div className="flex flex-col gap-1 p-1.5 bg-white/5 rounded-xl border border-white/5">
+    <div className="flex items-center gap-1 p-1 bg-white/[0.03] border border-white/5 rounded-xl mb-2">
       {tools.map((tool, i) => tool.type === 'separator' ? (
-        <div key={i} className="w-full h-px bg-white/10 my-1" />
+        <div key={i} className="w-px h-4 bg-white/10 mx-1" />
       ) : (
         <button
           key={tool.cmd}
           type="button"
           onClick={() => onCommand(tool.cmd)}
-          className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
           title={tool.label}
         >
           {tool.icon}
@@ -67,13 +72,15 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
   const [description, setDescription] = useState(initialData?.description || '')
   const [priority, setPriority] = useState(initialData?.priority || 'normal')
   const [types, setTypes] = useState(initialData?.types || (initialData?.type ? [initialData.type] : ['aviso']))
-  
+
+  // Data / Hora
   const [startDate, setStartDate] = useState(initialData?.startDate || new Date().toISOString().split('T')[0])
   const [endDate, setEndDate] = useState(initialData?.endDate || new Date().toISOString().split('T')[0])
   const [startTime, setStartTime] = useState(initialData?.startTime || '09:00')
   const [endTime, setEndTime] = useState(initialData?.endTime || '10:00')
   const [isAllDay, setIsAllDay] = useState(initialData?.isAllDay || false)
-  
+
+  // Repetição e Notificação
   const [repeat, setRepeat] = useState(initialData?.repeat || 'none')
   const [notification, setNotification] = useState(initialData?.notification || { value: 30, unit: 'minutes' })
 
@@ -82,10 +89,10 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
   const handlePublish = async () => {
     const content = editorRef.current ? editorRef.current.innerHTML : description;
     if (!title.trim() || !content.trim()) return
-    await onSave({ 
-      title, 
-      description: content, 
-      priority, 
+    await onSave({
+      title,
+      description: content,
+      priority,
       types,
       startDate,
       endDate,
@@ -99,128 +106,229 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="mb-12 rounded-[32px] overflow-hidden border border-white/10 bg-[#0A0A0A] shadow-2xl"
+      initial={{ opacity: 0, y: -16, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+      className="mb-8 rounded-[32px] overflow-hidden shadow-2xl border border-white/10 bg-[#0A0A0A]"
     >
-      <div className="p-10 space-y-10">
-        <div className="flex items-center justify-between">
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-white/[0.02]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+            <BellRing size={20} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-white uppercase tracking-wider">
+              {initialData ? 'Editar Evento / Aviso' : 'Novo Evento / Aviso'}
+            </h2>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Configure os detalhes abaixo</p>
+          </div>
+        </div>
+        <button onClick={onCancel} className="p-2.5 hover:bg-white/10 rounded-xl text-gray-500 hover:text-white transition-all">
+          <X size={20} />
+        </button>
+      </div>
+
+      <div className="p-8 space-y-8">
+        {/* TITLE */}
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder="Adicionar título"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            className="w-full bg-transparent text-3xl font-black text-white placeholder-gray-800 outline-none border-b-2 border-transparent focus:border-primary/30 transition-all pb-2"
+          />
+        </div>
+
+        {/* DATE & TIME (CALENDAR STYLE) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-3xl bg-white/[0.02] border border-white/5">
+          <div className="space-y-4">
             <div className="flex items-center gap-4">
-               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                    <BellRing size={24} className="text-primary" />
-               </div>
-               <h2 className="text-xl font-black text-white uppercase tracking-tighter">
-                  {initialData ? 'Editar Publicação' : 'Nova Publicação'}
-               </h2>
-            </div>
-            <button onClick={onCancel} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-gray-400 transition-all">
-               <X size={20} />
-            </button>
-        </div>
-
-        {/* TITLE INPUT */}
-        <input
-          type="text"
-          placeholder="Qual o título do comunicado?"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          className="w-full bg-transparent text-5xl font-black text-white placeholder-gray-800 outline-none border-none py-2"
-        />
-
-        {/* SCHEDULING BAR */}
-        <div className="flex flex-wrap items-center gap-6 p-6 rounded-[24px] bg-white/[0.02] border border-white/5">
-            <div className="flex items-center gap-3">
-                <Calendar size={18} className="text-gray-600" />
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-sm font-bold text-gray-300 outline-none" />
-                <span className="text-gray-700 font-bold text-xs">ATÉ</span>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-sm font-bold text-gray-300 outline-none" />
-            </div>
-            
-            {!isAllDay && (
-                <div className="flex items-center gap-3 border-l border-white/10 pl-6">
-                    <Clock size={16} className="text-gray-600" />
-                    <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="bg-transparent text-sm font-bold text-gray-300 outline-none w-20" />
-                    <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="bg-transparent text-sm font-bold text-gray-300 outline-none w-20" />
-                </div>
-            )}
-
-            <div className="flex items-center gap-4 ml-auto">
-               <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={isAllDay} onChange={e => setIsAllDay(e.target.checked)} className="sr-only peer" />
-                  <div className="w-8 h-4 bg-white/10 rounded-full peer-checked:bg-primary transition-all relative">
-                    <div className="absolute left-1 top-1 w-2 h-2 bg-gray-500 rounded-full peer-checked:translate-x-4 peer-checked:bg-black transition-all" />
-                  </div>
-                  <span className="text-[10px] font-black text-gray-500 uppercase">Dia Inteiro</span>
-               </label>
-            </div>
-        </div>
-
-        {/* SELECTORS ROW */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            <div className="space-y-4">
-                <label className="text-[10px] font-black text-gray-700 uppercase tracking-widest ml-1">Tipo de Postagem</label>
-                <div className="flex gap-2">
-                    {['aviso', 'evento'].map(t => (
-                        <button
-                          key={t}
-                          onClick={() => types.includes(t) ? setTypes(types.filter(x => x !== t)) : setTypes([...types, t])}
-                          className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                            types.includes(t) ? 'bg-primary text-black border-primary shadow-lg shadow-primary/20' : 'bg-white/5 text-gray-500 border-white/5'
-                          }`}
-                        >
-                            {t}
-                        </button>
-                    ))}
-                </div>
-            </div>
-            <div className="space-y-4">
-                <label className="text-[10px] font-black text-gray-700 uppercase tracking-widest ml-1">Prioridade</label>
-                <div className="flex gap-2">
-                    {['normal', 'alta', 'urgente'].map(p => (
-                        <button
-                          key={p}
-                          onClick={() => setPriority(p)}
-                          className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                            priority === p 
-                            ? p === 'urgente' ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20' : 'bg-white/20 text-white border-white/20'
-                            : 'bg-white/5 text-gray-500 border-white/5'
-                          }`}
-                        >
-                            {p}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-
-        {/* DESCRIPTION EDITOR (FOTO 2 STYLE) */}
-        <div className="space-y-4">
-            <label className="text-[10px] font-black text-gray-700 uppercase tracking-widest ml-1">Descrição</label>
-            <div className="flex gap-4 items-start">
-               <div className="flex-1 relative group">
-                  <div 
-                    ref={editorRef}
-                    contentEditable
-                    onInput={e => setDescription(e.currentTarget.innerHTML)}
-                    dangerouslySetInnerHTML={{ __html: initialData?.description || '' }}
-                    className="w-full min-h-[250px] p-8 rounded-[32px] bg-white/[0.03] border border-white/5 text-gray-300 text-sm outline-none focus:border-primary/40 transition-all leading-relaxed no-scrollbar overflow-y-auto"
-                    style={{ whiteSpace: 'pre-wrap' }}
+              <Calendar size={18} className="text-gray-500 shrink-0" />
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-gray-300 outline-none focus:border-primary/50 flex-1"
+                />
+                {!isAllDay && (
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={e => setStartTime(e.target.value)}
+                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-gray-300 outline-none focus:border-primary/50 w-28"
                   />
-               </div>
-               <TextEditorToolbar onCommand={(cmd) => {
-                  document.execCommand(cmd, false, null);
-                  if (editorRef.current) { editorRef.current.focus(); }
-               }} />
+                )}
+                <span className="text-gray-600 font-bold text-xs uppercase">até</span>
+                {!isAllDay && (
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={e => setEndTime(e.target.value)}
+                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-gray-300 outline-none focus:border-primary/50 w-28"
+                  />
+                )}
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-gray-300 outline-none focus:border-primary/50 flex-1"
+                />
+              </div>
             </div>
+
+            <div className="flex items-center gap-6 pl-9">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={isAllDay}
+                    onChange={e => setIsAllDay(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 bg-white/10 rounded-full peer peer-checked:bg-primary transition-all" />
+                  <div className="absolute top-1 left-1 w-3 h-3 bg-gray-500 rounded-full peer-checked:translate-x-5 peer-checked:bg-black transition-all" />
+                </div>
+                <span className="text-xs font-bold text-gray-500 group-hover:text-gray-300 transition-colors uppercase tracking-widest">Dia Inteiro</span>
+              </label>
+
+              <div className="flex items-center gap-2">
+                <RefreshCcw size={14} className="text-gray-600" />
+                <select
+                  value={repeat}
+                  onChange={e => setRepeat(e.target.value)}
+                  className="bg-transparent text-[10px] font-black text-primary uppercase tracking-widest outline-none cursor-pointer"
+                >
+                  <option value="none" className="bg-[#0A0A0A]">Não se repete</option>
+                  <option value="daily" className="bg-[#0A0A0A]">Todos os dias</option>
+                  <option value="weekly" className="bg-[#0A0A0A]">Semanalmente</option>
+                  <option value="monthly" className="bg-[#0A0A0A]">Mensalmente</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-center border-l border-white/5 pl-6 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                <Bell size={16} className="text-emerald-500" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Notificar</span>
+                <input
+                  type="number"
+                  value={notification.value}
+                  onChange={e => setNotification({ ...notification, value: e.target.value })}
+                  className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-center font-bold text-white outline-none"
+                />
+                <select
+                  value={notification.unit}
+                  onChange={e => setNotification({ ...notification, unit: e.target.value })}
+                  className="bg-transparent text-xs font-bold text-gray-300 uppercase tracking-widest outline-none"
+                >
+                  <option value="minutes" className="bg-[#0A0A0A]">minutos antes</option>
+                  <option value="hours" className="bg-[#0A0A0A]">horas antes</option>
+                  <option value="days" className="bg-[#0A0A0A]">dias antes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CATEGORY & PRIORITY SELECTORS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-3">
+            <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Categoria</span>
+            <div className="flex p-1.5 bg-white/5 border border-white/5 rounded-3xl gap-2">
+              {[
+                { id: 'aviso', label: 'Aviso', icon: <BellRing size={14} /> },
+                { id: 'evento', label: 'Evento', icon: <Calendar size={14} /> }
+              ].map(cat => {
+                const isSelected = types.includes(cat.id)
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      if (isSelected) {
+                        if (types.length > 1) setTypes(types.filter(t => t !== cat.id))
+                      } else {
+                        setTypes([...types, cat.id])
+                      }
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isSelected
+                      ? `bg-white/10 text-white border border-white/20 shadow-lg shadow-black/20`
+                      : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent opacity-50'
+                      }`}
+                  >
+                    {cat.icon} {cat.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Prioridade</span>
+            <div className="flex p-1.5 bg-white/5 border border-white/5 rounded-3xl gap-2">
+              {[
+                { id: 'normal', label: 'Normal' },
+                { id: 'alta', label: 'Alta' },
+                { id: 'urgente', label: 'Urgente' }
+              ].map(prio => (
+                <button
+                  key={prio.id}
+                  onClick={() => setPriority(prio.id)}
+                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${priority === prio.id
+                    ? prio.id === 'urgente'
+                      ? 'bg-primary text-black'
+                      : prio.id === 'alta'
+                        ? 'bg-yellow-500 text-black'
+                        : 'bg-white/30 text-white'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent'
+                    }`}
+                >
+                  {prio.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* DESCRIPTION RICH EDITOR */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Descrição Detalhada</span>
+            <TextEditorToolbar onCommand={(cmd) => {
+              document.execCommand(cmd, false, null);
+              if (editorRef.current) { editorRef.current.focus(); }
+            }} />
+          </div>
+          <div
+            ref={editorRef}
+            contentEditable
+            onInput={e => setDescription(e.currentTarget.innerHTML)}
+            dangerouslySetInnerHTML={{ __html: initialData?.description || '' }}
+            className="w-full min-h-[160px] p-6 rounded-3xl bg-white/[0.02] border border-white/5 text-gray-300 text-sm outline-none focus:border-primary/30 transition-all leading-relaxed"
+            style={{ whiteSpace: 'pre-wrap' }}
+          />
         </div>
       </div>
 
-      <div className="px-10 py-8 bg-white/[0.02] border-t border-white/5 flex justify-end gap-4">
-        <button onClick={onCancel} className="px-8 py-4 text-xs font-black text-gray-500 uppercase tracking-widest">Descartar</button>
+      {/* FOOTER ACTIONS */}
+      <div className="px-8 py-6 border-t border-white/5 bg-white/[0.01] flex items-center justify-end gap-4">
+        <button
+          onClick={onCancel}
+          className="px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest text-gray-500 hover:text-white transition-all"
+        >
+          Cancelar
+        </button>
         <button
           onClick={handlePublish}
-          className="px-12 py-4 bg-primary text-black rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all"
+          disabled={!title.trim() || !description.trim()}
+          className="px-10 py-3 rounded-full text-xs font-black uppercase tracking-widest bg-primary text-black shadow-lg shadow-primary/20 active:scale-95 disabled:opacity-30 transition-all border border-primary/20"
         >
           {initialData ? 'Salvar Alterações' : 'Publicar Agora'}
         </button>
@@ -228,6 +336,7 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
     </motion.div>
   )
 }
+
 
 // ────────────────────────────────────────────────
 //  MAIN PAGE
@@ -238,8 +347,10 @@ export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingNotice, setEditingNotice] = useState(null)
-  const [activeTab, setActiveTab] = useState('todos')
+  const [activeDropdown, setActiveDropdown] = useState(null)
+  const [activeTab, setActiveTab] = useState('todos') // 'todos', 'eventos', 'avisos'
 
+  // Helper para nome curto (ex: João Gustavo)
   const formatDisplayName = (fullName) => {
     if (!fullName) return 'Autor'
     const parts = fullName.trim().split(/\s+/)
@@ -247,16 +358,25 @@ export default function EventsPage() {
     return `${parts[0]} ${parts[1]}`
   }
 
+  // Helper para tempo relativo (estilo solicitado)
   const getRelativeTime = (date) => {
     if (!date) return ''
     const now = new Date()
     const diffInSeconds = Math.floor((now - date) / 1000)
     const diffInDays = Math.floor(diffInSeconds / 86400)
+
     if (diffInDays < 1) return 'Hoje'
     return `Há ${diffInDays}d`
   }
 
+  // Permissões
   const canEdit = ['admin', 'gestor', 'professor'].includes(effectiveRole)
+
+  // ── KPIs ──
+  const totalNotices = notices.length
+  const highPriority = notices.filter(n => n.priority === 'alta').length
+  const urgents = notices.filter(n => n.priority === 'urgente').length
+  const totalViews = notices.reduce((acc, n) => acc + (n.views || 0), 0)
 
   const filteredNotices = notices.filter(n => {
     const matchesSearch = n.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -267,67 +387,182 @@ export default function EventsPage() {
     return matchesSearch && matchesTab
   })
 
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
+
+  useEffect(() => {
+    // Check for upcoming events every minute
+    const checkUpcoming = () => {
+      const now = new Date()
+      notices.forEach(notice => {
+        if (notice.types?.includes('evento') && notice.startDate) {
+          const eventDate = new Date(`${notice.startDate}T${notice.startTime || '00:00'}`)
+          const diffMinutes = (eventDate - now) / (1000 * 60)
+
+          // If notification setting matches diff
+          const notifyValue = notice.notification?.value || 30
+          const notifyUnit = notice.notification?.unit || 'minutes'
+          let triggerMinutes = notifyValue
+          if (notifyUnit === 'hours') triggerMinutes *= 60
+          if (notifyUnit === 'days') triggerMinutes *= 1440
+
+          if (diffMinutes > 0 && diffMinutes <= triggerMinutes && diffMinutes > triggerMinutes - 1) {
+            if (Notification.permission === 'granted') {
+              new Notification(`Evento Próximo: ${notice.title}`, {
+                body: `Inicia em aproximadamente ${notifyValue} ${notifyUnit}.`,
+                icon: '/favicon.ico'
+              })
+            }
+          }
+        }
+      })
+    }
+
+    const interval = setInterval(checkUpcoming, 60000)
+    return () => clearInterval(interval)
+  }, [notices])
+
   const handleSave = async (data) => {
     if (editingNotice) {
       await updateNotice(editingNotice.id, data)
       setEditingNotice(null)
     } else {
+      // Tenta pegar o nome de várias fontes para garantir registro do autor
       const authorName = userData?.name || user?.displayName || user?.email?.split('@')[0] || 'Sistema'
-      await addNotice({ ...data, authorName, authorId: user?.uid || 'system' })
+
+      await addNotice({
+        ...data,
+        authorName: authorName,
+        authorId: user?.uid || 'system'
+      })
     }
     setShowForm(false)
   }
 
+  const handleEdit = (notice) => {
+    if (!canEdit) return
+    setEditingNotice(notice)
+    setShowForm(true)
+    setActiveDropdown(null)
+  }
+
+  const handleDelete = async (id) => {
+    if (!canEdit) return
+    if (window.confirm('Apagar este aviso permanentemente?')) {
+      await deleteNotice(id)
+    }
+    setActiveDropdown(null)
+  }
+
+  const priorityBadge = {
+    alta: { label: 'Alta', cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
+    urgente: { label: 'Urgente', cls: 'bg-primary/10 text-primary border-primary/25' },
+  }
+
   return (
-    <div className="flex-1 w-full bg-[#050505] text-white">
+    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505] text-white relative">
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] -mr-64 -mt-64 pointer-events-none" />
+
       <MobileHeader
         title="Avisos & Eventos"
-        actions={canEdit && (
-            <button onClick={() => { setEditingNotice(null); setShowForm(true) }} className="p-2.5 bg-primary rounded-xl text-black font-bold shadow-lg">
-                <Plus size={20} />
+        actions={
+          canEdit && (
+            <button
+              onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
+              className={`p-2.5 rounded-xl active:scale-90 transition-all shadow-lg ${showForm && !editingNotice ? 'bg-white/10 text-white' : 'bg-primary text-black shadow-primary/40'}`}
+            >
+              {showForm && !editingNotice ? <X size={20} strokeWidth={3} /> : <Plus size={20} strokeWidth={3} />}
             </button>
-        )}
+          )
+        }
       />
 
-      <PageHeader icon={BellRing} title="AVISOS & EVENTOS" subtitle="Gestão de comunicados e calendário" />
+      {/* Header Desktop */}
+      <PageHeader
+        icon={BellRing}
+        title="AVISOS & EVENTOS"
+        subtitle="COMUNICADOS OFICIAIS E CALENDÁRIO DA ACADEMIA"
+        loading={loading}
+      />
 
-      <div className="px-4 md:px-6 py-6 w-full max-w-[1600px] mx-auto space-y-8">
-        
-        {/* FILTERS */}
-        <div className="flex flex-col md:flex-row items-center gap-4">
-            {canEdit && (
-                <button
-                    onClick={() => { setEditingNotice(null); setShowForm(true) }}
-                    className="w-full md:w-auto px-10 py-4 bg-primary text-black rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/10 transition-all hover:scale-[1.02]"
-                >
-                    Novo Comunicado
-                </button>
-            )}
-            <div className="flex-1 w-full flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/5">
-                <Search size={20} className="text-gray-600" />
-                <input
-                    type="text"
-                    placeholder="Pesquisar..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="bg-transparent outline-none text-white text-sm w-full"
-                />
-            </div>
-            <div className="flex bg-white/5 p-1.5 rounded-2xl">
-                {['todos', 'eventos', 'avisos'].map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                            activeTab === tab ? 'bg-white/10 text-white' : 'text-gray-600 hover:text-gray-400'
-                        }`}
-                    >
-                        {tab}
-                    </button>
-                ))}
-            </div>
+      <div className="flex-1 px-4 md:px-6 py-6 w-full pb-32 space-y-8 max-w-[1600px] mx-auto">
+
+        {/* ── KPIs ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 fade-slide-up">
+          <KPICard
+            title="Total"
+            value={loading ? '...' : totalNotices}
+            description="Ativos no sistema"
+            icon={BellRing}
+          />
+          <KPICard
+            title="Atenção"
+            value={loading ? '...' : highPriority}
+            description="Prioridade alta"
+            icon={Zap}
+            valueColor="text-yellow-400"
+          />
+          <KPICard
+            title="Urgentes"
+            value={loading ? '...' : urgents}
+            description="Alertas críticos"
+            icon={Siren}
+            valueColor="text-primary"
+          />
+          <KPICard
+            title="Engajamento"
+            value={loading ? '...' : totalViews}
+            description="Visualizações totais"
+            icon={Eye}
+          />
         </div>
 
+        {/* ── ACTION BAR & FILTERS ── */}
+        <div className="flex flex-col md:flex-row items-center gap-4 fade-slide-up">
+          {canEdit && (
+            <button
+              onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
+              className="w-full md:w-auto btn-primary flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all shadow-xl shadow-primary/10"
+            >
+              {showForm && !editingNotice ? <X size={20} /> : <Plus size={20} />}
+              {showForm && !editingNotice ? 'Cancelar' : 'Novo aviso'}
+            </button>
+          )}
+
+          <div
+            className="flex-1 w-full flex items-center gap-3 px-5 py-3 rounded-xl transition-all border border-white/5 focus-within:border-primary/40 bg-[#111]/80 backdrop-blur-xl"
+          >
+            <Search size={19} strokeWidth={2.2} className="text-gray-600 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Pesquisar comunicados..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="bg-transparent outline-none text-white text-sm placeholder-gray-700 w-full font-medium"
+            />
+          </div>
+
+          {/* Tab Filter */}
+          <div className="flex bg-white/5 p-1 rounded-xl w-full md:w-auto">
+            {['todos', 'eventos', 'avisos'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 md:w-24 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab
+                  ? 'bg-primary text-white shadow-lg'
+                  : 'text-gray-500 hover:text-white'
+                  }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── INLINE FORM ── */}
         <AnimatePresence>
           {showForm && (
             <div className="fade-slide-down">
@@ -341,82 +576,125 @@ export default function EventsPage() {
           )}
         </AnimatePresence>
 
-        {/* NOTICES LIST (ALONGADO COMO ANTES) */}
-        <div className="flex flex-col gap-6 pb-20">
-          {filteredNotices.map((notice, i) => {
-            const isEvento = notice.types?.includes('evento')
-            const isAviso = notice.types?.includes('aviso')
-            const pMap = {
-                urgente: { cls: 'bg-red-500/20 text-red-500 border-red-500/30', icon: <Flame size={10} /> },
-                alta: { cls: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', icon: <Zap size={10} /> },
-                normal: { cls: 'bg-white/5 text-gray-500 border-white/10', icon: <div className="w-1.5 h-1.5 rounded-full bg-gray-500" /> }
-            }
-            const pStyle = pMap[notice.priority] || pMap.normal
+        {/* ── LISTA DE AVISOS (Alongada) ── */}
+        <div className="grid grid-cols-1 gap-6">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sincronizando Avisos...</p>
+            </div>
+          ) : filteredNotices.length === 0 ? (
+            <div className="text-center py-20 bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-sm">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                <BellRing size={32} className="text-gray-700" />
+              </div>
+              <p className="text-white font-black uppercase tracking-widest text-lg">Nada por aqui</p>
+              <p className="text-gray-500 text-xs mt-2 font-medium">Nenhum comunicado encontrado para esta busca.</p>
+            </div>
+          ) : (
+            filteredNotices.map((notice, i) => {
+              const badge = priorityBadge[notice.priority]
+              const isEvento = notice.types?.includes('evento')
+              const isAviso = notice.types?.includes('aviso')
+              const relativeTime = getRelativeTime(notice.createdAt)
 
-            return (
-              <motion.div
-                key={notice.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="relative group bg-white/[0.03] border border-white/5 hover:border-white/10 p-10 rounded-[32px] transition-all flex flex-col gap-6"
-              >
-                {/* 1. TOP ROW (DIVIDER LINE + TAGS) */}
-                <div className="flex items-center gap-4">
-                    <div className="flex-1 h-px bg-white/5" />
-                    <div className="flex items-center gap-2">
-                        <div className={`px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 ${pStyle.cls}`}>
-                            {pStyle.icon}
-                            {notice.priority}
-                        </div>
-                        <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-700 text-[8px] font-black uppercase tracking-widest">
-                            {getRelativeTime(new Date(notice.createdAt))}
-                        </div>
-                        {canEdit && (
-                            <div className="flex gap-1 ml-2">
-                                <button onClick={() => { setEditingNotice(notice); setShowForm(true) }} className="p-2 hover:bg-white/10 rounded-xl text-gray-600"><Edit2 size={12} /></button>
-                                <button onClick={() => deleteNotice(notice.id)} className="p-2 hover:bg-red-500/10 rounded-xl text-gray-600 hover:text-red-500"><Trash2 size={12} /></button>
-                            </div>
-                        )}
+              const priorityMap = {
+                urgente: { label: 'URGENTE', cls: 'bg-primary/20 text-primary border-primary/30', icon: <Flame size={12} /> },
+                alta: { label: 'ALTA PRIORIDADE', cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30', icon: <Zap size={12} /> },
+                normal: { label: 'NORMAL', cls: 'bg-white/5 text-gray-500 border-white/10', icon: <div className="w-1.5 h-1.5 rounded-full bg-gray-500" /> }
+              }
+              const pCfg = priorityMap[notice.priority] || priorityMap.normal
+
+              return (
+                <motion.div
+                  key={notice.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="relative group bg-white/[0.03] border border-white/5 hover:border-white/10 p-6 rounded-[32px] transition-all overflow-hidden"
+                >
+                  {/* Visual Decoration for priority bar */}
+                  <div className={`absolute top-0 left-0 bottom-0 w-1.5 transition-colors ${notice.priority === 'urgente' ? 'bg-primary' :
+                    notice.priority === 'alta' ? 'bg-yellow-500' : 'bg-transparent'
+                    }`} />
+
+                  {/* STAFF CONTROLS */}
+                  {canEdit && (
+                    <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <button onClick={() => handleEdit(notice)} className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all"><Edit2 size={16} /></button>
+                      <button onClick={() => handleDelete(notice.id)} className="p-2 hover:bg-primary/10 rounded-xl text-gray-400 hover:text-primary transition-all"><Trash2 size={16} /></button>
                     </div>
-                </div>
+                  )}
 
-                {/* 2. TITLE (BIG) */}
-                <h3 className="text-4xl font-black text-[#E4E4E6] leading-none uppercase tracking-tighter">
-                    {notice.title}
-                </h3>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex-1 h-px bg-white/5" />
 
-                {/* 3. DESCRIPTION (FORMATO SOLICITADO) */}
-                <div className="flex flex-col gap-2">
-                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
-                        {formatDisplayName(notice.authorName)} :
-                    </span>
-                    <div 
-                      className="text-[#DCDCDF] text-sm font-medium leading-relaxed rich-content"
-                      dangerouslySetInnerHTML={{ __html: notice.description }}
-                    />
-                </div>
+                      <div className={`px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${pCfg.cls}`}>
+                        {pCfg.icon}
+                        {pCfg.label}
+                      </div>
 
-                {/* 4. EVENT DATE MINI BAR */}
-                {(notice.startDate || notice.startTime) && (
-                    <div className="flex items-center gap-6 pt-6 border-t border-white/5 mt-2">
-                        <div className="flex items-center gap-2 text-[10px] font-black text-gray-700 uppercase">
-                            <Calendar size={14} className="text-primary/30" />
-                            <span>{new Date(notice.startDate).toLocaleDateString('pt-BR')}</span>
+                      {isEvento && (
+                        <div className="px-2.5 py-1 rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase tracking-widest">
+                          EVENTO
+                        </div>
+                      )}
+                      {isAviso && (
+                        <div className="px-2.5 py-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-[9px] font-black uppercase tracking-widest">
+                          AVISO
+                        </div>
+                      )}
+
+                      <span className="text-gray-700 text-[10px] font-black bg-white/5 px-3 py-1 rounded-lg border border-white/5 whitespace-nowrap">
+                        {relativeTime}
+                      </span>
+                    </div>
+
+                    <h3 className="text-2xl font-black tracking-tight mb-3" style={{ color: '#E4E4E6' }}>
+                      {notice.title}
+                    </h3>
+
+                    <div className="space-y-3" style={{ color: '#DCDCDF' }}>
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-xs font-black lowercase opacity-50 whitespace-nowrap">{formatDisplayName(notice.authorName)} :</span>
+                        <div
+                          className="text-sm leading-relaxed font-medium opacity-90 rich-content inline"
+                          dangerouslySetInnerHTML={{ __html: notice.description }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* EVENT DETAILS MINI-BAR */}
+                    {(notice.startDate || notice.startTime) && (
+                      <div className="mt-5 flex items-center gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={14} className="text-primary" />
+                          <span>{new Date(notice.startDate).toLocaleDateString('pt-BR')}</span>
                         </div>
                         {!notice.isAllDay && (
-                            <div className="flex items-center gap-2 text-[10px] font-black text-gray-700 uppercase">
-                                <Clock size={14} className="text-primary/30" />
-                                <span>{notice.startTime} - {notice.endTime}</span>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <Clock size={14} className="text-primary" />
+                            <span>{notice.startTime} - {notice.endTime}</span>
+                          </div>
                         )}
-                    </div>
-                )}
-              </motion.div>
-            )
-          })}
+                        {notice.repeat !== 'none' && (
+                          <div className="flex items-center gap-2 text-emerald-500/70">
+                            <RefreshCcw size={12} />
+                            <span>Repete</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )
+
+            })
+          )}
         </div>
       </div>
     </div>
   )
 }
+
