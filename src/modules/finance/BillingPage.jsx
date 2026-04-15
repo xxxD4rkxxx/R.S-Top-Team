@@ -9,13 +9,14 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   CreditCard, Plus, Search, Trash2, X,
   CheckCircle2, Clock, AlertCircle, DollarSign,
-  ChevronDown, Loader2, Users, RefreshCcw
+  ChevronDown, Loader2, Users, RefreshCcw, Save, Edit2
 } from 'lucide-react'
 import PageHeader    from '../../components/shared/PageHeader'
 import MobileHeader  from '../../components/navigation/MobileHeader'
 import KPICard       from '../../components/shared/KPICard'
 import { useFinance } from '../../hooks/useFinance'
 import { useStudents } from '../../hooks/useStudents'
+import { useModalities } from '../../hooks/useModalities'
 import { beltConfig } from '../../data/beltConfig'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -157,16 +158,158 @@ function ModalNovaCobranca({ students, onClose, onSave, loading }) {
   )
 }
 
+// ─── Modal: Faturamento em Lote ───────────────────────────────────────────────
+
+function ModalFaturamentoLote({ onClose, onConfirm, loading }) {
+  const [referenceMonth, setReferenceMonth] = useState('')
+  const [dueDate, setDueDate] = useState('')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!referenceMonth || !dueDate) return
+    const [y, m] = referenceMonth.split('-')
+    onConfirm(`${m}/${y}`, dueDate)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden p-6 space-y-6">
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-2 border border-primary/20">
+            <RefreshCcw size={24} className={loading ? 'animate-spin' : ''} />
+          </div>
+          <h3 className="text-sm font-black text-white uppercase tracking-widest">Faturamento Automático</h3>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+            O sistema calculará as mensalidades baseadas nas modalidades de cada aluno ativo.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
+            <input required type="month" className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+              value={referenceMonth} onChange={e => setReferenceMonth(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento das Faturas</label>
+            <input required type="date" className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+              value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2">
+            <button type="submit" disabled={loading}
+              className="w-full py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 shadow-xl shadow-white/5">
+              {loading ? 'Processando...' : 'GERAR COBRANÇAS'}
+            </button>
+            <button type="button" onClick={onClose}
+              className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-all">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Modal: Editar Cobrança ───────────────────────────────────────────────────
+
+function ModalEditarCobranca({ bill, onClose, onSave, loading }) {
+  const [amount, setAmount] = useState(bill?.amount || '')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!amount) return
+    onSave({ ...bill, amount: Number(amount) })
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden p-6 space-y-6">
+        <div className="text-center">
+          <h3 className="text-sm font-black text-white uppercase tracking-widest">Ajustar Valor</h3>
+          <p className="text-[10px] text-gray-500 font-bold mt-1 uppercase tracking-wider">{bill.studentName}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Novo Valor (R$)</label>
+            <input 
+              required 
+              type="number" 
+              step="0.01" 
+              className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 font-mono"
+              value={amount} 
+              onChange={e => setAmount(e.target.value)} 
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase text-gray-500 hover:text-white transition-all">
+              Cancelar
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 py-3 rounded-2xl bg-white text-black text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2">
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Página Principal ─────────────────────────────────────────────────────────
 
 export default function BillingPage() {
-  const { bills, loading, updateBillStatus, deleteBill, addBill } = useFinance()
+  const { bills, loading, updateBillStatus, deleteBill, addBill, updateBill, gerarCobrancasEmLote } = useFinance()
   const { students } = useStudents()
-
+  const { modalities } = useModalities()
+ 
   const [showModal, setShowModal]   = useState(false)
+  const [showBatchModal, setShowBatchModal] = useState(false)
+  const [editingBill, setEditingBill] = useState(null)
+  
   const [saving, setSaving]         = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
+
+  const handleBatchBilling = async (mesRef, dataVencimento) => {
+    setSaving(true)
+    try {
+      const criadas = await gerarCobrancasEmLote(students, modalities, mesRef, dataVencimento)
+      alert(`${criadas} cobranças geradas com sucesso para o mês ${mesRef}!`)
+      setShowBatchModal(false)
+    } catch (err) {
+      console.error('Erro no faturamento em lote:', err)
+      alert(`Falha ao gerar cobranças: ${err.message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUpdate = async (data) => {
+    setSaving(true)
+    try {
+      await updateBill(data.id, { amount: data.amount })
+      setEditingBill(null)
+    } catch (err) {
+      console.error('Erro ao atualizar cobrança:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSave = async (data) => {
+    setSaving(true)
+    try { await addBill(data); setShowModal(false) }
+    catch (err) { console.error('Erro ao criar cobrança:', err) }
+    finally { setSaving(false) }
+  }
 
   // KPIs
   const kpis = useMemo(() => {
@@ -195,13 +338,6 @@ export default function BillingPage() {
     const byStatus = statusFilter === 'todos' || b.status === statusFilter
     return byName && byStatus
   }), [bills, searchTerm, statusFilter])
-
-  const handleSave = async (data) => {
-    setSaving(true)
-    try { await addBill(data); setShowModal(false) }
-    catch (err) { console.error('Erro ao criar cobrança:', err) }
-    finally { setSaving(false) }
-  }
 
   function renderAvatar(student) {
     if (!student) return (
@@ -233,6 +369,14 @@ export default function BillingPage() {
         <ModalNovaCobranca students={students} onClose={() => setShowModal(false)} onSave={handleSave} loading={saving} />
       )}
 
+      {showBatchModal && (
+        <ModalFaturamentoLote onClose={() => setShowBatchModal(false)} onConfirm={handleBatchBilling} loading={saving} />
+      )}
+
+      {editingBill && (
+        <ModalEditarCobranca bill={editingBill} onClose={() => setEditingBill(null)} onSave={handleUpdate} loading={saving} />
+      )}
+
       <MobileHeader
         title="Cobrança"
         actions={
@@ -247,10 +391,16 @@ export default function BillingPage() {
         title="COBRANÇA"
         subtitle="GESTÃO DE MENSALIDADES E RECEBIMENTOS"
         extra={
-          <button onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95">
-            <Plus size={18} strokeWidth={1.9} /> NOVA COBRANÇA
-          </button>
+          <div className="flex gap-3">
+            <button onClick={() => setShowBatchModal(true)}
+              className="flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all active:scale-95">
+              <RefreshCcw size={16} strokeWidth={2.5} /> OPERAR LOTE
+            </button>
+            <button onClick={() => setShowModal(true)}
+              className="btn-primary flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95">
+              <Plus size={18} strokeWidth={1.9} /> NOVA COBRANÇA
+            </button>
+          </div>
         }
       />
 
@@ -404,13 +554,19 @@ export default function BillingPage() {
                             {STATUS_LABEL[b.status] || b.status}
                           </span>
                         </td>
-                        <td className="py-4 px-5 text-center">
+                         <td className="py-4 px-5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             {b.status !== 'paid' && (
-                              <button onClick={() => updateBillStatus(b.id, 'paid')} title="Marcar como pago"
-                                className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/20">
-                                <CheckCircle2 size={14} />
-                              </button>
+                              <>
+                                <button onClick={() => updateBillStatus(b.id, 'paid')} title="Marcar como pago"
+                                  className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/20">
+                                  <CheckCircle2 size={14} />
+                                </button>
+                                <button onClick={() => setEditingBill(b)} title="Editar valor"
+                                  className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white transition-all border border-white/10">
+                                  <Edit2 size={14} />
+                                </button>
+                              </>
                             )}
                             <button onClick={() => deleteBill(b.id)}
                               className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all border border-red-500/20">

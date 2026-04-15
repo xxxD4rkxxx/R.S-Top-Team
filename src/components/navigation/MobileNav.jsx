@@ -24,14 +24,16 @@ import {
   PieChart,
   GraduationCap,
   ArrowDownRight,
-  Clock
+  Clock,
+  CalendarRange,
+  BellRing
 } from 'lucide-react'
 
 // Itens principais da barra inferior (Excluindo o botão central)
 const mainNavItems = [
   { to: '/', icon: Home, label: 'Início' },
   { to: '/students', icon: Users, label: 'Alunos' },
-  { to: '/events', icon: TrendingUp, label: 'Eventos' },
+  { to: '/events', icon: BellRing, label: 'Avisos' },
 ]
 
 // Itens do menu "Mais" (Drawer lateral/inferior)
@@ -144,7 +146,7 @@ export default function MobileNav() {
             </p>
           </div>
 
-          <NavItem to="/events" icon={TrendingUp} label="Eventos" active={isTabActive('/events')} locked={isNavLocked} />
+          <NavItem to="/events" icon={BellRing} label="Avisos" active={isTabActive('/events')} locked={isNavLocked} />
 
           {/* Botão para abrir o menu complementar "Mais" */}
           <button

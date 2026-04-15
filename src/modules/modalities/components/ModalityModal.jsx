@@ -5,7 +5,8 @@ import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { 
   X, Save, Layers, Plus, Edit2, Trash2, Calendar, Clock, 
-  Users as UsersIcon, ChevronDown, GraduationCap, Hash, CircleDot 
+  Users as UsersIcon, ChevronDown, GraduationCap, Hash, CircleDot,
+  DollarSign
 } from 'lucide-react'
 import { useHideMobileNav } from '../../../hooks/useHideMobileNav'
 import { useSystemUsers } from '../../../hooks/useSystemUsers'
@@ -21,11 +22,17 @@ export default function ModalityModal({
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState('ativo')
   const [hasBelt, setHasBelt] = useState(false)
+  const [pricing, setPricing] = useState({
+    adulto: { price: 0, enabled: true },
+    kids: { price: 0, enabled: true },
+    juvenil: { price: 0, enabled: true }
+  })
 
   // Initial Class State
   const [includeClass, setIncludeClass] = useState(false)
   const [className, setClassName] = useState('')
-  const [professor, setProfessor] = useState('')
+  const [professorId, setProfessorId] = useState('')
+  const [professorName, setProfessorName] = useState('')
   const [selectedDays, setSelectedDays] = useState([])
   const [startTime, setStartTime] = useState('08:00')
   const [endTime, setEndTime] = useState('09:00')
@@ -48,14 +55,25 @@ export default function ModalityModal({
       setDescription(editingModality.description || '')
       setStatus(editingModality.status || 'ativo')
       setHasBelt(editingModality.hasBelt || false)
+      setPricing(editingModality.pricing || {
+        adulto: { price: 0, enabled: true },
+        kids: { price: 0, enabled: true },
+        juvenil: { price: 0, enabled: true }
+      })
     } else {
       setName('')
       setDescription('')
       setStatus('ativo')
       setHasBelt(false)
-      setIncludeClass(true) // Start with class section open for new modalities
+      setPricing({
+        adulto: { price: 0, enabled: true },
+        kids: { price: 0, enabled: true },
+        juvenil: { price: 0, enabled: true }
+      })
+      setIncludeClass(true)
       setClassName('Geral')
-      setProfessor('')
+      setProfessorId('')
+      setProfessorName('')
       setSelectedDays(['seg', 'ter', 'qua', 'qui', 'sex'])
       setStartTime('08:00')
       setEndTime('09:00')
@@ -71,15 +89,33 @@ export default function ModalityModal({
     )
   }
 
+  const updatePricing = (category, field, value) => {
+    setPricing(prev => ({
+      ...prev,
+      [category]: { ...prev[category], [field]: value }
+    }))
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    const modalityData = { name, description, status, hasBelt }
+    const modalityData = { 
+      name, 
+      description, 
+      status, 
+      hasBelt,
+      pricing: {
+        adulto: { ...pricing.adulto, price: Number(pricing.adulto.price) },
+        kids: { ...pricing.kids, price: Number(pricing.kids.price) },
+        juvenil: { ...pricing.juvenil, price: Number(pricing.juvenil.price) }
+      }
+    }
     
     if (includeClass && !editingModality) {
       modalityData.initialClass = {
         name: className,
-        professor,
+        professorId,
+        professor: professorName,
         diasSemana: selectedDays,
         horarioInicio: startTime,
         horarioFim: endTime,
@@ -181,163 +217,197 @@ export default function ModalityModal({
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {/* Seção de Precificação por Categoria */}
+                <div className="pt-6 border-t border-white/5 space-y-6">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                    <GraduationCap size={12} /> SISTEMA DE GRADUAÇÃO
+                    <DollarSign size={12} /> CONFIGURAÇÃO DE VALORES (POR CATEGORIA)
                   </label>
-                  <div className="flex gap-2">
-                    {[true, false].map(val => (
-                      <button
-                        key={val.toString()}
-                        type="button"
-                        onClick={() => setHasBelt(val)}
-                        className={`flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                          hasBelt === val 
-                          ? 'bg-primary border-primary text-white shadow-[0_0_20px_rgba(225,29,72,0.2)]' 
-                          : 'bg-[#111] border-white/5 text-gray-600 hover:border-white/10 hover:text-gray-400'
-                        }`}
-                      >
-                        {val ? 'Tem Faixa / Graduação' : 'Não tem Faixa'}
-                      </button>
+                  
+                  <div className="space-y-4">
+                    {[
+                      { id: 'adulto', label: 'Adulto', icon: UsersIcon },
+                      { id: 'kids', label: 'Kids', icon: CircleDot },
+                      { id: 'juvenil', label: 'Juvenil', icon: Layers }
+                    ].map(cat => (
+                      <div key={cat.id} className="flex flex-col sm:flex-row gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                        <div className="flex-1 flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${pricing[cat.id].enabled ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-600'}`}>
+                            <cat.icon size={16} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white">{cat.label}</p>
+                            <p className="text-[9px] text-gray-600 font-bold uppercase">Mensalidade sugerida</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-600 uppercase">R$</span>
+                            <input 
+                              type="number"
+                              disabled={!pricing[cat.id].enabled}
+                              value={pricing[cat.id].price}
+                              onChange={(e) => updatePricing(cat.id, 'price', e.target.value)}
+                              className="w-32 bg-black/40 border border-white/5 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-mono disabled:opacity-20"
+                            />
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={() => updatePricing(cat.id, 'enabled', !pricing[cat.id].enabled)}
+                            className={`px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-tighter border transition-all ${
+                              pricing[cat.id].enabled 
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                            }`}
+                          >
+                            {pricing[cat.id].enabled ? 'Pagante' : 'Isento'}
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
+                  <p className="text-[9px] text-gray-600 font-bold uppercase px-1 leading-relaxed font-sans mt-4">
+                    * Alunos marcados como as isentos por categoria não gerarão cobrança automática.
+                  </p>
                 </div>
-              </div>
-            
-              {!editingModality && (
-                <div className="pt-8 border-t border-white/5 space-y-6">
-                  <div className="flex items-center justify-between group cursor-pointer" onClick={() => setIncludeClass(!includeClass)}>
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-xl transition-all ${includeClass ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-500'}`}>
-                        <Calendar size={18} />
-                      </div>
-                      <div>
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-white">Configurar Turma</h4>
-                        <p className="text-[9px] text-gray-600 font-bold uppercase mt-0.5">Criar primeiro horário agora</p>
-                      </div>
-                    </div>
-                    <div className={`w-10 h-6 rounded-full p-1 transition-colors relative ${includeClass ? 'bg-primary' : 'bg-white/10'}`}>
-                      <div className={`w-4 h-4 rounded-full bg-white transition-all shadow-md ${includeClass ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
-                  </div>
-
-                  {includeClass && (
-                    <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                          <UsersIcon size={12} /> NOME DA TURMA
-                        </label>
-                        <input 
-                          type="text"
-                          value={className}
-                          onChange={(e) => setClassName(e.target.value)}
-                          placeholder="Ex: Geral, Kids, Noite..."
-                          className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
-                        />
-                      </div>
-
-                      {/* Seleção de Dias da Semana */}
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                          <Calendar size={12} /> DIAS DA SEMANA
-                        </label>
-                        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                          {days.map(day => (
-                            <button
-                              key={day.id}
-                              type="button"
-                              onClick={() => toggleDay(day.id)}
-                              className={`py-3 rounded-xl text-[9px] font-black uppercase transition-all border ${
-                                selectedDays.includes(day.id)
-                                ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                                : 'bg-white/5 border-white/5 text-gray-600 hover:border-white/10'
-                              }`}
-                            >
-                              {day.label}
-                            </button>
-                          ))}
+                
+                {!editingModality && (
+                  <div className="pt-8 border-t border-white/5 space-y-6">
+                    <div className="flex items-center justify-between group cursor-pointer" onClick={() => setIncludeClass(!includeClass)}>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2.5 rounded-xl transition-all ${includeClass ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-500'}`}>
+                          <Calendar size={18} />
+                        </div>
+                        <div>
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-white">Configurar Turma</h4>
+                          <p className="text-[9px] text-gray-600 font-bold uppercase mt-0.5">Criar primeiro horário agora</p>
                         </div>
                       </div>
+                      <div className={`w-10 h-6 rounded-full p-1 transition-colors relative ${includeClass ? 'bg-primary' : 'bg-white/10'}`}>
+                        <div className={`w-4 h-4 rounded-full bg-white transition-all shadow-md ${includeClass ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </div>
+                    </div>
 
-                      {/* Horários e Professor lado a lado conforme solicitado */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Horário Início */}
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                              <Clock size={12} /> INÍCIO
-                            </label>
-                            <input 
-                              type="time"
-                              value={startTime}
-                              onChange={(e) => setStartTime(e.target.value)}
-                              className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
-                            />
-                          </div>
-
-                          {/* Horário Fim */}
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                              <Clock size={12} /> FIM
-                            </label>
-                            <input 
-                              type="time"
-                              value={endTime}
-                              onChange={(e) => setEndTime(e.target.value)}
-                              className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Professor Responsável */}
-                        <div className="space-y-2 relative">
+                    {includeClass && (
+                      <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
+                        <div className="space-y-2">
                           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                            <GraduationCap size={12} /> PROFESSOR
+                            <UsersIcon size={12} /> NOME DA TURMA
                           </label>
-                          <div 
-                            onClick={() => setShowProfessors(!showProfessors)}
-                            className="w-full h-[54px] bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all"
-                          >
-                            <span className={`${professor ? 'text-white' : 'text-gray-700'} truncate text-[11px] font-bold`}>
-                              {professor || 'Selecione...'}
-                            </span>
-                            <ChevronDown size={14} className={`text-gray-600 transition-transform ${showProfessors ? 'rotate-180' : ''}`} />
+                          <input 
+                            type="text"
+                            value={className}
+                            onChange={(e) => setClassName(e.target.value)}
+                            placeholder="Ex: Geral, Kids, Noite..."
+                            className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
+                          />
+                        </div>
+
+                        {/* Seleção de Dias da Semana */}
+                        <div className="space-y-3">
+                          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                            <Calendar size={12} /> DIAS DA SEMANA
+                          </label>
+                          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                            {days.map(day => (
+                              <button
+                                key={day.id}
+                                type="button"
+                                onClick={() => toggleDay(day.id)}
+                                className={`py-3 rounded-xl text-[9px] font-black uppercase transition-all border ${
+                                  selectedDays.includes(day.id)
+                                  ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
+                                  : 'bg-white/5 border-white/5 text-gray-600 hover:border-white/10'
+                                }`}
+                              >
+                                {day.label}
+                              </button>
+                            ))}
                           </div>
-                          {showProfessors && (
-                            <div className="absolute bottom-full md:top-full left-0 w-full mb-2 md:mt-2 bg-[#111] border border-white/10 rounded-xl py-2 shadow-2xl z-[60] max-h-48 overflow-y-auto no-scrollbar">
-                              {staffMembers?.filter(s => s.role === 'professor' || s.role === 'admin').map(staff => (
-                                <button
-                                  key={staff.id}
-                                  type="button"
-                                  onClick={() => { setProfessor(staff.name); setShowProfessors(false) }}
-                                  className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between"
-                                >
-                                  {staff.name}
-                                  <span className="opacity-30 text-[8px] tracking-widest">{staff.role}</span>
-                                </button>
-                              ))}
+                        </div>
+
+                        {/* Horários e Professor lado a lado */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                                <Clock size={12} /> INÍCIO
+                              </label>
+                              <input 
+                                type="time"
+                                value={startTime}
+                                onChange={(e) => setStartTime(e.target.value)}
+                                className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
+                              />
                             </div>
-                          )}
+
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                                <Clock size={12} /> FIM
+                              </label>
+                              <input 
+                                type="time"
+                                value={endTime}
+                                onChange={(e) => setEndTime(e.target.value)}
+                                className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 relative">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                              <GraduationCap size={12} /> PROFESSOR
+                            </label>
+                            <div 
+                              onClick={() => setShowProfessors(!showProfessors)}
+                              className="w-full h-[54px] bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all"
+                            >
+                              <span className={`${professorId ? 'text-white' : 'text-gray-700'} truncate text-[11px] font-bold`}>
+                                {professorName || 'Selecione...'}
+                              </span>
+                              <ChevronDown size={14} className={`text-gray-600 transition-transform ${showProfessors ? 'rotate-180' : ''}`} />
+                            </div>
+                            {showProfessors && (
+                              <div className="absolute bottom-full md:top-full left-0 w-full mb-2 md:mt-2 bg-[#111] border border-white/10 rounded-xl py-2 shadow-2xl z-[60] max-h-48 overflow-y-auto no-scrollbar">
+                                {staffMembers?.filter(s => s.role === 'professor' || s.role === 'admin').map(staff => (
+                                  <button
+                                    key={staff.id}
+                                    type="button"
+                                    onClick={() => { 
+                                      setProfessorId(staff.id); 
+                                      setProfessorName(staff.name); 
+                                      setShowProfessors(false) 
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between"
+                                  >
+                                    {staff.name}
+                                    <span className="opacity-30 text-[8px] tracking-widest">{staff.role}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                             <UsersIcon size={12} /> LIMITE DE ALUNOS
+                          </label>
+                          <input 
+                            type="number"
+                            value={capacity}
+                            onChange={(e) => setCapacity(e.target.value)}
+                            placeholder="Ex: 20"
+                            className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
+                          />
                         </div>
                       </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-                      {/* Capacidade em linha separada ou ajuste similar */}
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                           <UsersIcon size={12} /> LIMITE DE ALUNOS
-                        </label>
-                        <input 
-                          type="number"
-                          value={capacity}
-                          onChange={(e) => setCapacity(e.target.value)}
-                          placeholder="Ex: 20"
-                          className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Fixed Action Footer */}
@@ -359,7 +429,6 @@ export default function ModalityModal({
             </div>
           </form>
 
-          {/* Classes Section (Only if editing) */}
           {editingModality && (
             <div className="md:w-1/2 p-6 md:p-8 bg-black/20 overflow-y-auto no-scrollbar space-y-6 border-t border-white/5 md:border-t-0">
               <div className="flex items-center justify-between">

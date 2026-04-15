@@ -3,7 +3,8 @@
 // Vinculado a uma modalidade específica.
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Save, GraduationCap, Clock, Users, Calendar, Layers, Hash, CircleDot } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Save, GraduationCap, Clock, Users, Calendar, Layers, Hash, CircleDot, ChevronDown } from 'lucide-react'
 import { useHideMobileNav } from '../../../hooks/useHideMobileNav'
 import { useSystemUsers } from '../../../hooks/useSystemUsers'
 import { useModalities } from '../../../hooks/useModalities'
@@ -31,6 +32,9 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
   const [horarioFim, setHorarioFim] = useState('09:00')
   const [capacidade, setCapacidade] = useState(20)
   const [status, setStatus] = useState('ativo')
+  const [showProfessors, setShowProfessors] = useState(false)
+  const [showModalities, setShowModalities] = useState(false)
+  const [professorName, setProfessorName] = useState('')
 
   useEffect(() => {
     if (editingClass) {
@@ -41,16 +45,19 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
       setHorarioFim(editingClass.horarioFim || '09:00')
       setCapacidade(editingClass.capacidade || 20)
       setStatus(editingClass.status || 'ativo')
+      const prof = users.find(u => u.id === editingClass.professorId)
+      setProfessorName(prof?.name || editingClass.professor || '')
     } else {
       setName('')
       setProfessorId('')
+      setProfessorName('')
       setDiasSemana([])
       setHorarioInicio('08:00')
       setHorarioFim('09:00')
       setCapacidade(20)
       setStatus('ativo')
     }
-  }, [editingClass, isOpen])
+  }, [editingClass, isOpen, users])
 
   if (!isOpen) return null
 
@@ -71,10 +78,16 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
       alert('Selecione uma modalidade')
       return
     }
+
+    // Busca o nome do professor para salvar como metadado (facilita exibição em listas)
+    const professor = users.find(u => u.id === professorId)
+    const professorName = professor?.name || 'Professor'
+
     onSave({ 
       name, 
       modalityId: finalModalityId,
       professorId, 
+      professor: professorName, // Adicionado para exibição imediata
       diasSemana, 
       horarioInicio, 
       horarioFim, 
@@ -125,21 +138,44 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Seleção de Modalidade (apenas se não houver modalityId fixo) */}
               {!modalityId && !editingClass && (
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                     <Layers size={12} /> MODALIDADE
                   </label>
-                  <select 
-                    required
-                    value={selectedModalityId}
-                    onChange={(e) => setSelectedModalityId(e.target.value)}
-                    className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
+                  <div 
+                    onClick={() => setShowModalities(!showModalities)}
+                    className="w-full h-[54px] bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all font-medium"
                   >
-                    <option value="">Selecione...</option>
-                    {modalities.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
+                    <span className={`${selectedModalityId ? 'text-white' : 'text-gray-700'} truncate`}>
+                      {modalities.find(m => m.id === selectedModalityId)?.name || 'Selecione...'}
+                    </span>
+                    <ChevronDown size={14} className={`text-gray-600 transition-transform ${showModalities ? 'rotate-180' : ''}`} />
+                  </div>
+                  <AnimatePresence>
+                    {showModalities && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full left-0 w-full mt-2 bg-[#151515] border border-white/10 rounded-xl py-2 shadow-2xl z-[220] max-h-48 overflow-y-auto no-scrollbar"
+                      >
+                        {modalities.map(m => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedModalityId(m.id)
+                              setShowModalities(false)
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between"
+                          >
+                            {m.name}
+                            <span className={`w-1.5 h-1.5 rounded-full ${m.status === 'ativo' ? 'bg-emerald-500' : 'bg-gray-600'}`} />
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
 
@@ -159,21 +195,48 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
               </div>
 
               {/* Professor */}
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                   <GraduationCap size={12} /> PROFESSOR RESPONSÁVEL
                 </label>
-                <select 
-                  required
-                  value={professorId}
-                  onChange={(e) => setProfessorId(e.target.value)}
-                  className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
+                <div 
+                  onClick={() => setShowProfessors(!showProfessors)}
+                  className="w-full h-[54px] bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all font-medium"
                 >
-                  <option value="">Selecione...</option>
-                  {(users || []).filter(u => u.role === 'professor' || u.role === 'admin').map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                  <span className={`${professorId ? 'text-white' : 'text-gray-700'} truncate`}>
+                    {professorName || 'Selecione...'}
+                  </span>
+                  <ChevronDown size={14} className={`text-gray-600 transition-transform ${showProfessors ? 'rotate-180' : ''}`} />
+                </div>
+                <AnimatePresence>
+                  {showProfessors && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-full left-0 w-full mt-2 bg-[#151515] border border-white/10 rounded-xl py-2 shadow-2xl z-[220] max-h-48 overflow-y-auto no-scrollbar"
+                    >
+                      {(users || []).filter(u => 
+                        u.role === 'professor' || u.role === 'admin' || u.role === 'gestor' ||
+                        u.roles?.admin || u.roles?.gestor || u.roles?.professor
+                      ).map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setProfessorId(p.id)
+                            setProfessorName(p.name)
+                            setShowProfessors(false)
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between"
+                        >
+                          {p.name}
+                          <span className="opacity-30 text-[8px]">{p.role || Object.keys(p.roles || {}).join(', ')}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Dias da Semana */}
@@ -247,14 +310,22 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                   <CircleDot size={12} /> STATUS
                 </label>
-                <select 
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium appearance-none"
-                >
-                  <option value="ativo">Ativo</option>
-                  <option value="inativo">Inativo</option>
-                </select>
+                <div className="flex gap-2">
+                  {['ativo', 'inativo'].map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setStatus(s)}
+                      className={`flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                        status === s 
+                        ? 'bg-white border-white text-black shadow-lg shadow-white/10 scale-[1.02]' 
+                        : 'bg-[#111] border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-300'
+                      }`}
+                    >
+                      {s === 'ativo' ? 'Ativo' : 'Inativo'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

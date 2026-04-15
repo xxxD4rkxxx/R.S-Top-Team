@@ -137,43 +137,72 @@ export function useFinance() {
 
   /**
    * Gera cobranças mensais em lote para alunos ativos e não-isentos.
-   * Restrito a admin/gestor.
+   * Agora suporta cálculo dinâmico baseado no plano sugerido das modalidades.
    */
-  async function gerarCobrancasEmLote(alunos, mesReferencia, dataVencimento) {
+  async function gerarCobrancasEmLote(alunos, modalidades, mesReferencia, dataVencimento) {
     if (effectiveRole === 'aluno' || effectiveRole === 'professor') {
       throw new Error('Segurança Operacional: Acesso Negado para processamento em lote.')
     }
     
-    // Filtra alunos que são ATIVOS e NÃO SÃO isentos
-    const alunosPagantes = alunos.filter(a => 
+    // Filtra alunos que são ATIVOS
+    const alunosAtivos = alunos.filter(a => 
       a.roles?.aluno === true &&
-      a.status === 'Ativo' && 
-      !a.isPaymentExempt
+      a.status === 'Ativo'
     )
 
     const cobrancasRef = collection(db, 'billing')
-    const novasCobrancas = []
+    let criadas = 0
     
-    // Criamos as pendências no banco
-    for (const aluno of alunosPagantes) {
-      // Valor base do plano do aluno, fallback para 0 se não configurado
-      const valorBase = Number(aluno.planValue) || 0
-      
-      const payload = {
-        studentId: aluno.id,
-        studentName: aluno.name,
-        amount: valorBase,
-        status: 'pending',
-        dueDate: dataVencimento, // Formato string YYYY-MM-DD
-        referenceMonth: mesReferencia, // Ex: "04/2026"
-        createdAt: serverTimestamp()
+    for (const aluno of alunosAtivos) {
+      // 1. Pular se o aluno for marcado globalmente como isento
+      if (aluno.isPaymentExempt) continue
+
+      let valorFinal = 0
+
+      // 2. Se o modo for manual, usa o valor fixo definido no perfil
+      if (aluno.billingMode === 'manual') {
+        valorFinal = Number(aluno.manualPlanValue || aluno.planValue) || 0
+      } 
+      // 3. Caso contrário, calcula com base nas modalidades e categoria de idade
+      else {
+        const cat = (aluno.ageCategory || 'Adulto').toLowerCase()
+        const modsAluno = Array.isArray(aluno.modalities) ? aluno.modalities : [aluno.modality].filter(Boolean)
+
+        modsAluno.forEach(modName => {
+          // Encontra a configuração da modalidade pelo nome ou slug
+          const modConfig = modalidades.find(m => m.name === modName || m.id === modName)
+          if (modConfig && modConfig.pricing && modConfig.pricing[cat]) {
+            const rule = modConfig.pricing[cat]
+            if (rule.enabled) {
+              valorFinal += Number(rule.price) || 0
+            }
+          }
+        })
+
+        // Fallback: se não encontrou nada nas modalidades mas tem um planValue legado, usa ele
+        if (valorFinal === 0 && aluno.planValue) {
+          valorFinal = Number(aluno.planValue) || 0
+        }
       }
-      
-      await addDoc(cobrancasRef, payload)
-      novasCobrancas.push(payload)
+
+      // 4. Só cria cobrança se o valor for maior que zero
+      if (valorFinal > 0) {
+        const payload = {
+          studentId: aluno.id,
+          studentName: aluno.name,
+          amount: valorFinal,
+          status: 'pending',
+          dueDate: dataVencimento, 
+          referenceMonth: mesReferencia,
+          createdAt: serverTimestamp()
+        }
+        
+        await addDoc(cobrancasRef, payload)
+        criadas++
+      }
     }
 
-    return novasCobrancas.length
+    return criadas
   }
 
   /**
@@ -194,6 +223,20 @@ export function useFinance() {
       payload.paidAt = null // Limpa se foi marcado como pendente/vencido por engano
     }
     await updateDoc(cobrancaRef, payload)
+  }
+
+  /**
+   * Atualiza dados de uma cobrança (Ex: valor).
+   */
+  async function atualizarCobranca(idCobranca, dados) {
+    if (effectiveRole === 'aluno') {
+      throw new Error('Segurança Operacional: Acesso Negado.')
+    }
+    const cobrancaRef = doc(db, 'billing', idCobranca)
+    await updateDoc(cobrancaRef, {
+      ...dados,
+      updatedAt: serverTimestamp()
+    })
   }
 
   /**
@@ -261,7 +304,9 @@ export function useFinance() {
     totalPending: totalPendente,
     totalPaid: totalPago,
     addBill: criarCobranca,
-    generateBatchBilling: gerarCobrancasEmLote,
+    updateBill: atualizarCobranca,
+    gerarCobrancasEmLote: gerarCobrancasEmLote, // Export nativo
+    generateBatchBilling: gerarCobrancasEmLote, // Legacy alias
     updateBillStatus: atualizarStatusCobranca,
     deleteBill: deletarCobranca,
     

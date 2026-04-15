@@ -31,26 +31,26 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className="flex flex-col gap-1.5 relative w-full" ref={ref}>
-      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">{label}</label>
+    <div className="flex flex-col gap-1.5 relative w-full font-sans" ref={ref}>
+      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1 font-sans">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20 font-sans"
       >
-        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={14} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="truncate font-sans">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={14} className="text-gray-500 transition-transform duration-200 shrink-0 ml-2" />
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2" style={{ animation: 'fadeSlideUp 0.15s ease-out forwards' }}>
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2 font-sans">
           {options.map(([v, l]) => (
             <button
               key={v}
               type="button"
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-bold' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 font-sans ${value === v ? 'text-white bg-white/5 font-bold' : 'text-gray-400 font-medium'}`}
             >
               {l}
             </button>
@@ -82,7 +82,6 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
     gender: 'Masculino',
     parentName: '',
     parentPhone: '',
-    isPaymentExempt: false,
     planValue: '',
   })
 
@@ -114,7 +113,6 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           gender: initialData.gender || 'Masculino',
           parentName: initialData.parentName || '',
           parentPhone: initialData.parentPhone || '',
-          isPaymentExempt: initialData.isPaymentExempt || false,
           planValue: initialData.planValue || '',
         })
       } else {
@@ -123,7 +121,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           belt: 'none', modality: [initialModality], type: 'aluno',
           ageCategory: 'Adulto', gender: 'Masculino',
           parentName: '', parentPhone: '',
-          isPaymentExempt: false, planValue: '',
+          planValue: '',
         })
       }
       setErrorMsg('')
@@ -210,7 +208,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       required 
                       value={form.name} 
                       onChange={e => setForm({ ...form, name: e.target.value })} 
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" 
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans" 
                       placeholder="Ex: João Silva" 
                     />
                   </div>
@@ -224,7 +222,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       type="text" 
                       value={form.phone} 
                       onChange={e => setForm({ ...form, phone: e.target.value })} 
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" 
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans" 
                       placeholder="(00) 00000-0000" 
                     />
                   </div>
@@ -240,7 +238,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                     required 
                     value={form.email} 
                     onChange={e => setForm({ ...form, email: e.target.value })} 
-                    className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-mono" 
+                    className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans" 
                     placeholder="email@exemplo.com" 
                   />
                 </div>
@@ -353,7 +351,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       type="text" 
                       value={form.parentPhone} 
                       onChange={e => setForm({ ...form, parentPhone: e.target.value })} 
-                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/30 transition-all font-medium font-mono" 
+                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/30 transition-all font-medium font-sans" 
                       placeholder="(00) 00000-0000" 
                     />
                   </div>
@@ -376,7 +374,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       type="text" 
                       value={form.emergency} 
                       onChange={e => setForm({ ...form, emergency: e.target.value })} 
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" 
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans" 
                       placeholder="Nome e Telefone" 
                     />
                   </div>
@@ -404,40 +402,30 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
             {/* Configurações Financeiras (Apenas Gestores/Admin) */}
             {(effectiveRole === 'admin' || effectiveRole === 'gestor') && (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3 font-sans">
                   <Landmark size={14} />
                   Contrato e Financeiro
                   <div className="h-px flex-1 bg-emerald-500/10" />
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 flex flex-col justify-end">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Isenção de Mensalidade</label>
-                    <button 
-                      type="button" 
-                      onClick={() => setForm(f => ({ ...f, isPaymentExempt: !f.isPaymentExempt }))}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${form.isPaymentExempt ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-black/40 border-white/10 text-gray-400 hover:border-white/20'}`}
-                    >
-                      <span className="text-sm font-medium">Conceder Bolsa/Isenção</span>
-                      <div className={`w-9 h-5 rounded-full relative transition-all ${form.isPaymentExempt ? 'bg-emerald-500' : 'bg-gray-800'}`}>
-                        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${form.isPaymentExempt ? 'translate-x-4' : ''}`} />
-                      </div>
-                    </button>
+                
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">
+                    Valor da Mensalidade
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-black text-sm font-sans">R$</span>
+                    <input 
+                      type="number"
+                      step="0.01" 
+                      value={form.planValue} 
+                      onChange={e => setForm({ ...form, planValue: e.target.value })} 
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/30 transition-all font-medium font-sans" 
+                      placeholder="Ex: 150.00" 
+                    />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Valor do Plano Base Mensal</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-black text-sm">R$</span>
-                      <input 
-                        type="number"
-                        step="0.01" 
-                        disabled={form.isPaymentExempt}
-                        value={form.planValue} 
-                        onChange={e => setForm({ ...form, planValue: e.target.value })} 
-                        className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/30 transition-all font-medium font-mono disabled:opacity-40 disabled:cursor-not-allowed" 
-                        placeholder="Ex: 150.00" 
-                      />
-                    </div>
-                  </div>
+                  <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest mt-1 px-1 font-sans">
+                    * Este valor será utilizado para gerar as cobranças mensais automáticas.
+                  </p>
                 </div>
               </div>
             )}

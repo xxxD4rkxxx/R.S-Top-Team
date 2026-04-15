@@ -46,9 +46,26 @@ export function useModalities() {
     return unsub
   }, [])
 
+  /**
+   * Sanitiza o nome para ser usado como ID de documento no Firestore.
+   * Remove barras e caracteres que podem quebrar a estrutura de pastas do DB.
+   */
+  const slugify = (text) => {
+    return text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-z0-9 -]/g, '')    // Remove caracteres especiais (incluindo /)
+      .replace(/\s+/g, '-')           // Troca espaços por -
+      .replace(/-+/g, '-')            // Evita múltiplos -
+  }
+
   const addModality = async (data) => {
     const { initialClass, ...modalityData } = data
-    const documentId = modalityData.name.trim()
+    // Sanitizamos o ID para evitar erro "não está indo" com nomes como "A / B"
+    const documentId = slugify(modalityData.name)
     const docRef = doc(db, COLLECTION_MODALITIES, documentId)
     
     const newModality = {
@@ -60,6 +77,7 @@ export function useModalities() {
     
     await setDoc(docRef, newModality)
     if (initialClass) {
+      // Passamos o ID sanitizado para a criação da turma
       await addClass(documentId, initialClass)
     }
     return documentId

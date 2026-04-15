@@ -6,7 +6,7 @@ import React, { useState } from 'react'
 import {
   Settings, ChevronLeft, ChevronRight, ShieldCheck, User, ChevronDown,
   Activity, Contact, CheckCircle2, CalendarRange, Clock, Layers, Gauge, Medal,
-  Gem, FileDigit, Zap, PiggyBank, ArrowDownRight, PieChart, MessageSquare, Users
+  Gem, FileDigit, Zap, PiggyBank, ArrowDownRight, PieChart, MessageSquare, Users, BellRing
 } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,7 +26,7 @@ const navGroups = [
       { to: '/students', icon: Contact, label: 'Alunos', roles: ['admin', 'gestor', 'professor'] },
       { to: '/collaborators', icon: Users, label: 'Equipe & Professores', roles: ['admin', 'gestor', 'professor'] },
       { to: '/attendance', icon: CheckCircle2, label: 'Chamada', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/events', icon: CalendarRange, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'] },
+      { to: '/events', icon: BellRing, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'] },
       { to: '/experimental', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
       { to: '/modalities', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'] },
     ]
