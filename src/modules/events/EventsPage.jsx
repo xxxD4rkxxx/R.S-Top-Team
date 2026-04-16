@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -20,13 +21,16 @@ import {
   Underline,
   List,
   ListOrdered,
+  BarChart3,
+  ChevronLeft,
+  Tag,
   Flame,
   Zap,
-  Siren,
   Eye,
   Link as LinkIcon,
   Eraser,
-  Type
+  Type,
+  ChevronDown
 } from 'lucide-react'
 import { useNotices } from '../../hooks/useNotices'
 import PageHeader from '../../components/shared/PageHeader'
@@ -138,11 +142,7 @@ const RichTextEditor = React.memo(React.forwardRef(({ initialValue, onChange, pl
 // ────────────────────────────────────────────────
 // MAIN FORM COMPONENT
 // ────────────────────────────────────────────────
-
-// ────────────────────────────────────────────────
-// MAIN FORM COMPONENT
-// ────────────────────────────────────────────────
-function InlinePostForm({ onSave, onCancel, initialData }) {
+function InlinePostForm({ onSave, onCancel, initialData, isInline }) {
   const [title, setTitle] = useState(initialData?.title || '')
   const [description, setDescription] = useState(initialData?.description || '')
   const [priority, setPriority] = useState(initialData?.priority || 'normal')
@@ -155,54 +155,303 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
   const [endTime, setEndTime] = useState(initialData?.endTime || '10:00')
   const [isAllDay, setIsAllDay] = useState(initialData?.isAllDay || false)
 
-  // Repetição e Notificação
   const [repeat, setRepeat] = useState(initialData?.repeat || 'none')
   const [notification, setNotification] = useState(initialData?.notification || { value: 30, unit: 'minutes' })
 
   const editorRef = useRef(null)
 
-  // Sincroniza o conteúdo inicial do editor
-  useEffect(() => {
-    if (editorRef.current && description && !editorRef.current.innerHTML) {
-      editorRef.current.innerHTML = description;
-    }
-  }, []);
+  const onPublish = async (e) => {
+    if (e) e.preventDefault();
+    const currentContent = editorRef.current ? editorRef.current.innerHTML : description;
+    if (!title.trim()) { toast.error('O título é obrigatório!'); return; }
+    if (!currentContent.trim()) { toast.error('O conteúdo é obrigatório!'); return; }
+    if (types.length === 0) { toast.error('Selecione pelo menos uma categoria!'); return; }
 
-  const isNotificationInvalid = () => {
     const limits = { minutes: 1000, hours: 672, days: 31, weeks: 4 };
-    return notification.value > (limits[notification.unit] || 9999);
-  };
-
-  const handlePublish = async () => {
-    const content = editorRef.current ? editorRef.current.innerHTML : description;
-    if (!title.trim() || !content.trim()) return
-
-    if (isNotificationInvalid()) {
-      const limits = { minutes: 1000, hours: 672, days: 31, weeks: 4 };
+    if (notification.value < 0 || notification.value > limits[notification.unit]) {
       const labels = { minutes: 'minutos', hours: 'horas', days: 'dias', weeks: 'semanas' };
       toast.error(`O limite para ${labels[notification.unit]} é ${limits[notification.unit]}!`);
       return;
     }
 
-    // Se for dia inteiro, normaliza os horários para o banco de dados
-    const finalStartTime = isAllDay ? '00:00' : startTime;
-    const finalEndTime = isAllDay ? '23:59' : endTime;
-
     await onSave({
       title,
-      description: content,
+      description: currentContent,
       priority,
       types,
       startDate,
-      endDate: isAllDay ? startDate : endDate, // Geralmente dia inteiro é no mesmo dia
-      startTime: finalStartTime,
-      endTime: finalEndTime,
+      endDate: isAllDay ? startDate : endDate,
+      startTime: isAllDay ? '00:00' : startTime,
+      endTime: isAllDay ? '23:59' : endTime,
       isAllDay,
       allDay: isAllDay,
       repeat,
       notification
-    })
+    });
+  };
+
+  useEffect(() => {
+    const handleSave = () => onPublish();
+    window.addEventListener('trigger-post-save', handleSave);
+    return () => window.removeEventListener('trigger-post-save', handleSave);
+  }, [title, description, priority, types, startDate, endDate, startTime, endTime, isAllDay, repeat, notification]);
+
+  const InternalFormFields = (
+    <div className="space-y-6 md:space-y-8">
+      {/* SEÇÃO DE AGENDAMENTO */}
+      <div className="bg-white/[0.02] border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
+        <div className="flex flex-col divide-y divide-white/5">
+          <div className="p-6 md:p-8 space-y-6">
+            <div className={`grid grid-cols-1 ${isInline ? 'gap-6' : 'md:grid-cols-2 gap-8'}`}>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Data de Início</label>
+                <div className="flex items-center gap-3 bg-black/40 rounded-2xl px-4 py-3.5 border border-white/5 shadow-inner group transition-all focus-within:border-primary/20 text-gray-300">
+                  <Calendar size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={e => setStartDate(e.target.value)}
+                    className="bg-transparent text-sm font-bold outline-none w-full font-sans"
+                  />
+                  {!isAllDay && (
+                    <div className="flex items-center gap-2 border-l border-white/10 pl-3">
+                      <Clock size={16} className="text-gray-600" />
+                      <input 
+                        type="time" 
+                        value={startTime} 
+                        onChange={e => setStartTime(e.target.value)}
+                        className="bg-transparent text-sm font-bold outline-none w-16 font-sans text-right"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {!isAllDay && !isInline && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Data de Término</label>
+                  <div className="flex items-center gap-3 bg-black/40 rounded-2xl px-4 py-3.5 border border-white/5 shadow-inner group transition-all focus-within:border-primary/20 text-gray-300">
+                    <Calendar size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
+                    <input 
+                      type="date" 
+                      value={endDate} 
+                      onChange={e => setEndDate(e.target.value)}
+                      className="bg-transparent text-sm font-bold outline-none w-full font-sans"
+                    />
+                    <div className="flex items-center gap-2 border-l border-white/10 pl-3">
+                      <Clock size={16} className="text-gray-600" />
+                      <input 
+                        type="time" 
+                        value={endTime} 
+                        onChange={e => setEndTime(e.target.value)}
+                        className="bg-transparent text-sm font-bold outline-none w-16 font-sans text-right"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {isInline && !isAllDay && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Término</label>
+                  <div className="flex items-center gap-3 bg-black/40 rounded-2xl px-4 py-3.5 border border-white/5 shadow-inner group transition-all focus-within:border-primary/20 text-gray-300">
+                    <Calendar size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
+                    <input 
+                      type="date" 
+                      value={endDate} 
+                      onChange={e => setEndDate(e.target.value)}
+                      className="bg-transparent text-sm font-bold outline-none w-full font-sans"
+                    />
+                    <div className="flex items-center gap-2 border-l border-white/10 pl-3">
+                      <Clock size={16} className="text-gray-600" />
+                      <input 
+                        type="time" 
+                        value={endTime} 
+                        onChange={e => setEndTime(e.target.value)}
+                        className="bg-transparent text-sm font-bold outline-none w-16 font-sans text-right"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className={`flex flex-wrap items-center gap-6 pt-2 border-t border-white/5 pt-6 ${isInline ? 'flex-col items-start' : 'md:col-span-2'}`}>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-3 group cursor-pointer">
+                    <div className="relative">
+                      <input 
+                        type="checkbox" 
+                        checked={isAllDay} 
+                        onChange={e => setIsAllDay(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-white/10 rounded-full peer-checked:bg-primary transition-all duration-300" />
+                      <div className="absolute top-1 left-1 w-3 h-3 bg-gray-500 rounded-full peer-checked:translate-x-5 peer-checked:bg-black transition-all duration-300" />
+                    </div>
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest group-hover:text-gray-300 transition-colors">Dia Inteiro</span>
+                  </label>
+
+                  <div className="flex items-center gap-3 bg-white/[0.03] px-4 py-2 rounded-xl border border-white/5">
+                    <RefreshCcw size={14} className="text-gray-600" />
+                    <select 
+                      value={repeat} 
+                      onChange={e => setRepeat(e.target.value)}
+                      className="bg-transparent text-[10px] font-black text-primary uppercase tracking-widest outline-none cursor-pointer"
+                    >
+                      <option value="none" className="bg-[#0A0A0A]">Não se repete</option>
+                      <option value="daily" className="bg-[#0A0A0A]">Todos os dias</option>
+                      <option value="weekly" className="bg-[#0A0A0A]">Semanalmente</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className={`flex items-center gap-4 bg-emerald-500/5 px-4 py-2 rounded-xl border border-emerald-500/10 ${isInline ? 'w-full justify-between' : 'ml-auto'}`}>
+                  <div className="flex items-center gap-3">
+                    <Bell size={14} className="text-emerald-500" />
+                    <span className="text-[10px] font-black text-gray-500 uppercase">Lembrete:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="number" 
+                      value={notification.value} 
+                      onChange={e => setNotification({...notification, value: parseInt(e.target.value) || 0})}
+                      className="w-10 bg-transparent text-[10px] font-black text-white text-center outline-none font-sans"
+                    />
+                    <select 
+                      value={notification.unit} 
+                      onChange={e => setNotification({...notification, unit: e.target.value})}
+                      className="bg-transparent text-[10px] font-black text-emerald-500/60 uppercase outline-none cursor-pointer hover:text-emerald-500 transition-colors"
+                    >
+                      <option value="minutes" className="bg-[#0A0A0A]">min</option>
+                      <option value="hours" className="bg-[#0A0A0A]">horas</option>
+                      <option value="days" className="bg-[#0A0A0A]">dias</option>
+                    </select>
+                    <span className="text-[9px] font-black text-gray-700 uppercase">antes</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Categorias (Multi-seleção)</label>
+          <div className="flex p-2 bg-white/[0.03] border border-white/5 rounded-[32px] items-center gap-2">
+            {[
+              { id: 'aviso', label: 'Aviso (Geral)' },
+              { id: 'evento', label: 'Evento (Calendário)' }
+            ].map(cat => {
+              const isSelected = types.includes(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    if (isSelected) {
+                      if (types.length > 1) setTypes(types.filter(t => t !== cat.id))
+                    } else {
+                      setTypes([...types, cat.id])
+                    }
+                  }}
+                  className={`flex-1 py-4 md:py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${isSelected ? 'bg-white/10 text-white shadow-xl scale-[1.01]' : 'text-gray-600 opacity-40 hover:opacity-100 hover:bg-white/5'}`}
+                >
+                  {cat.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Prioridade</label>
+          <div className="flex p-2 bg-white/[0.03] border border-white/5 rounded-[32px] items-center gap-2">
+            {[
+              { id: 'normal', label: 'Normal' },
+              { id: 'alta', label: 'Alta' },
+              { id: 'urgente', label: 'Urgente' }
+            ].map(prio => (
+              <button
+                key={prio.id}
+                onClick={() => setPriority(prio.id)}
+                className={`flex-1 py-4 md:py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${priority === prio.id 
+                  ? prio.id === 'urgente' ? 'bg-primary text-white shadow-lg' : prio.id === 'alta' ? 'bg-yellow-500 text-black shadow-lg' : 'bg-white/10 text-white shadow-lg' 
+                  : 'text-gray-600 opacity-40 hover:opacity-100 hover:bg-white/5'}`}
+              >
+                {prio.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isInline) {
+    return (
+      <div className="flex flex-col h-full bg-[#0A0A0B] relative">
+        <div className="px-8 py-7 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#0A0A0B]/95 backdrop-blur-md z-30 shrink-0">
+          <button
+            onClick={onCancel}
+            className="flex items-center gap-2 text-primary text-[11px] font-black uppercase tracking-[0.3em] active:scale-90 transition-all font-sans"
+          >
+            <ChevronLeft size={20} strokeWidth={3} />
+            Voltar
+          </button>
+          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
+            {initialData ? 'EDITAR' : 'CRIAR'} POSTAGEM
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-7 pb-48 no-scrollbar scroll-smooth">
+          {InternalFormFields}
+          
+          <div className="mt-8 space-y-8">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Título Principal</label>
+              <input 
+                type="text" 
+                value={title} 
+                onChange={e => setTitle(e.target.value)}
+                className="w-full p-6 rounded-[28px] bg-white/[0.03] border border-white/5 text-white text-base focus:outline-none focus:border-primary/20 transition-all font-medium font-sans placeholder:text-gray-800 shadow-inner"
+                placeholder="O que os alunos devem saber?"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] ml-2">Conteúdo</label>
+              <div className="rounded-[28px] bg-white/[0.03] border border-white/5 overflow-hidden transition-all focus-within:border-primary/20 shadow-inner">
+                <div className="px-5 py-4 border-b border-white/5 bg-white/[0.01]">
+                  <TextEditorToolbar editorRef={editorRef} />
+                </div>
+                <RichTextEditor 
+                  ref={editorRef} 
+                  initialValue={initialData?.description} 
+                  onChange={setDescription} 
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8 pb-12 bg-gradient-to-t from-[#0A0A0B] via-[#0A0A0B]/98 to-transparent border-t border-white/5 flex items-center justify-between gap-8 fixed bottom-0 left-0 w-full z-40">
+          <button
+            onClick={onCancel}
+            className="text-[11px] font-black text-gray-500 uppercase tracking-[0.4em] hover:text-white transition-all active:scale-90 px-2 font-sans"
+          >
+            DESCARTAR
+          </button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('trigger-post-save'))}
+            className="px-14 py-5 rounded-full bg-primary text-black text-[12px] font-black uppercase tracking-[0.3em] shadow-[0_20px_40px_-10px_rgba(235,59,90,0.4)] hover:scale-[1.03] active:scale-95 transition-all text-center"
+          >
+            ATUALIZAR
+          </button>
+        </div>
+      </div>
+    );
   }
+
 
   return (
     <motion.div
@@ -496,7 +745,7 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
           Cancelar
         </button>
         <button
-          onClick={handlePublish}
+          onClick={onPublish}
           disabled={!title.trim() || !description.trim()}
           className="px-10 py-3 rounded-full text-xs font-black uppercase tracking-widest bg-primary text-black shadow-lg shadow-primary/20 active:scale-95 disabled:opacity-30 transition-all border border-primary/20"
         >
@@ -507,6 +756,100 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
   )
 }
 
+/**
+ * NoticeActionMenu - Menu de ações para comunicados (Padrão Aba Aluno)
+ */
+function NoticeActionMenu({ notice, menuPosition, onClose, onEdit, onDelete }) {
+  if (!notice) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1000]">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/60 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none" 
+        onClick={onClose} 
+      />
+
+      {/* Desktop Dropdown */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+        className="hidden md:block absolute z-[1001] w-56 bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-2"
+        style={{
+          top: menuPosition?.top,
+          left: menuPosition?.left,
+          originX: 1
+        }}
+      >
+        <button onClick={() => { onEdit(notice); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium text-left">
+          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+            <Edit2 size={14} className="group-hover:text-primary transition-colors" />
+          </div>
+          Editar Comunicado
+        </button>
+        <button onClick={() => { onDelete(notice.id); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-all group font-medium text-left">
+          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+            <Trash2 size={14} />
+          </div>
+          Apagar Permanente
+        </button>
+      </motion.div>
+
+      {/* Mobile Bottom Sheet (Padrão Aba Aluno) */}
+      <div className="md:hidden">
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="fixed inset-x-0 bottom-0 bg-[#0A0A0A] border-t border-white/10 rounded-t-[32px] p-6 pb-12 z-[1002] shadow-[0_-8px_30px_rgb(0,0,0,0.8)]"
+        >
+          <div className="w-12 h-1.5 bg-white/15 rounded-full mx-auto mb-6" />
+          
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+              <BellRing size={22} className="text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base font-black text-white truncate uppercase tracking-tight">{notice.title}</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Ações Disponíveis</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <button
+              onClick={() => { onEdit(notice); onClose(); }}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 active:scale-95 transition-all text-left"
+            >
+              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                <Edit2 size={20} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-white uppercase tracking-wider">Editar Postagem</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar conteúdo ou datas</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { onDelete(notice.id); onClose(); }}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 active:scale-95 transition-all text-left"
+            >
+              <div className="w-11 h-11 rounded-xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                <Trash2 size={20} className="text-red-500" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-red-500 uppercase tracking-wider">Apagar Comunicado</p>
+                <p className="text-[10px] text-red-900 font-bold uppercase tracking-widest leading-none mt-1">Esta ação é irreversível</p>
+              </div>
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 // ────────────────────────────────────────────────
 //  MAIN PAGE
@@ -518,7 +861,10 @@ export default function EventsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingNotice, setEditingNotice] = useState(null)
   const [activeDropdown, setActiveDropdown] = useState(null)
+  const [menuPosition, setMenuPosition] = useState(null)
   const [activeTab, setActiveTab] = useState('todos') // 'todos', 'eventos', 'avisos'
+  const [expandedId, setExpandedId] = useState(null)
+  const isMobile = window.innerWidth < 768
   const notifiedIds = useRef(new Set())
 
   // Helper para nome curto (ex: João Gustavo)
@@ -557,6 +903,18 @@ export default function EventsPage() {
       (activeTab === 'avisos' && n.types?.includes('aviso'))
     return matchesSearch && matchesTab
   })
+
+  // LOCK BODY SCROLL WHEN MOBILE MENU IS OPEN
+  useEffect(() => {
+    if ((expandedId || activeDropdown) && isMobile) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [expandedId, activeDropdown, isMobile])
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -631,13 +989,14 @@ export default function EventsPage() {
 
             // 2. Start Time Notification (exactly now or very recently)
             if (diffMinutes <= 0 && diffMinutes > -5) {
-              if (!notifiedIds.current.has(`${notificationKey}_started`)) {
+              const notificationKey = `${notice.id}_started`
+              if (!notifiedIds.current.has(notificationKey)) {
                 new Notification(`Evento Iniciado: ${notice.title}`, {
                   body: `O evento começou às ${notice.startTime || '00:00'}.`,
                   icon: '/favicon.ico',
-                  tag: `${notificationKey}_started`
+                  tag: notificationKey
                 })
-                notifiedIds.current.add(`${notificationKey}_started`)
+                notifiedIds.current.add(notificationKey)
               }
             }
           } catch (err) {
@@ -673,7 +1032,7 @@ export default function EventsPage() {
   const handleEdit = (notice) => {
     if (!canEdit) return
     setEditingNotice(notice)
-    setShowForm(true)
+    if (isMobile) setExpandedId(notice.id)
     setActiveDropdown(null)
   }
 
@@ -696,16 +1055,6 @@ export default function EventsPage() {
 
       <MobileHeader
         title="Avisos & Eventos"
-        actions={
-          canEdit && (
-            <button
-              onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
-              className={`p-2.5 rounded-xl active:scale-90 transition-all shadow-lg ${showForm && !editingNotice ? 'bg-white/10 text-white' : 'bg-primary text-black shadow-primary/40'}`}
-            >
-              {showForm && !editingNotice ? <X size={20} strokeWidth={3} /> : <Plus size={20} strokeWidth={3} />}
-            </button>
-          )
-        }
       />
 
       {/* Header Desktop */}
@@ -736,24 +1085,28 @@ export default function EventsPage() {
           <KPICard
             title="Urgentes"
             value={loading ? '...' : urgents}
-            description="Alertas críticos"
-            icon={Siren}
+            description="Requer ação"
+            icon={Flame}
             valueColor="text-primary"
           />
           <KPICard
             title="Engajamento"
             value={loading ? '...' : totalViews}
             description="Visualizações totais"
-            icon={Eye}
+            icon={BarChart3}
+            valueColor="text-blue-400"
           />
         </div>
 
         {/* ── ACTION BAR & FILTERS ── */}
-        <div className="flex flex-col md:flex-row items-center gap-4 fade-slide-up">
-          {canEdit && (
+        <div className="flex flex-col md:flex-row items-center gap-4 fade-slide-up delay-100">
+          {canEdit && !isMobile && (
             <button
               onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
-              className="w-full md:w-auto btn-primary flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-black uppercase tracking-tighter transition-all shadow-xl shadow-primary/10"
+              className={`h-14 px-8 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-3 border shadow-lg active:scale-95 shrink-0 ${showForm && !editingNotice 
+                  ? 'bg-white/5 border-white/10 text-white' 
+                  : 'bg-primary border-primary/20 text-black shadow-primary/20'
+                }`}
             >
               {showForm && !editingNotice ? <X size={20} /> : <Plus size={20} />}
               {showForm && !editingNotice ? 'Cancelar' : 'Novo aviso'}
@@ -790,15 +1143,14 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* ── INLINE FORM ── */}
+        {/* ── TOP FORM (NEW POSTS ONLY) ── */}
         <AnimatePresence>
-          {showForm && (
+          {showForm && !editingNotice && !isMobile && (
             <div className="fade-slide-down">
               <InlinePostForm
-                key={editingNotice?.id || 'new'}
-                initialData={editingNotice}
+                key="new"
                 onSave={handleSave}
-                onCancel={() => { setShowForm(false); setEditingNotice(null) }}
+                onCancel={() => setShowForm(false)}
               />
             </div>
           )}
@@ -821,14 +1173,33 @@ export default function EventsPage() {
             </div>
           ) : (
             filteredNotices.map((notice, i) => {
+              // INLINE EDITING LOGIC
+              if (editingNotice?.id === notice.id && !isMobile) {
+                return (
+                  <motion.div
+                    layout
+                    key={`edit-${notice.id}`}
+                    className="p-8 rounded-[32px] bg-[#0A0A0A] border border-primary/20 shadow-2xl mb-8"
+                  >
+                    <InlinePostForm
+                      isInline
+                      initialData={notice}
+                      onSave={handleSave}
+                      onCancel={() => setEditingNotice(null)}
+                    />
+                  </motion.div>
+                )
+              }
+
               const badge = priorityBadge[notice.priority]
               const isEvento = notice.types?.includes('evento')
               const isAviso = notice.types?.includes('aviso')
               const relativeTime = getRelativeTime(notice.createdAt)
+              const isExpanded = expandedId === notice.id
 
               const priorityMap = {
                 urgente: { label: 'URGENTE', cls: 'bg-primary/20 text-primary border-primary/30', icon: <Flame size={12} /> },
-                alta: { label: 'ALTA PRIORIDADE', cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30', icon: <Zap size={12} /> },
+                alta: { label: 'ALTA', cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30', icon: <Zap size={12} /> },
                 normal: { label: 'NORMAL', cls: 'bg-white/5 text-gray-500 border-white/10', icon: <div className="w-1.5 h-1.5 rounded-full bg-gray-500" /> }
               }
               const pCfg = priorityMap[notice.priority] || priorityMap.normal
@@ -836,54 +1207,110 @@ export default function EventsPage() {
               return (
                 <motion.div
                   key={notice.id}
+                  layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="relative group bg-white/[0.03] border border-white/5 hover:border-white/10 p-4 px-6 rounded-[24px] transition-all overflow-hidden"
+                  transition={{
+                    delay: i * 0.05,
+                    layout: { duration: 0.3, ease: 'easeOut' }
+                  }}
+                  onClick={() => setExpandedId(isExpanded ? null : notice.id)}
+                  className={`relative group bg-white/[0.03] border transition-all overflow-hidden cursor-pointer ${isExpanded
+                      ? 'rounded-[32px] border-primary/30 bg-white/[0.05] shadow-2xl shadow-primary/5 p-8 px-10'
+                      : 'rounded-[24px] border-white/5 hover:border-white/10 p-4 px-6 p-5 px-8 hover:bg-white/[0.04]'
+                    }`}
                 >
                   {/* Visual Decoration for priority bar */}
                   <div className={`absolute top-0 left-0 bottom-0 w-1.5 transition-colors ${notice.priority === 'urgente' ? 'bg-primary' :
-                    notice.priority === 'alta' ? 'bg-yellow-500' : 'bg-transparent'
-                    }`} />
+                      notice.priority === 'alta' ? 'bg-yellow-500' : 'bg-transparent'
+                    } ${isExpanded ? 'w-2' : ''}`} />
 
-                  {/* STAFF CONTROLS */}
+                  {/* STAFF CONTROLS (MoreVertical) */}
                   {canEdit && (
-                    <div className="absolute top-6 right-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                      <button onClick={() => handleEdit(notice)} className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all"><Edit2 size={16} /></button>
-                      <button onClick={() => handleDelete(notice.id)} className="p-2 hover:bg-primary/10 rounded-xl text-gray-400 hover:text-primary transition-all"><Trash2 size={16} /></button>
+                    <div className="absolute top-6 right-6 z-10 transition-opacity">
+                      <button
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({
+                            top: rect.top + window.scrollY + rect.height + 8,
+                            left: rect.left + window.scrollX - 180 + rect.width
+                          });
+                          setActiveDropdown(notice.id); 
+                        }}
+                        className={`p-2.5 rounded-xl transition-all active:scale-90 border border-transparent ${activeDropdown === notice.id ? 'bg-white/10 text-white' : 'hover:bg-white/10 text-gray-400 hover:text-white'}`}
+                      >
+                        <MoreVertical size={20} />
+                      </button>
                     </div>
                   )}
 
                   <div className="flex flex-col">
-                    <div className="pt-2"></div>
+                    <div className={isExpanded ? 'pt-2' : 'pt-2'}></div>
 
-                    <h3 className="text-lg font-black tracking-tight mb-1" style={{ color: '#E4E4E6' }}>
+                    <motion.h3
+                      layout="position"
+                      className={`font-black tracking-tight transition-all ${isExpanded ? 'text-2xl mb-4' : 'text-lg mb-1'}`}
+                      style={{ color: '#E4E4E6' }}
+                    >
                       {notice.title}
-                    </h3>
+                    </motion.h3>
 
                     <div className="space-y-1" style={{ color: '#DCDCDF' }}>
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <span className="text-[10px] font-black lowercase opacity-40 whitespace-nowrap shrink-0">{formatDisplayName(notice.authorName)} :</span>
-                        <div
-                          className="text-sm font-medium opacity-80 line-clamp-1 text-gray-400 flex-1"
-                          dangerouslySetInnerHTML={{ __html: notice.description.replace(/<[^>]*>?/gm, ' ') }}
-                        />
-                      </div>
+                      <motion.div layout="position" className="flex items-center gap-2 overflow-hidden">
+                        <span className="text-[10px] font-black lowercase opacity-40 whitespace-nowrap shrink-0">
+                          {(!isExpanded || !isMobile) && `${formatDisplayName(notice.authorName)} :`}
+                        </span>
+                        {(!isExpanded || !isMobile) && (
+                          <div
+                            className="text-sm font-medium opacity-80 line-clamp-1 text-gray-400 flex-1"
+                            dangerouslySetInnerHTML={{ __html: notice.description.replace(/<[^>]*>?/gm, ' ') }}
+                          />
+                        )}
+                      </motion.div>
+
+                      {/* DESKTOP EXPANDED CONTENT - CARREGAMENTO SOB DEMANDA */}
+                      <AnimatePresence>
+                        {isExpanded && !isMobile && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="py-6 border-y border-white/5 my-6">
+                              <div className="prose prose-invert max-w-none text-gray-300 text-base leading-relaxed">
+                                <span className="text-[10px] font-black lowercase opacity-40 mr-2 float-left mt-1.5">
+                                  {formatDisplayName(notice.authorName)} :
+                                </span>
+                                <div
+                                  className="[&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-4"
+                                  dangerouslySetInnerHTML={{ __html: notice.description }}
+                                />
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {/* UNIFIED INFO BOX (DATE, TIME & BADGES) */}
-                    <div className="mt-5 flex items-center p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500">
+                    <motion.div
+                      layout="position"
+                      className={`mt-4 flex flex-wrap items-center justify-center md:justify-start p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500 gap-4 ${isExpanded ? 'bg-primary/5 border-primary/10 py-4' : ''}`}
+                    >
                       {/* Left Side: Event Details */}
                       {(notice.startDate || notice.startTime) && (
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center md:justify-start gap-4 flex-wrap">
                           <div className="flex items-center gap-2 px-1">
-                            <Calendar size={14} className="text-primary opacity-60" />
-                            <span>{new Date(notice.startDate).toLocaleDateString('pt-BR')}</span>
+                            <Calendar size={14} className={`${isExpanded ? 'text-primary' : 'text-primary opacity-60'}`} />
+                            <span className={isExpanded ? 'text-gray-300' : ''}>{new Date(notice.startDate).toLocaleDateString('pt-BR')}</span>
                           </div>
                           {!notice.isAllDay && (
                             <div className="flex items-center gap-2 border-l border-white/5 pl-4 px-1">
-                              <Clock size={14} className="text-primary opacity-60" />
-                              <span>{notice.startTime} - {notice.endTime}</span>
+                              <Clock size={14} className={`${isExpanded ? 'text-primary' : 'text-primary opacity-60'}`} />
+                              <span className={isExpanded ? 'text-gray-300' : ''}>{notice.startTime} - {notice.endTime}</span>
                             </div>
                           )}
                           {notice.repeat !== 'none' && (
@@ -896,10 +1323,10 @@ export default function EventsPage() {
                       )}
 
                       {/* Spacer to push badges to the right */}
-                      <div className="flex-1" />
+                      <div className="flex-1 hidden md:block" />
 
                       {/* Right Side: Technical Badges */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 md:ml-auto">
                         <div className={`px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${pCfg.cls}`}>
                           {pCfg.icon}
                           {pCfg.label}
@@ -920,16 +1347,134 @@ export default function EventsPage() {
                           {relativeTime}
                         </span>
                       </div>
-                    </div>
+                    </motion.div>
                   </div>
                 </motion.div>
               )
-
             })
           )}
         </div>
       </div>
+
+      {/* PORTAL PARA MOBILE (DETALHES E EDIÇÃO) */}
+      {isMobile && createPortal(
+        <AnimatePresence>
+          {(expandedId || (showForm && !editingNotice)) && (
+            <div className="fixed inset-0 z-[9999] flex flex-col justify-end p-0 m-0 overflow-hidden">
+              {(() => {
+                const notice = expandedId ? filteredNotices.find(n => n.id === expandedId) : null;
+                const isCreating = showForm && !editingNotice;
+                
+                if (!notice && !isCreating) return null;
+                const isEditing = editingNotice?.id === notice?.id || isCreating;
+
+                return (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => !isEditing && setExpandedId(null)}
+                      className="absolute inset-0 bg-black/95 backdrop-blur-md"
+                    />
+                    <motion.div
+                      initial={{ y: '100%' }}
+                      animate={{ y: 0 }}
+                      exit={{ y: '100%' }}
+                      transition={{ type: 'spring', damping: 32, stiffness: 280, mass: 0.8 }}
+                      className="relative bg-[#0A0A0B] rounded-t-[42px] h-full flex flex-col w-full shadow-[0_-20px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+                    >
+                      {isEditing ? (
+                        <div className="h-full">
+                          <InlinePostForm
+                            isInline
+                            initialData={notice}
+                            onSave={(updatedData) => {
+                              handleSave(updatedData);
+                              setEditingNotice(null);
+                              setShowForm(false);
+                              setExpandedId(null);
+                            }}
+                            onCancel={() => {
+                              setEditingNotice(null);
+                              setShowForm(false);
+                              setExpandedId(null);
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col h-full overflow-hidden">
+                          {/* HEADER COMPACTO ESTILO ABA ALUNO */}
+                          <div className="px-8 py-7 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#0A0A0B]/95 backdrop-blur-md z-30 shrink-0">
+                            <button
+                              onClick={() => setExpandedId(null)}
+                              className="flex items-center gap-2 text-primary text-[11px] font-black uppercase tracking-[0.3em] active:scale-90 transition-all font-sans"
+                            >
+                              <ChevronLeft size={20} strokeWidth={3} />
+                              Voltar
+                            </button>
+                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
+                              Visualizar
+                            </span>
+                          </div>
+
+                          <div className="flex-1 overflow-y-auto p-10 custom-scrollbar no-scrollbar">
+                            <div className="mb-12">
+                              <div className="flex items-center gap-3 mb-6 p-3 bg-white/[0.03] border border-white/5 rounded-2xl w-fit">
+                                <Calendar className="w-4 h-4 text-primary" />
+                                <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">
+                                  {new Date(notice.startDate).toLocaleDateString('pt-BR')} {notice.startTime && `às ${notice.startTime}`}
+                                </span>
+                              </div>
+                              <h3 className="text-4xl font-black text-white uppercase tracking-tight leading-[1.1]">
+                                {notice.title}
+                              </h3>
+                              <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.3em] mt-5">Autor: {formatDisplayName(notice.authorName)}</p>
+                            </div>
+
+                            <div className="prose prose-invert max-w-none text-gray-300 text-lg leading-relaxed mb-16">
+                              <div
+                                className="[&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-6"
+                                dangerouslySetInnerHTML={{ __html: notice.description }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* FLOAT ACTION BUTTON (FAB) MOBILE - ESTILO ABA ALUNO */}
+      {canEdit && isMobile && !showForm && !expandedId && (
+        <div className="fixed bottom-8 right-8 z-[90]">
+          <button
+            onClick={() => { setEditingNotice(null); setShowForm(true); }}
+            className="w-16 h-16 rounded-3xl bg-primary text-black flex items-center justify-center shadow-[0_20px_40px_rgba(235,59,90,0.3)] active:scale-90 transition-all border border-primary/20"
+          >
+            <Plus size={32} strokeWidth={3} />
+          </button>
+        </div>
+      )}
+
+      {/* ACTION MENU GLOBAL */}
+      <AnimatePresence>
+        {activeDropdown && (
+          <NoticeActionMenu
+            notice={notices.find(n => n.id === activeDropdown)}
+            menuPosition={menuPosition}
+            onClose={() => setActiveDropdown(null)}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }
-

@@ -372,35 +372,52 @@ export function AuthProvider({ children }) {
       if (!accessPin) throw new Error('Falha na sincronização de segurança.')
       const securePin = String(accessPin).length >= 6 ? String(accessPin) : String(accessPin).padEnd(6, '0')
       
-      // 5. Autenticação Firebase Auth com JIT
-      try {
-        const result = await signInWithEmailAndPassword(auth, pinAuthEmail, securePin)
-        console.log('✅ Admin logado com sucesso.')
-        setSimulatedRole(null) // Libera o papel real
-        return result
-      } catch (authErr) {
-        if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') {
-          console.log('✨ Admin verificado no Firestore mas sem Auth. Provisionando...')
-          try {
-            const result = await createUserWithEmailAndPassword(auth, pinAuthEmail, securePin)
-            console.log('✅ Conta administrativa criada e logada.')
-            setSimulatedRole(null)
-            return result
-          } catch (createErr) {
-            if (createErr.code === 'auth/email-already-in-use') {
-              // Tenta login de novo, talvez senha no Auth esteja diferente do doc?
-              // Se chegar aqui, é problema de sincronização de senha
-              throw new Error('Erro de sincronização. O PIN no banco não bate com a senha do Auth.')
-            }
-            throw createErr
+      // 5. Autenticação Firebase Auth com Estratégia de Múltiplos Fallbacks
+      // Tenta as seguintes combinações em ordem até obter sucesso:
+      const authAttempts = [
+        { e: pinAuthEmail, p: securePin, label: 'Moderno (PIN Novo)' },
+        { e: pinAuthEmail, p: '111111', label: 'Moderno (PIN Legado)' },
+        { e: email, p: securePin, label: 'Real (PIN Novo)' },
+        { e: email, p: '111111', label: 'Real (PIN Legado)' }
+      ]
+
+      for (const attempt of authAttempts) {
+        try {
+          console.log(`📡 Tentativa Auth: ${attempt.label}...`)
+          const result = await signWithPin(attempt.e, attempt.p)
+          console.log(`✅ Sucesso via ${attempt.label}!`)
+          setSimulatedRole(null)
+          return result
+        } catch (e) {
+          // Continua tentando se for erro de credencial
+          if (e.code !== 'auth/invalid-credential' && e.code !== 'auth/wrong-password' && e.code !== 'auth/user-not-found') {
+             throw e // Erro crítico (ex: bloqueio por chamadas demais)
           }
         }
-        throw authErr
+      }
+
+      // Se todas as combinações falharem, verifica se é caso de provisionamento
+      console.log('✨ Nenhuma combinação de Auth existente funcionou. Verificando provimento JIT...')
+      try {
+        const result = await createUserWithEmailAndPassword(auth, pinAuthEmail, securePin)
+        console.log('✅ Conta administrativa JIT criada e logada.')
+        setSimulatedRole(null)
+        return result
+      } catch (createErr) {
+        if (createErr.code === 'auth/email-already-in-use') {
+           throw new Error('Erro de sincronização persistente. Por favor, acesse o perfil pela tela normal usando 111111 e altere seu PIN lá.')
+        }
+        throw createErr
       }
     } catch (err) {
       console.error('❌ Erro no login administrativo:', err)
       throw new Error(err.message || 'Falha na autenticação administrativa.')
     }
+  }
+
+  // Helper para centralizar login por PIN
+  const signWithPin = async (e, p) => {
+    return await signInWithEmailAndPassword(auth, e, p)
   }
 
   useEffect(() => {

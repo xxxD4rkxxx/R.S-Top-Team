@@ -290,9 +290,9 @@ export default function StudentsPage() {
     return (
       <div className="flex items-center justify-center p-0.5 group-hover:border-primary/30 transition-colors shrink-0 relative">
         {student.photo ? (
-          <img src={student.photo} alt={student.name} className="w-11 h-11 rounded-2xl object-cover ring-1 ring-white/10" />
+          <img src={student.photo} alt={student.name} className="w-11 h-11 rounded-full object-cover ring-1 ring-white/10" />
         ) : (
-          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass} text-white shadow-inner relative overflow-hidden`}>
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass} text-white shadow-inner relative overflow-hidden`}>
             <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent opacity-40" />
             <span className="relative z-10 drop-shadow-md">{initials}</span>
           </div>

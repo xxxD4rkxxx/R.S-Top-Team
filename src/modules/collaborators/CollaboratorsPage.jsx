@@ -320,8 +320,8 @@ export default function CollaboratorsPage() {
             </button>
           )}
         </div>
-
-        <div className="bg-black/40 backdrop-blur-md rounded-2xl p-5 md:p-6 border border-white/5">
+          {/* caixxa que sobre tudo */}
+        <div className="bg-[#0B0B0D]/80 backdrop-blur-md rounded-2xl p-5 md:p-6 border border-white/5">
           {/* Filtros */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <CustomSelect label="Ordenar por" value={sortBy} onChange={setSortBy} options={[['recente', 'Mais Recente'], ['az', 'A → Z'], ['za', 'Z → A']]} />

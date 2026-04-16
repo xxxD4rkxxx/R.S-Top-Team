@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
 import { useSystemLogs } from '../../hooks/useSystemLogs'
 import { useTheme, THEMES } from '../../context/ThemeContext'
+import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 
 // ── Ícones de role ──────────────────────────────────────────────
@@ -193,9 +194,9 @@ function SectionConta({ user, activeRole, onUpdateProfile }) {
 }
 
 // ════════════════════════════════════════════════════════════════
-//  PAINEL: SENHA & ACESSO
+//  PAINEL: PIN & ACESSO
 // ════════════════════════════════════════════════════════════════
-function SectionSeguranca({ onChangePassword, activityLogs }) {
+function SectionSeguranca({ user, onChangePassword, activityLogs }) {
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -204,56 +205,134 @@ function SectionSeguranca({ onChangePassword, activityLogs }) {
   const [errMsg, setErrMsg] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleChange = async () => {
-    if (next !== confirm) { setStatus('err'); setErrMsg('As senhas não coincidem'); return }
-    if (next.length < 6) { setStatus('err'); setErrMsg('Mínimo 6 caracteres'); return }
+  // Filtra apenas o histórico deste usuário (Segurança de Dados)
+  const myLogs = (activityLogs || []).filter(l => 
+    l.action === 'Login' && 
+    (l.userName === user?.name || l.userId === user?.id || l.userId === user?.uid)
+  ).slice(0, 5)
+
+  // Validação: apenas números e máximo 6 dígitos
+  const handlePinInput = (setter) => (val) => {
+    const cleaned = val.replace(/\D/g, '').slice(0, 6)
+    setter(cleaned)
+  }
+
+  const handleUpdate = async () => {
+    if (next.length !== 6) { 
+      setStatus('err'); 
+      setErrMsg('O PIN deve ter exatamente 6 dígitos numéricos'); 
+      return 
+    }
+    if (next !== confirm) { 
+      setStatus('err'); 
+      setErrMsg('Os PINs não coincidem'); 
+      return 
+    }
+    
     setLoading(true); setStatus(null)
     try {
+      // onChangePassword no useSystemUsers já sincroniza Firestore e Firebase Auth
       await onChangePassword(current, next)
       setStatus('ok'); setCurrent(''); setNext(''); setConfirm('')
     } catch (e) {
+      console.error('Erro na atualização do PIN:', e)
       setStatus('err')
-      setErrMsg(e.code === 'auth/wrong-password' ? 'Senha atual incorreta' : e.message)
+      // Detecta bloqueio por AdBlock ou falta de rede
+      if (!window.navigator.onLine || e.message?.includes('network') || e.code?.includes('network')) {
+        setErrMsg('Erro de conexão ou bloqueio do navegador (AdBlock). Verifique suas extensões.')
+      } else {
+        setErrMsg(e.code === 'auth/wrong-password' ? 'PIN atual incorreto' : 'Erro ao atualizar. Verifique sua conexão.')
+      }
     } finally { setLoading(false) }
   }
 
-  const recentLogins = activityLogs.filter(l => l.action === 'Login').slice(0, 5)
-
   return (
     <div className="space-y-6">
-      <Section title="Alterar senha">
-        <div className="px-5 py-4 space-y-3">
-          <FormInput label="Senha atual" value={current} onChange={setCurrent} type={showPwd ? 'text' : 'password'} />
-          <FormInput label="Nova senha" value={next} onChange={setNext} type={showPwd ? 'text' : 'password'} />
-          <FormInput label="Confirmar nova senha" value={confirm} onChange={setConfirm} type={showPwd ? 'text' : 'password'} />
+      <Section title="Segurança da Conta">
+        <div className="px-5 py-4 space-y-4">
+          <div className="flex flex-col gap-4">
+            <FormInput 
+              label="Senha/PIN Atual" 
+              value={current} 
+              onChange={(v) => setCurrent(v.slice(0, 6))} 
+              type={showPwd ? 'text' : 'password'} 
+              placeholder="Digite sua senha ou PIN atual"
+            />
+            <FormInput 
+              label="Novo PIN (Exatamente 6 dígitos)" 
+              value={next} 
+              onChange={handlePinInput(setNext)} 
+              type={showPwd ? 'text' : 'password'} 
+              placeholder="Ex: 123456"
+            />
+            <FormInput 
+              label="Confirmar Novo PIN" 
+              value={confirm} 
+              onChange={handlePinInput(setConfirm)} 
+              type={showPwd ? 'text' : 'password'} 
+              placeholder="Repita o novo PIN"
+            />
+          </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <button onClick={() => setShowPwd(v => !v)} className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition-colors">
-              {showPwd ? <EyeOff size={18} strokeWidth={1.9} /> : <Eye size={18} strokeWidth={1.9} />} {showPwd ? 'Ocultar' : 'Mostrar'} senhas
+          <div className="flex items-center justify-between pt-2">
+            <button 
+              onClick={() => setShowPwd(v => !v)} 
+              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              {showPwd ? <EyeOff size={16} /> : <Eye size={16} />} {showPwd ? 'Ocultar' : 'Mostrar'} PIN
             </button>
-            <button onClick={handleChange} disabled={loading || !current || !next || !confirm} className="btn-primary px-4 py-2 rounded-md text-sm font-bold disabled:opacity-40">
-              {loading ? 'Salvando...' : 'Alterar senha'}
+            <button 
+              onClick={handleUpdate} 
+              disabled={loading || current.length < 6 || next.length < 6 || confirm.length < 6}
+              className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-black uppercase hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-40"
+            >
+              {loading ? 'Salvando...' : 'Atualizar PIN'}
             </button>
           </div>
 
-          {status === 'ok' && <p className="text-emerald-400 text-xs flex items-center gap-1.5"><CheckCircle2 size={18} strokeWidth={1.9} /> Senha alterada com sucesso!</p>}
-          {status === 'err' && <p className="text-xs flex items-center gap-1.5" style={{ color: 'var(--clr-primary)' }}><AlertTriangle size={18} strokeWidth={1.9} /> {errMsg}</p>}
+          {status === 'ok' && (
+            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-emerald-500" />
+              <p className="text-[11px] text-emerald-400 font-bold uppercase">PIN atualizado com sucesso!</p>
+            </div>
+          )}
+
+          {status === 'err' && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2">
+              <AlertTriangle size={16} className="text-red-500" />
+              <p className="text-[11px] text-red-400 font-bold uppercase">{errMsg}</p>
+            </div>
+          )}
         </div>
       </Section>
 
-      <Section title="Histórico de acesso">
-        {recentLogins.length === 0
-          ? <p className="px-5 py-4 text-gray-600 text-sm">Nenhum login registrado ainda.</p>
-          : recentLogins.map(log => (
-            <div key={log.id} className="flex items-center justify-between px-5 py-3 border-b border-white/5 last:border-0">
-              <div>
-                <p className="text-app text-sm font-semibold">{log.userName}</p>
-                <p className="text-gray-500 text-xs">{log.detail}</p>
-              </div>
-              <LogTime date={log.createdAt} />
+      <Section title="Histórico de Acesso">
+        <div className="divide-y divide-white/5">
+          {myLogs.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <ShieldCheck size={32} className="text-gray-700 mx-auto mb-2 opacity-20" />
+              <p className="text-gray-600 text-xs uppercase font-bold tracking-widest">Nenhum login recente</p>
             </div>
-          ))
-        }
+          ) : (
+            myLogs.map(log => (
+              <div key={log.id} className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                    <Smartphone size={14} className="text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-bold">{log.detail || 'Dispositivo Autorizado'}</p>
+                    <p className="text-[10px] text-gray-500 font-medium">{log.ip || 'Localização não identificada'}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <LogTime date={log.createdAt} />
+                  <p className="text-[8px] text-emerald-500 font-black uppercase tracking-tighter mt-0.5">Ativo</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </Section>
     </div>
   )
@@ -1074,21 +1153,6 @@ import ModuleUnderDevelopment from '../../components/shared/ModuleUnderDevelopme
 // ════════════════════════════════════════════════════════════════
 //  PAINÉIS SIMPLES
 // ════════════════════════════════════════════════════════════════
-function SectionNotificacoes() {
-  return (
-    <div className="space-y-6">
-      <Section title="Avisos & Eventos">
-        <SettingRow label="Novos avisos" desc="Notificar quando um aviso for publicado" action={<Toggle defaultOn />} />
-        <SettingRow label="Eventos próximos" desc="Lembrete 24h antes de eventos" action={<Toggle defaultOn />} />
-        <SettingRow label="Avisos urgentes" desc="Notificação imediata para urgências" action={<Toggle defaultOn />} />
-      </Section>
-      <Section title="Alunos">
-        <SettingRow label="Novo aluno" desc="Notificar ao registrar novo aluno" action={<Toggle />} />
-        <SettingRow label="Alunos inativos" desc="Alerta quando aluno ficar inativo" action={<Toggle defaultOn />} />
-      </Section>
-    </div>
-  )
-}
 
 function SectionAparencia() {
   const { activeId, setTheme, customPrimary, setCustomPrimary, customSecondary, setCustomSecondary } = useTheme()
@@ -1301,6 +1365,94 @@ function SectionSobre() {
   )
 }
 
+function SectionNotificacoes({ user, onUpdateProfile }) {
+  // Estado local para feedback instantâneo na UI
+  const [localPrefs, setLocalPrefs] = React.useState({
+    general: user?.preferences?.notifications?.general ?? true,
+    sound: user?.preferences?.notifications?.sound ?? true,
+    vibrate: user?.preferences?.notifications?.vibrate ?? true,
+  })
+
+  // Sincroniza o estado local quando os dados do usuário terminam de carregar
+  React.useEffect(() => {
+    if (user?.preferences?.notifications) {
+      setLocalPrefs(prev => ({
+        ...prev,
+        ...user.preferences.notifications
+      }))
+    }
+  }, [user?.preferences?.notifications])
+
+  const togglePref = (key) => {
+    const newVal = !localPrefs[key]
+    const updated = { ...localPrefs, [key]: newVal }
+    
+    // Atualiza localmente primeiro para ser instantâneo
+    setLocalPrefs(updated)
+
+    // Persiste no banco
+    onUpdateProfile({
+      preferences: {
+        ...user?.preferences,
+        notifications: {
+          ...user?.preferences?.notifications,
+          [key]: newVal
+        }
+      }
+    })
+  }
+
+  const openSystemSettings = () => {
+    try {
+      if (/Android/i.test(navigator.userAgent)) {
+        window.location.href = 'intent:package:com.android.settings#Intent;action=android.settings.APP_NOTIFICATION_SETTINGS;S.android.provider.extra.APP_PACKAGE=' + window.location.hostname + ';end'
+      } else {
+        alert('Para gerenciar notificações do sistema, acesse as Configurações do seu dispositivo e procure por este Aplicativo.')
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Section title="Geral">
+        <SettingRow
+          label="Notificações Gerais"
+          desc="Ativar ou desativar todos os avisos do app"
+          action={<Toggle isOn={localPrefs.general} onToggle={() => togglePref('general')} />}
+        />
+        <SettingRow
+          label="Som"
+          desc="Reproduzir som ao receber notificações"
+          action={<Toggle isOn={localPrefs.sound} onToggle={() => togglePref('sound')} />}
+        />
+        <SettingRow
+          label="Vibrar"
+          desc="Vibrar o dispositivo ao receber notificações"
+          action={<Toggle isOn={localPrefs.vibrate} onToggle={() => togglePref('vibrate')} />}
+        />
+      </Section>
+
+      <div className="bg-white/5 border border-white/5 rounded-xl p-6 flex flex-col md:flex-row items-center gap-6">
+        <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-primary flex-shrink-0">
+          <Settings size={28} />
+        </div>
+        <div className="flex-1 text-center md:text-left">
+          <p className="text-sm font-bold text-white mb-1">Configurações do Dispositivo</p>
+          <p className="text-xs text-gray-500 max-w-sm">Para gerenciar permissões de nível de sistema (bloquear totalmente ou fixar no topo), use as configurações nativas.</p>
+        </div>
+        <button
+          onClick={openSystemSettings}
+          className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-xs font-black text-white hover:bg-white/10 transition-all active:scale-95 whitespace-nowrap"
+        >
+          ABRIR AJUSTES
+        </button>
+      </div>
+    </div>
+  )
+}
+
 
 // ════════════════════════════════════════════════════════════════
 //  MAIN PAGE
@@ -1316,6 +1468,7 @@ export default function ProfilePage() {
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
   const navigate = useNavigate()
   const { userData, logout, effectiveRole } = useAuth()
+  const { setIsMobileNavHidden } = useApp()
   const { users, loading: usersLoading, updateProfile, uploadAvatar, uploadBanner, createNewUser, changePassword, deleteUser, runDeepMigration } = useSystemUsers()
   const { logs, loading: logsLoading } = useSystemLogs('all', 100)
 
@@ -1332,8 +1485,8 @@ export default function ProfilePage() {
 
   const panels = {
     conta: <SectionConta user={userData} activeRole={effectiveRole} onUpdateProfile={handleUpdateProfile} />,
-    seguranca: <SectionSeguranca onChangePassword={changePassword} activityLogs={logs} />,
-    notificacoes: <ModuleUnderDevelopment icon={Bell} title="Notificações" />,
+    seguranca: <SectionSeguranca user={userData} onChangePassword={changePassword} activityLogs={logs} />,
+    notificacoes: <SectionNotificacoes user={userData} onUpdateProfile={handleUpdateProfile} />,
     aparencia: <SectionAparencia />,
     academia: <ModuleUnderDevelopment icon={Dumbbell} title="Configurações da Academia" />,
     usuarios: <SectionUsuarios
@@ -1349,6 +1502,22 @@ export default function ProfilePage() {
     sobre: <SectionSobre />,
   }
 
+  const isStaff = !['aluno', 'professor'].includes(effectiveRole)
+
+  // Filtra as seções baseado no cargo (Sistema apenas para Gestor/Admin)
+  const visibleSections = SECTIONS.filter(sec => {
+    if (sec.group === 'Sistema') return isStaff
+    return true
+  })
+
+  // Se o usuário tentar acessar uma aba restrita via URL, volta para 'conta'
+  const isRestrictedTab = SECTIONS.find(s => s.group === 'Sistema')?.items.some(i => i.id === activeTab)
+  const canAccess = !isRestrictedTab || isStaff
+
+  React.useEffect(() => {
+    if (!canAccess) setActive('conta')
+  }, [canAccess])
+
   const activeSection = SECTIONS.flatMap(s => s.items).find(i => i.id === activeTab)
 
   // Handlers
@@ -1356,6 +1525,14 @@ export default function ProfilePage() {
     setActive(id)
     setMobileDetailOpen(true)
   }
+
+  React.useEffect(() => {
+    // Esconde a navegação mobile enquanto estiver na página de perfil/configurações
+    setIsMobileNavHidden(true)
+    
+    // Cleanup ao desmontar a página (garante que volte ao navegar para outro lugar)
+    return () => setIsMobileNavHidden(false)
+  }, [setIsMobileNavHidden])
 
   const goBack = () => {
     navigate('/')
@@ -1394,7 +1571,7 @@ export default function ProfilePage() {
 
         {/* NAV */}
         <nav className="flex-1 space-y-0.5">
-          {SECTIONS.map(sec => (
+          {visibleSections.map(sec => (
             <div key={sec.group} className="mb-4">
               <p className="text-[9px] font-bold text-gray-700 uppercase tracking-widest px-3 mb-1">{sec.group}</p>
               {sec.items.map(item => (
@@ -1463,7 +1640,7 @@ export default function ProfilePage() {
 
               {/* Menu Sections */}
               <div className="px-6 space-y-10">
-                {SECTIONS.map((sec) => (
+                {visibleSections.map((sec) => (
                   <div key={sec.group} className="space-y-3">
                     <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">{sec.group}</h3>
                     <div className="bg-[#111] rounded-lg overflow-hidden border border-white/5 shadow-sm">
@@ -1632,14 +1809,13 @@ function LogTime({ date }) {
   )
 }
 
-function Toggle({ defaultOn = false }) {
-  const [on, setOn] = useState(defaultOn)
+function Toggle({ isOn = false, onToggle }) {
   return (
     <button
-      onClick={() => setOn(!on)}
-      className={`w-11 h-6 rounded-full relative transition-all duration-300 ${on ? 'bg-primary' : 'bg-white/10'}`}
+      onClick={onToggle}
+      className={`w-11 h-6 rounded-full relative transition-all duration-300 ${isOn ? 'bg-primary' : 'bg-white/10'}`}
     >
-      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${on ? 'left-6 shadow-md' : 'left-1'}`} />
+      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${isOn ? 'left-6 shadow-md' : 'left-1'}`} />
     </button>
   )
 }

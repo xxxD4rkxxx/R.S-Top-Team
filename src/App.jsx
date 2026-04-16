@@ -86,7 +86,7 @@ function PageSkeleton() {
 
 
 function AppContent() {
-  const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useApp()
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen, isMobileNavHidden } = useApp()
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const location = useLocation()
 
@@ -188,7 +188,7 @@ function AppContent() {
         </div>
 
         {/* Componente de Navegação Inferior para dispositivos móveis */}
-        {isMobile && <MobileNav />}
+        {isMobile && !isMobileNavHidden && <MobileNav />}
       </div>
     </ErrorBoundary>
   )

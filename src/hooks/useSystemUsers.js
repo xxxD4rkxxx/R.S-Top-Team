@@ -362,8 +362,7 @@ export function useSystemUsers() {
     // 2. Atualiza no Firebase Auth (o que permite o login)
     await updatePassword(user, newPassword)
     
-    // 3. 🎯 SINCRONIZAÇÃO: Atualiza o PIN no documento Firestore
-    const emailId = sanitizeId(user.email)
+    const emailId = user.email.toLowerCase()
     
     // Buscamos os dados atuais para saber se ele é admin/gestor
     const userDoc = await getDoc(doc(db, USERS_COLLECTION, emailId))
@@ -375,16 +374,20 @@ export function useSystemUsers() {
     }
 
     // Se for admin ou gestor, atualiza também o PIN de segurança administrativa
-    if (userData.roles?.admin || userData.roles?.gestor || userData.role === 'admin' || userData.role === 'gestor') {
+    const isSpecialRole = userData.roles?.admin || userData.roles?.gestor || userData.role === 'admin' || userData.role === 'gestor'
+    
+    if (isSpecialRole) {
       updateData.adminPin = newPassword
-      // Limpa também o campo com erro de digitação caso exista
-      updateData['adminPin '] = deleteField()
-      console.log('🛡️ Sincronizando também o Admin PIN...')
+      console.log('🛡️ Sincronizando também o Admin PIN administrativo...')
     }
 
-    await updateDoc(doc(db, USERS_COLLECTION, emailId), updateData)
-    
-    console.log(`✅ Senha, PIN e Admin PIN sincronizados para: ${emailId}`)
+    try {
+      await updateDoc(doc(db, USERS_COLLECTION, emailId), updateData)
+      console.log(`✅ PIN sincronizado com sucesso no Firestore para: ${emailId}`)
+    } catch (dbErr) {
+      console.error('❌ Erro crítico ao salvar no Firestore. Verifique AdBlockers:', dbErr)
+      throw dbErr
+    }
   }
 
   /**

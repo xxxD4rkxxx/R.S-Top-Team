@@ -76,6 +76,23 @@ export default function MobileNav() {
   const { isMobileNavHidden, isNavLocked } = useApp()
   const { effectiveRole } = useAuth()
 
+  // Definição dinâmica dos itens da barra principal baseada no cargo
+  const isStudent = effectiveRole === 'aluno'
+
+  const mainTabs = isStudent 
+    ? [
+        { to: '/', icon: Home, label: 'Início' },
+        { to: '/events', icon: BellRing, label: 'Avisos' },
+        { to: '/profile', icon: Settings, label: 'Perfil' }
+      ]
+    : [
+        { to: '/', icon: Home, label: 'Início' },
+        { to: '/students', icon: Users, label: 'Alunos' },
+        { type: 'fab', to: '/attendance', icon: CheckCircle2, label: 'Chamada' },
+        { to: '/events', icon: BellRing, label: 'Avisos' },
+        { type: 'drawer', icon: MoreHorizontal, label: 'Mais' }
+      ]
+
   // Filtra os itens da gaveta baseado no cargo do usuário
   const filteredDrawerItems = drawerItems.filter(item => 
     !item.roles || item.roles.includes(effectiveRole)
@@ -93,76 +110,97 @@ export default function MobileNav() {
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed bottom-0 left-0 right-0 z-[120] px-6 pb-6 select-none"
           >
-            {/* Estrutura da Barra com Efeito de Vidro — backdrop-blur-xl (24px) em vez
-                 de backdrop-blur-3xl (64px): reduz custo de compositing no mobile */}
-            <div className="relative h-[68px] bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[32px] flex items-center justify-around px-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
+            {/* Estrutura da Barra com Efeito de Vidro */}
+            <div className="relative h-[68px] bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[32px] flex items-center px-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
 
-          {/* Indicador de Aba Ativa (Linha colorida superior) */}
-          <div className="absolute inset-0 pointer-events-none flex justify-around px-2">
-            {[0, 1, 2, 3, 4].map(idx => {
-              if (idx === 2) return <div key={idx} className="w-16" /> // Espaçador central para o botão flutuante
+              {/* Indicador de Aba Ativa (Linha colorida superior) */}
+              <div className="absolute inset-0 pointer-events-none flex items-center px-4">
+                {mainTabs.map((tab, idx) => {
+                  if (tab.type === 'fab') return <div key={idx} className="w-16 h-full" />
 
-              let isActive = false;
-              if (idx === 0) isActive = isTabActive('/');
-              if (idx === 1) isActive = isTabActive('/students');
-              if (idx === 3) isActive = isTabActive('/events');
-              if (idx === 4) isActive = isDrawerOpen;
+                  const isActive = tab.type === 'drawer' ? isDrawerOpen : isTabActive(tab.to)
 
+                  return (
+                    <div key={idx} className="relative flex-1 h-full flex justify-center">
+                      <AnimatePresence>
+                        {isActive && (
+                          <motion.div
+                            layoutId="active-line-mobile"
+                            className="absolute -top-[1px] w-8 h-[3px] rounded-full z-20"
+                            style={{ backgroundColor: 'var(--clr-primary)' }}
+                            transition={springConfig}
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.5 }}
+                          />
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )
+                })}
+              </div>
+
+          {/* Itens de Navegação Dinâmicos */}
+          {mainTabs.map((tab, idx) => {
+            if (tab.type === 'fab') {
               return (
-                <div key={idx} className="relative flex-1 flex justify-center">
-                  {isActive && (
-                    <motion.div
-                      layoutId="active-line"
-                      className="absolute -top-[1.5px] w-8 h-[3px] bg-rose-600 rounded-full"
-                      transition={springConfig}
-                    />
-                  )}
+                <div key={idx} className="relative w-16 h-16 flex items-center justify-center -mt-10">
+                  <div className="absolute inset-0 rounded-full blur-2xl transition-all duration-700" style={{ backgroundColor: isTabActive('/attendance') ? 'color-mix(in srgb, var(--clr-primary) 30%, transparent)' : 'rgba(255,255,255,0.05)' }} />
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      if (!isNavLocked) navigate('/attendance')
+                    }}
+                    className="relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 border-[6px] border-[#08080B]"
+                    style={{ 
+                      backgroundColor: isTabActive('/attendance') ? 'var(--clr-primary)' : '#121212',
+                      color: isTabActive('/attendance') ? 'white' : '#6B7280',
+                      boxShadow: isTabActive('/attendance') ? '0 10px 20px color-mix(in srgb, var(--clr-primary) 30%, transparent)' : 'none' 
+                    }}
+                  >
+                    <CheckCircle2 size={26} strokeWidth={2.5} />
+                  </motion.button>
+                  <p 
+                    className="absolute -bottom-5 text-[9px] font-black uppercase tracking-[0.15em] transition-colors duration-500"
+                    style={{ color: isTabActive('/attendance') ? 'var(--clr-primary)' : '#6B7280' }}
+                  >
+                    Chamada
+                  </p>
                 </div>
               )
-            })}
-          </div>
+            }
 
-          {/* Itens de Navegação Diretos */}
-          <NavItem to="/" icon={Home} label="Início" active={isTabActive('/')} locked={isNavLocked} />
-          <NavItem to="/students" icon={Users} label="Alunos" active={isTabActive('/students')} locked={isNavLocked} />
+            if (tab.type === 'drawer') {
+              return (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    if (isNavLocked) return
+                    handleToggleDrawer(e)
+                  }}
+                  className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
+                >
+                  <div className="transition-all duration-300" style={{ color: isDrawerOpen ? 'var(--clr-primary)' : '#6B7280', opacity: isDrawerOpen ? 1 : 0.6, transform: isDrawerOpen ? 'scale(1.1)' : 'scale(1)' }}>
+                    {isDrawerOpen ? <X size={22} strokeWidth={2.5} /> : <MoreHorizontal size={22} strokeWidth={2} />}
+                  </div>
+                  <p className="text-[9px] font-black uppercase tracking-widest transition-colors duration-300" style={{ color: isDrawerOpen ? 'var(--clr-primary)' : '#4B5563' }}>
+                    Mais
+                  </p>
+                </button>
+              )
+            }
 
-          {/* BOTÃO CENTRAL FLUTUANTE (Atalho Iniciar Chamada) */}
-          <div className="relative w-16 h-16 flex items-center justify-center -mt-10">
-            {/* Brilho Pulsante sob o botão */}
-            <div className={`absolute inset-0 rounded-full blur-2xl transition-all duration-700 ${isTabActive('/attendance') ? 'bg-rose-600/30' : 'bg-white/5'}`} />
-
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => {
-                if (!isNavLocked) navigate('/attendance')
-              }}
-              className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 border-[6px] border-bg-app ${isTabActive('/attendance') ? 'bg-rose-600 text-white' : 'bg-[#121212] text-gray-500'}`}
-              style={{ boxShadow: isTabActive('/attendance') ? '0 10px 20px rgba(225, 29, 72, 0.3)' : 'none' }}
-            >
-              <CheckCircle2 size={26} strokeWidth={2.5} />
-            </motion.button>
-            <p className={`absolute -bottom-5 text-[9px] font-black uppercase tracking-[0.15em] transition-colors duration-500 ${isTabActive('/attendance') ? 'text-rose-500' : 'text-gray-500'}`}>
-              Chamada
-            </p>
-          </div>
-
-          <NavItem to="/events" icon={BellRing} label="Avisos" active={isTabActive('/events')} locked={isNavLocked} />
-
-          {/* Botão para abrir o menu complementar "Mais" */}
-          <button
-            onClick={(e) => {
-              if (isNavLocked) return
-              handleToggleDrawer(e)
-            }}
-            className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
-          >
-            <div className={`transition-all duration-300 ${isDrawerOpen ? 'text-rose-500 scale-110' : 'text-gray-500 opacity-60'}`}>
-              {isDrawerOpen ? <X size={22} strokeWidth={2.5} /> : <MoreHorizontal size={22} strokeWidth={2} />}
-            </div>
-            <p className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${isDrawerOpen ? 'text-rose-500' : 'text-gray-600'}`}>
-              Mais
-            </p>
-          </button>
+            return (
+              <NavItem 
+                key={tab.to} 
+                to={tab.to} 
+                icon={tab.icon} 
+                label={tab.label} 
+                active={isTabActive(tab.to)} 
+                locked={isNavLocked} 
+              />
+            )
+          })}
         </div>
       </motion.div>
     )}
@@ -222,11 +260,18 @@ export default function MobileNav() {
                       setIsDrawerOpen(false)
                     }}
                     className={({ isActive }) => `
-                      flex items-center gap-5 p-4 rounded-2xl transition-all relative overflow-hidden group
-                      ${isActive ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20 shadow-lg' : 'bg-white/[0.03] text-gray-400 border border-transparent'}
+                      flex items-center gap-5 p-4 rounded-2xl transition-all relative overflow-hidden group border
+                      ${isActive ? 'bg-white/[0.05] shadow-lg' : 'bg-white/[0.02] border-transparent'}
                     `}
+                    style={{ 
+                      borderColor: location.pathname === to ? 'color-mix(in srgb, var(--clr-primary) 30%, transparent)' : 'transparent',
+                      color: location.pathname === to ? 'var(--clr-primary)' : '#9CA3AF'
+                    }}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all bg-[#151515] group-active:scale-90 ${location.pathname === to ? 'text-rose-500 shadow-inner shadow-rose-500/20' : 'text-gray-600'}`}>
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center transition-all bg-[#151515] group-active:scale-90"
+                      style={{ color: location.pathname === to ? 'var(--clr-primary)' : '#4B5563' }}
+                    >
                       <Icon size={22} strokeWidth={2.5} />
                     </div>
                     <div className="flex flex-col">
@@ -257,10 +302,20 @@ function NavItem({ to, icon: Icon, label, active, locked }) {
       }}
       className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
     >
-      <div className={`transition-all duration-300 ${active ? 'text-rose-500 scale-110' : 'text-gray-500 opacity-60'}`}>
+      <div 
+        className="transition-all duration-300"
+        style={{ 
+          color: active ? 'var(--clr-primary)' : '#6B7280',
+          opacity: active ? 1 : 0.6,
+          transform: active ? 'scale(1.1)' : 'scale(1)'
+        }}
+      >
         <Icon size={22} strokeWidth={active ? 2.5 : 2} />
       </div>
-      <p className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${active ? 'text-rose-500' : 'text-gray-600'}`}>
+      <p 
+        className="text-[9px] font-black uppercase tracking-widest transition-colors duration-300"
+        style={{ color: active ? 'var(--clr-primary)' : '#4B5563' }}
+      >
         {label}
       </p>
     </NavLink>

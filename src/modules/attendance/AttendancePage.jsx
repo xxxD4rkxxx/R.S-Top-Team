@@ -578,7 +578,7 @@ export default function AttendancePage() {
               {activeList.map(s => (
                 <div key={s.id} className="p-4 rounded-xl bg-[#0d0d0d] border border-white/5 flex flex-col gap-3 group transition-all shadow-lg">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-xs shadow-inner ${beltConfig[s.belt]?.bgClass || 'bg-white'}`}>{s.name[0]}</div>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shadow-inner ${beltConfig[s.belt]?.bgClass || 'bg-white'}`}>{s.name[0]}</div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white uppercase text-xs truncate tracking-tighter">{s.name}</p>
                       <div className="flex items-center gap-2">
