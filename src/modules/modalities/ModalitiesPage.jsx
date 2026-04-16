@@ -84,7 +84,7 @@ export default function ModalitiesPage() {
   )
 
   return (
-    <div className="flex flex-col flex-1 w-full min-h-dvh bg-black overflow-x-hidden">
+    <>
       <MobileHeader 
         title="Modalidades" 
         showSearch 
@@ -194,7 +194,7 @@ export default function ModalitiesPage() {
         editingClass={editingClass}
         modalityId={activeModalityId}
       />
-    </div>
+    </>
   )
 }
 

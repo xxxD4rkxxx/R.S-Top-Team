@@ -208,7 +208,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full min-h-dvh bg-black">
+    <>
       <MobileHeader
         title={activeSession ? "Chamada Ativa" : "Canais de Chamada"}
         showBack={!!activeSession}
@@ -720,6 +720,6 @@ export default function AttendancePage() {
           }} 
         />
       )}
-    </div>
+    </>
   )
 }

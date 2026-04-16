@@ -318,7 +318,7 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505]">
+    <>
       <MobileHeader
         title="Alunos"
         actions={
@@ -662,7 +662,7 @@ export default function StudentsPage() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </>
   )
 }
 

@@ -45,7 +45,7 @@ export default function ContractsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0">
+    <>
       <MobileHeader 
         title="Contratos" 
         actions={
@@ -171,7 +171,7 @@ export default function ContractsPage() {
             </div>
          </div>
       </div>
-    </div>
+    </>
   )
 }
 

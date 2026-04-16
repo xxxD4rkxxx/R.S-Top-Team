@@ -134,7 +134,7 @@ export default function JourneyPage() {
   ]
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505]">
+    <>
       <MobileHeader title="Jornada Técnica" />
       <PageHeader 
         icon={Award}
@@ -239,6 +239,6 @@ export default function JourneyPage() {
         }
         .animate-fadeSlideUp { animation: fadeSlideUp 0.15s ease-out forwards; }
       `}</style>
-    </div>
+    </>
   )
 }

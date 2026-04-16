@@ -297,7 +297,7 @@ export default function ManagerDashboard() {
     ], [isLoadingStudents, activeMembers, newMembers30Days, initialLoading, presentCount, absentList, retentionRate, weekGrowth, graduations, loadingStaff, staffMembers, safeStudents])
 
     return (
-        <div className="flex flex-col flex-1 w-full min-w-0 text-white">
+        <>
             {/* Header */}
             <PageHeader
                 icon={Activity}
@@ -626,6 +626,6 @@ export default function ManagerDashboard() {
                 isOpen={showAbsents}
                 onClose={() => setShowAbsents(false)}
             />
-        </div>
+        </>
     )
 }

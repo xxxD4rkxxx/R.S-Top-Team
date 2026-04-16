@@ -313,7 +313,7 @@ export default function ExpensesPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505]">
+    <>
       {showModal && (
         <ModalNovaDespesa 
           onClose={() => { setShowModal(false); setEditData(null) }} 
@@ -579,7 +579,7 @@ export default function ExpensesPage() {
       </AnimatePresence>
 
       <style>{`@keyframes fadeSlideUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }`}</style>
-    </div>
+    </>
   )
 }
 

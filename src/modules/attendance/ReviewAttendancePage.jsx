@@ -156,7 +156,8 @@ export default function ReviewAttendancePage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 p-4 md:p-6 pb-20 overflow-y-auto no-scrollbar">
+    <>
+      <div className="p-4 md:p-6 pb-20">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -295,6 +296,7 @@ export default function ReviewAttendancePage() {
           })}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

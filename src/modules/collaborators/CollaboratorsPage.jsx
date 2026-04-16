@@ -258,7 +258,7 @@ export default function CollaboratorsPage() {
 
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505]">
+    <>
       <MobileHeader
         title="Colaboradores"
         actions={
@@ -533,7 +533,7 @@ export default function CollaboratorsPage() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </>
   )
 }
 

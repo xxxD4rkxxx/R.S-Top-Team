@@ -529,7 +529,7 @@ export default function FinancePage() {
   ]
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0">
+    <>
       <MobileHeader
         title="Financeiro"
         actions={
@@ -684,6 +684,6 @@ export default function FinancePage() {
 
         </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -213,7 +213,7 @@ export default function ReportsPage() {
   }, [d])
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505]">
+    <>
       <MobileHeader title="Relatórios" />
       <PageHeader icon={BarChart3} title="RELATÓRIOS FINANCEIROS" subtitle="DADOS CONSOLIDADOS · GESTÃO TÉCNICA" />
 
@@ -363,6 +363,6 @@ export default function ReportsPage() {
         .scrollbar-hidden::-webkit-scrollbar { display: none; }
         .scrollbar-hidden { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
-    </div>
+    </>
   )
 }

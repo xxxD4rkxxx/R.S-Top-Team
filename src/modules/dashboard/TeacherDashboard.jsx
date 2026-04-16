@@ -554,7 +554,7 @@ export default function TeacherDashboard() {
   )
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 text-white bg-black">
+    <>
       <PageHeader 
         icon={UserIcon} 
         title={`Instrutor ${userData?.name?.split(' ')[0] || 'Professor'}`} 
@@ -726,7 +726,7 @@ export default function TeacherDashboard() {
         </div>
       </SlideOver>
 
-    </div>
+    </>
   )
 }
 
