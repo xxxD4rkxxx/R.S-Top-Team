@@ -241,7 +241,7 @@ export default function StudentsPage() {
         await updateStudentProfile(editData.id, {
           ...data,
           modalities: modality,
-          modality: modality[0] || 'Jiu-Jitsu'
+          modality: modality[0] || 'Jiu Jitsu'
         })
       } else {
         // MODO CRIAÇÃO: Adiciona novo documento

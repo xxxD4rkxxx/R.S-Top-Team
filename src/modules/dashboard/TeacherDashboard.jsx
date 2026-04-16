@@ -468,7 +468,7 @@ export default function TeacherDashboard() {
       <Card title="Minhas Turmas Ativas" subtitle="Lista de alunos e horários" icon={Users}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Example turmas using active students filter */}
-          {['Jiu-Jitsu', 'Boxe'].map((mod, i) => {
+          {['Jiu Jitsu', 'Boxe'].map((mod, i) => {
             const turmStudents = (students || []).filter(s => s.modality === mod && s.status === 'ativo')
             return (
               <div key={i} className="p-5 rounded-xll bg-white/5 border border-white/5 hover:border-white/10 transition-all flex flex-col">

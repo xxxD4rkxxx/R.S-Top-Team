@@ -64,16 +64,16 @@ export function StudentsProvider({ children }) {
       snapshot => {
         const fromDb = snapshot.docs.map(item => {
           const data = item.data()
-          const modalities = data.modalities || [data.modality || 'Jiu-Jitsu']
+          const modalities = data.modalities || [data.modality || 'Jiu Jitsu']
           
           return {
             id: item.id,
             name: data.name || '',
             initials: data.initials || buildInitials(data.name),
             belt: data.belt || 'white',
-            modality: data.modality || modalities[0] || 'Jiu-Jitsu',
+            modality: data.modality || modalities[0] || 'Jiu Jitsu',
             modalities,
-            modalityPrimary: modalities[0] || data.modality || 'Jiu-Jitsu',
+            modalityPrimary: modalities[0] || data.modality || 'Jiu Jitsu',
             stripes: Number.isFinite(data.stripes) ? data.stripes : 0,
             pin: data.pin || '',
             status: data.status ?? null,

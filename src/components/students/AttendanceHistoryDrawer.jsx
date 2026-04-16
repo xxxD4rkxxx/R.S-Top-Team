@@ -71,7 +71,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
         const ts = data.timestamp || data.date // Suporta campo timestamp ou date legados
         return {
           date: ts?.toDate ? ts.toDate() : new Date(ts),
-          modality: data.modality || 'Jiu-Jitsu',
+          modality: data.modality || 'Jiu Jitsu',
           status: data.status || 'present',
           sessionId: d.ref.parent.parent?.id || '',
         }
@@ -142,7 +142,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
 
   // Cores dinâmicas por modalidade
   const modalityColors = useMemo(() => {
-    const baseColors = { 'Jiu-Jitsu': 'var(--clr-primary)', 'Boxe': '#f59e0b', 'Muay Thai': '#10b981', 'Crossfit': '#ec4899', 'submission': '#8b5cf6' }
+    const baseColors = { 'Jiu Jitsu': 'var(--clr-primary)', 'Boxe': '#f59e0b', 'Muay Thai': '#10b981', 'Crossfit': '#ec4899', 'submission': '#8b5cf6' }
     const palette = ['#06b6d4', '#f43f5e', '#84cc16', '#a855f7', '#14b8a6']
     let i = 0
     records.forEach(r => {

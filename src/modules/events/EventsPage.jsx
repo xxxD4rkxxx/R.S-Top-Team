@@ -14,6 +14,7 @@ import {
   Clock,
   RefreshCcw,
   Bell,
+  HelpCircle,
   Bold,
   Italic,
   Underline,
@@ -22,47 +23,121 @@ import {
   Flame,
   Zap,
   Siren,
-  Eye
+  Eye,
+  Link as LinkIcon,
+  Eraser,
+  Type
 } from 'lucide-react'
 import { useNotices } from '../../hooks/useNotices'
 import PageHeader from '../../components/shared/PageHeader'
 import KPICard from '../../components/shared/KPICard'
 import MobileHeader from '../../components/navigation/MobileHeader'
+import { toast } from 'react-hot-toast'
 
-// ────────────────────────────────────────────────
-//  INLINE FORM COMPONENT
-// ────────────────────────────────────────────────
 // ────────────────────────────────────────────────
 // EDITOR TOOLBAR COMPONENT
 // ────────────────────────────────────────────────
-function TextEditorToolbar({ onCommand }) {
+function TextEditorToolbar({ editorRef }) {
+  const [activeStates, setActiveStates] = useState({});
+
+  const checkStates = () => {
+    const states = {
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline'),
+      insertOrderedList: document.queryCommandState('insertOrderedList'),
+      insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+    };
+    setActiveStates(states);
+  };
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      // Só checa se o editor estiver em foco
+      if (document.activeElement === editorRef.current) {
+        checkStates();
+      }
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [editorRef]);
+
+  const runCommand = (cmd, val = null) => {
+    document.execCommand(cmd, false, val);
+    checkStates();
+    if (editorRef?.current) editorRef.current.focus();
+  };
+
   const tools = [
     { cmd: 'bold', icon: <Bold size={14} />, label: 'Negrito' },
     { cmd: 'italic', icon: <Italic size={14} />, label: 'Itálico' },
     { cmd: 'underline', icon: <Underline size={14} />, label: 'Sublinhado' },
     { type: 'separator' },
-    { cmd: 'insertUnorderedList', icon: <List size={14} />, label: 'Lista Marcadores' },
     { cmd: 'insertOrderedList', icon: <ListOrdered size={14} />, label: 'Lista Numerada' },
+    { cmd: 'insertUnorderedList', icon: <List size={14} />, label: 'Lista Marcadores' },
+    { type: 'separator' },
+    {
+      cmd: 'createLink',
+      icon: <LinkIcon size={14} />,
+      label: 'Inserir Link',
+      action: () => {
+        const url = prompt('Digite a URL:');
+        if (url) runCommand('createLink', url);
+      }
+    },
+    { cmd: 'removeFormat', icon: <Eraser size={14} />, label: 'Limpar Formatação' },
   ]
 
   return (
-    <div className="flex items-center gap-1 p-1 bg-white/[0.03] border border-white/5 rounded-xl mb-2">
+    <div className="flex items-center gap-0.5">
+      <div className="p-2 mr-2 text-primary opacity-50 border border-white/5 rounded-lg">
+        <Type size={14} />
+      </div>
+      <div className="w-px h-4 bg-white/5 mx-2" />
       {tools.map((tool, i) => tool.type === 'separator' ? (
-        <div key={i} className="w-px h-4 bg-white/10 mx-1" />
+        <div key={i} className="w-px h-4 bg-white/5 mx-2" />
       ) : (
         <button
-          key={tool.cmd}
+          key={i}
           type="button"
-          onClick={() => onCommand(tool.cmd)}
-          className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+          onClick={() => tool.action ? tool.action() : runCommand(tool.cmd)}
+          className={`p-2 rounded-lg transition-all ${activeStates[tool.cmd]
+            ? 'text-primary bg-primary/10 border border-primary/20 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)]'
+            : 'text-gray-500 hover:text-white hover:bg-white/5 border border-transparent'
+            }`}
           title={tool.label}
         >
           {tool.icon}
         </button>
       ))}
     </div>
-  )
+  );
 }
+
+// Editor de Texto Rico Memorizado para evitar perda de foco e estado
+const RichTextEditor = React.memo(React.forwardRef(({ initialValue, onChange, placeholder }, ref) => {
+  useEffect(() => {
+    if (ref.current && initialValue && !ref.current.innerHTML) {
+      ref.current.innerHTML = initialValue;
+    }
+  }, [initialValue]);
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      onInput={e => onChange(e.currentTarget.innerHTML)}
+      onBlur={e => onChange(e.currentTarget.innerHTML)}
+      placeholder={placeholder}
+      className="w-full min-h-[160px] p-6 text-gray-300 text-sm outline-none leading-relaxed relative before:content-[attr(placeholder)] before:absolute before:text-gray-700 before:pointer-events-none empty:before:block before:hidden [&_a]:text-blue-500 [&_a]:underline"
+      style={{ whiteSpace: 'pre-wrap' }}
+    />
+  );
+}));
+
+// ────────────────────────────────────────────────
+// MAIN FORM COMPONENT
+// ────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────
 // MAIN FORM COMPONENT
@@ -86,19 +161,44 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
 
   const editorRef = useRef(null)
 
+  // Sincroniza o conteúdo inicial do editor
+  useEffect(() => {
+    if (editorRef.current && description && !editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = description;
+    }
+  }, []);
+
+  const isNotificationInvalid = () => {
+    const limits = { minutes: 1000, hours: 672, days: 31, weeks: 4 };
+    return notification.value > (limits[notification.unit] || 9999);
+  };
+
   const handlePublish = async () => {
     const content = editorRef.current ? editorRef.current.innerHTML : description;
     if (!title.trim() || !content.trim()) return
+
+    if (isNotificationInvalid()) {
+      const limits = { minutes: 1000, hours: 672, days: 31, weeks: 4 };
+      const labels = { minutes: 'minutos', hours: 'horas', days: 'dias', weeks: 'semanas' };
+      toast.error(`O limite para ${labels[notification.unit]} é ${limits[notification.unit]}!`);
+      return;
+    }
+
+    // Se for dia inteiro, normaliza os horários para o banco de dados
+    const finalStartTime = isAllDay ? '00:00' : startTime;
+    const finalEndTime = isAllDay ? '23:59' : endTime;
+
     await onSave({
       title,
       description: content,
       priority,
       types,
       startDate,
-      endDate,
-      startTime,
-      endTime,
+      endDate: isAllDay ? startDate : endDate, // Geralmente dia inteiro é no mesmo dia
+      startTime: finalStartTime,
+      endTime: finalEndTime,
       isAllDay,
+      allDay: isAllDay,
       repeat,
       notification
     })
@@ -131,16 +231,6 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
       </div>
 
       <div className="p-8 space-y-8">
-        {/* TITLE */}
-        <div className="space-y-2">
-          <input
-            type="text"
-            placeholder="Adicionar título"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            className="w-full bg-transparent text-3xl font-black text-white placeholder-gray-800 outline-none border-b-2 border-transparent focus:border-primary/30 transition-all pb-2"
-          />
-        </div>
 
         {/* DATE & TIME (CALENDAR STYLE) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-3xl bg-white/[0.02] border border-white/5">
@@ -193,6 +283,16 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
                   <div className="absolute top-1 left-1 w-3 h-3 bg-gray-500 rounded-full peer-checked:translate-x-5 peer-checked:bg-black transition-all" />
                 </div>
                 <span className="text-xs font-bold text-gray-500 group-hover:text-gray-300 transition-colors uppercase tracking-widest">Dia Inteiro</span>
+                <div className="relative group/tooltip">
+                  <HelpCircle size={14} className="text-gray-600 hover:text-primary transition-colors cursor-help" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-4 bg-[#111] border border-white/10 rounded-2xl text-[11px] text-gray-400 font-medium invisible group-hover/tooltip:visible opacity-0 group-hover/tooltip:opacity-100 transition-all z-50 shadow-2xl pointer-events-none">
+                    <p className="mb-2 text-primary font-black uppercase tracking-widest text-[10px]">Para que serve?</p>
+                    <p className="leading-relaxed">
+                      Use para eventos sem horário fixo, como <span className="text-white">Feriados</span>, <span className="text-white">Graduações</span> ou <span className="text-white">Avisos Gerais</span> que valem para o dia todo.
+                      Os horários são ocultados e você pode agendar o lembrete para dias antes.
+                    </p>
+                  </div>
+                </div>
               </label>
 
               <div className="flex items-center gap-2">
@@ -216,23 +316,79 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                 <Bell size={16} className="text-emerald-500" />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Notificar</span>
                 <input
                   type="number"
-                  value={notification.value}
-                  onChange={e => setNotification({ ...notification, value: e.target.value })}
-                  className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-center font-bold text-white outline-none"
+                  value={notification.value === 0 ? '' : notification.value}
+                  placeholder="0"
+                  onChange={e => {
+                    let valStr = e.target.value.replace(/\D/g, ''); // Apenas números
+                    if (valStr === '') {
+                      setNotification({ ...notification, value: 0 });
+                      return;
+                    }
+
+                    // Limite de dígitos
+                    const maxDigits = { minutes: 4, hours: 3, days: 2, weeks: 1 };
+                    const limit = maxDigits[notification.unit] || 4;
+                    if (valStr.length > limit) valStr = valStr.slice(0, limit);
+
+                    setNotification({ ...notification, value: parseInt(valStr) });
+                  }}
+                  className={`w-20 bg-white/5 border rounded-lg px-2 py-1 text-xs text-center font-bold text-white outline-none transition-all ${(notification.unit === 'minutes' && notification.value > 1000) ||
+                    (notification.unit === 'hours' && notification.value > 672) ||
+                    (notification.unit === 'days' && notification.value > 31) ||
+                    (notification.unit === 'weeks' && notification.value > 4)
+                    ? 'border-red-500 bg-red-500/10 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
+                    : 'border-white/10 focus:border-primary/50'
+                    }`}
                 />
-                <select
-                  value={notification.unit}
-                  onChange={e => setNotification({ ...notification, unit: e.target.value })}
-                  className="bg-transparent text-xs font-bold text-gray-300 uppercase tracking-widest outline-none"
-                >
-                  <option value="minutes" className="bg-[#0A0A0A]">minutos antes</option>
-                  <option value="hours" className="bg-[#0A0A0A]">horas antes</option>
-                  <option value="days" className="bg-[#0A0A0A]">dias antes</option>
-                </select>
+
+                {!isAllDay ? (
+                  <select
+                    value={notification.unit}
+                    onChange={e => {
+                      const newUnit = e.target.value;
+                      let newValue = notification.value;
+                      // Ajusta valor se estourar limite da nova unidade
+                      if (newUnit === 'hours' && newValue > 672) newValue = 672;
+                      if (newUnit === 'days' && newValue > 31) newValue = 31;
+                      if (newUnit === 'weeks' && newValue > 4) newValue = 4;
+                      if (newUnit === 'minutes' && newValue > 9999) newValue = 9999;
+
+                      setNotification({ ...notification, unit: newUnit, value: newValue });
+                    }}
+                    className="bg-transparent text-xs font-bold text-gray-300 uppercase tracking-widest outline-none"
+                  >
+                    <option value="minutes" className="bg-[#0A0A0A]">minutos antes</option>
+                    <option value="hours" className="bg-[#0A0A0A]">horas antes</option>
+                    <option value="days" className="bg-[#0A0A0A]">dias antes</option>
+                    <option value="weeks" className="bg-[#0A0A0A]">semanas antes</option>
+                  </select>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={notification.unit === 'weeks' ? 'weeks' : 'days'}
+                      onChange={e => setNotification({
+                        ...notification,
+                        unit: e.target.value,
+                        value: e.target.value === 'weeks' ? Math.min(notification.value, 4) : Math.min(notification.value, 31)
+                      })}
+                      className="bg-transparent text-xs font-bold text-gray-300 uppercase tracking-widest outline-none"
+                    >
+                      <option value="days" className="bg-[#0A0A0A]">dias antes</option>
+                      <option value="weeks" className="bg-[#0A0A0A]">semanas antes</option>
+                    </select>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">às</span>
+                    <input
+                      type="time"
+                      value={notification.time || '09:00'}
+                      onChange={e => setNotification({ ...notification, time: e.target.value })}
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold text-white outline-none"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -270,6 +426,7 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
             </div>
           </div>
 
+          {/* PRIORIDADE */}
           <div className="space-y-3">
             <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Prioridade</span>
             <div className="flex p-1.5 bg-white/5 border border-white/5 rounded-3xl gap-2">
@@ -297,23 +454,36 @@ function InlinePostForm({ onSave, onCancel, initialData }) {
           </div>
         </div>
 
-        {/* DESCRIPTION RICH EDITOR */}
+        {/* TITLE */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Descrição Detalhada</span>
-            <TextEditorToolbar onCommand={(cmd) => {
-              document.execCommand(cmd, false, null);
-              if (editorRef.current) { editorRef.current.focus(); }
-            }} />
-          </div>
-          <div
-            ref={editorRef}
-            contentEditable
-            onInput={e => setDescription(e.currentTarget.innerHTML)}
-            dangerouslySetInnerHTML={{ __html: initialData?.description || '' }}
-            className="w-full min-h-[160px] p-6 rounded-3xl bg-white/[0.02] border border-white/5 text-gray-300 text-sm outline-none focus:border-primary/30 transition-all leading-relaxed"
-            style={{ whiteSpace: 'pre-wrap' }}
+          <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Título do Evento / Aviso</span>
+          <input
+            type="text"
+            placeholder="Digite o título principal aqui..."
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            className="w-full p-5 rounded-3xl bg-white/[0.02] border border-white/5 text-white text-sm font-medium outline-none focus:border-primary/30 transition-all placeholder:text-gray-700"
           />
+        </div>
+
+        {/* UNIFIED DESCRIPTION BOX */}
+        <div className="space-y-3">
+          <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Descrição Detalhada</span>
+
+          <div className="flex flex-col rounded-3xl bg-white/[0.02] border border-white/5 overflow-hidden focus-within:border-primary/30 transition-all">
+            {/* Toolbar interna */}
+            <div className="px-4 py-2 border-b border-white/5 bg-white/[0.01]">
+              <TextEditorToolbar editorRef={editorRef} />
+            </div>
+
+            {/* Editor */}
+            <RichTextEditor
+              ref={editorRef}
+              initialValue={initialData?.description || ''}
+              onChange={setDescription}
+              placeholder="Adicionar uma descrição..."
+            />
+          </div>
         </div>
       </div>
 
@@ -349,6 +519,7 @@ export default function EventsPage() {
   const [editingNotice, setEditingNotice] = useState(null)
   const [activeDropdown, setActiveDropdown] = useState(null)
   const [activeTab, setActiveTab] = useState('todos') // 'todos', 'eventos', 'avisos'
+  const notifiedIds = useRef(new Set())
 
   // Helper para nome curto (ex: João Gustavo)
   const formatDisplayName = (fullName) => {
@@ -396,32 +567,89 @@ export default function EventsPage() {
   useEffect(() => {
     // Check for upcoming events every minute
     const checkUpcoming = () => {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return
+
       const now = new Date()
       notices.forEach(notice => {
+        if (!notice.id) return
+
+        // Only process events with a start date
         if (notice.types?.includes('evento') && notice.startDate) {
-          const eventDate = new Date(`${notice.startDate}T${notice.startTime || '00:00'}`)
-          const diffMinutes = (eventDate - now) / (1000 * 60)
+          try {
+            const eventDate = new Date(`${notice.startDate}T${notice.startTime || '00:00'}`)
+            const diffMinutes = (eventDate - now) / (1000 * 60)
 
-          // If notification setting matches diff
-          const notifyValue = notice.notification?.value || 30
-          const notifyUnit = notice.notification?.unit || 'minutes'
-          let triggerMinutes = notifyValue
-          if (notifyUnit === 'hours') triggerMinutes *= 60
-          if (notifyUnit === 'days') triggerMinutes *= 1440
+            const notifyValue = parseInt(notice.notification?.value) || 30
+            const notifyUnit = notice.notification?.unit || 'minutes'
 
-          if (diffMinutes > 0 && diffMinutes <= triggerMinutes && diffMinutes > triggerMinutes - 1) {
-            if (Notification.permission === 'granted') {
-              new Notification(`Evento Próximo: ${notice.title}`, {
-                body: `Inicia em aproximadamente ${notifyValue} ${notifyUnit}.`,
-                icon: '/favicon.ico'
-              })
+            let triggerMinutes = 0
+
+            if (notice.isAllDay) {
+              // Lógica para Dia Inteiro: Notificar X dias antes no horário específico
+              const notifyTime = notice.notification?.time || '09:00'
+              const daysBefore = parseInt(notice.notification?.value) || 0
+
+              const notificationTarget = new Date(eventDate)
+              notificationTarget.setDate(notificationTarget.getDate() - daysBefore)
+              const [h, m] = notifyTime.split(':')
+              notificationTarget.setHours(parseInt(h), parseInt(m), 0)
+
+              const diffToNotify = (notificationTarget - now) / (1000 * 60)
+
+              if (diffToNotify <= 0 && diffToNotify > -5) {
+                const notificationKey = `${notice.id}_allday_target`
+                if (!notifiedIds.current.has(notificationKey)) {
+                  new Notification(`Lembrete: ${notice.title}`, {
+                    body: `Evento de dia inteiro em ${daysBefore} dia(s).`,
+                    icon: '/favicon.ico',
+                    tag: notificationKey
+                  })
+                  notifiedIds.current.add(notificationKey)
+                }
+              }
+            } else {
+              // Lógica padrão para eventos com horário
+              let triggerMinutes = notifyValue
+              if (notifyUnit === 'hours') triggerMinutes *= 60
+              if (notifyUnit === 'days') triggerMinutes *= 1440
+              if (notifyUnit === 'weeks') triggerMinutes *= 10080 // 7 * 24 * 60
+
+              const notificationKey = `${notice.id}_${eventDate.getTime()}`
+
+              // 1. Upcoming Notification
+              if (diffMinutes > 0 && diffMinutes <= triggerMinutes) {
+                if (!notifiedIds.current.has(`${notificationKey}_upcoming`)) {
+                  new Notification(`Evento Próximo: ${notice.title}`, {
+                    body: `Inicia em aproximadamente ${Math.round(diffMinutes)} minutos.`,
+                    icon: '/favicon.ico',
+                    tag: `${notificationKey}_upcoming`
+                  })
+                  notifiedIds.current.add(`${notificationKey}_upcoming`)
+                }
+              }
             }
+
+            // 2. Start Time Notification (exactly now or very recently)
+            if (diffMinutes <= 0 && diffMinutes > -5) {
+              if (!notifiedIds.current.has(`${notificationKey}_started`)) {
+                new Notification(`Evento Iniciado: ${notice.title}`, {
+                  body: `O evento começou às ${notice.startTime || '00:00'}.`,
+                  icon: '/favicon.ico',
+                  tag: `${notificationKey}_started`
+                })
+                notifiedIds.current.add(`${notificationKey}_started`)
+              }
+            }
+          } catch (err) {
+            console.error('Error processing notification for notice:', notice.id, err)
           }
         }
       })
     }
 
-    const interval = setInterval(checkUpcoming, 60000)
+    // Run once on mount and then every 30s for better responsiveness
+    checkUpcoming()
+    const interval = setInterval(checkUpcoming, 30000)
     return () => clearInterval(interval)
   }, [notices])
 
@@ -463,7 +691,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full min-w-0 bg-[#050505] text-white relative">
+    <>
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] -mr-64 -mt-64 pointer-events-none" />
 
       <MobileHeader
@@ -611,7 +839,7 @@ export default function EventsPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="relative group bg-white/[0.03] border border-white/5 hover:border-white/10 p-6 rounded-[32px] transition-all overflow-hidden"
+                  className="relative group bg-white/[0.03] border border-white/5 hover:border-white/10 p-4 px-6 rounded-[24px] transition-all overflow-hidden"
                 >
                   {/* Visual Decoration for priority bar */}
                   <div className={`absolute top-0 left-0 bottom-0 w-1.5 transition-colors ${notice.priority === 'urgente' ? 'bg-primary' :
@@ -627,65 +855,72 @@ export default function EventsPage() {
                   )}
 
                   <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="flex-1 h-px bg-white/5" />
+                    <div className="pt-2"></div>
 
-                      <div className={`px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${pCfg.cls}`}>
-                        {pCfg.icon}
-                        {pCfg.label}
-                      </div>
-
-                      {isEvento && (
-                        <div className="px-2.5 py-1 rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase tracking-widest">
-                          EVENTO
-                        </div>
-                      )}
-                      {isAviso && (
-                        <div className="px-2.5 py-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-[9px] font-black uppercase tracking-widest">
-                          AVISO
-                        </div>
-                      )}
-
-                      <span className="text-gray-700 text-[10px] font-black bg-white/5 px-3 py-1 rounded-lg border border-white/5 whitespace-nowrap">
-                        {relativeTime}
-                      </span>
-                    </div>
-
-                    <h3 className="text-2xl font-black tracking-tight mb-3" style={{ color: '#E4E4E6' }}>
+                    <h3 className="text-lg font-black tracking-tight mb-1" style={{ color: '#E4E4E6' }}>
                       {notice.title}
                     </h3>
 
-                    <div className="space-y-3" style={{ color: '#DCDCDF' }}>
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-xs font-black lowercase opacity-50 whitespace-nowrap">{formatDisplayName(notice.authorName)} :</span>
+                    <div className="space-y-1" style={{ color: '#DCDCDF' }}>
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <span className="text-[10px] font-black lowercase opacity-40 whitespace-nowrap shrink-0">{formatDisplayName(notice.authorName)} :</span>
                         <div
-                          className="text-sm leading-relaxed font-medium opacity-90 rich-content inline"
-                          dangerouslySetInnerHTML={{ __html: notice.description }}
+                          className="text-sm font-medium opacity-80 line-clamp-1 text-gray-400 flex-1"
+                          dangerouslySetInnerHTML={{ __html: notice.description.replace(/<[^>]*>?/gm, ' ') }}
                         />
                       </div>
                     </div>
 
-                    {/* EVENT DETAILS MINI-BAR */}
-                    {(notice.startDate || notice.startTime) && (
-                      <div className="mt-5 flex items-center gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <Calendar size={14} className="text-primary" />
-                          <span>{new Date(notice.startDate).toLocaleDateString('pt-BR')}</span>
+                    {/* UNIFIED INFO BOX (DATE, TIME & BADGES) */}
+                    <div className="mt-5 flex items-center p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500">
+                      {/* Left Side: Event Details */}
+                      {(notice.startDate || notice.startTime) && (
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 px-1">
+                            <Calendar size={14} className="text-primary opacity-60" />
+                            <span>{new Date(notice.startDate).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                          {!notice.isAllDay && (
+                            <div className="flex items-center gap-2 border-l border-white/5 pl-4 px-1">
+                              <Clock size={14} className="text-primary opacity-60" />
+                              <span>{notice.startTime} - {notice.endTime}</span>
+                            </div>
+                          )}
+                          {notice.repeat !== 'none' && (
+                            <div className="flex items-center gap-2 text-emerald-500/40 border-l border-white/5 pl-4 px-1">
+                              <RefreshCcw size={12} />
+                              <span>Repete</span>
+                            </div>
+                          )}
                         </div>
-                        {!notice.isAllDay && (
-                          <div className="flex items-center gap-2">
-                            <Clock size={14} className="text-primary" />
-                            <span>{notice.startTime} - {notice.endTime}</span>
+                      )}
+
+                      {/* Spacer to push badges to the right */}
+                      <div className="flex-1" />
+
+                      {/* Right Side: Technical Badges */}
+                      <div className="flex items-center gap-3">
+                        <div className={`px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${pCfg.cls}`}>
+                          {pCfg.icon}
+                          {pCfg.label}
+                        </div>
+
+                        {isEvento && (
+                          <div className="px-2.5 py-1 rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase tracking-widest">
+                            EVENTO
                           </div>
                         )}
-                        {notice.repeat !== 'none' && (
-                          <div className="flex items-center gap-2 text-emerald-500/70">
-                            <RefreshCcw size={12} />
-                            <span>Repete</span>
+                        {isAviso && (
+                          <div className="px-2.5 py-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-[9px] font-black uppercase tracking-widest">
+                            AVISO
                           </div>
                         )}
+
+                        <span className="text-gray-600 text-[9px] font-black bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 whitespace-nowrap">
+                          {relativeTime}
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </motion.div>
               )
@@ -694,7 +929,7 @@ export default function EventsPage() {
           )}
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

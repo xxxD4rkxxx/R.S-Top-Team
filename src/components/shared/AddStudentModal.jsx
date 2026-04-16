@@ -61,7 +61,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   )
 }
 
-export default function AddStudentModal({ isOpen, onClose, onAdd, initialModality = 'Jiu-Jitsu', initialData = null }) {
+export default function AddStudentModal({ isOpen, onClose, onAdd, initialModality = 'Jiu Jitsu', initialData = null }) {
   const { modalities, loading: loadingModalities } = useModalities()
   const activeModalities = (modalities || []).filter(m => m.status === 'ativo')
   const { effectiveRole } = useAuth()
@@ -88,17 +88,14 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        // Normalização das modalidades para garantir que seja sempre um array (SSoT)
+        // Normalização das modalidades (SSoT) e correção de "Jiu-Jitsu" órfão
         let normalizedModalities = []
-        if (Array.isArray(initialData.modalities)) {
-          normalizedModalities = initialData.modalities
-        } else if (Array.isArray(initialData.modality)) {
-          normalizedModalities = initialData.modality
-        } else if (initialData.modality && typeof initialData.modality === 'string') {
-          normalizedModalities = [initialData.modality]
-        } else {
-          normalizedModalities = [initialModality]
-        }
+        const raw = Array.isArray(initialData.modalities) ? initialData.modalities : 
+                    Array.isArray(initialData.modality) ? initialData.modality :
+                    (initialData.modality ? [initialData.modality] : [initialModality])
+        
+        // Converte "Jiu-Jitsu" para "Jiu Jitsu" e remove duplicatas
+        normalizedModalities = Array.from(new Set(raw.map(m => m === 'Jiu-Jitsu' ? 'Jiu Jitsu' : m)))
 
         setForm({
           name: initialData.name || '',

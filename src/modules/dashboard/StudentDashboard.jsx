@@ -391,7 +391,7 @@ export default function StudentDashboard({ user, notices = [], temPendencia = fa
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-xll bg-primary/10 flex items-center justify-center font-bold text-primary">JJ</div>
               <div>
-                <p className="text-white font-bold text-sm">Jiu-Jitsu Adulto</p>
+                <p className="text-white font-bold text-sm">Jiu Jitsu Adulto</p>
                 <p className="text-xs text-gray-600 mt-0.5">Seg, Qua, Sex às 19:30 • Prof. Max</p>
               </div>
             </div>

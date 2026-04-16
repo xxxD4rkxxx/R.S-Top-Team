@@ -77,7 +77,7 @@ export function useStudents() {
         studentName: student?.name || id,
         date: serverTimestamp(),
         status: newStatus,
-        modality: student?.modality || 'Jiu-Jitsu'
+        modality: student?.modality || 'Jiu Jitsu'
       })
     }
   }
@@ -172,8 +172,8 @@ export function useStudents() {
     if (Array.isArray(modality)) {
       finalModalities = modality
     } else {
-      const normalized = (modality || 'Jiu-Jitsu').toLowerCase()
-      finalModalities = normalized === 'ambos' ? ['Jiu-Jitsu', 'Boxe'] : [normalized === 'boxe' ? 'Boxe' : 'Jiu-Jitsu']
+      const normalized = (modality || 'Jiu Jitsu').toLowerCase()
+      finalModalities = normalized === 'ambos' ? ['Jiu Jitsu', 'Boxe'] : [normalized === 'boxe' ? 'Boxe' : 'Jiu Jitsu']
     }
 
     // Lógica de faixa padrão
@@ -184,7 +184,7 @@ export function useStudents() {
       name: newStudent.name,
       initials: buildInitials(newStudent.name),
       belt: beltFinal,
-      modality: finalModalities[0] || 'Jiu-Jitsu',
+      modality: finalModalities[0] || 'Jiu Jitsu',
       modalities: finalModalities,
       stripes: 0,
       status: 'Ativo',
@@ -209,7 +209,7 @@ export function useStudents() {
         last_promotion_date: serverTimestamp(),
         history: [{
           belt: beltFinal,
-          date: serverTimestamp(),
+          date: new Date(),
           reason: 'Ingresso na Academia'
         }]
       },

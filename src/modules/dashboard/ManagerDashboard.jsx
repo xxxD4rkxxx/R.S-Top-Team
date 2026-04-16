@@ -28,7 +28,7 @@ import { useFinance } from '../../hooks/useFinance'
 // ── Custom sport PNG icon wrappers ───────────────────────────────
 function IconJiuJitsu({ size = 16, className = '' }) {
     const style = { width: size, height: size, filter: 'invert(1)', objectFit: 'contain' }
-    return <img src="/icon-jiujitsu.png" alt="jiujitsu" style={style} className={className} />
+    return <img src="/icon-jiujitsu.png" alt="jiu jitsu" style={style} className={className} />
 }
 
 function IconBoxe({ size = 16, className = '' }) {
@@ -287,7 +287,7 @@ export default function ManagerDashboard() {
             desc: 'Participações externas', icon: Users, color: 'text-blue-400', iconColor: 'text-blue-400'
         },
         {
-            title: 'Jiu-Jitsu', value: isLoadingStudents ? '...' : String(activeMembers.filter(s => s.modality?.includes('Jiu')).length),
+            title: 'Jiu Jitsu', value: isLoadingStudents ? '...' : String(activeMembers.filter(s => s.modality?.includes('Jiu')).length),
             desc: 'Alunos matriculados', icon: IconJiuJitsu, color: 'text-[#DC143C]', iconColor: 'text-[#DC143C]'
         },
         {

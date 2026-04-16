@@ -6,7 +6,7 @@ const AppContext = createContext(null)
 
 export function AppProvider({ children }) {
   const [isAdminView, setIsAdminView] = useState(true)
-  const [currentModality, setCurrentModality] = useState('Jiu-Jitsu')
+  const [currentModality, setCurrentModality] = useState('Jiu Jitsu')
   const [isMobileNavHidden, setIsMobileNavHidden] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)

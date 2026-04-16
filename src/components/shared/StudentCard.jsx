@@ -77,7 +77,7 @@ function StudentAvatar({ student, belt }) {
 
 export default function StudentCard({ student, onClick }) {
   const { name, belt, stripes, status, isVisitor, modality, modalities = [] } = student
-  const primaryMod = modality || modalities[0] || 'Jiu-Jitsu'
+  const primaryMod = modality || modalities[0] || 'Jiu Jitsu'
   const secondaryLabel = modalities.length > 1 ? modalities.filter(m => m !== primaryMod).join(' & ') : null
   const numericId = Number.parseInt(student.id, 10)
   const animationDelay = Number.isFinite(numericId) ? `${numericId * 40}ms` : '0ms'

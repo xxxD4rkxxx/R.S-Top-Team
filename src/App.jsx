@@ -14,6 +14,7 @@ import MobileNav from './components/navigation/MobileNav'
 import SiteFooter from './components/shared/SiteFooter'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import ErrorBoundary from './components/shared/ErrorBoundary'
+import { Toaster } from 'react-hot-toast'
 
 // ─── Lazy-loaded pages ───────────────────────────────────────────────────────
 // Each route gets its own chunk — only loaded when navigated to.
@@ -139,6 +140,7 @@ function AppContent() {
           <div className="flex-1 flex flex-col relative w-full min-h-0">
             {/* Wrapper Centralizado para as Páginas e Rodapé */}
             <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col">
+              <Toaster position="top-right" />
               <ScrollToTop />
               <Suspense fallback={<PageSkeleton />}>
                 <AnimatePresence mode="wait" initial={false}>

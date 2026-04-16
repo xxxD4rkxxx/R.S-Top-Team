@@ -1,5 +1,5 @@
 // RESUMO: Gestão de Modalidades e Turmas.
-// Permite cadastrar modalidades (Jiu-Jitsu, Muay Thai, etc.) e vincular turmas (horários, dias, professores).
+// Permite cadastrar modalidades (Jiu Jitsu, Muay Thai, etc.) e vincular turmas (horários, dias, professores).
 // Inclui KPIs de ocupação e capacidade para otimização da academia.
 import React, { useState, useMemo } from 'react'
 import { 

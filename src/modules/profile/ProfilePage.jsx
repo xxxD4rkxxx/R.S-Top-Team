@@ -582,7 +582,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
           {isJiuJitsu && (
             <div className="rounded-xl p-6 bg-primary/5 border border-primary/20 space-y-5 animate-in zoom-in-95 duration-300">
               <h5 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                🥋 Informações de Jiu-Jitsu
+                🥋 Informações de Jiu Jitsu
               </h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
