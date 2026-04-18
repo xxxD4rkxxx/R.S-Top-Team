@@ -390,18 +390,7 @@ export default function BillingPage() {
         icon={CreditCard}
         title="COBRANÇA"
         subtitle="GESTÃO DE MENSALIDADES E RECEBIMENTOS"
-        extra={
-          <div className="flex gap-3">
-            <button onClick={() => setShowBatchModal(true)}
-              className="flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all active:scale-95">
-              <RefreshCcw size={16} strokeWidth={2.5} /> OPERAR LOTE
-            </button>
-            <button onClick={() => setShowModal(true)}
-              className="btn-primary flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95">
-              <Plus size={18} strokeWidth={1.9} /> NOVA COBRANÇA
-            </button>
-          </div>
-        }
+        extra={null}
       />
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">

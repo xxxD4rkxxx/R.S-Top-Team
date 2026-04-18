@@ -339,24 +339,7 @@ export default function StudentsPage() {
         icon={Users}
         title="GESTÃO DE ALUNOS"
         subtitle="CONTROLE DE MATRÍCULAS E PRESENÇA"
-        extra={
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
-              <FileDown size={18} strokeWidth={1.9} /> IMPORTAR
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
-              <FileUp size={18} strokeWidth={1.9} /> EXPORTAR
-            </button>
-            {isAdminView && (
-              <button
-                onClick={() => { setDuplicateData(null); setShowModal(true) }}
-                className="btn-primary flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95"
-              >
-                <Plus size={18} strokeWidth={1.9} /> NOVO ALUNO
-              </button>
-            )}
-          </div>
-        }
+        extra={null}
       />
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
