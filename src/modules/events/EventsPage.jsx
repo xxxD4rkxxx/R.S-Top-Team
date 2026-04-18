@@ -1099,23 +1099,9 @@ export default function EventsPage() {
         </div>
 
         {/* ── ACTION BAR & FILTERS ── */}
-        <div className="flex flex-col md:flex-row items-center gap-4 fade-slide-up delay-100">
-          {canEdit && !isMobile && (
-            <button
-              onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
-              className={`h-14 px-8 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-3 border shadow-lg active:scale-95 shrink-0 ${showForm && !editingNotice 
-                  ? 'bg-white/5 border-white/10 text-white' 
-                  : 'bg-primary border-primary/20 text-black shadow-primary/20'
-                }`}
-            >
-              {showForm && !editingNotice ? <X size={20} /> : <Plus size={20} />}
-              {showForm && !editingNotice ? 'Cancelar' : 'Novo aviso'}
-            </button>
-          )}
-
-          <div
-            className="flex-1 w-full flex items-center gap-3 px-5 py-3 rounded-xl transition-all border border-white/5 focus-within:border-primary/40 bg-[#111]/80 backdrop-blur-xl"
-          >
+        <div className="flex flex-col gap-6 fade-slide-up delay-100 mt-6 mb-8">
+          {/* Top Row: Search */}
+          <div className="w-full flex items-center gap-3 px-5 py-3 rounded-2xl transition-all border border-white/5 focus-within:border-primary/40 bg-[#111]/80 backdrop-blur-xl">
             <Search size={19} strokeWidth={2.2} className="text-gray-600 flex-shrink-0" />
             <input
               type="text"
@@ -1126,26 +1112,41 @@ export default function EventsPage() {
             />
           </div>
 
-          {/* Tab Filter */}
-          <div className="flex bg-white/5 p-1 rounded-xl w-full md:w-auto">
-            {['todos', 'eventos', 'avisos'].map((tab) => (
+          {/* Bottom Row: Tabs + Action Button */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center bg-white/5 p-1 rounded-xl w-full md:w-auto h-11">
+              {['todos', 'eventos', 'avisos'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 md:w-24 h-full rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab
+                    ? 'bg-primary text-white shadow-lg'
+                    : 'text-gray-500 hover:text-white'
+                    }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {canEdit && (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 md:w-24 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab
-                  ? 'bg-primary text-white shadow-lg'
-                  : 'text-gray-500 hover:text-white'
+                onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
+                className={`h-11 px-4 md:px-6 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 border shadow-lg active:scale-95 shrink-0 ${showForm && !editingNotice 
+                    ? 'bg-white/5 border-white/10 text-white' 
+                    : 'bg-primary border-primary/20 text-black shadow-primary/20'
                   }`}
               >
-                {tab}
+                {showForm && !editingNotice ? <X size={18} /> : <Plus size={18} />}
+                <span className="hidden md:inline">{showForm && !editingNotice ? 'Cancelar' : 'Novo aviso'}</span>
               </button>
-            ))}
+            )}
           </div>
         </div>
 
         {/* ── TOP FORM (NEW POSTS ONLY) ── */}
         <AnimatePresence>
-          {showForm && !editingNotice && !isMobile && (
+          {showForm && !editingNotice && (
             <div className="fade-slide-down">
               <InlinePostForm
                 key="new"
@@ -1451,17 +1452,8 @@ export default function EventsPage() {
         document.body
       )}
 
-      {/* FLOAT ACTION BUTTON (FAB) MOBILE - ESTILO ABA ALUNO */}
-      {canEdit && isMobile && !showForm && !expandedId && (
-        <div className="fixed bottom-8 right-8 z-[90]">
-          <button
-            onClick={() => { setEditingNotice(null); setShowForm(true); }}
-            className="w-16 h-16 rounded-3xl bg-primary text-black flex items-center justify-center shadow-[0_20px_40px_rgba(235,59,90,0.3)] active:scale-90 transition-all border border-primary/20"
-          >
-            <Plus size={32} strokeWidth={3} />
-          </button>
-        </div>
-      )}
+      {/* FAB removido para padronização — botão agora está na barra de busca */}
+
 
       {/* ACTION MENU GLOBAL */}
       <AnimatePresence>

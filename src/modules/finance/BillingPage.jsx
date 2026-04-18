@@ -11,9 +11,9 @@ import {
   CheckCircle2, Clock, AlertCircle, DollarSign,
   ChevronDown, Loader2, Users, RefreshCcw, Save, Edit2
 } from 'lucide-react'
-import PageHeader    from '../../components/shared/PageHeader'
-import MobileHeader  from '../../components/navigation/MobileHeader'
-import KPICard       from '../../components/shared/KPICard'
+import PageHeader from '../../components/shared/PageHeader'
+import MobileHeader from '../../components/navigation/MobileHeader'
+import KPICard from '../../components/shared/KPICard'
 import { useFinance } from '../../hooks/useFinance'
 import { useStudents } from '../../hooks/useStudents'
 import { useModalities } from '../../hooks/useModalities'
@@ -30,7 +30,7 @@ const dataBR = (str) => {
 }
 
 const STATUS_STYLE = {
-  paid:    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  paid: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   pending: 'bg-amber-500/10  text-amber-400  border-amber-500/20',
   overdue: 'bg-rose-500/10   text-rose-400   border-rose-500/20',
 }
@@ -236,13 +236,13 @@ function ModalEditarCobranca({ bill, onClose, onSave, loading }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Novo Valor (R$)</label>
-            <input 
-              required 
-              type="number" 
-              step="0.01" 
+            <input
+              required
+              type="number"
+              step="0.01"
               className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 font-mono"
-              value={amount} 
-              onChange={e => setAmount(e.target.value)} 
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
             />
           </div>
 
@@ -269,12 +269,12 @@ export default function BillingPage() {
   const { bills, loading, updateBillStatus, deleteBill, addBill, updateBill, gerarCobrancasEmLote } = useFinance()
   const { students } = useStudents()
   const { modalities } = useModalities()
- 
-  const [showModal, setShowModal]   = useState(false)
+
+  const [showModal, setShowModal] = useState(false)
   const [showBatchModal, setShowBatchModal] = useState(false)
   const [editingBill, setEditingBill] = useState(null)
-  
-  const [saving, setSaving]         = useState(false)
+
+  const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
 
@@ -313,19 +313,19 @@ export default function BillingPage() {
 
   // KPIs
   const kpis = useMemo(() => {
-    const recebido      = bills.filter(b => b.status === 'paid').reduce((s, b) => s + (Number(b.amount) || 0), 0)
-    const aReceber      = bills.filter(b => b.status === 'pending').reduce((s, b) => s + (Number(b.amount) || 0), 0)
-    const vencido       = bills.filter(b => b.status === 'overdue').reduce((s, b) => s + (Number(b.amount) || 0), 0)
-    
-    const countPaid     = bills.filter(b => b.status === 'paid').length
-    const countPending  = bills.filter(b => b.status === 'pending').length
-    const countOverdue  = bills.filter(b => b.status === 'overdue').length
-    
+    const recebido = bills.filter(b => b.status === 'paid').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    const aReceber = bills.filter(b => b.status === 'pending').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    const vencido = bills.filter(b => b.status === 'overdue').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+
+    const countPaid = bills.filter(b => b.status === 'paid').length
+    const countPending = bills.filter(b => b.status === 'pending').length
+    const countOverdue = bills.filter(b => b.status === 'overdue').length
+
     const inadimplentes = new Set(bills.filter(b => b.status === 'overdue').map(b => b.studentId)).size
     const totalPagantes = students.filter(s => !s.isPaymentExempt).length
 
-    return { 
-      recebido, aReceber, vencido, inadimplentes, 
+    return {
+      recebido, aReceber, vencido, inadimplentes,
       total: bills.length, totalPagantes,
       countPaid, countPending, countOverdue
     }
@@ -445,16 +445,31 @@ export default function BillingPage() {
         </div>
 
         {/* Search bar — mesma estrutura da página Alunos */}
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex items-center gap-2 w-full">
           <div className="flex-1 relative group">
             <Search size={18} strokeWidth={1.9} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" />
             <input
               className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium"
-              placeholder="Buscar por nome do aluno..."
+              placeholder="Buscar..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowBatchModal(true)}
+              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
+            >
+              <RefreshCcw size={16} strokeWidth={2.5} /> 
+              <span className="hidden md:inline">OPERAR LOTE</span>
+            </button>
+            <button onClick={() => setShowModal(true)}
+              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
+            >
+              <Plus size={18} strokeWidth={2.5} /> 
+              <span className="hidden md:inline">NOVA COBRANÇA</span>
+            </button>
+          </div>
+
           {hasFilters && (
             <button
               onClick={() => { setSearchTerm(''); setStatusFilter('todos') }}
@@ -477,8 +492,8 @@ export default function BillingPage() {
               value={statusFilter}
               onChange={setStatusFilter}
               options={[
-                ['todos',   'Todos'],
-                ['paid',    'Pagos'],
+                ['todos', 'Todos'],
+                ['paid', 'Pagos'],
                 ['pending', 'Pendentes'],
                 ['overdue', 'Atrasados'],
               ]}
@@ -486,7 +501,7 @@ export default function BillingPage() {
             <CustomSelect
               label="Ordenar por"
               value="recente"
-              onChange={() => {}}
+              onChange={() => { }}
               options={[['recente', 'Mais Recente']]}
             />
             <div className="col-span-2 flex items-end">
@@ -554,7 +569,7 @@ export default function BillingPage() {
                             {STATUS_LABEL[b.status] || b.status}
                           </span>
                         </td>
-                         <td className="py-4 px-5 text-center">
+                        <td className="py-4 px-5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             {b.status !== 'paid' && (
                               <>
@@ -581,7 +596,7 @@ export default function BillingPage() {
               </table>
             )}
           </div>
-          
+
           {/* Contador de Rodapé quando há dados */}
           {filtered.length > 0 && (
             <div className="mt-6 flex justify-end">

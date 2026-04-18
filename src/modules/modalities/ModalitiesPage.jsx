@@ -2,8 +2,8 @@
 // Permite cadastrar modalidades (Jiu Jitsu, Muay Thai, etc.) e vincular turmas (horários, dias, professores).
 // Inclui KPIs de ocupação e capacidade para otimização da academia.
 import React, { useState, useMemo } from 'react'
-import { 
-  Plus, Search, Layers, 
+import {
+  Plus, Search, Layers,
   GraduationCap, Users, TrendingUp, X
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -16,8 +16,8 @@ import MobileHeader from '../../components/navigation/MobileHeader'
 import KPICard from '../../components/shared/KPICard'
 
 export default function ModalitiesPage() {
-  const { 
-    modalities, loading, kpis, 
+  const {
+    modalities, loading, kpis,
     addModality, updateModality, toggleModalityStatus, deleteModality,
     addClass, updateClass, deleteClass
   } = useModalities()
@@ -78,19 +78,19 @@ export default function ModalitiesPage() {
     if (confirm('Deseja realmente excluir esta turma?')) await deleteClass(modalityId, classId)
   }
 
-  const filteredModalities = useMemo(() => 
+  const filteredModalities = useMemo(() =>
     modalities.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase())),
     [modalities, searchTerm]
   )
 
   return (
     <>
-      <MobileHeader 
-        title="Modalidades" 
-        showSearch 
+      <MobileHeader
+        title="Modalidades"
+        showSearch
         onSearch={() => setShowMobileSearch(!showMobileSearch)}
         actions={
-          <button 
+          <button
             onClick={handleAddModality}
             className="p-2.5 rounded-xl bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
           >
@@ -103,30 +103,24 @@ export default function ModalitiesPage() {
         icon={Layers}
         title="MODALIDADES E TURMAS"
         subtitle="Gestão Operacional"
-        extra={
-          <button 
-            onClick={handleAddModality}
-            className="btn-primary flex items-center gap-2 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest shadow-xl group"
-          >
-            <Plus size={16} className="group-hover:rotate-90 transition-transform" /> NOVA MODALIDADE
-          </button>
-        }
+        extra={null}
+
       />
 
       <main className="flex-1 px-4 md:px-6 py-6 space-y-6 w-full pb-20">
-        
+
         {/* Mobile Search Expandable */}
         <AnimatePresence>
           {showMobileSearch && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="md:hidden overflow-hidden">
               <div className="relative mb-4">
-                <input 
+                <input
                   autoFocus value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                   placeholder="Buscar modalidade..."
                   className="w-full bg-white/[0.05] border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm"
                 />
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
-                {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30"><X size={18}/></button>}
+                {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30"><X size={18} /></button>}
               </div>
             </motion.div>
           )}
@@ -140,26 +134,39 @@ export default function ModalitiesPage() {
           <KPICard title="Ocupação" value={loading ? '...' : `${kpis.avgOccupancy}%`} desc="Capacidade geral" icon={TrendingUp} iconColor="text-amber-400" />
         </div>
 
-        {/* Desktop Search & Filter */}
-        <div className="hidden md:flex gap-4">
+        {/* Search & Filter */}
+        <div className="flex items-center gap-2 w-full">
           <div className="flex-1 relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" size={18} />
-            <input type="text" placeholder="Pesquisar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm" />
+            <input 
+              type="text" 
+              placeholder="Pesquisar..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium" 
+            />
           </div>
+          <button
+            onClick={handleAddModality}
+            className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
+          >
+            <Plus size={18} strokeWidth={2.5} /> 
+            <span className="hidden md:inline">NOVA MODALIDADE</span>
+          </button>
         </div>
 
         {/* Categories / Modalidade List */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {loading ? (
-             Array(4).fill(0).map((_, i) => <div key={i} className="h-20 bg-white/5 rounded-[32px] animate-pulse" />)
+            Array(4).fill(0).map((_, i) => <div key={i} className="h-20 bg-white/5 rounded-[32px] animate-pulse" />)
           ) : filteredModalities.length === 0 ? (
             <div className="py-20 text-center col-span-full border border-dashed border-white/10 rounded-[32px] opacity-20">
-               <Layers size={48} className="mx-auto mb-4" />
-               <p className="text-xs font-black uppercase tracking-widest">Nenhuma modalidade disponível</p>
+              <Layers size={48} className="mx-auto mb-4" />
+              <p className="text-xs font-black uppercase tracking-widest">Nenhuma modalidade disponível</p>
             </div>
           ) : (
             filteredModalities.map(modality => (
-              <ModalityCard 
+              <ModalityCard
                 key={modality.id}
                 modality={modality}
                 isExpanded={expandedId === String(modality.id)}
@@ -177,7 +184,7 @@ export default function ModalitiesPage() {
       </main>
 
       {/* MODALS */}
-      <ModalityModal 
+      <ModalityModal
         isOpen={isModalityModalOpen}
         onClose={() => setIsModalityModalOpen(false)}
         onSave={handleSaveModality}
@@ -187,7 +194,7 @@ export default function ModalitiesPage() {
         onDeleteClass={handleDeleteClass}
       />
 
-      <ClassModal 
+      <ClassModal
         isOpen={isClassModalOpen}
         onClose={() => setIsClassModalOpen(false)}
         onSave={handleSaveClass}

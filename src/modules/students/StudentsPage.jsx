@@ -224,8 +224,8 @@ export default function StudentsPage() {
     }
     if (statusFilter !== 'todos') list = list.filter(s => normalizeStatus(s.status) === statusFilter)
     if (modalityFilter !== 'todas') {
-      list = list.filter(s => 
-        s.modality === modalityFilter || 
+      list = list.filter(s =>
+        s.modality === modalityFilter ||
         (Array.isArray(s.modalities) && s.modalities.includes(modalityFilter))
       )
     }
@@ -382,7 +382,7 @@ export default function StudentsPage() {
         </div>
 
         {/* Elite Search Bar (Outside) */}
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex items-center gap-2 w-full">
           <div className="flex-1 relative group">
             <Search size={18} strokeWidth={1.9} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" />
             <input
@@ -392,12 +392,23 @@ export default function StudentsPage() {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
+          {isAdminView && (
+            <button
+              onClick={() => { setDuplicateData(null); setShowModal(true) }}
+              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
+            >
+              <Plus size={18} strokeWidth={2.5} /> 
+              <span className="hidden md:inline">NOVO ALUNO</span>
+            </button>
+          )}
+
           {(statusFilter !== 'todos' || modalityFilter !== 'todas' || searchTerm) && (
             <button
               onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setSearchTerm('') }}
-              className="flex items-center justify-center gap-2 px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
-              <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
+              <RefreshCcw size={18} strokeWidth={1.9} /> 
+              <span className="hidden md:inline">Limpar Filtros</span>
             </button>
           )}
         </div>

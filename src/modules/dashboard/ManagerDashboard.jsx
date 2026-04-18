@@ -309,6 +309,7 @@ export default function ManagerDashboard() {
 
             <MobileHeader
                 title="Dashboard"
+                showBell={false}
                 actions={
                     <div className="flex items-center gap-2">
                         <button

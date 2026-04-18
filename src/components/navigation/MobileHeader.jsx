@@ -4,7 +4,7 @@ import { Bell, Search, User, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
-const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, onBack, actions }) => {
+const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, onBack, actions, showBell = true }) => {
   const { userData } = useAuth()
   const navigate = useNavigate()
 
@@ -60,10 +60,13 @@ const MobileHeader = ({ title, showSearch = false, onSearch, showBack = false, o
             <Search size={20} strokeWidth={2.5} />
           </button>
         )}
-        <button className="p-2.5 rounded-xl bg-white/5 text-gray-400 active:scale-90 transition-transform relative">
-          <Bell size={20} strokeWidth={2.5} />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full ring-2 ring-black" />
-        </button>
+        
+        {showBell && (
+          <button className="p-2.5 rounded-xl bg-white/5 text-gray-400 active:scale-90 transition-transform relative">
+            <Bell size={20} strokeWidth={2.5} />
+            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full ring-2 ring-black" />
+          </button>
+        )}
       </div>
     </motion.header>
   )

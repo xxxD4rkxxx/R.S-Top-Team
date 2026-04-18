@@ -163,7 +163,7 @@ export default function CollaboratorsPage() {
   useHideMobileNav(!!showMenu)
 
   const [deleteDialogUser, setDeleteDialogUser] = useState(null)
-  
+
   // 🔐 Security States
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinModalAction, setPinModalAction] = useState(null) // { type, member }
@@ -301,7 +301,7 @@ export default function CollaboratorsPage() {
         </div>
 
         {/* Elite Search Bar (Outside) */}
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex items-center gap-2 w-full">
           <div className="flex-1 relative group">
             <Search size={18} strokeWidth={1.9} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" />
             <input
@@ -311,16 +311,25 @@ export default function CollaboratorsPage() {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
+          >
+            <UserPlus size={18} strokeWidth={2.5} /> 
+            <span className="hidden md:inline">NOVO COLABORADOR</span>
+          </button>
+
           {(statusFilter !== 'todos' || roleFilter !== 'all' || searchTerm) && (
             <button
               onClick={() => { setStatusFilter('todos'); setRoleFilter('all'); setSearchTerm('') }}
-              className="flex items-center justify-center gap-2 px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
-              <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
+              <RefreshCcw size={18} strokeWidth={1.9} /> 
+              <span className="hidden md:inline">Limpar Filtros</span>
             </button>
           )}
         </div>
-          {/* caixxa que sobre tudo */}
+        {/* caixxa que sobre tudo */}
         <div className="bg-[#0B0B0D]/80 backdrop-blur-md rounded-2xl p-5 md:p-6 border border-white/5">
           {/* Filtros */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -412,6 +421,7 @@ export default function CollaboratorsPage() {
                     <td className="py-4 px-5 text-center">
                       {canSeeStaff ? (
                         <div className="flex flex-col items-center gap-1">
+
                           <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-emerald-400 tracking-[0.2em] min-w-[80px]">
                             {member.pin || fetchedPins[member.id] || '---'}
                           </div>

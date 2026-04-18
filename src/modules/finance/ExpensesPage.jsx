@@ -14,9 +14,9 @@ import {
   ChevronDown, Loader2, RefreshCcw, Calendar, TrendingUp, TrendingDown,
   MoreVertical, Edit2
 } from 'lucide-react'
-import PageHeader    from '../../components/shared/PageHeader'
-import MobileHeader  from '../../components/navigation/MobileHeader'
-import KPICard       from '../../components/shared/KPICard'
+import PageHeader from '../../components/shared/PageHeader'
+import MobileHeader from '../../components/navigation/MobileHeader'
+import KPICard from '../../components/shared/KPICard'
 import { useFinance } from '../../hooks/useFinance'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -30,14 +30,14 @@ const dataBR = (str) => {
 }
 
 const STATUS_STYLE = {
-  paid:    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  paid: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   pending: 'bg-amber-500/10  text-amber-400  border-amber-500/20',
 }
 const STATUS_LABEL = { paid: 'Pago', pending: 'Pendente' }
 
 const CATEGORIAS = [
-  'Aluguel','Energia','Internet','Material',
-  'Equipamento','Marketing','Salários','Manutenção','Impostos','Outros'
+  'Aluguel', 'Energia', 'Internet', 'Material',
+  'Equipamento', 'Marketing', 'Salários', 'Manutenção', 'Impostos', 'Outros'
 ]
 
 // ─── CustomSelect — mesmo da página Alunos ────────────────────────────────────
@@ -92,11 +92,11 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData }) {
     ...initialData,
     amount: initialData.amount?.toString() || '',
     isRecurring: initialData.isRecurring ? 'Sim' : 'Não'
-  } : { 
-    description: '', 
-    category: 'Aluguel', 
-    amount: '', 
-    dueDate: '', 
+  } : {
+    description: '',
+    category: 'Aluguel',
+    amount: '',
+    dueDate: '',
     status: 'pending',
     costType: 'Fixo',
     isRecurring: 'Não'
@@ -106,8 +106,8 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.description || !form.amount || !form.dueDate) return
-    onSave({ 
-      ...form, 
+    onSave({
+      ...form,
       amount: Number(form.amount),
       isRecurring: form.isRecurring === 'Sim'
     })
@@ -217,16 +217,16 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData }) {
 export default function ExpensesPage() {
   const { expenses, loadingExpenses, addExpense, updateExpense, deleteExpense } = useFinance()
 
-  const [showModal, setShowModal]       = useState(false)
-  const [saving, setSaving]             = useState(false)
-  const [editData, setEditData]         = useState(null)
-  const [showMenu, setShowMenu]         = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editData, setEditData] = useState(null)
+  const [showMenu, setShowMenu] = useState(null)
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0, height: 0 })
   const [deleteDialogExpense, setDeleteDialogExpense] = useState(null)
 
-  const [searchTerm, setSearchTerm]     = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
-  const [catFilter, setCatFilter]       = useState('todas')
+  const [catFilter, setCatFilter] = useState('todas')
 
   // Fecha o menu ao rolar a página
   useEffect(() => {
@@ -272,7 +272,7 @@ export default function ExpensesPage() {
     return {
       totalMes: totalMesAtual,
       qtdMes: doMes.length,
-      
+
       totalPendente: pendentes.reduce((s, d) => s + (Number(d.amount) || 0), 0),
       qtdPendente: pendentes.length,
 
@@ -290,10 +290,10 @@ export default function ExpensesPage() {
   const hasFilters = searchTerm || statusFilter !== 'todos' || catFilter !== 'todas'
 
   const filtered = useMemo(() => expenses.filter(d => {
-    const byText   = (d.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                     d.category?.toLowerCase().includes(searchTerm.toLowerCase()))
+    const byText = (d.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.category?.toLowerCase().includes(searchTerm.toLowerCase()))
     const byStatus = statusFilter === 'todos' || d.status === statusFilter
-    const byCat    = catFilter === 'todas' || d.category === catFilter
+    const byCat = catFilter === 'todas' || d.category === catFilter
     return byText && byStatus && byCat
   }), [expenses, searchTerm, statusFilter, catFilter])
 
@@ -315,9 +315,9 @@ export default function ExpensesPage() {
   return (
     <>
       {showModal && (
-        <ModalNovaDespesa 
-          onClose={() => { setShowModal(false); setEditData(null) }} 
-          onSave={handleSave} 
+        <ModalNovaDespesa
+          onClose={() => { setShowModal(false); setEditData(null) }}
+          onSave={handleSave}
           loading={saving}
           initialData={editData}
         />
@@ -336,12 +336,8 @@ export default function ExpensesPage() {
         icon={ArrowDownCircle}
         title="DESPESAS"
         subtitle="GESTÃO DE CUSTOS E SAÍDAS OPERACIONAIS"
-        extra={
-          <button onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-500 text-white shadow-xl active:scale-95 transition-all">
-            <Plus size={18} strokeWidth={1.9} /> NOVA DESPESA
-          </button>
-        }
+        extra={null}
+
       />
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
@@ -395,7 +391,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Search bar */}
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex items-center gap-2 w-full">
           <div className="flex-1 relative group">
             <Search size={18} strokeWidth={1.9} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" />
             <input
@@ -405,12 +401,20 @@ export default function ExpensesPage() {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
+          >
+            <Plus size={18} strokeWidth={2.5} /> 
+            <span className="hidden md:inline">NOVA DESPESA</span>
+          </button>
+
           {hasFilters && (
             <button
               onClick={() => { setSearchTerm(''); setStatusFilter('todos'); setCatFilter('todas') }}
-              className="flex items-center justify-center gap-2 px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
-              <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
+              <RefreshCcw size={18} strokeWidth={1.9} /> 
+              <span className="hidden md:inline">Limpar Filtros</span>
             </button>
           )}
         </div>
@@ -426,8 +430,8 @@ export default function ExpensesPage() {
               value={statusFilter}
               onChange={setStatusFilter}
               options={[
-                ['todos',   'Todos'],
-                ['paid',    'Pagos'],
+                ['todos', 'Todos'],
+                ['paid', 'Pagos'],
                 ['pending', 'Pendentes'],
               ]}
             />
@@ -646,16 +650,16 @@ function ExpenseActionMenu({ expense, menuPosition, onClose, onAction }) {
           </div>
 
           <div className="space-y-3">
-             <button onClick={() => onAction('toggleStatus', expense)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white">
-                {expense.status === 'paid' ? <Clock size={18} className="text-orange-400" /> : <CheckCircle2 size={18} className="text-emerald-400" />}
-                {expense.status === 'paid' ? 'Marcar como Pendente' : 'Marcar como Pago'}
-             </button>
-             <button onClick={() => onAction('edit', expense)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white">
-                <Edit2 size={18} className="text-blue-400" /> Editar Despesa
-             </button>
-             <button onClick={() => onAction('delete', expense)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/10 text-sm font-bold text-red-500">
-                <Trash2 size={18} /> Remover Definitivamente
-             </button>
+            <button onClick={() => onAction('toggleStatus', expense)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white">
+              {expense.status === 'paid' ? <Clock size={18} className="text-orange-400" /> : <CheckCircle2 size={18} className="text-emerald-400" />}
+              {expense.status === 'paid' ? 'Marcar como Pendente' : 'Marcar como Pago'}
+            </button>
+            <button onClick={() => onAction('edit', expense)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white">
+              <Edit2 size={18} className="text-blue-400" /> Editar Despesa
+            </button>
+            <button onClick={() => onAction('delete', expense)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/10 text-sm font-bold text-red-500">
+              <Trash2 size={18} /> Remover Definitivamente
+            </button>
           </div>
         </motion.div>
       </div>
@@ -675,7 +679,7 @@ function DeleteConfirmSimple({ expense, onConfirm, onClose }) {
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-[32px] overflow-hidden border border-white/10 shadow-2xl bg-[#0d0d0d] p-8 space-y-6"
         style={{ animation: 'fadeSlideUp 0.22s ease both' }}>
-        
+
         <div className="w-16 h-16 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
           <Trash2 size={32} className="text-red-500" />
         </div>
@@ -694,7 +698,7 @@ function DeleteConfirmSimple({ expense, onConfirm, onClose }) {
           <button
             onClick={async () => {
               setLoading(true)
-              try { await onConfirm() } catch(e) { setLoading(false) }
+              try { await onConfirm() } catch (e) { setLoading(false) }
             }}
             disabled={loading}
             className="flex-1 py-4 rounded-2xl text-sm font-black bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20 transition-all disabled:opacity-50"
