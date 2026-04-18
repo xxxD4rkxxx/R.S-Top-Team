@@ -1101,14 +1101,14 @@ export default function EventsPage() {
         {/* ── ACTION BAR & FILTERS ── */}
         <div className="flex flex-col gap-6 fade-slide-up delay-100 mt-6 mb-8">
           {/* Top Row: Search */}
-          <div className="flex-1 relative group w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" size={18} />
-            <input 
-              type="text" 
-              placeholder="Pesquisar comunicados..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-              className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium" 
+          <div className="w-full flex items-center gap-3 px-5 py-3 rounded-2xl transition-all border border-white/5 focus-within:border-primary/40 bg-[#111]/80 backdrop-blur-xl">
+            <Search size={19} strokeWidth={2.2} className="text-gray-600 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Pesquisar comunicados..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="bg-transparent outline-none text-white text-sm placeholder-gray-700 w-full font-medium"
             />
           </div>
 
@@ -1134,9 +1134,8 @@ export default function EventsPage() {
                 onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
                 className={`h-11 px-4 md:px-6 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 border shadow-lg active:scale-95 shrink-0 ${showForm && !editingNotice 
                     ? 'bg-white/5 border-white/10 text-white' 
-                    : 'bg-primary border-primary/20 text-white shadow-primary/20'
+                    : 'bg-primary border-primary/20 text-black shadow-primary/20'
                   }`}
-
               >
                 {showForm && !editingNotice ? <X size={18} /> : <Plus size={18} />}
                 <span className="hidden md:inline">{showForm && !editingNotice ? 'Cancelar' : 'Novo aviso'}</span>

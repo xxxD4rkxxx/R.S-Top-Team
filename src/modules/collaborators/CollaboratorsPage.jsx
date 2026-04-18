@@ -275,7 +275,16 @@ export default function CollaboratorsPage() {
         icon={Users}
         title="GESTÃO DE EQUIPE"
         subtitle="CONTROLE DE COLABORADORES E PROFESSORES"
-        extra={null}
+        extra={
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-primary text-white flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95"
+            >
+              <UserPlus size={18} strokeWidth={2} /> NOVO COLABORADOR
+            </button>
+          </div>
+        }
       />
 
       <main className="flex-1 px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6 animate-in fade-in duration-500">
