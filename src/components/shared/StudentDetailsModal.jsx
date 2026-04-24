@@ -265,7 +265,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
           </div>
 
           {/* Financeiro e Contrato */}
-          {(isAdmin || isGestor) && (
+          {(isAdmin || isGestor) && !isVisitor && (
             <div className="space-y-4">
               <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
                 Financeiro & Contrato
@@ -297,7 +297,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
           )}
 
           {/* Segurança */}
-          {canSeePIN && (
+          {canSeePIN && !isVisitor && (
              <div className="space-y-4">
               <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
                 Segurança e Credenciais
@@ -320,9 +320,11 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
           )}
 
           {/* Assiduity Status */}
-          <div className="space-y-4">
-            <AssiduityCard student={student} />
-          </div>
+          {!isVisitor && (
+            <div className="space-y-4">
+              <AssiduityCard student={student} />
+            </div>
+          )}
 
           {/* Atividade */}
           <div className="space-y-4">

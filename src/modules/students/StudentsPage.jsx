@@ -402,25 +402,29 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
       />
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+        <div className={`grid grid-cols-2 ${typeFilter === 'visitante' ? 'lg:grid-cols-2 max-w-3xl' : 'lg:grid-cols-4'} gap-4 md:gap-5`}>
           <KPICard title="Ativos" value={stats.active} description="Alunos matriculados e frequentando" icon={UserCheck} valueColor="text-emerald-400"
             onClick={() => setStatusFilter(statusFilter === 'ativo' ? 'todos' : 'ativo')} active={statusFilter === 'ativo'} />
           <KPICard title="Inativos" value={stats.inactive} description="Alunos que cancelaram ou pararam" icon={UserX}
             onClick={() => setStatusFilter(statusFilter === 'inativo' ? 'todos' : 'inativo')} active={statusFilter === 'inativo'} />
-          <KPICard
-            title="Graduados"
-            value={journeyStats?.totalGraduated || 0}
-            description="Total de alunos com faixa"
-            icon={Award}
-            valueColor="text-blue-400"
-          />
-          <KPICard
-            title="Aptos a Avaliar"
-            value={journeyStats?.dueForAssessment || 0}
-            description="Alunos em período de troca"
-            icon={Target}
-            valueColor="text-rose-500"
-          />
+          {typeFilter !== 'visitante' && (
+            <>
+              <KPICard
+                title="Graduados"
+                value={journeyStats?.totalGraduated || 0}
+                description="Total de alunos com faixa"
+                icon={Award}
+                valueColor="text-blue-400"
+              />
+              <KPICard
+                title="Aptos a Avaliar"
+                value={journeyStats?.dueForAssessment || 0}
+                description="Alunos em período de troca"
+                icon={Target}
+                valueColor="text-rose-500"
+              />
+            </>
+          )}
         </div>
 
         {/* Elite Search Bar (Outside) */}
@@ -461,7 +465,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
               { label: 'Ordenar por', value: sortBy, onChange: setSortBy, options: [['recente', 'Mais Recente'], ['az', 'A → Z'], ['za', 'Z → A']] },
-              { label: 'Status', value: statusFilter, onChange: setStatusFilter, options: [['todos', 'Todos'], ['ativo', 'Ativos'], ['inativo', 'Inativos'], ['suspenso', 'Suspensos'], ['arquivado', 'Arquivados']] },
+              { label: 'Status', value: statusFilter, onChange: setStatusFilter, options: typeFilter === 'visitante' ? [['todos', 'Todos'], ['ativo', 'Ativos'], ['inativo', 'Inativos']] : [['todos', 'Todos'], ['ativo', 'Ativos'], ['inativo', 'Inativos'], ['suspenso', 'Suspensos'], ['arquivado', 'Arquivados']] },
               { label: 'Tipo', value: typeFilter, onChange: setTypeFilter, options: [['aluno', 'Alunos'], ['visitante', 'Visitantes'], ['todos', 'Todos']] },
               { label: 'Modalidade', value: modalityFilter, onChange: setModalityFilter, options: modalities.map(m => [m, m === 'todas' ? 'Todas' : m]) },
             ].map(({ label, value, onChange, options, disabled }) => (
