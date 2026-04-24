@@ -1313,12 +1313,23 @@ function SectionAparencia() {
 }
 
 function SectionAcademia({ user, onUpdateProfile }) {
-  const settings = (user && user.academyConfig) ? user.academyConfig : { inativacao_visitante: 10 }
-  
-  const handleUpdate = (key, val) => {
+  const initialSettings = (user && user.academyConfig) ? user.academyConfig : { inativacao_visitante: 10 }
+  const [localSettings, setLocalSettings] = React.useState(initialSettings)
+
+  React.useEffect(() => {
+    if (user?.academyConfig) {
+      setLocalSettings(user.academyConfig)
+    }
+  }, [user?.academyConfig])
+
+  const handleUpdateLocal = (key, val) => {
+    setLocalSettings(prev => ({ ...prev, [key]: val }))
+  }
+
+  const handleSave = (key, val) => {
     onUpdateProfile({
       academyConfig: {
-        ...settings,
+        ...localSettings,
         [key]: val
       }
     })
@@ -1341,8 +1352,10 @@ function SectionAcademia({ user, onUpdateProfile }) {
                   type="range" 
                   min="1" 
                   max="60" 
-                  value={settings.inativacao_visitante || 10}
-                  onChange={(e) => handleUpdate('inativacao_visitante', parseInt(e.target.value))}
+                  value={localSettings.inativacao_visitante || 10}
+                  onChange={(e) => handleUpdateLocal('inativacao_visitante', parseInt(e.target.value))}
+                  onMouseUp={(e) => handleSave('inativacao_visitante', parseInt(e.target.value))}
+                  onTouchEnd={(e) => handleSave('inativacao_visitante', parseInt(e.target.value))}
                   className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary"
                 />
                 <div className="flex justify-between mt-2">
@@ -1351,7 +1364,7 @@ function SectionAcademia({ user, onUpdateProfile }) {
                 </div>
               </div>
               <div className="flex flex-col items-center justify-center bg-primary/10 border border-primary/20 rounded-xl px-4 py-2 min-w-[90px] shadow-lg shadow-primary/5">
-                <span className="text-[14px] font-black text-primary leading-none">{settings.inativacao_visitante || 10}</span>
+                <span className="text-[14px] font-black text-primary leading-none">{localSettings.inativacao_visitante || 10}</span>
                 <span className="text-[8px] font-bold text-primary/60 uppercase tracking-widest mt-1">Dias</span>
               </div>
             </div>

@@ -211,10 +211,14 @@ export default function CollaboratorsPage() {
    */
   const stats = useMemo(() => {
     const active = users.filter(u => u.status === 'Ativo').length
-    const professors = users.filter(u => u.roles?.professor).length
-    const gestors = users.filter(u => u.roles?.gestor || u.roles?.admin).length
+    const getRoles = (u) => u.papeis || u.roles || {}
+    const professors = users.filter(u => getRoles(u).professor).length
+    const gestors = users.filter(u => getRoles(u).gestor || getRoles(u).admin).length
     // Total de equipe: qualquer usuário que tenha uma role administrativa/docente
-    const team = users.filter(u => u.roles?.admin || u.roles?.gestor || u.roles?.professor).length
+    const team = users.filter(u => {
+      const r = getRoles(u)
+      return r.admin || r.gestor || r.professor
+    }).length
     return { total: team, active, professors, gestors }
   }, [users])
 
@@ -224,13 +228,15 @@ export default function CollaboratorsPage() {
    */
   const filteredUsers = useMemo(() => {
     let list = users.filter(user => {
+      const uRoles = user.papeis || user.roles || {}
       // 1. Regra de Negócio: Exibir apenas colaboradores na aba de Equipe
-      const hasStaffRole = user.roles?.admin || user.roles?.gestor || user.roles?.professor
-      if (!hasStaffRole) return false
+      const hasStaffRole = uRoles.admin || uRoles.gestor || uRoles.professor
+      // Garantir que o usuário corrente (admin) apareça mesmo sem roles definidas
+      if (!hasStaffRole && user.id !== userData?.id) return false
 
       // 🛡️ SEGURANÇA: Ocultar Administradores de quem não é Admin
       // Um Gestor, Professor ou qualquer outro não pode ver perfis Admin na lista
-      if (!isAdmin && user.roles?.admin) return false
+      if (!isAdmin && uRoles.admin) return false
 
       // 2. Filtro Textual (Nome/Email)
       const matchesSearch = (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -421,7 +427,7 @@ export default function CollaboratorsPage() {
 
                     <td className="py-4 px-5 text-center">
                       <div className="flex flex-wrap justify-center gap-1.5">
-                        {Object.entries(member.roles || {}).map(([role, active]) => {
+                        {Object.entries(member.papeis || member.roles || {}).map(([role, active]) => {
                           if (!active) return null
                           const cfg = roleStyles[role] || roleStyles.professor
                           return (
@@ -430,7 +436,7 @@ export default function CollaboratorsPage() {
                             </span>
                           )
                         })}
-                        {(!member.roles || Object.keys(member.roles).length === 0) && (
+                        {(!(member.papeis || member.roles) || Object.keys(member.papeis || member.roles || {}).length === 0) && (
                           <span className="text-[10px] text-gray-700 font-bold italic">Sem Roles</span>
                         )}
                       </div>

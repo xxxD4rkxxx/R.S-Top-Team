@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useStudents } from '../../hooks/useStudents'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
 import { useStudentJourney } from '../../hooks/useStudentJourney'
+import { useAttendanceAlerts } from '../../hooks/useAttendanceAlerts'
 import { useApp } from '../../context/AppContext'
 import AddStudentModal from '../../components/shared/AddStudentModal'
 import GraduationHistoryModal from '../../components/students/GraduationHistoryModal'
@@ -46,6 +47,16 @@ function normalizeStatus(status) {
   if (status === 'suspenso' || status === 'suspended') return 'suspenso'
   if (status === 'arquivado' || status === 'archived') return 'arquivado'
   return 'ativo'
+}
+
+function VisitorAttendanceBadge({ studentId, createdAt }) {
+  const { monthlyCount, isLoading } = useAttendanceAlerts(studentId, createdAt);
+  if (isLoading) return <span className="text-[10px] text-gray-500 font-black animate-pulse">...</span>;
+  return (
+    <div className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase whitespace-nowrap">
+      {monthlyCount} {monthlyCount === 1 ? 'dia' : 'dias'}
+    </div>
+  );
 }
 
 // Dialog de confirmação dupla para deletar
@@ -233,7 +244,8 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
     const visitorsToInactivate = students.filter(s => {
       if (!s.roles?.visitante || normalizeStatus(s.status) !== 'ativo') return false;
       
-      const lastVisit = s.ultima_visita?.toDate?.() || s.criado_em?.toDate?.() || new Date(0);
+      const d = s.lastAttendanceAt || s.createdAt;
+      const lastVisit = d ? (typeof d.toDate === 'function' ? d.toDate() : new Date(d)) : new Date();
       const diffTime = Math.abs(now - lastVisit);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
@@ -402,12 +414,19 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
       />
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
-        <div className={`grid grid-cols-2 ${typeFilter === 'visitante' ? 'lg:grid-cols-2 max-w-3xl' : 'lg:grid-cols-4'} gap-4 md:gap-5`}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
           <KPICard title="Ativos" value={stats.active} description="Alunos matriculados e frequentando" icon={UserCheck} valueColor="text-emerald-400"
             onClick={() => setStatusFilter(statusFilter === 'ativo' ? 'todos' : 'ativo')} active={statusFilter === 'ativo'} />
           <KPICard title="Inativos" value={stats.inactive} description="Alunos que cancelaram ou pararam" icon={UserX}
             onClick={() => setStatusFilter(statusFilter === 'inativo' ? 'todos' : 'inativo')} active={statusFilter === 'inativo'} />
-          {typeFilter !== 'visitante' && (
+          
+          {typeFilter === 'visitante' ? (
+            <>
+              <KPICard title="Total Visitantes" value={students.filter(s => s.roles?.visitante).length} description="Todos os leads/visitantes" icon={Users} valueColor="text-blue-400"
+                onClick={() => setStatusFilter('todos')} active={statusFilter === 'todos'} />
+              <KPICard title="% de Conversão" value="-- %" description="Visitantes que viraram alunos" icon={Award} valueColor="text-primary" />
+            </>
+          ) : (
             <>
               <KPICard
                 title="Graduados"
@@ -487,10 +506,12 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                   <tr className="border-b border-white/10 text-[10px] uppercase font-black text-gray-500 tracking-wider bg-white/5">
                     <th className="py-3 px-5">Aluno</th>
                     <th className="py-3 px-5 text-center">Telefone</th>
-                    <th className="py-3 px-5 text-center">PIN</th>
+                    {typeFilter !== 'visitante' && <th className="py-3 px-5 text-center">PIN</th>}
                     <th className="py-3 px-5 text-center">Modalidade</th>
-                    <th className="py-3 px-5 text-center">Pagamento</th>
-                    <th className="py-3 px-5 w-12 text-center text-gray-500">CTO</th>
+                    {typeFilter !== 'visitante' && <th className="py-3 px-5 text-center">Pagamento</th>}
+                    {typeFilter !== 'visitante' && <th className="py-3 px-5 w-12 text-center text-gray-500">CTO</th>}
+                    {typeFilter === 'visitante' && <th className="py-3 px-5 text-center">Última Visita</th>}
+                    {typeFilter === 'visitante' && <th className="py-3 px-5 text-center">Visitas</th>}
                     <th className="py-3 px-5 text-center">Status</th>
                     <th className="py-3 px-5 w-12 text-center text-gray-500">Ações</th>
                   </tr>
@@ -535,17 +556,19 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                           <span className="text-gray-600">--</span>
                         )}
                       </td>
-                      <td className="py-4 px-5 text-center">
-                        {canSeeStudents ? (
-                          <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-emerald-400 tracking-[0.2em] min-w-[80px]">
-                            {student.pin || fetchedPins[student.id] || '---'}
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-gray-700 tracking-widest min-w-[80px]">
-                            ••••••
-                          </div>
-                        )}
-                      </td>
+                      {typeFilter !== 'visitante' && (
+                        <td className="py-4 px-5 text-center">
+                          {canSeeStudents ? (
+                            <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-emerald-400 tracking-[0.2em] min-w-[80px]">
+                              {student.pin || fetchedPins[student.id] || '---'}
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-gray-700 tracking-widest min-w-[80px]">
+                              ••••••
+                            </div>
+                          )}
+                        </td>
+                      )}
                       <td className="py-4 px-5 text-center">
                         <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
                           {(student.modalities || [student.modality]).map((m, i) => (
@@ -555,17 +578,44 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                           ))}
                         </div>
                       </td>
-                      <td className="py-4 px-5 text-center">
-                        <span className="px-3 py-1.5 rounded-xl bg-white/5 text-gray-600 text-[10px] font-black uppercase border border-white/5 whitespace-nowrap">
-                          Em breve
-                        </span>
-                      </td>
+                      {typeFilter !== 'visitante' && (
+                        <td className="py-4 px-5 text-center">
+                          <span className="px-3 py-1.5 rounded-xl bg-white/5 text-gray-600 text-[10px] font-black uppercase border border-white/5 whitespace-nowrap">
+                            Em breve
+                          </span>
+                        </td>
+                      )}
 
-                      <td className="py-4 px-5 text-center">
-                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 mx-auto">
-                          <FileText size={18} strokeWidth={1.9} className="text-gray-500" />
-                        </div>
-                      </td>
+                      {typeFilter !== 'visitante' && (
+                        <td className="py-4 px-5 text-center">
+                          <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 mx-auto">
+                            <FileText size={18} strokeWidth={1.9} className="text-gray-500" />
+                          </div>
+                        </td>
+                      )}
+
+                      {typeFilter === 'visitante' && (
+                        <td className="py-4 px-5 text-center">
+                          <span className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase text-gray-400 whitespace-nowrap">
+                            {(() => {
+                              const d = student.lastAttendanceAt || student.createdAt;
+                              if (!d) return '--/--/----';
+                              try {
+                                return (typeof d.toDate === 'function' ? d.toDate() : new Date(d)).toLocaleDateString('pt-BR');
+                              } catch(e) {
+                                return '--/--/----';
+                              }
+                            })()}
+                          </span>
+                        </td>
+                      )}
+
+                      {typeFilter === 'visitante' && (
+                        <td className="py-4 px-5 text-center">
+                          <VisitorAttendanceBadge studentId={student.id} createdAt={student.createdAt} />
+                        </td>
+                      )}
+
                       <td className="py-4 px-5 text-center">{renderStatusBadge(student)}</td>
                       <td className="py-4 px-5 text-center">
                         <div className="relative inline-block">
