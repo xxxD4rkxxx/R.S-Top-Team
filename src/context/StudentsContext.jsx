@@ -41,6 +41,8 @@ function parseFirestoreDate(value) {
 }
 export function StudentsProvider({ children }) {
   const [students, setStudents] = useState([])
+  const [rawUsers, setRawUsers] = useState([])
+  const [rawVisitors, setRawVisitors] = useState([])
   const [isLoadingStudents, setIsLoadingStudents] = useState(true)
   const { user } = useAuth()
 
@@ -53,76 +55,76 @@ export function StudentsProvider({ children }) {
       return
     }
 
-    const usersRef = collection(db, 'users')
-    const studentsQuery = query(
-      usersRef, 
-      where('roles.aluno', '==', true)
-    )
+    const usersRef = collection(db, 'usuarios')
+    const visitorsRef = collection(db, 'visitantes')
 
-    const unsubscribe = onSnapshot(
-      studentsQuery,
-      snapshot => {
-        const fromDb = snapshot.docs.map(item => {
-          const data = item.data()
-          const modalities = data.modalities || [data.modality || 'Jiu Jitsu']
-          
-          // Sanitização de Nome
-          let rawName = data.name || ''
-          const cleanName = rawName.toLowerCase().trim()
-          if (!rawName || cleanName === 'undefined' || cleanName === 'null' || cleanName.includes('indefin')) {
-            rawName = 'Aluno'
-          }
-
-          // Sanitização de Foto
-          let photo = data.photo || null
-          if (photo === 'undefined' || photo === 'null' || (typeof photo === 'string' && photo.includes('undefined'))) {
-            photo = null
-          }
-          
-          return {
-            id: item.id,
-            name: rawName,
-            initials: data.initials || buildInitials(rawName),
-            belt: data.belt || 'white',
-            modality: data.modality || modalities[0] || 'Jiu Jitsu',
-            modalities,
-            modalityPrimary: modalities[0] || data.modality || 'Jiu Jitsu',
-            stripes: Number.isFinite(data.stripes) ? data.stripes : 0,
-            pin: data.pin || '',
-            status: data.status ?? null,
-            isVisitor: Boolean(data.isVisitor),
-            photo: photo,
-            email: data.email || '',
-            phone: data.phone || '',
-            emergency: data.emergency || '',
-            medical: data.medical || '',
-            birthday: parseFirestoreDate(data.birthday),
-            medicalExamDate: parseFirestoreDate(data.medicalExamDate),
-            ageCategory: data.ageCategory || 'Adulto',
-            gender: data.gender || 'Masculino',
-            parentName: data.parentName || '',
-            parentPhone: data.parentPhone || '',
-            createdAt: parseFirestoreDate(data.createdAt),
-            lastAttendanceAt: parseFirestoreDate(data.lastAttendanceAt),
-            lastStatusAt: parseFirestoreDate(data.lastStatusAt),
-            statusReason: data.statusReason || '',
-            statusReturnDate: data.statusReturnDate || '',
-            roles: data.roles || {}
-          }
-        })
-        
-        const sorted = fromDb.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-        setStudents(sorted)
-        setIsLoadingStudents(false)
-      },
-      error => {
-        console.error('Erro ao carregar alunos unificados (Context):', error)
-        setIsLoadingStudents(false)
+    // Função para mapear documentos (DRY)
+    const mapDoc = (item, isVisitorForce = false) => {
+      const data = item.data()
+      const modalities = data.modalities || [data.modality || 'Jiu Jitsu']
+      
+      let rawName = data.name || data.nome || ''
+      const cleanName = rawName.toLowerCase().trim()
+      if (!rawName || cleanName === 'undefined' || cleanName === 'null' || cleanName.includes('indefin')) {
+        rawName = 'Pessoa'
       }
-    )
 
-    return () => unsubscribe()
+      let photo = data.photo || null
+      if (photo === 'undefined' || photo === 'null' || (typeof photo === 'string' && photo.includes('undefined'))) {
+        photo = null
+      }
+      
+      const tech = data.jornada_tecnica || {}
+      
+      return {
+        id: item.id,
+        name: rawName,
+        initials: data.initials || buildInitials(rawName),
+        belt: (tech.faixa_atual || data.belt || data.faixa || 'white').toLowerCase(),
+        modality: data.modality || modalities[0] || 'Jiu Jitsu',
+        modalities,
+        modalityPrimary: modalities[0] || data.modality || 'Jiu Jitsu',
+        stripes: Number.isFinite(tech.graus_atuais) ? tech.graus_atuais : (Number.isFinite(data.stripes) ? data.stripes : 0),
+        pin: data.pin || '',
+        status: data.status ?? 'Ativo',
+        isVisitor: isVisitorForce || Boolean(data.isVisitor) || Boolean(data.roles?.visitante),
+        photo: photo,
+        email: data.email || '',
+        phone: data.phone || data.telefone || '',
+        emergency: data.emergency || '',
+        medical: data.medical || '',
+        birthday: parseFirestoreDate(data.birthday),
+        createdAt: parseFirestoreDate(data.createdAt || data.criadoEm),
+        lastAttendanceAt: parseFirestoreDate(data.lastAttendanceAt),
+        roles: data.roles || data.papeis || {}
+      }
+    }
+
+    // Escuta Alunos/Professores
+    const unsubUsers = onSnapshot(usersRef, snapshot => {
+      const usersData = snapshot.docs.map(d => mapDoc(d))
+      setRawUsers(usersData)
+    })
+
+    // Escuta Visitantes (Leads)
+    const unsubVisitors = onSnapshot(visitorsRef, snapshot => {
+      const visitorsData = snapshot.docs.map(d => mapDoc(d, true))
+      setRawVisitors(visitorsData)
+    })
+
+    return () => {
+      unsubUsers()
+      unsubVisitors()
+    }
   }, [user])
+
+  // Consolidação dos dados
+  useEffect(() => {
+    const combined = [...rawUsers, ...rawVisitors]
+    const sorted = combined.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    setStudents(sorted)
+    setIsLoadingStudents(false)
+  }, [rawUsers, rawVisitors])
 
   return (
     <StudentsContext.Provider value={{ students, isLoadingStudents }}>

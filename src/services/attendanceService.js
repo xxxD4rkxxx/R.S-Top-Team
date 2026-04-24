@@ -72,6 +72,9 @@ export const attendanceService = {
             const userRef = doc(db, USERS_COLLECTION, student.id)
             batch.update(userRef, {
               lastAttendanceAt: serverTimestamp(),
+              ultima_visita: serverTimestamp(),
+              total_visitas: increment(1),
+              [FIELDS.STATUS]: 'Ativo', // Reativa automaticamente se houver presença
               [`${FIELDS.JORNADA_TECNICA}.${FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO}`]: increment(1),
               [FIELDS.ATUALIZADO_EM]: serverTimestamp()
             })

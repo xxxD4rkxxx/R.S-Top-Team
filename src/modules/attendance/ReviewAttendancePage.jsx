@@ -250,14 +250,21 @@ export default function ReviewAttendancePage() {
                       </div>
                     )}
                     {status === 'absent' && (
-                      <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full p-0.5 border-2 border-black">
+                      <div className="absolute -bottom-1 -right-1 bg-rose-500 rounded-full p-0.5 border-2 border-black">
                         <XCircle size={10} className="text-white" />
                       </div>
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white truncate max-w-[120px]">{student.name}</p>
-                    <p className="text-[10px] text-gray-500 uppercase">Faixa {beltConfig[student.belt]?.label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-white truncate max-w-[120px]">{student.name}</p>
+                      {student.type === 'visitante' && (
+                        <span className="bg-primary/20 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-lg uppercase tracking-tighter">Visitante</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-500 uppercase">
+                      {student.type === 'visitante' ? 'Aguardando Matrícula' : `Faixa ${beltConfig[student.belt]?.label || 'Branca'}`}
+                    </p>
                   </div>
                 </div>
 
@@ -265,7 +272,7 @@ export default function ReviewAttendancePage() {
                   {!isEditing ? (
                     <div className="flex items-center px-3 py-1.5 rounded-xl border border-white/5 bg-white/[0.02]">
                       {status === 'present' && <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Presente</span>}
-                      {status === 'absent' && <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Falta</span>}
+                      {status === 'absent' && <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Falta</span>}
                       {status === 'justified' && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Justificada</span>}
                       {!status && <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Ausente</span>}
                     </div>
@@ -279,7 +286,7 @@ export default function ReviewAttendancePage() {
                       </button>
                       <button
                         onClick={() => setRecords(prev => ({ ...prev, [student.id]: 'absent' }))}
-                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${status === 'absent' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${status === 'absent' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
                       >
                         F
                       </button>

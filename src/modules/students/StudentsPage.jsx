@@ -4,7 +4,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Users, Plus, FileDown, FileUp, Search,
+  Users, User, Plus, FileDown, FileUp, Search, Clock,
   UserCheck, UserX, UserMinus, Archive, MoreVertical,
   Edit2, Copy, CalendarDays, GraduationCap, CreditCard, Trash2,
   FileText, RefreshCcw, ChevronDown, Award, Target, Smartphone, Eye
@@ -162,10 +162,10 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   )
 }
 
-export default function StudentsPage() {
+export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   const { currentModality, isAdminView } = useApp()
   const { user, userData, effectiveRole } = useAuth()
-  const { students, isLoadingStudents, addStudent, updateStudentProfile, changeStudentStatus, deleteStudent } = useStudents()
+  const { students, isLoadingStudents, addStudent, updateStudentProfile, changeStudentStatus, deleteStudent, deleteVisitor } = useStudents()
   const { fetchUserPin } = useSystemUsers()
   const [fetchedPins, setFetchedPins] = useState({})
 
@@ -199,12 +199,20 @@ export default function StudentsPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
+  const [typeFilter, setTypeFilter] = useState(defaultTypeFilter) // 'aluno', 'visitante' ou 'todos'
   const [modalityFilter, setModalityFilter] = useState('todas')
   const [sortBy, setSortBy] = useState('recente')
 
   const stats = useMemo(() => {
     let active = 0, inactive = 0, suspended = 0, archived = 0
     students.forEach(s => {
+      // 🛡️ Filtramos estatísticas pelo tipo atual (Aluno ou Visitante)
+      const isTypeMatch = typeFilter === 'todos' || 
+                         (typeFilter === 'aluno' && s.roles?.aluno) || 
+                         (typeFilter === 'visitante' && s.roles?.visitante);
+      
+      if (!isTypeMatch) return;
+
       const n = normalizeStatus(s.status)
       if (n === 'ativo') active++
       else if (n === 'inativo') inactive++
@@ -212,7 +220,33 @@ export default function StudentsPage() {
       else if (n === 'arquivado') archived++
     })
     return { active, inactive, suspended, archived }
-  }, [students])
+  }, [students, typeFilter])
+
+  // ⚡ Lógica de Inativação Automática de Visitantes (SSoT)
+  useEffect(() => {
+    if (!students || students.length === 0 || !userData?.academyConfig?.inativacao_visitante) return;
+    
+    const limitDays = userData.academyConfig.inativacao_visitante;
+    const now = new Date();
+    
+    // Filtramos apenas visitantes ATIVOS que excederam o limite de dias desde a última visita (ou criação)
+    const visitorsToInactivate = students.filter(s => {
+      if (!s.roles?.visitante || normalizeStatus(s.status) !== 'ativo') return false;
+      
+      const lastVisit = s.ultima_visita?.toDate?.() || s.criado_em?.toDate?.() || new Date(0);
+      const diffTime = Math.abs(now - lastVisit);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return diffDays > limitDays;
+    });
+
+    if (visitorsToInactivate.length > 0) {
+      console.log(`⚡ Academy Bot: Inativando ${visitorsToInactivate.length} visitantes por ausência excedida (${limitDays} dias).`);
+      visitorsToInactivate.forEach(v => {
+        changeStudentStatus(v.id, 'inativo', { reason: `Inativação automática por ausência superior a ${limitDays} dias.` });
+      });
+    }
+  }, [students, userData?.academyConfig?.inativacao_visitante, changeStudentStatus]);
 
   const modalities = useMemo(() => {
     const set = new Set(students.map(s => s.modality).filter(Boolean))
@@ -220,8 +254,12 @@ export default function StudentsPage() {
   }, [students])
 
   const filtered = useMemo(() => {
-    // 🛡️ SEGURANÇA: Filtrar apenas quem tem o papel de ALUNO
-    let list = students.filter(s => s.roles?.aluno === true)
+    // 🛡️ SEGURANÇA: Filtrar por papel (ALUNO ou VISITANTE)
+    let list = students.filter(s => {
+      if (typeFilter === 'aluno') return s.roles?.aluno === true
+      if (typeFilter === 'visitante') return s.roles?.visitante === true
+      return s.roles?.aluno === true || s.roles?.visitante === true
+    })
 
     // 🛡️ SEGURANÇA: Ocultar Administradores de quem não é Admin
     if (!isAdmin) {
@@ -251,12 +289,22 @@ export default function StudentsPage() {
   async function handleAddStudent(data, modality, options) {
     try {
       if (editData) {
-        // MODO EDIÇÃO: Atualiza o perfil sem resetar jornada
-        await updateStudentProfile(editData.id, {
-          ...data,
-          modalities: modality,
-          modality: modality[0] || 'Jiu Jitsu'
-        })
+        const wasVisitor = editData.isVisitor || editData.roles?.visitante
+        
+        if (wasVisitor && !options.isVisitor) {
+          // PROMOÇÃO: Transformar Visitante em Aluno
+          // 1. Criar novo registro na coleção USARIOS
+          await addStudent(data, modality, { ...options, isVisitor: false })
+          // 2. Deletar registro da coleção VISITANTES
+          await deleteVisitor(editData.id)
+        } else {
+          // EDIÇÃO NORMAL
+          await updateStudentProfile(editData.id, {
+            ...data,
+            modalities: modality,
+            modality: modality[0] || 'Jiu Jitsu'
+          })
+        }
       } else {
         // MODO CRIAÇÃO: Verifica duplicidade antes de adicionar
         const isDuplicate = students.some(s =>
@@ -308,7 +356,7 @@ export default function StudentsPage() {
   }
 
   function renderAvatar(student) {
-    const bgClass = beltConfig[student.belt]?.bgClass || 'belt-none'
+    const bgClass = beltConfig[student.belt?.toLowerCase()]?.bgClass || 'belt-none'
     const initials = student.initials || student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
 
     return (
@@ -330,7 +378,7 @@ export default function StudentsPage() {
     const cfg = {
       ativo: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
       inativo: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-      suspenso: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+      suspenso: 'bg-primary/10 text-primary border-primary/20',
       arquivado: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     }
     const labels = { ativo: 'Ativo', inativo: 'Inativo', suspenso: 'Suspenso', arquivado: 'Arquivado' }
@@ -348,9 +396,9 @@ export default function StudentsPage() {
       />
 
       <PageHeader
-        icon={Users}
-        title="GESTÃO DE ALUNOS"
-        subtitle="CONTROLE DE MATRÍCULAS E PRESENÇA"
+        icon={typeFilter === 'visitante' ? Clock : Users}
+        title={typeFilter === 'visitante' ? "GESTÃO DE VISITANTES" : "GESTÃO DE ALUNOS"}
+        subtitle={typeFilter === 'visitante' ? "CONTROLE DE LEADS E INTERESSADOS" : "CONTROLE DE MATRÍCULAS E PRESENÇA"}
       />
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
@@ -392,13 +440,13 @@ export default function StudentsPage() {
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
             >
               <Plus size={18} strokeWidth={2.5} />
-              <span className="hidden md:inline">NOVO ALUNO</span>
+              <span className="hidden md:inline">{typeFilter === 'visitante' ? 'NOVO VISITANTE' : 'NOVO ALUNO'}</span>
             </button>
           )}
 
-          {(statusFilter !== 'todos' || modalityFilter !== 'todas' || searchTerm) && (
+          {(statusFilter !== 'todos' || modalityFilter !== 'todas' || typeFilter !== defaultTypeFilter || searchTerm) && (
             <button
-              onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setSearchTerm('') }}
+              onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setTypeFilter(defaultTypeFilter); setSearchTerm('') }}
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
               <RefreshCcw size={18} strokeWidth={1.9} />
@@ -414,7 +462,7 @@ export default function StudentsPage() {
             {[
               { label: 'Ordenar por', value: sortBy, onChange: setSortBy, options: [['recente', 'Mais Recente'], ['az', 'A → Z'], ['za', 'Z → A']] },
               { label: 'Status', value: statusFilter, onChange: setStatusFilter, options: [['todos', 'Todos'], ['ativo', 'Ativos'], ['inativo', 'Inativos'], ['suspenso', 'Suspensos'], ['arquivado', 'Arquivados']] },
-              { label: ' Pagamento', value: '', onChange: () => { }, disabled: true, options: [['', 'Todos']] },
+              { label: 'Tipo', value: typeFilter, onChange: setTypeFilter, options: [['aluno', 'Alunos'], ['visitante', 'Visitantes'], ['todos', 'Todos']] },
               { label: 'Modalidade', value: modalityFilter, onChange: setModalityFilter, options: modalities.map(m => [m, m === 'todas' ? 'Todas' : m]) },
             ].map(({ label, value, onChange, options, disabled }) => (
               <CustomSelect key={label} label={label} value={value} onChange={onChange} options={options} disabled={disabled} />
@@ -454,9 +502,15 @@ export default function StudentsPage() {
                             <span className="text-sm text-app font-medium block uppercase tracking-tight group-hover:text-primary transition-colors">
                               {student.name}
                             </span>
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
-                              {beltConfig[student.belt]?.label || 'Sem faixa'}
-                              {student.stripes > 0 ? ` · ${student.stripes} GRAUS` : ''}
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5 flex items-center gap-1.5">
+                              {student.roles?.visitante ? (
+                                <span className="text-primary flex items-center gap-1 font-black"><User size={10} /> VISITANTE</span>
+                              ) : (
+                                <>
+                                  {beltConfig[student.belt?.toLowerCase()]?.label || 'Sem faixa'}
+                                  {student.stripes > 0 ? ` · ${student.stripes} GRAUS` : ''}
+                                </>
+                              )}
                             </span>
                           </div>
                         </div>
@@ -601,6 +655,7 @@ export default function StudentsPage() {
             isOpen={true}
             initialModality={currentModality}
             initialData={editData || duplicateData}
+            initialType={typeFilter === 'aluno' ? 'aluno' : 'visitante'}
             isDuplicate={!!duplicateData}
             onClose={() => {
               setShowModal(false)
@@ -620,9 +675,14 @@ export default function StudentsPage() {
             if (type === 'view') {
               setShowPinModal(false);
               setSelectedStudent(student);
-            } else if (type === 'edit') {
+            } else if (type === 'edit' || type === 'convert') {
               setShowPinModal(false);
-              setEditData(student);
+              // Se for conversão, forçamos o tipo para 'aluno' nos dados que enviamos para o modal
+              if (type === 'convert') {
+                setEditData({ ...student, isPromoting: true })
+              } else {
+                setEditData(student);
+              }
               setShowModal(true);
             } else if (type === 'delete') {
               // 🛡️ Segurança: Todos agora passam pela confirmação de nome após o PIN
@@ -656,16 +716,14 @@ export default function StudentsPage() {
                 setGraduationModalStudent(student);
               } else if (actionType === 'cards') {
                 setPaymentDrawerStudent(student);
+              } else if (actionType === 'edit' || actionType === 'delete' || actionType === 'convert') {
+                setPinModalAction({ type: actionType, student })
+                setShowPinModal(true)
               } else if (actionType === 'inactive' || actionType === 'suspend' || actionType === 'archive') {
-                // Status changes don't require PIN in current logic, but we map them to the StatusDialog
-                // We translate the action type to the expected dialog format
-                const actionMap = { inactive: 'inativar', suspend: 'suspender', archive: 'arquivar' };
-                setStatusDialogStudent({ student, action: actionMap[actionType] });
-              } else if (actionType === 'edit' || actionType === 'delete') {
-                setPinModalAction({ type: actionType, student });
-                setShowPinModal(true);
+                const actionMap = { inactive: 'inativar', suspend: 'suspender', archive: 'arquivar' }
+                setStatusDialogStudent({ student, action: actionMap[actionType] })
               }
-              setShowMenu(null);
+              setShowMenu(null)
             }}
           />
         )}
@@ -708,8 +766,16 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
             <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
               <Edit2 size={14} className="text-orange-400" />
             </div>
-            Editar
+            {student.roles?.visitante ? 'Editar Perfil' : 'Editar Aluno'}
           </button>
+          {student.roles?.visitante && (
+            <button onClick={(e) => { e.stopPropagation(); onAction('convert', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-all group font-medium">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <GraduationCap size={14} className="text-primary" />
+              </div>
+              Converter em Aluno
+            </button>
+          )}
           <button onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
             <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
               <Copy size={14} className="text-purple-400" />
@@ -743,9 +809,9 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
             </div>
             Inativar
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#FFD700] hover:bg-[#FFD700]/10 transition-all group font-medium">
-            <div className="w-8 h-8 rounded-lg bg-[#FFD700]/10 flex items-center justify-center group-hover:bg-[#FFD700]/20 transition-colors">
-              <UserMinus size={14} className="text-[#FFD700]" />
+          <button onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <UserMinus size={14} className="text-primary" />
             </div>
             Suspender
           </button>
@@ -810,10 +876,25 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
                   <Edit2 size={20} className="text-orange-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-black text-white">Editar</p>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar dados do aluno</p>
+                  <p className="text-sm font-black text-white">{student.roles?.visitante ? 'Editar Perfil' : 'Editar Aluno'}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar dados cadastrais</p>
                 </div>
               </button>
+
+              {student.roles?.visitante && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAction('convert', student) }}
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl bg-primary/10 border border-primary/20 active:scale-95 text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                    <GraduationCap size={20} className="text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-black text-primary">Converter em Aluno</p>
+                    <p className="text-[10px] text-primary/60 font-bold uppercase tracking-widest leading-none mt-1">Transformar lead em matrícula</p>
+                  </div>
+                </button>
+              )}
 
               <button
                 onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }}
@@ -867,12 +948,12 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
 
                 <button
                   onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }}
-                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-[#FFD700]/5 border border-[#FFD700]/10 active:scale-95 text-center transition-colors hover:bg-[#FFD700]/10"
+                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-primary/5 border border-primary/10 active:scale-95 text-center transition-colors hover:bg-primary/10"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[#FFD700]/10 flex items-center justify-center">
-                    <UserMinus size={16} className="text-[#FFD700]" />
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <UserMinus size={16} className="text-primary" />
                   </div>
-                  <p className="text-[11px] font-black text-[#FFD700] uppercase tracking-widest">Suspender</p>
+                  <p className="text-[11px] font-black text-primary uppercase tracking-widest">Suspender</p>
                 </button>
 
                 <button

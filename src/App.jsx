@@ -99,14 +99,6 @@ function AppContent() {
   }, [])
 
   const { user, userData, isSetupMode, loading: authLoading } = useAuth()
-  const { autoMigrateIfLegacy } = useSystemUsers()
-
-  // 0. AUTO-MIGRAÇÃO: Se o usuário for Staff e estiver vindo de uma coleção legada, migra automaticamente.
-  useEffect(() => {
-    if (user && userData?.isLegacyProfile) {
-      autoMigrateIfLegacy(userData)
-    }
-  }, [user, userData, autoMigrateIfLegacy])
 
   const isAuthPage = ['/login', '/registro'].includes(location.pathname)
 
@@ -186,10 +178,7 @@ function AppContent() {
                     <Route path="/modalities" element={<Navigate to="/modalidades" replace />} />
                     <Route path="/home" element={<Navigate to="/inicio" replace />} />
 
-                    <Route path="/visitantes" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
-                      icon={CalendarDays} title="Aulas Experimentais"
-                      features={['Cadastro de novos interessados', 'Lembretes automáticos', 'Histórico de visitas', 'Conversão para matrícula']}
-                    /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/visitantes" element={<ProtectedRoute><AnimatedPage><StudentsPage defaultTypeFilter="visitante" /></AnimatedPage></ProtectedRoute>} />
 
                     <Route path="/modalidades" element={<ProtectedRoute><AnimatedPage><ModalitiesPage /></AnimatedPage></ProtectedRoute>} />
 

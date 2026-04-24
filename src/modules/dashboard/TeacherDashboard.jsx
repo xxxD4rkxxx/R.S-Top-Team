@@ -212,7 +212,7 @@ export default function TeacherDashboard() {
                       <p className="text-sm font-bold text-white group-hover:text-primary transition-colors">{sess.classTitle || sess.title}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{sess.modality || 'Regular'}</span>
-                        {sess.isExperimental && <span className="text-[9px] font-black bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded border border-amber-500/20 uppercase tracking-tighter">Experimental</span>}
+                        {sess.isExperimental && <span className="text-[9px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20 uppercase tracking-tighter">Experimental</span>}
                       </div>
                     </div>
                   </div>
@@ -338,7 +338,7 @@ export default function TeacherDashboard() {
                   </div>
                   <div className="flex flex-col items-end">
                     {sess.isExperimental ? (
-                      <span className="text-[9px] font-black bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded-full uppercase border border-amber-500/20">Experimental</span>
+                      <span className="text-[9px] font-black bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase border border-primary/20">Experimental</span>
                     ) : (
                       <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full uppercase border border-emerald-500/20">Regular</span>
                     )}
@@ -371,15 +371,15 @@ export default function TeacherDashboard() {
             <p className="text-center text-gray-600 text-sm py-10">Nenhuma aula experimental para hoje.</p>
           ) : (
             todaySessions.filter(s => s.isExperimental).map((ex, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-xll bg-amber-500/5 border border-amber-500/10">
+              <div key={i} className="flex items-center justify-between p-4 rounded-xll bg-primary/5 border border-primary/10">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-black">EX</div>
+                  <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-black">EX</div>
                   <div>
                     <p className="text-sm font-bold text-white uppercase tracking-wide">Experimental às {ex.time}</p>
                     <p className="text-xs text-gray-500">{ex.note || 'Aluno interessado em conhecer a academia'}</p>
                   </div>
                 </div>
-                <button className="text-amber-500 hover:underline text-[10px] font-black uppercase">Ver Perfil</button>
+                <button className="text-primary hover:underline text-[10px] font-black uppercase">Ver Perfil</button>
               </div>
             ))
           )}
@@ -537,7 +537,7 @@ export default function TeacherDashboard() {
                           </span>
                         )}
                         {situacao === 'pendente' && (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20 uppercase tracking-tight shrink-0">
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-primary/15 text-primary/80 border border-primary/20 uppercase tracking-tight shrink-0">
                             Pendente
                           </span>
                         )}

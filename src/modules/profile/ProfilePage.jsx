@@ -1312,15 +1312,53 @@ function SectionAparencia() {
   )
 }
 
-function SectionAcademia() {
+function SectionAcademia({ user, onUpdateProfile }) {
+  const settings = (user && user.academyConfig) ? user.academyConfig : { inativacao_visitante: 10 }
+  
+  const handleUpdate = (key, val) => {
+    onUpdateProfile({
+      academyConfig: {
+        ...settings,
+        [key]: val
+      }
+    })
+  }
+
   return (
     <div className="space-y-6">
-      <Section title="Informações da academia">
-        <InlineField label="Nome" value="RS Top Team" />
-        <InlineField label="Modalidades" value="Jiu-Jitsu, Boxe" />
-        <InlineField label="Endereço" value="" placeholder="Adicionar endereço..." />
-        <InlineField label="Telefone" value="" placeholder="(51) 9xxxx-xxxx" />
+      <Section title="Informações da Academia">
+        <InlineField label="Nome" value={user?.academyName || user?.name || "RS Top Team"} />
       </Section>
+
+      <Section title="Configuração de Visitantes">
+        <SettingRow 
+          label="Inativação Automática" 
+          desc="Após quantos dias de ausência o visitante é movido para inativo?" 
+          action={
+            <div className="flex items-center gap-6">
+              <div className="flex-1 max-w-[200px]">
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="60" 
+                  value={settings.inativacao_visitante || 10}
+                  onChange={(e) => handleUpdate('inativacao_visitante', parseInt(e.target.value))}
+                  className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary"
+                />
+                <div className="flex justify-between mt-2">
+                  <span className="text-[8px] text-gray-600 font-bold uppercase tracking-tighter">1 dia</span>
+                  <span className="text-[8px] text-gray-600 font-bold uppercase tracking-tighter">60 dias</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center justify-center bg-primary/10 border border-primary/20 rounded-xl px-4 py-2 min-w-[90px] shadow-lg shadow-primary/5">
+                <span className="text-[14px] font-black text-primary leading-none">{settings.inativacao_visitante || 10}</span>
+                <span className="text-[8px] font-bold text-primary/60 uppercase tracking-widest mt-1">Dias</span>
+              </div>
+            </div>
+          } 
+        />
+      </Section>
+
       <Section title="Planos ativos">
         <SettingRow label="Mensalidade Jiu-Jitsu" desc="Valor padrão da mensalidade" action={<ChipButton label="R$ 180" />} />
         <SettingRow label="Mensalidade Boxe" desc="Valor padrão da mensalidade" action={<ChipButton label="R$ 150" />} />
@@ -1328,7 +1366,6 @@ function SectionAcademia() {
     </div>
   )
 }
-
 function SectionDados({ onSync }) {
   const [syncing, setSyncing] = useState(false)
 
@@ -1520,7 +1557,7 @@ export default function ProfilePage() {
     seguranca: <SectionSeguranca user={userData} onChangePassword={changePassword} activityLogs={logs} />,
     notificacoes: <SectionNotificacoes user={userData} onUpdateProfile={handleUpdateProfile} />,
     aparencia: <SectionAparencia />,
-    academia: <ModuleUnderDevelopment icon={Dumbbell} title="Configurações da Academia" />,
+    academia: <SectionAcademia user={userData} onUpdateProfile={handleUpdateProfile} />,
     usuarios: <SectionUsuarios
       users={users}
       onAddUser={createNewUser}

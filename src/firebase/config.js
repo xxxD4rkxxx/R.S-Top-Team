@@ -20,7 +20,7 @@ import {
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
-  persistentSingleTabManager,
+  persistentMultipleTabManager,
   CACHE_SIZE_UNLIMITED
 } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
@@ -44,11 +44,11 @@ try {
   if (app) {
     dbInstance = initializeFirestore(app, {
       localCache: persistentLocalCache({
-        tabManager: persistentSingleTabManager(),
+        tabManager: persistentMultipleTabManager(),
         cacheSizeBytes: CACHE_SIZE_UNLIMITED
       })
     })
-    console.log('🔥 [Firebase/Config] Firestore inicializado com Persistent Cache (Single Tab).')
+    console.log('🔥 [Firebase/Config] Firestore inicializado com Persistent Cache (Multi-Tab).')
   }
 } catch (error) {
   // Se falhar (ex: erro b815 ou disco cheio), tentamos o fallback em memória

@@ -9,7 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { collection, query, getDocs, orderBy, limit, doc, addDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, getDocs, orderBy, limit, doc, addDoc, setDoc, serverTimestamp, increment, where } from 'firebase/firestore'
 import { COLLECTIONS, SUB_COLLECTIONS } from '../../firebase/collections'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
@@ -884,8 +884,15 @@ export default function AttendancePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-white uppercase text-[11px] truncate tracking-tight">{s.name}</p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-[9px] text-gray-500 uppercase font-black">{beltConfig[s.belt]?.label}</p>
+                        {s.isVisitor && (
+                          <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md">
+                            <span className="text-[8px] font-black text-primary uppercase tracking-tighter">VISITANTE</span>
+                            <span className="w-1 h-1 rounded-full bg-primary/40" />
+                            <span className="text-[8px] font-black text-primary/70 uppercase tracking-tighter">{s.total_visitas || 0} DIAS</span>
+                          </div>
+                        )}
                         <StudentAttendanceAlert student={s} />
                       </div>
                     </div>
