@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import {
   ClipboardCheck, Search, Check, X, Plus, Clock, Calendar,
-  User, History, Trophy, Eye, Info, AlertTriangle, Clock3, ChevronDown, 
+  User, History, Trophy, Eye, Info, AlertTriangle, Clock3, ChevronDown, ChevronUp,
   Edit3, ChevronRight, RefreshCcw, LayoutGrid, List, UserPlus
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { collection, query, getDocs, orderBy, limit, doc, addDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import { useStudents } from '../../hooks/useStudents'
 import { beltConfig } from '../../data/beltConfig'
 import { useModalities } from '../../hooks/useModalities'
@@ -41,6 +42,62 @@ function ensureTimeFormat(time) {
   return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`
 }
 
+// ── Componente de Seleção Customizado ──────────────────────────────────────────
+function CustomSelect({ label, value, onChange, options, disabled }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const ref = React.useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find(o => o[0] === value) || options[0]
+
+  return (
+    <div className="flex flex-col gap-1.5 relative" ref={ref}>
+      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className="form-input bg-black/40 text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+      >
+        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && !disabled && (
+          <>
+            {/* Backdrop invisível para fechar ao clicar fora */}
+            <div className="fixed inset-0 z-[90]" onClick={() => setIsOpen(false)} />
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2"
+            >
+              {options.map(([v, l]) => (
+                <button
+                  key={v}
+                  onClick={() => { onChange(v); setIsOpen(false) }}
+                  className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-black' : 'text-gray-400 font-medium'}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function AttendancePage() {
   const { currentModality, isAdminView, setCurrentModality, setCollapsed } = useApp()
   const isMobile = window.innerWidth <= 768
@@ -61,11 +118,31 @@ export default function AttendancePage() {
   const [sessionAttendance, setSessionAttendance] = useState({})
   const { modalities, loading: loadingModalities } = useModalities()
   const { users: staffMembers } = useSystemUsers()
+  const { user, userData, effectiveRole } = useAuth()
+  
+  const isPowerUser = effectiveRole === 'admin' || effectiveRole === 'gestor'
+
+  // 🥋 Filter modalities for professors (RBAC)
+  const availableModalities = useMemo(() => {
+    if (loadingModalities) return []
+    // 👑 Admin/Gestor see everything
+    if (isPowerUser && isAdminView) return modalities
+    // 🎓 Professors only see what's assigned to them
+    const myModalities = userData?.modalities || []
+    return modalities.filter(m => myModalities.includes(m.name))
+  }, [modalities, loadingModalities, isAdminView, userData, isPowerUser])
   const [showMobileConfig, setShowMobileConfig] = useState(false)
   const [showProfessorDropdown, setShowProfessorDropdown] = useState(false)
   const [unmarkedAlert, setUnmarkedAlert] = useState(false)
-  const [showAllHistory, setShowAllHistory] = useState(false)
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState(8)
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false)
+
+  // ── States dos Filtros de Histórico ──────────────────────────────────────────
+  const [historySortBy, setHistorySortBy] = useState('recente')
+  const [historyModalityFilter, setHistoryModalityFilter] = useState('todas')
+  const [historyProfessorFilter, setHistoryProfessorFilter] = useState('todos')
+  const [historyTypeFilter, setHistoryTypeFilter] = useState('todos')
+  const [historyPeriodFilter, setHistoryPeriodFilter] = useState('todos')
 
   // Gerenciar visibilidade da navegação inferior
   useHideMobileNav(showMobileConfig || showModal)
@@ -87,21 +164,168 @@ export default function AttendancePage() {
 
   useEffect(() => {
     fetchRecentSessions()
-  }, [])
+  }, [user?.uid, isPowerUser])
+
+  const instructorsOnly = useMemo(() => {
+    return staffMembers.filter(s => {
+      const roles = s.roles || {}
+      return roles.gestor || roles.professor
+    })
+  }, [staffMembers])
+
+  useEffect(() => {
+    if (userData?.name && sessionProfessor === 'Prof. Robson') {
+      setSessionProfessor(userData.name)
+    }
+  }, [userData?.name])
 
   useEffect(() => {
     setSessionModality(currentModality)
   }, [currentModality])
 
   async function fetchRecentSessions() {
+    if (!user?.uid) return
+
     try {
-      const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'), limit(12))
-      const snap = await getDocs(q)
-      setRecentSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      let q
+      let docs = []
+
+      // 👑 Admin/Gestor veem tudo.
+      if (isPowerUser) {
+        q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'), limit(50))
+        const snap = await getDocs(q)
+        docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      } else {
+        // 🎓 Professor: Busca por instructorId (Novo padrão)
+        const qUid = query(
+          collection(db, 'sessions'),
+          where('instructorId', '==', user.uid),
+          limit(50)
+        )
+        const snapUid = await getDocs(qUid)
+        docs = snapUid.docs.map(d => ({ id: d.id, ...d.data() }))
+
+        // 🔍 Se não achou nada por UID, ou achou pouco, tenta pelo NOME (Dados legados)
+        if (docs.length < 10 && userData?.name) {
+          const qName = query(
+            collection(db, 'sessions'),
+            where('professor', '==', userData.name),
+            limit(50)
+          )
+          const snapName = await getDocs(qName)
+          const legacyDocs = snapName.docs.map(d => ({ id: d.id, ...d.data() }))
+          
+          // Mescla e remove duplicatas por ID
+          const existingIds = new Set(docs.map(d => d.id))
+          legacyDocs.forEach(ld => {
+            if (!existingIds.has(ld.id)) docs.push(ld)
+          })
+        }
+      }
+
+      // 🕒 Ordenação manual no cliente para garantir que os mais recentes apareçam primeiro
+      // (Isso evita a necessidade de índices compostos complexos no Firestore para o Professor)
+      docs.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0
+        const dateB = b.createdAt?.seconds || 0
+        if (dateB !== dateA) return dateB - dateA
+        // Fallback para data string se createdAt for nulo (casos de cache/offline)
+        return (b.date || '').localeCompare(a.date || '')
+      })
+
+      setRecentSessions(docs.slice(0, 15))
     } catch (err) {
-      console.error('Erro ao buscar histórico', err)
+      console.error('Erro ao buscar histórico:', err)
+      
+      // 🛡️ MODO DE EMERGÊNCIA: Busca simplificada
+      try {
+        const fallbackQ = query(collection(db, 'sessions'), limit(20))
+        const snap = await getDocs(fallbackQ)
+        const allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        
+        let filtered = allDocs
+        if (!isPowerUser) {
+          filtered = allDocs.filter(d => 
+            d.instructorId === user.uid || 
+            d.professor === userData?.name
+          )
+        }
+        
+        filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+        setRecentSessions(filtered)
+      } catch (fallbackErr) {
+        console.error('Falha crítica ao carregar histórico:', fallbackErr)
+      }
     }
   }
+
+  // ── Lógica de Filtragem do Histórico ──────────────────────────────────────────
+  const filteredRecentSessions = useMemo(() => {
+    let list = [...recentSessions]
+
+    // 1. Filtro de Modalidade
+    if (historyModalityFilter !== 'todas') {
+      list = list.filter(s => s.modality === historyModalityFilter)
+    }
+
+    // 2. Filtro de Professor
+    if (historyProfessorFilter !== 'todos') {
+      list = list.filter(s => s.professor === historyProfessorFilter)
+    }
+
+    // 3. Filtro de Tipo (Equipe vs Visitante)
+    if (historyTypeFilter !== 'todos') {
+      list = list.filter(s => {
+        const isStaff = instructorsOnly.some(inst => inst.name === s.professor)
+        return historyTypeFilter === 'equipe' ? isStaff : !isStaff
+      })
+    }
+
+    // 4. Filtro de Período (Novo para Professores)
+    if (historyPeriodFilter !== 'todos') {
+      const now = new Date()
+      const currentMonth = now.getMonth()
+      const currentYear = now.getFullYear()
+      
+      list = list.filter(s => {
+        if (!s.date) return false
+        const sessDate = new Date(s.date)
+        const sessMonth = sessDate.getMonth()
+        const sessYear = sessDate.getFullYear()
+
+        if (historyPeriodFilter === 'este-mes') {
+          return sessMonth === currentMonth && sessYear === currentYear
+        }
+        if (historyPeriodFilter === 'mes-passado') {
+          const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
+          const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
+          return sessMonth === prevMonth && sessYear === prevYear
+        }
+        return true
+      })
+    }
+
+    // 5. Ordenação
+    if (historySortBy === 'recente') {
+      list.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0
+        const dateB = b.createdAt?.seconds || 0
+        if (dateB !== dateA) return dateB - dateA
+        return (b.date || '').localeCompare(a.date || '')
+      })
+    } else if (historySortBy === 'antigas') {
+      list.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0
+        const dateB = b.createdAt?.seconds || 0
+        if (dateB !== dateA) return dateA - dateB
+        return (a.date || '').localeCompare(b.date || '')
+      })
+    } else if (historySortBy === 'az') {
+      list.sort((a, b) => (a.modality || '').localeCompare(b.modality || ''))
+    }
+
+    return list
+  }, [recentSessions, historyModalityFilter, historyProfessorFilter, historyTypeFilter, historyPeriodFilter, historySortBy, instructorsOnly])
 
   // Lógica de filtragem de alunos para a chamada
   const activeList = useMemo(() => {
@@ -130,18 +354,20 @@ export default function AttendancePage() {
 
     // Gera o ID localmente de forma instantânea (sem rede)
     const tempId = doc(collection(db, 'sessions')).id
-    const payload = { 
+    const payload = {
       id: tempId,
-      modality: sessionModality, 
-      date: sessionDate, 
-      time: ensureTimeFormat(sessionTime), 
-      professor: sessionProfessor 
+      modality: sessionModality,
+      date: sessionDate,
+      time: ensureTimeFormat(sessionTime),
+      professor: sessionProfessor,
+      instructorId: user?.uid || 'system',
+      instructorName: userData?.name || user?.displayName || 'Sistema'
     }
 
     // Transição instantânea para a lista (Optimistic UI)
     setActiveSession(payload)
     setShowMobileConfig(false)
-    
+
     // Salva no banco "em silêncio" no fundo para não bloquear o Professor
     setIsSavingSession(true)
     attendanceService.createSession(payload)
@@ -167,7 +393,7 @@ export default function AttendancePage() {
   async function handleDiscardSession() {
     if (!activeSession?.id) return
     if (!window.confirm('Deseja cancelar e excluir esta chamada atual?')) return
-    
+
     try {
       await attendanceService.deleteSession(activeSession.id)
       setActiveSession(null)
@@ -190,12 +416,26 @@ export default function AttendancePage() {
     setIsFinishingSession(true)
     try {
       await attendanceService.markAttendanceBatch(activeSession, activeList)
-      setActiveSession(null)
-      fetchRecentSessions()
-      setToastMessage("Sucesso!")
+      setToastMessage("Chamada salva com sucesso!")
+      
+      const savedSessionId = activeSession.id
+      
+      // Pequeno delay para o professor ver o "Sucesso!" antes de ir para a revisão
+      setTimeout(() => {
+        setActiveSession(null)
+        setSearchActive('')
+        fetchRecentSessions()
+        setIsFinishingSession(false)
+        // Redireciona para a página de revisão (histórico) desta sessão
+        navigate(`/attendance/review/${savedSessionId}`)
+      }, 800)
     } catch (err) {
-      console.error(err)
-    } finally {
+      console.error('Erro ao finalizar sessão:', err)
+      if (err.message?.includes('permission')) {
+        setToastMessage("Erro: Sem permissão no banco de dados!")
+      } else {
+        setToastMessage("Erro ao salvar! Verifique sua conexão.")
+      }
       setIsFinishingSession(false)
     }
   }
@@ -216,14 +456,14 @@ export default function AttendancePage() {
         actions={<div className="flex items-center gap-2">
           {activeSession ? (
             <>
-              <button 
-                onClick={handleDiscardSession} 
+              <button
+                onClick={handleDiscardSession}
                 className="p-2.5 rounded-xl bg-white/5 text-rose-500 border border-white/5 active:scale-90 transition-all"
               >
                 <X size={20} strokeWidth={3} />
               </button>
-              <button 
-                onClick={handleFinalizeSession} 
+              <button
+                onClick={handleFinalizeSession}
                 className="p-2.5 rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"
               >
                 {isFinishingSession ? <RefreshCcw className="animate-spin" size={20} /> : <Check size={20} strokeWidth={3} />}
@@ -258,9 +498,9 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:gap-5 mb-8" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-                  {loadingModalities ? [1, 2, 3].map(i => <div key={i} className="h-56 bg-white/5 animate-pulse rounded-[32px]" />) :
-                    modalities.filter(m => m.status === 'ativo').map(mod => {
+                <div className="flex flex-wrap justify-center gap-[25px] mb-8 w-full">
+                  {loadingModalities ? [1, 2, 3].map(i => <div key={i} className="h-56 bg-white/5 animate-pulse rounded-[32px] flex-1 min-w-[320px] max-w-[450px]" />) :
+                    availableModalities.filter(m => m.status === 'ativo').map(mod => {
                       const turmas = mod.turmas?.filter(t => t.status === 'ativo') || []
                       const isJiu = mod.name?.toLowerCase().includes('jiu')
                       const isSelection = sessionModality === mod.name
@@ -268,8 +508,8 @@ export default function AttendancePage() {
                       return (
                         <motion.div
                           key={mod.id}
-                          onClick={() => { 
-                            setSessionModality(mod.name); 
+                          onClick={() => {
+                            setSessionModality(mod.name);
                             setCurrentModality(mod.name);
                             if (turmas.length > 0) {
                               setSessionTime(ensureTimeFormat(turmas[0].horario || turmas[0].horarioInicio));
@@ -279,7 +519,7 @@ export default function AttendancePage() {
                           whileHover={{ y: -8, scale: 1.02 }}
                           whileTap={{ scale: 0.97 }}
                           transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                          className={`group relative overflow-hidden stat-card p-6 md:p-8 rounded-[32px] border cursor-pointer col-span-2
+                          className={`group relative overflow-hidden stat-card p-6 md:p-8 rounded-[32px] border cursor-pointer flex-1 min-w-[320px] max-w-[450px]
                             ${isSelection
                               ? 'ring-2 ring-primary bg-primary/10 border-primary/30 shadow-[0_0_50px_rgba(var(--primary-rgb),0.1)]'
                               : 'border-white/5 bg-[#080808]/50 hover:bg-[#0c0c0c] hover:border-white/10 shadow-xl'}`}>
@@ -333,11 +573,11 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                {loadingModalities ? [1,2,3].map(i => <div key={i} className="h-48 bg-white/5 rounded-[32px] animate-pulse" />) :
-                  modalities.filter(m => m.status === 'ativo').map(mod => {
+                {loadingModalities ? [1, 2, 3].map(i => <div key={i} className="h-48 bg-white/5 rounded-[32px] animate-pulse" />) :
+                  availableModalities.filter(m => m.status === 'ativo').map(mod => {
                     const turmas = mod.turmas?.filter(t => t.status === 'ativo') || []
                     const isJiu = mod.name?.toLowerCase().includes('jiu')
-                    
+
                     return (
                       <motion.div
                         key={mod.id}
@@ -358,26 +598,26 @@ export default function AttendancePage() {
                         )}
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 blur-[80px] rounded-full pointer-events-none" />
                         <div className="relative z-10 w-full text-center">
-                            <p className={`text-[9px] font-black uppercase tracking-[0.3em] mb-1.5 ${sessionModality === mod.name ? 'text-rose-500' : 'text-gray-500'}`}>MODALIDADE</p>
-                            <h3 className="text-3xl font-black text-white uppercase tracking-tight mb-6">{mod.name}</h3>
-                            
-                            <div className="flex flex-wrap justify-center gap-2.5">
-                              {turmas.map(t => {
-                                const time = t.horario || t.horarioInicio
-                                const isSel = sessionModality === mod.name && sessionTime === ensureTimeFormat(time)
-                                return (
-                                  <button
-                                    key={t.id}
-                                    onClick={(e) => { e.stopPropagation(); handleOpenDrawer(mod.name, time); }}
-                                    className={`px-8 py-3 rounded-2xl font-black text-xs transition-all active:scale-95 border
+                          <p className={`text-[9px] font-black uppercase tracking-[0.3em] mb-1.5 ${sessionModality === mod.name ? 'text-rose-500' : 'text-gray-500'}`}>MODALIDADE</p>
+                          <h3 className="text-3xl font-black text-white uppercase tracking-tight mb-6">{mod.name}</h3>
+
+                          <div className="flex flex-wrap justify-center gap-2.5">
+                            {turmas.map(t => {
+                              const time = t.horario || t.horarioInicio
+                              const isSel = sessionModality === mod.name && sessionTime === ensureTimeFormat(time)
+                              return (
+                                <button
+                                  key={t.id}
+                                  onClick={(e) => { e.stopPropagation(); handleOpenDrawer(mod.name, time); }}
+                                  className={`px-8 py-3 rounded-2xl font-black text-xs transition-all active:scale-95 border
                                       ${isSel ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-white/5 border-white/10 text-gray-400'}`}
-                                  >
-                                    {time}
-                                  </button>
-                                )
-                              })}
-                            </div>
+                                >
+                                  {time}
+                                </button>
+                              )
+                            })}
                           </div>
+                        </div>
                       </motion.div>
                     )
                   })
@@ -443,7 +683,7 @@ export default function AttendancePage() {
                                 <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Equipe</p>
                               </div>
                               <div className="max-h-[160px] overflow-y-auto py-1 custom-scrollbar">
-                                {[...(staffMembers.length > 0 ? staffMembers : [{ id: 'default', name: 'Prof. Robson' }])].map((s) => (
+                                {[...(instructorsOnly.length > 0 ? instructorsOnly : [{ id: 'default', name: userData?.name || 'Prof. Robson' }])].map((s) => (
                                   <button
                                     key={s.id}
                                     type="button"
@@ -455,7 +695,7 @@ export default function AttendancePage() {
                                     {sessionProfessor === s.name && <Check size={12} />}
                                   </button>
                                 ))}
-                                {sessionProfessor && !staffMembers.find(s => s.name === sessionProfessor) && (
+                                {sessionProfessor && !instructorsOnly.find(s => s.name === sessionProfessor) && (
                                   <div className="px-4 py-2 border-t border-white/5 bg-primary/5">
                                     <p className="text-[8px] font-black text-primary uppercase mb-0.5 tracking-tighter">VISITANTE</p>
                                     <p className="text-white text-[11px] font-bold">{sessionProfessor}</p>
@@ -499,33 +739,95 @@ export default function AttendancePage() {
                   <div className="p-2 rounded-xl bg-white/5 border border-white/10"><History size={18} className="text-primary" /></div>
                   <h4 className="text-lg font-black uppercase text-white tracking-widest flex items-center gap-2">
                     Histórico
-                    {showAllHistory && (
+                    {visibleHistoryCount > 8 && (
                       <button
-                        onClick={() => setShowAllHistory(false)}
-                        className="ml-1 p-1 hover:bg-white/5 rounded-lg transition-all text-primary active:scale-90"
+                        onClick={() => {
+                          setVisibleHistoryCount(8)
+                          const element = document.getElementById('history-section')
+                          if (element) {
+                            window.scrollTo({ top: element.offsetTop - 150, behavior: 'smooth' })
+                          }
+                        }}
+                        className="ml-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-primary border border-white/5 active:scale-90"
                         title="Recolher Histórico"
                       >
-                        <ChevronDown size={14} className="rotate-180" />
+                        <ChevronUp size={16} strokeWidth={3} />
                       </button>
                     )}
                   </h4>
                 </div>
-                {!showAllHistory && recentSessions.length > 4 && (
+                {visibleHistoryCount <= 8 && filteredRecentSessions.length > 8 && (
                   <button
-                    onClick={() => setShowAllHistory(true)}
+                    onClick={() => setVisibleHistoryCount(prev => prev + 8)}
                     className="md:hidden text-[9px] font-black uppercase text-primary border-b border-primary/30 pb-0.5 tracking-widest transition-all active:scale-95"
                   >
-                    Mostrar Tudo
+                    Mostrar Mais
                   </button>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 font-black">
-                {(showAllHistory || window.innerWidth >= 768 ? recentSessions : recentSessions.slice(0, 4)).map(s => (
-                  <div key={s.id} className="stat-card p-4 md:p-5 rounded-[20px] md:rounded-[22px] border border-white/5 flex flex-col items-center text-center gap-3 md:gap-3.5 bg-[#080808]/50">
+              {/* 🔍 FILTROS ADAPTADOS (RBAC) */}
+              <div className="bg-[#0B0B0D]/80 backdrop-blur-md rounded-[24px] p-5 md:p-6 border border-white/5 shadow-2xl relative animate-in fade-in slide-in-from-top-4 duration-500 z-30">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-50" />
+                <div className={`grid gap-4 ${isPowerUser ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
+                  <CustomSelect 
+                    label="Ordenar por" 
+                    value={historySortBy} 
+                    onChange={setHistorySortBy} 
+                    options={[['recente', 'Mais Recente'], ['antigas', 'Antigas'], ['az', 'Modalidade A-Z']]} 
+                  />
+                  
+                  <CustomSelect 
+                    label="Modalidade" 
+                    value={historyModalityFilter} 
+                    onChange={setHistoryModalityFilter} 
+                    options={[['todas', 'Todas'], ...modalities.map(m => [m.name, m.name])]} 
+                  />
+
+                  {isPowerUser ? (
+                    <>
+                      <CustomSelect 
+                        label="Professor" 
+                        value={historyProfessorFilter} 
+                        onChange={setHistoryProfessorFilter} 
+                        options={[['todos', 'Todos'], ...Array.from(new Set(recentSessions.map(s => s.professor).filter(Boolean))).map(p => [p, p])]} 
+                      />
+                      <CustomSelect 
+                        label="Tipo" 
+                        value={historyTypeFilter} 
+                        onChange={setHistoryTypeFilter} 
+                        options={[['todos', 'Todos'], ['equipe', 'Equipe'], ['visitante', 'Visitante']]} 
+                      />
+                    </>
+                  ) : (
+                    <CustomSelect 
+                      label="Período" 
+                      value={historyPeriodFilter} 
+                      onChange={setHistoryPeriodFilter} 
+                      options={[['todos', 'Todo Histórico'], ['este-mes', 'Este Mês'], ['mes-passado', 'Mês Passado']]} 
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div id="history-section" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 font-black">
+                {filteredRecentSessions.slice(0, visibleHistoryCount).map(s => (
+                  <div key={s.id} className="stat-card p-4 md:p-5 rounded-[20px] md:rounded-[22px] border border-white/5 flex flex-col items-center text-center gap-3 md:gap-3.5 bg-[#080808]/50 animate-in fade-in zoom-in-95 duration-300">
                     <div className="w-full">
                       <h5 className="text-xs md:text-base font-black text-white uppercase tracking-tight leading-tight line-clamp-1">{s.modality}</h5>
-                      <p className="text-[8px] md:text-[9px] text-gray-500 uppercase font-black tracking-widest mt-1 line-clamp-1">{s.professor} · {s.time}</p>
+                      <p className="text-[8px] md:text-[9px] text-gray-500 uppercase font-black tracking-widest mt-1 line-clamp-1">
+                        {s.date?.split('-').reverse().slice(0,2).join('/')} · {s.time}
+                      </p>
+                      <p className="text-[7px] md:text-[8px] text-gray-400 uppercase font-bold tracking-widest mt-0.5 line-clamp-1">
+                        {s.professor || s.instructorName} 
+                        {s.professor === userData?.name ? (
+                          <span className="text-primary ml-1">(Eu)</span>
+                        ) : (
+                          !instructorsOnly.some(inst => inst.name === s.professor) && (
+                            <span className="text-rose-500 ml-1">(Visitante)</span>
+                          )
+                        )}
+                      </p>
                     </div>
                     <button
                       onClick={() => navigate(`/attendance/review/${s.id}`)}
@@ -537,14 +839,14 @@ export default function AttendancePage() {
                 ))}
               </div>
 
-              {!showAllHistory && recentSessions.length > 4 && (
-                <div className="flex md:hidden pt-2">
+              {filteredRecentSessions.length > visibleHistoryCount && (
+                <div className="flex pt-4">
                   <button
-                    onClick={() => setShowAllHistory(true)}
-                    className="w-full py-4 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center justify-center gap-2 transition-all active:scale-95"
+                    onClick={() => setVisibleHistoryCount(prev => prev + 8)}
+                    className="w-full py-4 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-primary hover:bg-primary/5 hover:border-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95"
                   >
-                    Mostrar Tudo
-                    <Plus size={14} />
+                    Carregar Mais 8 Chamadas
+                    <Plus size={14} strokeWidth={3} />
                   </button>
                 </div>
               )}
@@ -578,9 +880,11 @@ export default function AttendancePage() {
               {activeList.map(s => (
                 <div key={s.id} className="p-4 rounded-xl bg-[#0d0d0d] border border-white/5 flex flex-col gap-3 group transition-all shadow-lg">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shadow-inner ${beltConfig[s.belt]?.bgClass || 'bg-white'}`}>{s.name[0]}</div>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shadow-inner border border-white/10 ${beltConfig[s.belt]?.bgClass || 'bg-zinc-800 text-white'} ${(!s.belt || s.belt === 'branca') ? 'text-black' : 'text-white'}`}>
+                      {s.name ? s.name.trim().charAt(0).toUpperCase() : '?'}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-white uppercase text-xs truncate tracking-tighter">{s.name}</p>
+                      <p className="font-black text-white uppercase text-[11px] truncate tracking-tight">{s.name}</p>
                       <div className="flex items-center gap-2">
                         <p className="text-[9px] text-gray-500 uppercase font-black">{beltConfig[s.belt]?.label}</p>
                         <StudentAttendanceAlert student={s} />
@@ -619,7 +923,7 @@ export default function AttendancePage() {
               style={{ borderColor: 'var(--clr-card-border)' }}
             >
               <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-8" />
-              
+
               <div className="mb-8">
                 <p className="text-[10px] font-black text-primary tracking-[0.2em] uppercase mb-1">EDITAR SESSÃO</p>
                 <h3 className="text-2xl font-black text-white uppercase tracking-tight">{sessionModality}</h3>
@@ -630,7 +934,7 @@ export default function AttendancePage() {
                   <label className="text-[10px] font-black text-muted uppercase ml-1">Professor Responsável</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
-                    <input 
+                    <input
                       list="professores-mobile"
                       value={sessionProfessor}
                       onChange={(e) => setSessionProfessor(e.target.value)}
@@ -638,7 +942,7 @@ export default function AttendancePage() {
                       placeholder="Nome do Professor"
                     />
                     <datalist id="professores-mobile">
-                      {staffMembers.map(s => <option key={s.id} value={s.name} />)}
+                      {instructorsOnly.map(s => <option key={s.id} value={s.name} />)}
                     </datalist>
                   </div>
                 </div>
@@ -647,7 +951,7 @@ export default function AttendancePage() {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-muted uppercase ml-1">Horário da Aula</label>
                   <div className="flex flex-wrap gap-2.5">
-                    {(modalities.find(m => m.name === sessionModality)?.turmas || [])
+                    {(availableModalities.find(m => m.name === sessionModality)?.turmas || [])
                       .filter(t => t.status === 'ativo')
                       .map(t => {
                         const tTime = ensureTimeFormat(t.horario || t.horarioInicio)
@@ -657,8 +961,8 @@ export default function AttendancePage() {
                             key={t.id}
                             onClick={() => setSessionTime(tTime)}
                             className={`px-5 py-3 rounded-xl text-[10px] font-black transition-all border
-                              ${isSelected 
-                                ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/30 scale-105 active:scale-95' 
+                              ${isSelected
+                                ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/30 scale-105 active:scale-95'
                                 : 'bg-white/5 border-white/5 text-gray-400 active:scale-95 hover:bg-white/10'}`}
                           >
                             {t.horario || t.horarioInicio}
@@ -668,7 +972,7 @@ export default function AttendancePage() {
                     {/* Fallback Input for Custom Time */}
                     <div className="relative flex-1 min-w-[120px]">
                       <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={14} />
-                      <input 
+                      <input
                         type="time"
                         value={sessionTime}
                         onChange={(e) => setSessionTime(e.target.value)}
@@ -682,7 +986,7 @@ export default function AttendancePage() {
                   <label className="text-[10px] font-black text-muted uppercase ml-1">Data da Aula</label>
                   <div className="relative">
                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
-                    <input 
+                    <input
                       type="date"
                       value={sessionDate}
                       onChange={(e) => setSessionDate(e.target.value)}
@@ -712,12 +1016,12 @@ export default function AttendancePage() {
       </AnimatePresence>
 
       {showModal && (
-        <AddStudentModal 
-          onClose={() => setShowModal(false)} 
+        <AddStudentModal
+          onClose={() => setShowModal(false)}
           onAdd={async (data, mod, opts) => {
             await addStudent(data, mod, opts)
             setShowModal(false)
-          }} 
+          }}
         />
       )}
     </>
