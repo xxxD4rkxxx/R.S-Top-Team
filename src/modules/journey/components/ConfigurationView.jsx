@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { db } from '../../../firebase/config'
 import { collection, query, getDocs, setDoc, doc } from 'firebase/firestore'
+import { COLLECTIONS } from '../../../firebase/collections'
 import { beltConfig as defaultBelts } from '../../../data/beltConfig'
 
 /**
@@ -28,12 +29,12 @@ export default function ConfigurationView() {
     async function fetchData() {
       setLoading(true)
       try {
-        const modSnap = await getDocs(collection(db, 'modalities'))
+        const modSnap = await getDocs(collection(db, COLLECTIONS.MODALIDADES))
         const mods = modSnap.docs.map(d => ({ id: d.id, ...d.data() }))
         setModalities(mods)
         if (mods.length > 0) setSelectedModality(mods[0])
 
-        const confSnap = await getDocs(collection(db, 'tech_journey_configs'))
+        const confSnap = await getDocs(collection(db, COLLECTIONS.CONFIGURACOES_JORNADA))
         const confData = {}
         confSnap.forEach(d => { confData[d.id] = d.data() })
         setConfigs(confData)
@@ -89,7 +90,7 @@ export default function ConfigurationView() {
     if (!selectedModality) return
     setSaving(true)
     try {
-      await setDoc(doc(db, 'tech_journey_configs', currentKey), {
+      await setDoc(doc(db, COLLECTIONS.CONFIGURACOES_JORNADA, currentKey), {
         modalityId: selectedModality.id,
         modalityName: selectedModality.name,
         category: selectedCategory,

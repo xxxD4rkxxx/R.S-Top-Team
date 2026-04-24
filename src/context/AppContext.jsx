@@ -7,10 +7,16 @@ const AppContext = createContext(null)
 export function AppProvider({ children }) {
   const [isAdminView, setIsAdminView] = useState(true)
   const [currentModality, setCurrentModality] = useState('Jiu Jitsu')
-  const [isMobileNavHidden, setIsMobileNavHidden] = useState(false)
+  const [hideNavRequests, setHideNavRequests] = useState(0)
+  const isMobileNavHidden = hideNavRequests > 0
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isNavLocked, setIsNavLocked] = useState(false)
+  const [noticesOpen, setNoticesOpen] = useState(false)
+
+  const setIsMobileNavHidden = (shouldHide) => {
+    setHideNavRequests(prev => shouldHide ? prev + 1 : Math.max(0, prev - 1))
+  }
 
   return (
     <AppContext.Provider value={{
@@ -26,6 +32,8 @@ export function AppProvider({ children }) {
       setMobileOpen,
       isNavLocked,
       setIsNavLocked,
+      noticesOpen,
+      setNoticesOpen,
     }}>
       {children}
     </AppContext.Provider>

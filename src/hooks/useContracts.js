@@ -5,13 +5,14 @@ import {
   orderBy, addDoc, doc, updateDoc, deleteDoc, 
   serverTimestamp 
 } from 'firebase/firestore'
+import { COLLECTIONS } from '../firebase/collections'
 
 export function useContracts() {
   const [contracts, setContracts] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const contractsRef = collection(db, 'contracts')
+    const contractsRef = collection(db, COLLECTIONS.CONTRATOS)
     const q = query(contractsRef, orderBy('createdAt', 'desc'))
 
     const unsubscribe = onSnapshot(q, (snap) => {
@@ -30,7 +31,7 @@ export function useContracts() {
   }, [])
 
   async function addContract(contractData) {
-    const contractsRef = collection(db, 'contracts')
+    const contractsRef = collection(db, COLLECTIONS.CONTRATOS)
     await addDoc(contractsRef, {
       ...contractData,
       createdAt: serverTimestamp(),
@@ -39,7 +40,7 @@ export function useContracts() {
   }
 
   async function updateContractStatus(contractId, newStatus) {
-    const contractRef = doc(db, 'contracts', contractId)
+    const contractRef = doc(db, COLLECTIONS.CONTRATOS, contractId)
     await updateDoc(contractRef, { 
       status: newStatus,
       updatedAt: serverTimestamp()

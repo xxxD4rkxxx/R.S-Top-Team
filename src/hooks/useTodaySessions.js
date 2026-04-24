@@ -3,6 +3,7 @@ import { db } from '../firebase/config'
 import {
   collection, query, where, onSnapshot, getDocs
 } from 'firebase/firestore'
+import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
 
 /**
  * Escuta em tempo real (onSnapshot) as sessões de HOJE na coleção `sessions`.
@@ -15,7 +16,7 @@ import {
 let sessionsCache = []
 let lastFetchTs = 0
 
-export function useTodaySessions() {
+export function useTodaySessions(instructorId = null) {
   const [sessions, setSessions] = useState(sessionsCache)
   const [loading, setLoading]   = useState(sessionsCache.length === 0)
 
@@ -23,8 +24,12 @@ export function useTodaySessions() {
     // today in YYYY-MM-DD (local)
     const todayStr = new Date().toLocaleDateString('en-CA')
 
-    const sessRef = collection(db, 'sessions')
-    const q = query(sessRef, where('date', '==', todayStr))
+    const sessRef = collection(db, COLLECTIONS.CHAMADAS)
+    let q = query(sessRef, where('date', '==', todayStr))
+
+    if (instructorId) {
+      q = query(sessRef, where('date', '==', todayStr), where('instructorId', '==', instructorId))
+    }
 
     // onSnapshot → atualiza em tempo real
     const unsubscribe = onSnapshot(q, async (snap) => {
@@ -35,7 +40,7 @@ export function useTodaySessions() {
             const data = docSnap.data()
 
             const attSnap = await getDocs(
-              collection(db, 'sessions', docSnap.id, 'attendances')
+              collection(db, COLLECTIONS.CHAMADAS, docSnap.id, SUB_COLLECTIONS.PRESENCAS)
             )
 
             let presentes = 0
@@ -82,7 +87,7 @@ export function useTodaySessions() {
     })
 
     return () => unsubscribe()
-  }, []) // run once; todayStr only changes at midnight
+  }, [instructorId]) // run once; todayStr only changes at midnight
 
   return { sessions, loading }
 }

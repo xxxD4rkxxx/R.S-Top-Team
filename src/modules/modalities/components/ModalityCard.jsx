@@ -2,7 +2,7 @@
 // Apresenta resumo de alunos/turmas e lista expansível com horários detalhados.
 // Gerencia ações de edição, exclusão e status da modalidade e suas respectivas turmas.
 import React from 'react'
-import { Edit2, Trash2, ChevronDown, GraduationCap, Users, PlusCircle } from 'lucide-react'
+import { Edit2, Trash2, ChevronDown, GraduationCap, Users, PlusCircle, Settings } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function ModalityCard({ 
@@ -62,22 +62,37 @@ export default function ModalityCard({
       {/* Área de ações Desktop - Visível por padrão para acesso rápido */}
       <div className="hidden md:block px-6 pb-6 pt-0">
         <div className="flex items-center gap-2 pt-4 border-t border-white/5">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onEdit(modality); }}
-            className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2"
-          >
-            <Edit2 size={14} />
-            Editar
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onDelete(modality.id); }}
-            className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 transition-all"
-          >
-            <Trash2 size={16} />
-          </button>
-          {/* Seta de expansão posicionada à direita da lixeira conforme solicitado */}
+          <div className="flex-1 flex items-center gap-2">
+            {modality.hasBelt !== false && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.onOpenBeltConfig) window.onOpenBeltConfig(modality);
+                }}
+                className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-primary transition-all group/config"
+                title="Configurar Faixas"
+              >
+                <Settings size={14} className="group-hover/config:rotate-90 transition-transform duration-500" />
+              </button>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(modality) }}
+              className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-gray-400 hover:text-white transition-all"
+              title="Editar Modalidade"
+            >
+              <Edit2 size={14} />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(modality.id); }}
+              className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 transition-all"
+              title="Excluir"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+
           <div 
-            onClick={onToggleExpand}
+            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
             className={`p-2.5 rounded-xl bg-white/5 text-gray-500 border border-white/5 cursor-pointer hover:bg-white/10 transition-all duration-300 ${isExpanded ? 'rotate-180 text-primary border-primary/30' : ''}`}
           >
             <ChevronDown size={18} strokeWidth={2.5} />
@@ -120,13 +135,7 @@ export default function ModalityCard({
 
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Turmas da Modalidade</h4>
-                <button 
-                  onClick={() => onAddClass(modality.id)}
-                  className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest hover:opacity-80"
-                >
-                  <PlusCircle size={14} />
-                  Nova Turma
-                </button>
+                {/* Botão Nova Turma removido do header conforme pedido */}
               </div>
 
               {!modality.turmas || modality.turmas.length === 0 ? (
@@ -158,9 +167,12 @@ export default function ModalityCard({
                           <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest mb-1">Capacidade</p>
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                              <div className="h-full bg-primary" style={{ width: '0%' }} />
+                              <div 
+                                className="h-full bg-primary transition-all duration-700" 
+                                style={{ width: `${Math.min(100, ((turma.enrolledCount || 0) / (turma.capacidade || 1)) * 100)}%` }} 
+                              />
                             </div>
-                            <span className="text-[10px] font-mono text-gray-400">0/{turma.capacidade}</span>
+                            <span className="text-[10px] font-mono text-gray-400">{turma.enrolledCount || 0}/{turma.capacidade}</span>
                           </div>
                         </div>
 

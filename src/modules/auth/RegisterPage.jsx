@@ -10,6 +10,14 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../../firebase/config'
 import AmbientBackground from '../../components/shared/AmbientBackground'
 
+/** 🔐 INTERNAL IDENTITY HELPER */
+const getPinAuthEmail = (raw) => {
+  const rawId = String(raw || '').toLowerCase().trim()
+  if (rawId.endsWith('@rstopteam.internal')) return rawId
+  const safeId = rawId.replace(/[@.]/g, '_').replace(/\s+/g, '_').replace(/_{2,}/g, '_')
+  return `${safeId}@rstopteam.internal`
+}
+
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -33,13 +41,16 @@ export default function RegisterPage() {
     setError(null)
     try {
       const role = isGestorPhase ? 'gestor' : 'admin'
-      
+      const pinToUse = isGestorPhase ? pin : password
+      const internalEmail = getPinAuthEmail(email)
+
       let userCredential;
       try {
-        userCredential = await createUserWithEmailAndPassword(auth, email, isGestorPhase ? pin : password)
+        // Criamos o acesso Auth usando o e-mail interno (sanitizado) para permitir LOGIN POR PIN
+        userCredential = await createUserWithEmailAndPassword(auth, internalEmail, pinToUse)
       } catch (authErr) {
         if (authErr.code === 'auth/email-already-in-use') {
-          setError('Este e-mail já está registrado.')
+          setError('Este e-mail já possui acesso configurado. Tente logar com o PIN.')
           setLoading(false)
           return
         }
@@ -51,18 +62,20 @@ export default function RegisterPage() {
       const emailLower = email.toLowerCase()
       const now = new Date()
       const since = now.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+      const finalPin = isGestorPhase ? pin : password
 
-      // SSoT: Grava na coleção unificada 'users' usando email como ID
-      await setDoc(doc(db, 'users', emailLower), {
+      // SSoT: Grava na coleção unificada 'users' usando o email sanitizado como ID
+      await setDoc(doc(db, 'users', internalEmail), {
         uid: user.uid,
+        id: internalEmail,
         email: emailLower,
+        authEmail: internalEmail,
         name: trimmedName,
-        roles: {
-          [role]: true
-        },
+        roles: { [role]: true },
         status: 'Ativo',
         since,
-        pin: isGestorPhase ? pin : '123456',
+        pin: finalPin,
+        adminPin: role === 'admin' ? finalPin : null,
         createdAt: serverTimestamp(),
         permissions: {
           viewFinance: true,
@@ -72,7 +85,7 @@ export default function RegisterPage() {
         }
       })
 
-      window.location.href = '/' 
+      window.location.href = '/'
     } catch (err) {
       console.error('Registration Error:', err)
       setError(`Erro: ${err.message}`)
@@ -85,7 +98,7 @@ export default function RegisterPage() {
     <div className="min-h-dvh flex items-center justify-center p-4 bg-[#050505] overflow-hidden relative">
       <AmbientBackground />
 
-      <button 
+      <button
         onClick={() => navigate('/login')}
         className="absolute top-6 left-6 p-2 rounded-xl bg-white/5 border border-white/10 text-gray-500 hover:text-white transition-all z-50 flex items-center gap-2 px-4 active:scale-95"
       >
@@ -115,8 +128,8 @@ export default function RegisterPage() {
         <div className="relative group">
           {/* Logo Watermark Behind Card */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] flex items-center justify-center pointer-events-none z-0">
-             <div className="absolute inset-0 bg-primary/5 rounded-full blur-[80px] opacity-40 scale-110" />
-             <img
+            <div className="absolute inset-0 bg-primary/5 rounded-full blur-[80px] opacity-40 scale-110" />
+            <img
               src="/logo.png"
               alt=""
               className="w-[320px] h-[320px] object-contain rounded-full opacity-[0.05] grayscale brightness-50 p-8 transition-all duration-1000"
@@ -188,20 +201,21 @@ export default function RegisterPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold ml-1">Senha Mestra</label>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold ml-1">PIN Mestre (6 Dígitos)</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                       <Lock size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
                     </div>
                     <input
                       type="password"
+                      inputMode="numeric"
                       autoComplete="new-password"
+                      maxLength={6}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-primary/20 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-mono"
-                      placeholder="••••••••"
+                      onChange={(e) => setPassword(e.target.value.replace(/\D/g, ''))}
+                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-primary/20 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-sans tabular-nums tracking-[0.8em]"
+                      placeholder="000000"
                       required
-                      minLength={8}
                     />
                   </div>
                 </div>

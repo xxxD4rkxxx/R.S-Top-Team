@@ -5,44 +5,77 @@ import {
   getDocs, deleteDoc
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
 import { useStudents } from './useStudents'
 
-const COLLECTION_MODALITIES = 'modalities'
+const COLLECTION_MODALITIES = COLLECTIONS.MODALIDADES
 
 /**
  * Hook para gerenciar Modalidades e Turmas.
  */
-export function useModalities() {
-  const [modalities, setModalities] = useState([])
-  const [loading, setLoading] = useState(true)
-  const { students } = useStudents()
+// ── Cache em memória (Singleton) ───────────────────────────────────────────────
+let _cachedModalities = null
+let _activeModalityListener = null
+let _modalitySubscribers = []
+let _isModalityLoading = true
 
-  useEffect(() => {
+function subscribeToModalities(callback) {
+  _modalitySubscribers.push(callback)
+
+  if (_cachedModalities) {
+    callback(_cachedModalities, false)
+  }
+
+  if (!_activeModalityListener) {
     const q = query(collection(db, COLLECTION_MODALITIES), orderBy('createdAt', 'desc'))
 
-    const unsub = onSnapshot(q, async (snap) => {
+    _activeModalityListener = onSnapshot(q, async (snap) => {
       try {
         const modalitiesData = await Promise.all(
           snap.docs.map(async (d) => {
             const modality = { id: d.id, ...d.data() }
             const turmasSnap = await getDocs(
-              collection(db, COLLECTION_MODALITIES, d.id, 'turmas')
+              collection(db, COLLECTION_MODALITIES, d.id, SUB_COLLECTIONS.TURMAS)
             )
             modality.turmas = turmasSnap.docs.map(td => ({ id: td.id, ...td.data() }))
             return modality
           })
         )
-        setModalities(modalitiesData)
+        _cachedModalities = modalitiesData
+        _isModalityLoading = false
+        _modalitySubscribers.forEach(cb => cb(modalitiesData, false))
       } catch (err) {
-        console.error('Erro ao carregar turmas das modalidades:', err)
-      } finally {
-        setLoading(false)
+        console.error('Erro no canal modalities:', err)
+        _isModalityLoading = false
+        _modalitySubscribers.forEach(cb => cb([], false))
       }
     }, (err) => {
-      console.error('Erro ao carregar modalidades:', err)
-      setLoading(false)
+      console.error('Erro fatal no listener de modalidades:', err)
+      _isModalityLoading = false
+      _modalitySubscribers.forEach(cb => cb([], false))
     })
+  }
 
+  return () => {
+    _modalitySubscribers = _modalitySubscribers.filter(cb => cb !== callback)
+    if (_modalitySubscribers.length === 0 && _activeModalityListener) {
+      _activeModalityListener()
+      _activeModalityListener = null
+      _isModalityLoading = true
+    }
+  }
+}
+
+export function useModalities() {
+  const [modalities, setModalities] = useState(_cachedModalities || [])
+  const [loading, setLoading] = useState(_isModalityLoading)
+  const { students } = useStudents()
+
+  useEffect(() => {
+    const unsub = subscribeToModalities((data, isLoading) => {
+      setModalities(data)
+      setLoading(isLoading)
+    })
     return unsub
   }, [])
 
@@ -109,7 +142,7 @@ export function useModalities() {
     console.log(`🧹 Limpando modalidade '${modName}' de ${affectedStudents.length} alunos...`)
 
     const updates = affectedStudents.map(student => {
-      const studentRef = doc(db, 'users', student.id)
+      const studentRef = doc(db, COLLECTIONS.USUARIOS, student.id)
       const currentModalities = Array.isArray(student.modalities) ? student.modalities : [student.modality].filter(Boolean)
       
       // Remove tanto pelo nome quanto pelo ID por segurança
@@ -146,7 +179,7 @@ export function useModalities() {
   }
 
   const addClass = async (modalityId, classData) => {
-    const turmasRef = collection(db, COLLECTION_MODALITIES, modalityId, 'turmas')
+    const turmasRef = collection(db, COLLECTION_MODALITIES, modalityId, SUB_COLLECTIONS.TURMAS)
     await addDoc(turmasRef, {
       ...classData,
       status: 'ativo',
@@ -156,7 +189,7 @@ export function useModalities() {
   }
 
   const updateClass = async (modalityId, classId, data) => {
-    const classRef = doc(db, COLLECTION_MODALITIES, modalityId, 'turmas', classId)
+    const classRef = doc(db, COLLECTION_MODALITIES, modalityId, SUB_COLLECTIONS.TURMAS, classId)
     await updateDoc(classRef, {
       ...data,
       updatedAt: serverTimestamp()
@@ -170,7 +203,7 @@ export function useModalities() {
   }
 
   const deleteClass = async (modalityId, classId) => {
-    const classRef = doc(db, COLLECTION_MODALITIES, modalityId, 'turmas', classId)
+    const classRef = doc(db, COLLECTION_MODALITIES, modalityId, SUB_COLLECTIONS.TURMAS, classId)
     await deleteDoc(classRef)
     await updateModality(modalityId, { updatedAt: serverTimestamp() })
   }
@@ -183,8 +216,30 @@ export function useModalities() {
   
   modalities.forEach(mod => {
     if (mod.status === 'ativo') {
-      const modStudents = students.filter(s => s.modalities?.includes(mod.name) || s.modality === mod.name)
+      // REGRA: Se só existe 1 modalidade, ela assume todos os alunos
+      const isSingleModality = activeModalitiesList.length === 1
+      
+      const modStudents = isSingleModality 
+        ? students.filter(s => s.status === 'Ativo')
+        : students.filter(s => s.modalities?.includes(mod.name) || s.modality === mod.name)
+        
       const modCapacity = mod.turmas?.filter(t => t.status === 'ativo').reduce((acc, t) => acc + (t.capacidade || 0), 0) || 0
+      
+      // Anexamos a contagem real ao objeto da modalidade para uso nos cards da UI
+      mod.studentCount = modStudents.length
+      
+      // REGRA PARA TURMAS: Se só existe 1 turma na modalidade, ela leva todos os alunos
+      if (mod.turmas && mod.turmas.length === 1) {
+        mod.turmas[0].enrolledCount = modStudents.length
+      } else if (mod.turmas) {
+        // Se houver mais de uma, aqui poderíamos adicionar lógica de divisão por horário,
+        // mas por enquanto mantemos a contagem individual se já existir.
+        mod.turmas.forEach(t => {
+            // Se a turma não tem contador, inicializamos para não dar erro visual
+            if (t.enrolledCount === undefined) t.enrolledCount = 0
+        })
+      }
+      
       totalEnrolled += modStudents.length
       totalCapacity += modCapacity
     }

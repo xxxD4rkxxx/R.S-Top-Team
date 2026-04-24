@@ -4,13 +4,14 @@
 import React, { useState, useMemo } from 'react'
 import {
   Plus, Search, Layers,
-  GraduationCap, Users, TrendingUp, X
+  GraduationCap, Users, TrendingUp, X, Settings
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useModalities } from '../../hooks/useModalities'
 import ModalityCard from './components/ModalityCard'
 import ModalityModal from './components/ModalityModal'
 import ClassModal from './components/ClassModal'
+import BeltConfigModal from './components/BeltConfigModal'
 import PageHeader from '../../components/shared/PageHeader'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import KPICard from '../../components/shared/KPICard'
@@ -30,6 +31,8 @@ export default function ModalitiesPage() {
   const [activeModalityId, setActiveModalityId] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
   const [showMobileSearch, setShowMobileSearch] = useState(false)
+  const [isBeltConfigModalOpen, setIsBeltConfigModalOpen] = useState(false)
+  const [modalityForConfig, setModalityForConfig] = useState(null)
 
   const handleToggleExpand = (id) => {
     const stringId = String(id)
@@ -47,9 +50,42 @@ export default function ModalitiesPage() {
   }
 
   const handleSaveModality = async (data) => {
-    if (editingModality) await updateModality(editingModality.id, data)
-    else await addModality(data)
+    const shouldOpenConfig = data._openConfig
+    delete data._openConfig
+
+    let savedModalityId = editingModality?.id
+    if (editingModality) {
+      await updateModality(editingModality.id, data)
+    } else {
+      const newModality = await addModality(data)
+      savedModalityId = newModality?.id
+    }
+
     setIsModalityModalOpen(false)
+
+    if (shouldOpenConfig && savedModalityId) {
+      // Pequeno delay para suavidade na transição de modais
+      setTimeout(() => {
+        const mod = modalities.find(m => m.id === savedModalityId) || { ...data, id: savedModalityId }
+        setModalityForConfig(mod)
+        setIsBeltConfigModalOpen(true)
+      }, 300)
+    }
+  }
+
+  const handleOpenBeltConfig = (modality) => {
+    setModalityForConfig(modality)
+    setIsBeltConfigModalOpen(true)
+  }
+
+  // Registra no window para acesso via componentes filhos sem prop drilling excessivo
+  React.useEffect(() => {
+    window.onOpenBeltConfig = handleOpenBeltConfig;
+    return () => { delete window.onOpenBeltConfig; };
+  }, [modalities]);
+
+  const handleSaveBeltSystem = async (updatedModality) => {
+    await updateModality(updatedModality.id, updatedModality)
   }
 
   const handleDeleteModality = async (id) => {
@@ -87,16 +123,6 @@ export default function ModalitiesPage() {
     <>
       <MobileHeader
         title="Modalidades"
-        showSearch
-        onSearch={() => setShowMobileSearch(!showMobileSearch)}
-        actions={
-          <button
-            onClick={handleAddModality}
-            className="p-2.5 rounded-xl bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
-          >
-            <Plus size={20} strokeWidth={3} />
-          </button>
-        }
       />
 
       <PageHeader
@@ -135,7 +161,7 @@ export default function ModalitiesPage() {
         </div>
 
         {/* Search & Filter */}
-        <div className="flex items-center gap-2 w-full">
+        <div className="flex items-center gap-3 w-full">
           <div className="flex-1 relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-white transition-colors" size={18} />
             <input 
@@ -143,15 +169,25 @@ export default function ModalitiesPage() {
               placeholder="Pesquisar..." 
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)} 
-              className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium" 
+              className="w-full bg-[#111] border border-white/5 rounded-xl pl-12 pr-4 h-[48px] text-sm text-white focus:outline-none focus:border-white/10 transition-all font-medium" 
             />
           </div>
+
+          <button
+            onClick={() => handleOpenBeltConfig(null)}
+            className="flex items-center justify-center w-[48px] sm:w-auto sm:px-6 h-[48px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 bg-white/5 border border-white/10 text-gray-500 hover:text-primary hover:border-primary/20 hover:bg-primary/5 group"
+            title="Configurar Graduações"
+          >
+            <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+            <span className="hidden sm:inline ml-2">GRADUAÇÕES</span>
+          </button>
+
           <button
             onClick={handleAddModality}
-            className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
+            className="flex items-center justify-center w-[48px] sm:w-auto sm:px-6 md:px-8 h-[48px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-black shadow-xl shadow-primary/20 hover:shadow-primary/30"
           >
-            <Plus size={18} strokeWidth={2.5} /> 
-            <span className="hidden md:inline">NOVA MODALIDADE</span>
+            <Plus size={18} strokeWidth={3} /> 
+            <span className="hidden md:inline ml-2">NOVA MODALIDADE</span>
           </button>
         </div>
 
@@ -201,7 +237,14 @@ export default function ModalitiesPage() {
         editingClass={editingClass}
         modalityId={activeModalityId}
       />
+
+      <BeltConfigModal 
+        isOpen={isBeltConfigModalOpen}
+        onClose={() => setIsBeltConfigModalOpen(false)}
+        modalities={modalities}
+        initialModality={modalityForConfig}
+        onSave={handleSaveBeltSystem}
+      />
     </>
   )
 }
-

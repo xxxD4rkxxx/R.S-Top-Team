@@ -66,10 +66,23 @@ export function StudentsProvider({ children }) {
           const data = item.data()
           const modalities = data.modalities || [data.modality || 'Jiu Jitsu']
           
+          // Sanitização de Nome
+          let rawName = data.name || ''
+          const cleanName = rawName.toLowerCase().trim()
+          if (!rawName || cleanName === 'undefined' || cleanName === 'null' || cleanName.includes('indefin')) {
+            rawName = 'Aluno'
+          }
+
+          // Sanitização de Foto
+          let photo = data.photo || null
+          if (photo === 'undefined' || photo === 'null' || (typeof photo === 'string' && photo.includes('undefined'))) {
+            photo = null
+          }
+          
           return {
             id: item.id,
-            name: data.name || '',
-            initials: data.initials || buildInitials(data.name),
+            name: rawName,
+            initials: data.initials || buildInitials(rawName),
             belt: data.belt || 'white',
             modality: data.modality || modalities[0] || 'Jiu Jitsu',
             modalities,
@@ -78,7 +91,7 @@ export function StudentsProvider({ children }) {
             pin: data.pin || '',
             status: data.status ?? null,
             isVisitor: Boolean(data.isVisitor),
-            photo: data.photo || null,
+            photo: photo,
             email: data.email || '',
             phone: data.phone || '',
             emergency: data.emergency || '',

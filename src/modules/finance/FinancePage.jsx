@@ -542,13 +542,6 @@ export default function FinancePage() {
         icon={CreditCard}
         title="CENTRAL FINANCEIRA"
         subtitle="GESTÃO DE RECEITAS, COBRANÇAS E FLUXO DE CAIXA"
-        extra={
-          <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase bg-white/5 text-gray-500 hover:text-white border border-white/5 active:scale-95 transition-all">
-              <Download size={16} /> Exportar
-            </button>
-          </div>
-        }
       />
 
       <div className="px-4 md:px-6 py-6 space-y-6 w-full max-w-[1400px] mx-auto">

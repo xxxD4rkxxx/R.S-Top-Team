@@ -1,423 +1,372 @@
-import React, { useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { 
-  FileText, ShieldCheck, ClipboardCheck, History, 
-  Bell, Award, TrendingUp, Smartphone, Clock,
-  ChevronRight, Download, CheckCircle2, AlertCircle,
-  Calendar, MapPin, User as UserIcon, Activity, Zap,
-  AlertTriangle, XCircle
+  Trophy, Medal, Target, Calendar, Clock, TrendingUp, 
+  ChevronRight, Star, Zap, Bell, AlertCircle, History,
+  Activity, Sparkles, Check, LayoutDashboard
 } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { beltConfig } from '../../data/beltConfig'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useStudentAttendance } from '../../hooks/useStudentAttendance'
+import { useNotices } from '../../hooks/useNotices'
+import { useTodaySessions } from '../../hooks/useTodaySessions'
+import { beltConfig as defaultBelts } from '../../data/beltConfig'
+import PageHeader from '../../components/shared/PageHeader'
+import MobileHeader from '../../components/navigation/MobileHeader'
 
-// ── Componentes de UI ──────────────────────────────────────────
+/**
+ * DASHBOARD PREMIUM DO ALUNO (Academy 2)
+ * Interface focada em gamificação, progressão e transparência.
+ */
 
-function SectionTitle({ title, icon: Icon, color = 'text-gray-400' }) {
-  return (
-    <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] mb-4 opacity-70">
-      <Icon size={14} className={color} />
-      {title}
-    </h3>
-  )
-}
+// --- Componentes Atômicos de UI ---
 
-function StatCard({ label, value, subvalue, icon: Icon, color = 'text-primary' }) {
-  return (
-    <div className="bg-white/5 border border-white/5 rounded-xll p-4 flex items-center gap-4 group hover:border-white/10 transition-all">
-      <div className={`w-10 h-10 rounded-xll bg-white/5 flex items-center justify-center shrink-0`}>
-        <Icon size={18} className={color} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{label}</p>
-        <p className="text-xl font-black text-white animate-value-reveal">{value}</p>
-        {subvalue && <p className="text-[9px] text-gray-600 font-bold">{subvalue}</p>}
-      </div>
-    </div>
-  )
-}
+const RADIUS_MAIN = 'rounded-[32px]'
+const RADIUS_CARD = 'rounded-[20px]'
 
-function FeatureCard({ title, desc, icon: Icon, badge, color = 'text-primary' }) {
-  return (
-    <div className="bg-[#111] border border-white/5 rounded-xll p-5 hover:border-white/15 transition-all group flex flex-col h-full relative overflow-hidden">
-      {/* Subtle background glow */}
-      <div className="absolute -top-10 -right-10 w-24 h-24 blur-[60px] opacity-10 rounded-full" style={{ background: 'var(--clr-primary)' }} />
-      
-      <div className="flex items-start justify-between mb-4">
-        <div className="p-2.5 rounded-xll bg-white/5 border border-white/10 text-white transition-transform group-hover:scale-110">
-          <Icon size={20} className={color} />
+const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    className={`relative overflow-hidden glass-card p-5 bg-white/[0.03] border border-white/5 ${RADIUS_CARD} group cursor-default h-full min-h-[140px] flex flex-col`}
+  >
+    <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-[40px] opacity-10 transition-opacity group-hover:opacity-20 pointer-events-none`} style={{ background: color }} />
+    
+    <div className="relative z-10 flex flex-col h-full uppercase">
+      {/* Top: Icon & Title */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-primary transition-transform group-hover:scale-110 duration-500 shrink-0">
+          <Icon size={18} />
         </div>
-        {badge && (
-          <span className="px-2 py-1 rounded-lg text-[9px] font-black bg-emerald-500/10 text-emerald-400 uppercase tracking-tighter">
-            {badge}
-          </span>
-        )}
+        <span className="text-[10px] font-black tracking-[0.15em] text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
+          {title}
+        </span>
       </div>
-      
-      <h4 className="text-sm font-bold text-white mb-2 leading-tight">{title}</h4>
-      <p className="text-xs text-gray-500 leading-relaxed flex-1">{desc}</p>
-      
-      <button className="mt-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors group/btn">
-        Ver detalhes 
-        <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-      </button>
+
+      {/* Middle: Centered Value */}
+      <div className="flex-1 flex flex-col justify-center py-2">
+        <h3 className="text-4xl font-black text-white tracking-tighter leading-none">
+          {value}
+        </h3>
+      </div>
+
+      {/* Bottom: Detail text at the base */}
+      <p className="text-[9px] font-bold text-gray-600 tracking-[0.1em] leading-tight opacity-70">
+        {detail}
+      </p>
     </div>
-  )
-}
+  </motion.div>
+)
 
-// ── Main Page ────────────────────────────────────────────────
 
-export default function StudentDashboard({ user, notices = [], temPendencia = false, temAtraso = false, cobrancas = [] }) {
-  // Graduação calculation
-  const currentBelt = user?.belt || 'white'
-  const cfg = beltConfig[currentBelt] || beltConfig['white']
-  const totalAttendances = user?.totalAttendances || 0
-  const monthlyAttendances = user?.monthlyAttendances || 0
+export default function StudentDashboard({ user, cobrancas = [] }) {
+  const { total, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.uid)
+  const { notices, loading: loadingNotices } = useNotices()
+  const { sessions, loading: loadingSessions } = useTodaySessions()
+
+  // Filtro de cobranças pendentes
+  const pendingBills = useMemo(() => 
+    cobrancas.filter(b => b.status === 'pending' || b.status === 'overdue'),
+  [cobrancas])
+
+  // Configuração da Faixa Atual
+  const beltInfo = defaultBelts[user?.belt || 'white'] || defaultBelts.white
   
-  // Avisos formatados
-  const displayNotices = notices.slice(0, 3)
+  // Cálculo de Progresso Técnico Real
+  const { technicalProgress, monthsInBelt } = useMemo(() => {
+    const lastPromoDate = user?.tech_journey?.last_promotion_date?.toDate?.() || 
+                         user?.createdAt?.toDate?.() || 
+                         (user?.createdAt ? new Date(user.createdAt) : new Date())
+    
+    const diffTime = Math.abs(new Date() - lastPromoDate)
+    const months = Math.max(Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.44)), 0)
+    
+    const minMonthsRequired = beltInfo.minMonths || 6
+    const progress = Math.min(Math.round((months / minMonthsRequired) * 100), 100)
+    
+    return { technicalProgress: progress, monthsInBelt: months }
+  }, [user, beltInfo])
 
-  // Fake requirements for demo
-  const nextBeltReq = 100 
-  const progressPercent = Math.min(Math.round((totalAttendances / nextBeltReq) * 100), 100)
-  
-  // Encontrar próxima faixa (simplificado)
-  const beltOrder = ['white', 'blue', 'purple', 'brown', 'black']
-  const currentIdx = beltOrder.indexOf(currentBelt)
-  const nextBeltKey = currentIdx !== -1 && currentIdx < beltOrder.length - 1 ? beltOrder[currentIdx + 1] : 'black'
-  const nextBeltCfg = beltConfig[nextBeltKey] || beltConfig['white']
+  const history = user?.tech_journey?.history || [
+    { belt: 'white', date: user?.createdAt?.toDate?.() || new Date(), reason: 'Início na Academy' }
+  ]
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  }
+  // Filtro de Avisos Ativos (que não expiraram ou foram finalizados)
+  const activeNotices = useMemo(() => {
+    return notices.filter(notice => {
+      if (notice.isFinalized) return false
+      if (notice.expiresAt?.toDate) {
+        return notice.expiresAt.toDate() > new Date()
+      }
+      return true
+    }).slice(0, 3) // Mostra os 3 últimos ativos
+  }, [notices])
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  }
+  // Filtro de Grade de Aulas (Apenas modalidades que o aluno pratica)
+  const filteredSessions = useMemo(() => {
+    const studentModalities = user?.modalities || []
+    if (studentModalities.length === 0) return []
+    
+    return sessions.filter(sess => {
+      return studentModalities.includes(sess.modalityId) || 
+             studentModalities.some(m => m.toLowerCase() === sess.modality?.toLowerCase())
+    })
+  }, [sessions, user])
+
+  // Lógica de Conquistas Reais baseadas em dados de assiduidade
+  const realAchievements = useMemo(() => {
+    if (loadingAttendance) return []
+    
+    return [
+      { id: 'consistency', label: 'Assiduidade', desc: '10 aulas no mês', icon: Activity, active: monthly >= 10 },
+      { id: 'resilience', label: 'Resiliência', desc: '7 treinos seguidos', icon: Zap, active: streak >= 7 },
+      { id: 'discipline', label: 'Disciplina', desc: 'Meta batida!', icon: Target, active: weekly >= 3 },
+      { id: 'veteran', label: 'Veterano', desc: '50 treinos totais', icon: Trophy, active: total >= 50 },
+      { id: 'star', label: 'Estrela', desc: 'Frequência 100%', icon: Star, active: monthly >= 20 },
+    ]
+  }, [total, monthly, weekly, streak, loadingAttendance])
 
   return (
-    <motion.div 
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      className="px-4 md:px-8 py-6 space-y-8 max-w-[1400px] mx-auto pb-24"
-    >
-
-      {/* ── BANNER DE INADIMPLÊNCIA (visível só se houver pendências) ── */}
-      {temAtraso && (
-        <div className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/60 via-red-900/40 to-red-950/60 backdrop-blur-sm">
-          {/* Animated warning glow */}
-          <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-500/5 to-red-500/0 animate-pulse" />
-          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5">
-            <div className="w-12 h-12 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0 shadow-lg shadow-red-500/20">
-              <XCircle size={22} className="text-red-400" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-black text-red-300 uppercase tracking-wider">Mensalidade em Atraso</p>
-              <p className="text-xs text-red-400/80 mt-0.5 leading-relaxed">
-                Você possui {cobrancas.filter(b => b.status === 'overdue').length} cobrança(s) vencida(s). 
-                Entre em contato com a academia para regularizar sua situação e manter o acesso.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/20 border border-red-500/30 text-[10px] font-black text-red-300 uppercase tracking-widest animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                Regularizar
+    <>
+      {/* Sistema de Cabeçalhos Padronizados (Desktop & Mobile) */}
+      <MobileHeader 
+        title={`Olá, ${user?.name?.split(' ')[0] || 'Aluno'}`} 
+        profileIconClass={beltInfo.bgClass || 'bg-primary/20'}
+        profileTextClass="text-white"
+      />
+      
+      <PageHeader 
+        icon={() => (
+          <div className={`w-full h-full flex items-center justify-center ${beltInfo.bgClass || 'bg-primary/10'}`}>
+            {user?.photo ? (
+              <img src={user.photo} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className={`font-black text-sm uppercase ${user?.belt === 'white' ? 'text-black' : 'text-white'}`}>
+                {user?.initials || user?.name?.[0]}
               </span>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+        title={`Olá, ${user?.name?.split(' ')[0] || 'Aluno'}`}
+        subtitle="Sua jornada de evolução técnica e física"
+        loading={loadingAttendance}
+        showProfile={false}
+      />
 
-      {!temAtraso && temPendencia && (
-        <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-950/50 via-amber-900/30 to-amber-950/50 backdrop-blur-sm">
-          <div className="relative z-10 flex items-center gap-4 p-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center shrink-0">
-              <AlertTriangle size={18} className="text-amber-400" />
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-black text-amber-300 uppercase tracking-wider">Mensalidade Pendente</p>
-              <p className="text-[11px] text-amber-400/70 mt-0.5">Você tem uma cobrança aguardando pagamento. Efetue antes do vencimento para evitar mora.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="flex-1 px-4 md:px-6 py-6 pb-32 space-y-6 w-full fade-slide-up">
         
-        {/* PROGRESSO DE GRADUAÇÃO */}
-        <motion.div variants={itemVariants} className="lg:col-span-8 flex flex-col gap-6">
-          <div className="bg-[#0a0a0a] border border-white/5 rounded-xll p-6 relative overflow-hidden shadow-2xl">
-            {/* Background design */}
-            <div className="absolute top-0 right-0 w-64 h-64 blur-[100px] opacity-10 rounded-full" style={{ background: cfg.color }} />
-            
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-              <div className="flex items-center gap-5">
-                {/* Visual Belt */}
-                <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                  <div className="absolute inset-0 rounded-full opacity-20 animate-pulse" style={{ background: cfg.color }} />
-                  <div className="w-16 h-16 rounded-full border-2 flex items-center justify-center bg-black/40 shadow-inner overflow-hidden" style={{ borderColor: cfg.color + '44' }}>
-                    <Award size={32} style={{ color: cfg.color }} />
-                  </div>
-                  {/* Stripes loop */}
-                  <div className="absolute -bottom-1 flex gap-0.5">
-                    {Array.from({ length: user?.stripes || 0 }).map((_, i) => (
-                      <div key={i} className="w-1.5 h-3 bg-white rounded-sm border border-black shadow" />
-                    ))}
-                  </div>
-                </div>
 
+      {/* Alerta Financeiro */}
+      <AnimatePresence>
+        {pendingBills.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginBottom: 32 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            className={`overflow-hidden bg-rose-500/10 border border-rose-500/20 ${RADIUS_CARD} relative`}
+          >
+            <div className="p-5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/20">
+                  <AlertCircle size={20} />
+                </div>
                 <div>
-                  <h2 className="text-2xl font-black text-white leading-none tracking-tight">Evolução Técnica</h2>
-                  <p className="text-gray-500 text-sm mt-1 uppercase font-bold tracking-widest flex items-center gap-2">
-                    Faixa {cfg.label} <span className="w-1 h-1 bg-gray-700 rounded-full" /> {user?.stripes || 0}º Grau
-                  </p>
+                  <h4 className="text-sm font-black text-white uppercase tracking-tight">Pendência Financeira</h4>
+                  <p className="text-[10px] font-bold text-rose-300">Existem faturas aguardando pagamento. Verifique com a recepção.</p>
                 </div>
               </div>
-
-              <div className="text-right">
-                <span className="text-3xl font-black text-white animate-value-reveal">{progressPercent}%</span>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Até {nextBeltCfg.label}</p>
-              </div>
+              <button className="px-4 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:brightness-110 active:scale-95 transition-all">
+                Ver Faturas
+              </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {/* Progress Bar */}
-            <div className="mt-8 relative h-4 bg-white/5 rounded-full overflow-hidden border border-white/5 p-0.5">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ duration: 1.5, ease: [0.34, 1.56, 0.64, 1] }}
-                className="h-full rounded-full shadow-lg relative overflow-hidden"
-                style={{ background: `linear-gradient(90deg, ${cfg.color}CC, ${cfg.color})` }}
-              >
-                {/* Shine effect */}
-                <motion.div 
-                  animate={{ x: ['-100%', '200%'] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-                  className="absolute inset-0 w-1/2 bg-white/20 skew-x-12"
-                />
-              </motion.div>
-            </div>
-
-            <div className="mt-4 flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-600">
-              <span className="flex items-center gap-1.5"><Activity size={12} className="text-emerald-500" /> <span className="animate-value-reveal">{totalAttendances}</span> treinos realizados</span>
-              <span className="text-gray-400">Próxima meta: {nextBeltReq} aulas</span>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* COLUNA ESQUERDA */}
+        <div className="lg:col-span-8 space-y-8">
+          
+          {/* Grid de Estatísticas Consolidado */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <StatCard 
+              title="Tempo de Faixa" 
+              value={`${monthsInBelt}m`} 
+              detail="Meses na graduação" 
+              icon={Clock} 
+              color="var(--clr-primary)" 
+              delay={0.1}
+            />
+            <StatCard 
+              title="No Mês" 
+              value={monthly} 
+              detail="Treinos realizados" 
+              icon={Activity} 
+              color="#0ea5e9" 
+              delay={0.2}
+            />
+            <StatCard 
+              title="Meta Semanal" 
+              value={`${weekly}/3`} 
+              detail="Aulas concluídas" 
+              icon={Target} 
+              color="#10b981" 
+              delay={0.3}
+            />
+            <StatCard 
+              title="Sequência" 
+              value={`${streak}d`} 
+              detail="Aulas consecutivas" 
+              icon={Zap} 
+              color="#f59e0b" 
+              delay={0.4}
+            />
+            <StatCard 
+              title="Treinos" 
+              value={total} 
+              detail="Total acumulado" 
+              icon={History} 
+              color="#8b5cf6" 
+              delay={0.5}
+            />
           </div>
 
-          {/* KPI GRID (ALUNO) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Total Treinos" value={totalAttendances} subvalue="Acumulado total" icon={History} />
-            <StatCard label="Média Mensal" value={monthlyAttendances} subvalue={`${Math.min(100, (monthlyAttendances/12)*100).toFixed(0)}% da meta`} icon={TrendingUp} color="text-emerald-400" />
-            <StatCard label="Sequência" value={user?.streak || '7'} subvalue="Dias seguidos" icon={Zap} color="text-yellow-400" />
-            <StatCard label="Status" value="ATIVO" subvalue="Regularizado" icon={CheckCircle2} color="text-blue-400" />
-          </div>
-        </motion.div>
 
-        {/* SIDE: HORÁRIOS & AVISOS */}
-        <motion.div variants={itemVariants} className="lg:col-span-4 space-y-6">
-          {/* AVISOS RECENTES */}
-          <div className="bg-[#111] border border-white/5 rounded-xll p-6 flex flex-col h-full">
-            <SectionTitle title="Avisos da Academia" icon={Bell} color="text-yellow-400" />
-            <div className="space-y-4 flex-1">
-               {displayNotices.length > 0 ? (
-                 displayNotices.map((n, idx) => (
-                   <div key={idx} className={`p-4 rounded-xll bg-white/5 border transition-all ${n.priority === 'urgent' ? 'border-primary/30 bg-primary/5 hover:bg-primary/10' : 'border-white/5 hover:bg-white/[0.07]'}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`w-2 h-2 rounded-full ${n.priority === 'urgent' ? 'bg-primary animate-pulse' : 'bg-blue-400'}`} />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${n.priority === 'urgent' ? 'text-primary' : 'text-blue-400'}`}>
-                          {n.priority === 'urgent' ? 'Urgente' : (n.category || 'Geral')}
-                        </span>
+          {/* Atividades Recentes */}
+          <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>
+             <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/10"><History size={20} className="text-primary" /></div>
+                  <h3 className="text-xl font-black text-white uppercase tracking-widest">Atividades Recentes</h3>
+                </div>
+             </div>
+
+             <div className="space-y-4">
+               {loadingAttendance ? (
+                 [1, 2, 3].map(i => <div key={i} className="h-16 bg-white/5 rounded-2xl animate-pulse" />)
+               ) : recent.length > 0 ? (
+                 recent.slice(0, 5).map((log, idx) => (
+                   <div key={idx} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-white/10 transition-colors">
+                      <div className="flex items-center gap-4">
+                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Check size={18} className="text-primary" />
+                         </div>
+                         <div>
+                            <h4 className="text-sm font-black text-white uppercase tracking-tight">{log.modality}</h4>
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                               {new Date(log.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                            </p>
+                         </div>
                       </div>
-                      <p className="text-sm font-bold text-white leading-tight">{n.title}</p>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{n.content || n.message}</p>
+                      <div className="text-right">
+                         <div className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest">
+                            Presente
+                         </div>
+                      </div>
                    </div>
                  ))
                ) : (
-                 <div className="p-10 text-center space-y-2 opacity-50">
-                    <p className="text-sm font-bold text-gray-500 italic">Sem novos avisos</p>
-                    <p className="text-[10px] text-gray-600 uppercase">Tudo em dia na RS Top Team</p>
-                 </div>
+                 <p className="text-[11px] text-gray-500 uppercase font-black text-center py-8">Nenhuma atividade recente.</p>
                )}
-            </div>
-            <button className="mt-4 text-[10px] font-bold text-gray-500 hover:text-white transition-colors flex items-center gap-1">
-              Ver todos os avisos <ChevronRight size={14} />
-            </button>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ── MIDDLE SECTION: FEATURES ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* CONTRATO & SEGURANÇA */}
-        <motion.div variants={itemVariants} className="md:col-span-2 bg-[#111] border border-white/5 rounded-xll p-6 flex flex-col md:flex-row gap-8 items-center">
-            <div className="flex-1 space-y-4">
-               <div>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-widest">Status: Ativo & Seguro</span>
-                  <h4 className="text-xl font-black text-white mt-2">Contrato Digital Ativo</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed mt-2">
-                    Seu termo de adesão e contrato de prestação de serviços está assinado eletronicamente com validade jurídica via **Lei 14.063/2020**.
-                  </p>
-               </div>
-               
-               <div className="grid grid-cols-2 gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                  <div className="flex flex-col gap-1 p-3 rounded-xll bg-white/5 border border-white/5">
-                     <span className="text-gray-600">IP de Registro</span>
-                     <span className="text-white">187.32.XX.XX</span>
-                  </div>
-                  <div className="flex flex-col gap-1 p-3 rounded-xll bg-white/5 border border-white/5">
-                     <span className="text-gray-600">Navegador</span>
-                     <span className="text-white">Chrome/Mobile</span>
-                  </div>
-               </div>
-
-               <button className="w-full py-3 rounded-xll bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs transition-all flex items-center justify-center gap-2">
-                 <FileText size={16} /> Baixar Cópia do Contrato
-               </button>
-            </div>
-
-            <div className="w-full md:w-48 aspect-square rounded-xll bg-white/5 border border-dashed border-white/10 flex flex-col items-center justify-center p-6 text-center group cursor-pointer hover:border-emerald-500/20 transition-all">
-                <ShieldCheck size={40} className="text-emerald-500 mb-3 group-hover:scale-110 transition-transform" />
-                <p className="text-[10px] font-black text-white uppercase tracking-wider">Assinatura Certificada</p>
-                <p className="text-[9px] text-gray-600 mt-1">Selo de Validade RS Top Team</p>
-            </div>
-        </motion.div>
-
-        {/* DOCUMENTOS QR CODE / QUICK ACTIONS */}
-        <motion.div variants={itemVariants} className="bg-primary/5 border border-primary/20 rounded-xll p-6 flex flex-col justify-between">
-           <div>
-              <SectionTitle title="Ações Rápidas" icon={Zap} />
-              <div className="space-y-2">
-                 <button className="w-full p-4 rounded-xll bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-3 text-left transition-all group">
-                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                       <ClipboardCheck size={18} />
-                    </div>
-                    <div className="flex-1">
-                       <p className="text-xs font-bold text-white">Enviar Atestado</p>
-                       <p className="text-[9px] text-gray-500">Vencimento em 120 dias</p>
-                    </div>
-                    <ChevronRight size={14} className="text-gray-700 group-hover:text-white" />
-                 </button>
-                 
-                 <button className="w-full p-4 rounded-xll bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-3 text-left transition-all group">
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
-                       <Smartphone size={18} />
-                    </div>
-                    <div>
-                       <p className="text-xs font-bold text-white">Check-in PWA</p>
-                       <p className="text-[9px] text-gray-500">Acesso via QR Code</p>
-                    </div>
-                    <ChevronRight size={14} className="text-gray-700 ml-auto group-hover:text-white" />
-                 </button>
-              </div>
-           </div>
-           
-           <div className="mt-6 flex items-center gap-2 p-3 rounded-xll bg-primary/10 border border-primary/10">
-              <AlertCircle size={14} className="text-primary shrink-0" />
-              <p className="text-[9px] text-primary font-bold uppercase tracking-tight">Mantenha seus documentos em dia para treinar.</p>
-           </div>
-        </motion.div>
-
-      </div>
-
-      {/* ── TIMELINE GRADUAÇÃO ── */}
-      <motion.div variants={itemVariants} className="bg-[#111] border border-white/5 rounded-xll p-6">
-        <SectionTitle title="Minha Jornada" icon={History} color="text-purple-400" />
-        <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-8 relative">
-           {/* Connecting Line */}
-           <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/5 hidden md:block" />
-           
-           {[
-             { label: 'Ingresso', date: user?.createdAt ? (typeof user.createdAt === 'string' || typeof user.createdAt === 'number' ? new Date(user.createdAt).toLocaleDateString('pt-BR') : user.createdAt.toDate().toLocaleDateString('pt-BR')) : 'Jan 2024', status: 'done', bg: 'bg-emerald-500' },
-             { label: '1º Grau', date: 'Mar 2024', status: 'done', bg: 'bg-emerald-500' },
-             { label: '2º Grau', date: 'Maio 2024', status: 'current', bg: 'bg-primary animate-pulse' },
-             { label: '3º Grau', date: 'Previsto: Jul', status: 'future', bg: 'bg-white/10' },
-             { label: 'Próxima Faixa', date: 'Previsto: Set', status: 'future', bg: 'bg-white/10' },
-           ].map((step, i) => (
-             <div key={i} className="flex flex-col items-center gap-3 relative z-10 bg-[#111] px-4">
-                <div className={`w-8 h-8 rounded-full ${step.bg} border-4 border-[#111] flex items-center justify-center shadow-lg shadow-black/50`}>
-                  {step.status === 'done' && <CheckCircle2 size={12} className="text-white" />}
-                </div>
-                <div className="text-center">
-                   <p className={`text-xs font-black uppercase tracking-tighter ${step.status === 'done' ? 'text-white' : 'text-gray-600'}`}>{step.label}</p>
-                   <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase">{step.date}</p>
-                </div>
              </div>
-           ))}
+          </section>
+
         </div>
-      </motion.div>
 
-      {/* ── BOTTOM SECTION: SEGURANÇA & APP ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* DADOS SEGUROS BANNERS */}
-        <motion.div variants={itemVariants} className="bg-emerald-500/5 border border-emerald-500/20 rounded-xll p-6 flex items-center gap-6">
-          <div className="w-14 h-14 rounded-xll bg-emerald-500/10 flex items-center justify-center shrink-0">
-            <ShieldCheck size={28} className="text-emerald-500" />
-          </div>
-          <div>
-            <h4 className="text-white font-bold leading-tight">Seus dados estão seguros</h4>
-            <p className="text-xs text-gray-500 mt-1">Criptografia de ponta a ponta e pagamentos via Asaas com certificação PCI-DSS.</p>
-          </div>
-        </motion.div>
-
-        {/* INSTALE NO CELULAR */}
-        <motion.div variants={itemVariants} className="bg-primary/5 border border-primary/20 rounded-xll p-6 flex items-center gap-6">
-          <div className="w-14 h-14 rounded-xll bg-primary/10 flex items-center justify-center shrink-0">
-            <Smartphone size={28} className="text-primary" />
-          </div>
-          <div className="flex-1">
-            <h4 className="text-white font-bold leading-tight">Instale no seu celular</h4>
-            <p className="text-xs text-gray-500 mt-1">Adicione à tela inicial para acesso rápido e funcionamento offline.</p>
-          </div>
-          <button className="bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-xll transition-colors">
-            <Download size={20} />
-          </button>
-        </motion.div>
-      </div>
-
-      {/* ── HORÁRIOS PREVIEW ── */}
-      <motion.div variants={itemVariants} className="bg-[#111] border border-white/5 rounded-xll overflow-hidden">
-        <div className="p-6 border-b border-white/5 bg-black/40 flex justify-between items-center">
-          <SectionTitle title="Horários das Suas Turmas" icon={Calendar} />
-          <span className="text-[10px] font-bold text-gray-500">2 Turmas Ativas</span>
-        </div>
-        <div className="divide-y divide-white/5">
-          <div className="p-5 flex items-center justify-between group cursor-pointer hover:bg-white/[0.02] transition-colors">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xll bg-primary/10 flex items-center justify-center font-bold text-primary">JJ</div>
-              <div>
-                <p className="text-white font-bold text-sm">Jiu Jitsu Adulto</p>
-                <p className="text-xs text-gray-600 mt-0.5">Seg, Qua, Sex às 19:30 • Prof. Max</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="px-2 py-1 rounded text-[9px] font-black bg-emerald-500/10 text-emerald-400 uppercase tracking-widest">Tem aula hoje</span>
-              <ChevronRight size={18} className="text-gray-700" />
-            </div>
-          </div>
+        {/* COLUNA DIREITA */}
+        <div className="lg:col-span-4 space-y-8">
           
-          <div className="p-5 flex items-center justify-between group cursor-pointer hover:bg-white/[0.02] transition-colors">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xll bg-yellow-400/10 flex items-center justify-center font-bold text-yellow-500">BX</div>
-              <div>
-                <p className="text-white font-bold text-sm">Boxe Iniciante</p>
-                <p className="text-xs text-gray-600 mt-0.5">Ter, Qui às 18:00 • Prof. André</p>
+          {/* Mural de Avisos */}
+          <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-white/5 border border-white/10"><Bell size={20} className="text-primary" /></div>
+                <h3 className="text-xl font-black text-white uppercase tracking-widest">Mural da Academy</h3>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="px-2 py-1 rounded text-[9px] font-black bg-white/5 text-gray-600 uppercase tracking-widest transition-colors group-hover:text-gray-400">Próxima: Terça</span>
-              <ChevronRight size={18} className="text-gray-700" />
+            
+            <div className="space-y-4">
+              {loadingNotices ? (
+                <div className="h-24 bg-white/5 rounded-2xl animate-pulse" />
+              ) : activeNotices.length > 0 ? (
+                activeNotices.map((notice, idx) => (
+                  <div key={idx} className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/20 transition-all group">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded bg-primary/20 text-primary uppercase tracking-widest">
+                        {notice.category || 'Aviso'}
+                      </span>
+                      <span className="text-[9px] font-bold text-gray-600 uppercase">
+                        {new Date(notice.createdAt?.toDate ? notice.createdAt.toDate() : notice.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary transition-colors">
+                      {notice.title}
+                    </h4>
+                    <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter leading-tight line-clamp-2">
+                      {notice.content}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center">
+                  <p className="text-[11px] font-black text-gray-600 uppercase tracking-widest">Nenhum aviso importante no momento.</p>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      </motion.div>
+          </section>
 
-    </motion.div>
+          {/* Conquistas */}
+          <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>
+            <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
+              <Star size={20} className="text-yellow-500 fill-yellow-500/20" />
+              Conquistas
+            </h3>
+            
+            <div className="grid grid-cols-1 gap-4">
+              {realAchievements.length > 0 ? realAchievements.map((ach, idx) => (
+                <div key={idx} className={`p-4 rounded-[22px] border flex items-center gap-4 transition-all duration-300 ${ach.active ? 'bg-white/5 border-white/10 scale-[1.02]' : 'bg-white/[0.02] border-white/[0.03] opacity-50'}`}>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${ach.active ? 'bg-primary shadow-lg shadow-primary/20 text-white' : 'bg-white/5 text-gray-600'}`}>
+                    <ach.icon size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-black text-white uppercase tracking-tight">{ach.label}</p>
+                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter truncate">{ach.desc}</p>
+                  </div>
+                  {ach.active && <Check size={16} className="text-primary" />}
+                </div>
+              )) : (
+                <div className="py-8 text-center">
+                  <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Carregando Conquistas...</p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Grade de Horários */}
+          <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>
+             <div className="flex items-center gap-3 mb-6">
+                <Clock size={16} className="text-primary" />
+                <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Minha Grade</h4>
+             </div>
+             <div className="space-y-3">
+                {loadingSessions ? (
+                   [1, 2].map(i => <div key={i} className="h-12 bg-white/5 rounded-2xl animate-pulse" />)
+                ) : filteredSessions.length > 0 ? (
+                  filteredSessions.map((slot, i) => (
+                    <div key={i} className="flex items-center justify-between p-3.5 rounded-2xl border bg-white/5 border-white/5 hover:border-primary/20 transition-all">
+                      <span className="text-[11px] font-black text-white">{slot.time}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-tight text-primary">{slot.classTitle}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[10px] font-bold text-gray-600 uppercase text-center py-4">Nenhuma aula da sua modalidade para hoje.</p>
+                )}
+             </div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+    </>
   )
 }
-

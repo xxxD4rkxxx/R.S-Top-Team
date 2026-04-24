@@ -7,15 +7,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getRole(email, role) {
-      return get(/databases/$(database)/documents/users/$(email)).data.roles.get(role, false) == true ||
-             get(/databases/$(database)/documents/users/$(email)).data.role == role;
-    }
-
     function hasRole(role) {
       return isAuth() && (
-        exists(/databases/$(database)/documents/users/$(request.auth.token.email.lower())) &&
-        getRole(request.auth.token.email.lower(), role)
+        request.auth.token[role] == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.token.email.lower())).data.roles[role] == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.token.email.lower().replace("@", "_").replace(".", "_") + "@rstopteam.internal")).data.roles[role] == true
       );
     }
 
@@ -25,15 +21,15 @@ service cloud.firestore {
 
     function hasPermission(key) {
       return isAuth() && (
-        exists(/databases/$(database)/documents/users/$(request.auth.token.email.lower())) &&
-        get(/databases/$(database)/documents/users/$(request.auth.token.email.lower())).data.permissions.get(key, false) == true
+        hasRole('admin') ||
+        get(/databases/$(database)/documents/users/$(request.auth.token.email.lower())).data.permissions[key] == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.token.email.lower().replace("@", "_").replace(".", "_") + "@rstopteam.internal")).data.permissions[key] == true
       );
     }
 
     // ── Coleção de Usuários ──────────────────────────────────────────────────
     match /users/{userId} {
-      allow get: if true;
-      allow list: if isAuth();
+      allow get, list: if true;
 
       match /privacy/secrets {
         allow read: if isAuth() && (
@@ -42,26 +38,16 @@ service cloud.firestore {
           hasRole('gestor') ||
           hasPermission('viewStaffPins')
         );
-        allow write: if isAuth() && (hasRole('admin') || hasRole('gestor'));
+        allow write, delete: if isAuth() && (hasRole('admin') || hasRole('gestor'));
       }
 
-      allow create: if isAuth() && (
+      allow create, update, delete: if isAuth() && (
         hasRole('admin') || 
         hasRole('gestor') ||
-        hasRole('professor') ||
+        isStaff() ||
         hasPermission('manageUsers') ||
         (request.auth.token.email.lower() == userId.lower())
       );
-      
-      allow update: if isAuth() && (
-        hasRole('admin') || 
-        hasRole('gestor') || 
-        hasRole('professor') ||
-        hasPermission('manageUsers') || 
-        request.auth.token.email.lower() == userId.lower()
-      );
-      
-      allow delete: if isAuth() && (hasRole('admin') || hasRole('gestor') || hasPermission('manageUsers'));
     }
 
     // ── Modalidades e Turmas ──────────────────────────────────────────────────
@@ -99,18 +85,39 @@ service cloud.firestore {
       allow read: if isStaff();
       allow write: if hasRole('admin') || hasRole('gestor'); 
     }
+    match /expenses/{docId}   { 
+      allow read: if isStaff();
+      allow write: if hasRole('admin') || hasRole('gestor'); 
+    }
     match /systemLogs/{docId} { allow write: if isAuth(); allow read: if isStaff(); }
 
-    match /{document=**} {
-      allow read, write: if isAuth() && hasRole('admin');
+    match /equipe/{uId} {
+      allow read, write, delete: if isAuth() && (hasRole('admin') || hasRole('gestor'));
+      match /privacy/secrets {
+        allow read, write, delete: if isAuth() && (hasRole('admin') || hasRole('gestor') || request.auth.token.email.lower() == uId.lower());
+      }
     }
 
-    // ── Cofres Legados ───────────────────────────────────────────────────────
-    match /equipe/{uId}/privacy/secrets {
-      allow read: if isAuth() && (hasRole('admin') || hasRole('gestor') || request.auth.token.email.lower() == uId.lower());
+    match /students/{uId} {
+      allow read, write, delete: if isAuth() && (hasRole('admin') || hasRole('gestor'));
+      match /privacy/secrets {
+        allow read, write, delete: if isAuth() && (hasRole('admin') || hasRole('gestor') || request.auth.token.email.lower() == uId.lower());
+      }
     }
-    match /students/{uId}/privacy/secrets {
-      allow read: if isAuth() && (hasRole('admin') || hasRole('gestor') || request.auth.token.email.lower() == uId.lower());
+
+    // ── Avisos e Notificações (Notices) ─────────────────────────────────────────
+    match /notices/{noticeId} {
+      allow get, list: if isAuth();
+      allow create, update: if isStaff();
+      allow delete: if hasRole('admin') || hasRole('gestor');
+    }
+
+    match /notice_views/{viewId} {
+      allow read, write: if isAuth();
+    }
+
+    match /{document=**} {
+      allow read, write, delete: if isAuth() && hasRole('admin');
     }
   }
 }

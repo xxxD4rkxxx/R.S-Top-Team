@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { 
-  X, GraduationCap, Users, 
-  Mail, Smartphone, Shield, Info, 
+import {
+  X, GraduationCap, Users,
+  Mail, Smartphone, Shield, Info,
   ChevronDown, Check, Save, Landmark,
   Settings, User, MapPin, Activity,
   PhoneCall, HeartPulse
@@ -65,7 +65,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   const { modalities, loading: loadingModalities } = useModalities()
   const activeModalities = (modalities || []).filter(m => m.status === 'ativo')
   const { effectiveRole } = useAuth()
-  
+
   // Oculta a navegação mobile para evitar conflitos visuais (Padrão SSoT)
   useHideMobileNav(isOpen)
 
@@ -83,6 +83,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
     parentName: '',
     parentPhone: '',
     planValue: '',
+    initialPaymentStatus: 'pending', // 'paid' ou 'pending'
   })
 
   useEffect(() => {
@@ -90,10 +91,10 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
       if (initialData) {
         // Normalização das modalidades (SSoT) e correção de "Jiu-Jitsu" órfão
         let normalizedModalities = []
-        const raw = Array.isArray(initialData.modalities) ? initialData.modalities : 
-                    Array.isArray(initialData.modality) ? initialData.modality :
-                    (initialData.modality ? [initialData.modality] : [initialModality])
-        
+        const raw = Array.isArray(initialData.modalities) ? initialData.modalities :
+          Array.isArray(initialData.modality) ? initialData.modality :
+            (initialData.modality ? [initialData.modality] : [initialModality])
+
         // Converte "Jiu-Jitsu" para "Jiu Jitsu" e remove duplicatas
         normalizedModalities = Array.from(new Set(raw.map(m => m === 'Jiu-Jitsu' ? 'Jiu Jitsu' : m)))
 
@@ -111,6 +112,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           parentName: initialData.parentName || '',
           parentPhone: initialData.parentPhone || '',
           planValue: initialData.planValue || '',
+          initialPaymentStatus: 'pending', // Editando não gera nova cobrança automática
         })
       } else {
         setForm({
@@ -119,6 +121,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           ageCategory: 'Adulto', gender: 'Masculino',
           parentName: '', parentPhone: '',
           planValue: '',
+          initialPaymentStatus: 'pending',
         })
       }
       setErrorMsg('')
@@ -128,15 +131,47 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
+  // 💰 CÁLCULO DINÂMICO DE MENSALIDADE
+  useEffect(() => {
+    if (!initialData && modalities && form.modality.length > 0) {
+      let total = 0;
+      const cat = (form.ageCategory || 'Adulto').toLowerCase();
+
+      form.modality.forEach(modId => {
+        const mod = modalities.find(m => m.id === modId || m.name === modId);
+        if (mod && mod.pricing && mod.pricing[cat] && mod.pricing[cat].enabled) {
+          total += Number(mod.pricing[cat].price) || 0;
+        }
+      });
+
+      // Converte para o formato de centavos que o input espera (ex: 150 -> "15000")
+      if (total > 0) {
+        setForm(prev => ({ ...prev, planValue: (total * 100).toString() }));
+      }
+    }
+  }, [form.modality, form.ageCategory, modalities, initialData]);
+
   async function handleSubmit(e) {
     if (e) e.preventDefault()
     if (!form.name.trim()) { setErrorMsg('Nome é obrigatório'); return }
-    
+
     setSaving(true)
     setErrorMsg('')
     try {
       const isVisitor = form.type === 'visitante'
-      await onAdd(form, form.modality, { isVisitor, belt: form.belt })
+
+      // Normaliza o valor para decimal antes de enviar (SSoT)
+      const normalizedForm = {
+        ...form,
+        planValue: form.planValue ? (Number(form.planValue.replace(/\D/g, '')) / 100).toFixed(2) : ''
+      }
+
+      // Se for edição, não enviamos o status de pagamento (não queremos duplicar cobranças)
+      if (initialData) {
+        delete normalizedForm.initialPaymentStatus;
+      }
+
+      await onAdd(normalizedForm, form.modality, { isVisitor, belt: form.belt })
       onClose()
     } catch (err) {
       console.error('Erro ao processar aluno:', err)
@@ -149,8 +184,26 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   if (!isOpen) return null
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onClose}>
-      <div 
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }} 
+      className="modal-backdrop" 
+      onClick={onClose}
+    >
+      <motion.div
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.2}
+        onDragEnd={(e, info) => {
+          if (info.offset.y > 100 || info.velocity.y > 500) {
+            onClose();
+          }
+        }}
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
         onClick={e => e.stopPropagation()}
         className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
       >
@@ -162,8 +215,35 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
         {/* CABEÇALHO PREMIUM FIXO */}
         <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-lg shadow-primary/5">
-              <GraduationCap size={28} strokeWidth={2.5} />
+            <div 
+              className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+              style={{ 
+                backgroundColor: (() => {
+                  const selectedBelt = Array.from(modalities || []).flatMap(m => 
+                    m.beltSystem?.categories?.flatMap(c => c.belts || []) || []
+                  ).find(b => b.name === form.belt);
+                  return selectedBelt?.color ? `${selectedBelt.color}15` : 'color-mix(in srgb, var(--clr-primary) 15%, transparent)';
+                })(),
+                borderColor: (() => {
+                  const selectedBelt = Array.from(modalities || []).flatMap(m => 
+                    m.beltSystem?.categories?.flatMap(c => c.belts || []) || []
+                  ).find(b => b.name === form.belt);
+                  return selectedBelt?.color ? `${selectedBelt.color}30` : 'color-mix(in srgb, var(--clr-primary) 30%, transparent)';
+                })(),
+              }}
+            >
+              <GraduationCap 
+                size={28} 
+                strokeWidth={2.5}
+                style={{ 
+                  color: (() => {
+                    const selectedBelt = Array.from(modalities || []).flatMap(m => 
+                      m.beltSystem?.categories?.flatMap(c => c.belts || []) || []
+                    ).find(b => b.name === form.belt);
+                    return selectedBelt?.color ? selectedBelt.color : 'var(--clr-primary)';
+                  })()
+                }}
+              />
             </div>
             <div>
               <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
@@ -194,19 +274,19 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                 Informações Básicas
                 <div className="h-px flex-1 bg-white/5" />
               </h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome Completo</label>
                   <div className="relative">
                     <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                    <input 
-                      type="text" 
-                      required 
-                      value={form.name} 
-                      onChange={e => setForm({ ...form, name: e.target.value })} 
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans" 
-                      placeholder="Ex: João Silva" 
+                    <input
+                      type="text"
+                      required
+                      value={form.name}
+                      onChange={e => setForm({ ...form, name: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                      placeholder="Ex: João Silva"
                     />
                   </div>
                 </div>
@@ -215,12 +295,12 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                   <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Telefone / WhatsApp</label>
                   <div className="relative">
                     <Smartphone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                    <input 
-                      type="text" 
-                      value={form.phone} 
-                      onChange={e => setForm({ ...form, phone: e.target.value })} 
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans" 
-                      placeholder="(00) 00000-0000" 
+                    <input
+                      type="text"
+                      value={form.phone}
+                      onChange={e => setForm({ ...form, phone: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                      placeholder="(00) 00000-0000"
                     />
                   </div>
                 </div>
@@ -230,29 +310,29 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                 <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">E-mail de Acesso</label>
                 <div className="relative">
                   <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                  <input 
-                    type="email" 
-                    required 
-                    value={form.email} 
-                    onChange={e => setForm({ ...form, email: e.target.value })} 
-                    className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans" 
-                    placeholder="email@exemplo.com" 
+                  <input
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={e => setForm({ ...form, email: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                    placeholder="email@exemplo.com"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <CustomSelect 
-                  label="Gênero" 
-                  value={form.gender} 
-                  onChange={v => setForm({ ...form, gender: v })} 
-                  options={[['Masculino', 'Masculino'], ['Feminino', 'Feminino']]} 
+                <CustomSelect
+                  label="Gênero"
+                  value={form.gender}
+                  onChange={v => setForm({ ...form, gender: v })}
+                  options={[['Masculino', 'Masculino'], ['Feminino', 'Feminino']]}
                 />
-                <CustomSelect 
-                  label="Categoria de Idade" 
-                  value={form.ageCategory} 
-                  onChange={v => setForm({ ...form, ageCategory: v })} 
-                  options={[['Adulto', 'Adulto'], ['Juvenil', 'Juvenil'], ['Kids', 'Kids']]} 
+                <CustomSelect
+                  label="Categoria de Idade"
+                  value={form.ageCategory}
+                  onChange={v => setForm({ ...form, ageCategory: v })}
+                  options={[['Adulto', 'Adulto'], ['Juvenil', 'Juvenil'], ['Kids', 'Kids']]}
                 />
               </div>
             </div>
@@ -287,8 +367,8 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                               setForm({ ...form, modality: newMods });
                             }}
                             className={`flex items-center justify-center px-3 py-2.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all
-                              ${isSelected 
-                                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
+                              ${isSelected
+                                ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(16,185,129,0.1)]'
                                 : 'bg-white/[0.02] border-white/10 text-gray-500 hover:border-white/20 hover:bg-white/[0.04]'}`}
                           >
                             {m.name}
@@ -301,23 +381,38 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {activeModalities.some(m => form.modality.includes(m.id) && m.hasBelt !== false) && (
-                    <CustomSelect 
-                      label="Faixa Atual" 
-                      value={form.belt} 
-                      onChange={v => setForm({ ...form, belt: v })} 
-                      options={[
-                        ['none', 'Sem Faixa'],
-                        ['white', 'Branca'],
-                        ['blue', 'Azul'],
-                        ['purple', 'Roxa'],
-                        ['brown', 'Marrom'],
-                        ['black', 'Preta'],
-                        ['kids-white', 'Branca (Kids)'],
-                        ['gray', 'Cinza (Kids)'],
-                        ['yellow', 'Amarela (Kids)'],
-                        ['orange', 'Laranja (Kids)'],
-                        ['green', 'Verde (Kids)'],
-                      ]} 
+                    <CustomSelect
+                      label="Faixa Atual"
+                      value={form.belt}
+                      onChange={v => setForm({ ...form, belt: v })}
+                      options={(() => {
+                        const baseOptions = [['none', 'Sem Faixa']];
+                        const dynamicBelts = [];
+                        const currentCategoryName = (form.ageCategory || 'Adulto').toLowerCase();
+
+                        // Percorre as modalidades selecionadas no formulário
+                        form.modality.forEach(modId => {
+                          const mod = modalities?.find(m => m.id === modId || m.name === modId);
+                          
+                          // Acessa a nova estrutura beltSystem -> categories
+                          if (mod?.beltSystem?.categories) {
+                            const category = mod.beltSystem.categories.find(c => 
+                              c.name.toLowerCase() === currentCategoryName || 
+                              c.id.toLowerCase() === currentCategoryName
+                            );
+
+                            if (category?.belts) {
+                              category.belts.forEach(belt => {
+                                if (!dynamicBelts.find(db => db[0] === belt.name)) {
+                                  dynamicBelts.push([belt.name, belt.name.toUpperCase()]);
+                                }
+                              });
+                            }
+                          }
+                        });
+
+                        return dynamicBelts.length > 0 ? [...baseOptions, ...dynamicBelts] : baseOptions;
+                      })()}
                     />
                   )}
                 </div>
@@ -334,22 +429,22 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome do Responsável</label>
-                    <input 
-                      type="text" 
-                      value={form.parentName} 
-                      onChange={e => setForm({ ...form, parentName: e.target.value })} 
-                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/30 transition-all font-medium" 
-                      placeholder="Nome do pai/mãe" 
+                    <input
+                      type="text"
+                      value={form.parentName}
+                      onChange={e => setForm({ ...form, parentName: e.target.value })}
+                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/30 transition-all font-medium"
+                      placeholder="Nome do pai/mãe"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">WhatsApp Responsável</label>
-                    <input 
-                      type="text" 
-                      value={form.parentPhone} 
-                      onChange={e => setForm({ ...form, parentPhone: e.target.value })} 
-                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/30 transition-all font-medium font-sans" 
-                      placeholder="(00) 00000-0000" 
+                    <input
+                      type="text"
+                      value={form.parentPhone}
+                      onChange={e => setForm({ ...form, parentPhone: e.target.value })}
+                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/30 transition-all font-medium font-sans"
+                      placeholder="(00) 00000-0000"
                     />
                   </div>
                 </div>
@@ -367,12 +462,12 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                   <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Contato de Emergência</label>
                   <div className="relative">
                     <PhoneCall size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                    <input 
-                      type="text" 
-                      value={form.emergency} 
-                      onChange={e => setForm({ ...form, emergency: e.target.value })} 
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans" 
-                      placeholder="Nome e Telefone" 
+                    <input
+                      type="text"
+                      value={form.emergency}
+                      onChange={e => setForm({ ...form, emergency: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                      placeholder="Nome e Telefone"
                     />
                   </div>
                 </div>
@@ -380,11 +475,11 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                   <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Restrições Médicas/Alergias</label>
                   <div className="relative">
                     <HeartPulse size={14} className="absolute left-3.5 top-4 text-gray-600" />
-                    <textarea 
-                      value={form.medical} 
-                      onChange={e => setForm({ ...form, medical: e.target.value })} 
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium min-h-[100px] outline-none" 
-                      placeholder="Ex: Alergia a iodo, problemas no joelho, etc." 
+                    <textarea
+                      value={form.medical}
+                      onChange={e => setForm({ ...form, medical: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium min-h-[100px] outline-none"
+                      placeholder="Ex: Alergia a iodo, problemas no joelho, etc."
                     />
                   </div>
                 </div>
@@ -404,26 +499,73 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                   Contrato e Financeiro
                   <div className="h-px flex-1 bg-emerald-500/10" />
                 </h3>
-                
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">
-                    Valor da Mensalidade
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-black text-sm font-sans">R$</span>
-                    <input 
-                      type="number"
-                      step="0.01" 
-                      value={form.planValue} 
-                      onChange={e => setForm({ ...form, planValue: e.target.value })} 
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/30 transition-all font-medium font-sans" 
-                      placeholder="Ex: 150.00" 
-                    />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">
+                      Valor da Mensalidade
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.planValue ? (() => {
+                          const clean = String(form.planValue).replace(/\D/g, '')
+                          const amount = (Number(clean) / 100)
+                          return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                        })() : ''}
+                        onChange={e => {
+                          const clean = e.target.value.replace(/\D/g, '')
+                          setForm({ ...form, planValue: clean })
+                        }}
+                        className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500/30 transition-all font-medium font-sans"
+                        placeholder="R$ 0,00"
+                      />
+                    </div>
+                    <p className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 px-1 font-sans">
+                      * Valor sugerido baseado nas modalidades selecionadas.
+                    </p>
                   </div>
-                  <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest mt-1 px-1 font-sans">
-                    * Este valor será utilizado para gerar as cobranças mensais automáticas.
-                  </p>
+
+                  {!initialData && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">
+                        Status do Primeiro Pagamento
+                      </label>
+                      <div className="flex gap-2 p-1 bg-black/40 border border-white/5 rounded-2xl">
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, initialPaymentStatus: 'paid' })}
+                          className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${form.initialPaymentStatus === 'paid'
+                            ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
+                            : 'text-gray-600 hover:text-gray-400'
+                            }`}
+                        >
+                          Pago
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, initialPaymentStatus: 'pending' })}
+                          className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${form.initialPaymentStatus === 'pending'
+                            ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
+                            : 'text-gray-600 hover:text-gray-400'
+                            }`}
+                        >
+                          Pendente
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {!initialData && (
+                  <div className="flex items-start gap-3 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                    <Info size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <p className="text-[9px] text-emerald-500/70 leading-tight uppercase font-black">
+                      Ao salvar, uma cobrança será gerada automaticamente na aba de finanças para o mês atual.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -445,13 +587,13 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
               {saving ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                <><Save size={16}/> {initialData ? 'Salvar Alterações' : 'Confirmar Cadastro'}</>
+                <><Save size={16} /> {initialData ? 'Salvar Alterações' : 'Confirmar Cadastro'}</>
               )}
             </button>
           </div>
         </form>
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>,
     document.body
   )
 }

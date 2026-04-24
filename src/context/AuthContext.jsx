@@ -1,21 +1,11 @@
 /**
- * Provedor de Autenticação e Gestão de Sessão (Single Source of Truth)
- *
- * Funcionalidades de SEGURANÇA implementadas:
- * - Auto-logout por inactividade (30 minutos sem interacção)
- * - Delay progressivo em falhas de login (protecção anti-brute force)
- * - O PIN NÃO é guardado no localStorage — apenas dados não sensíveis do perfil
- * - Sessão simulada (PIN) limpa os dados sensíveis ao fazer logout
- *
- * Este contexto gere o estado global do utilizador, suportando login via
- * Firebase Auth (E-mail/Senha) e via Identificador/PIN (simulado).
+ * Provedor de Autenticação e Gestão de Sessão (Arquitetura de Dupla Identidade)
  */
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInAnonymously,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -29,69 +19,45 @@ import {
   doc,
   getDoc,
   setDoc,
-  deleteDoc,
-  updateDoc,
-  deleteField,
   collection,
   query,
   getDocs,
   limit,
   where,
-  onSnapshot
+  onSnapshot,
+  serverTimestamp
 } from 'firebase/firestore'
 import { auth, db } from '../firebase/config'
+import { COLLECTIONS } from '../firebase/collections'
 
 const AuthContext = createContext()
 
-// Inicialização Silenciosa de Auth Secundário para Verificações de PIN
-// Isso evita o swap da identidade principal do app e previne re-renders globais.
 const getVerifyAuth = () => {
   const apps = getApps()
   const verifyApp = apps.find(a => a.name === 'verify') || initializeApp(firebaseConfig, 'verify')
   const vAuth = getAuth(verifyApp)
-  // Garantimos que o PIN não persista e não interfira com o login principal
   setPersistence(vAuth, inMemoryPersistence)
   return vAuth
 }
 const verifyAuth = getVerifyAuth()
 
-// Nome da colecção unificada de utilizadores
-const USERS_COLLECTION = 'users'
-
-// Tempo de inactividade até auto-logout (30 minutos em ms)
+const USERS_COLLECTION = COLLECTIONS.USUARIOS
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000
 
-/**
- * Extrai apenas os campos seguros do perfil para guardar no localStorage.
- * Nunca persiste o PIN, passwords ou dados financeiros.
- */
 function extractSafeProfile(data) {
   const { pin: _pin, password: _pwd, ...safeData } = data
   return safeData
 }
 
 export function AuthProvider({ children }) {
-  // Estado do utilizador Auth (Firebase)
   const [user, setUser] = useState(null)
-
-  // Dados detalhados do perfil (vindos do Firestore)
   const [userData, setUserData] = useState(null)
-
   const [loading, setLoading] = useState(true)
   const [simulatedRole, setSimulatedRole] = useState(null)
-  const [isSetupMode, setIsSetupMode] = useState(false)
-  const [hasAdmin, setHasAdmin] = useState(true)
-  const [hasGestor, setHasGestor] = useState(true)
 
-  // Referência ao temporizador de inactividade
   const inactivityTimerRef = useRef(null)
-
-  // 🚀 CACHE DE SESSÃO: Armazena o hash do PIN validado para rapidez instantânea em ações subsequentes.
-  // Isso evita chamadas de rede repetidas para o Firebase Auth durante a mesma sessão.
   const sessionPinHashRef = useRef(null)
 
-  // Função simples de hash para o cache de sessão (não precisa ser criptograficamente inquebrável, 
-  // pois é apenas para cache de memória de curta duração em uma sessão já autenticada).
   const getHash = (str) => {
     let hash = 0
     for (let i = 0; i < str.length; i++) {
@@ -101,462 +67,296 @@ export function AuthProvider({ children }) {
     return hash.toString()
   }
 
-  /**
-   * Determina o papel efectivo do utilizador para a interface.
-   * Prioridade: Role Simulada > Role Principal > Papel hierárquico > Aluno
-   */
-  const effectiveRole = simulatedRole
-    || (userData?.roles?.admin === true ? 'admin'
-      : userData?.roles?.gestor === true ? 'gestor'
-        : String(userData?.role || '').toLowerCase() === 'admin' ? 'admin'
-          : String(userData?.role || '').toLowerCase() === 'gestor' ? 'gestor'
-            : userData?.roles?.professor === true ? 'professor'
-              : String(userData?.role || '').toLowerCase() === 'professor' ? 'professor'
-                : 'aluno')
+  const effectiveRole = (() => {
+    if (simulatedRole) return simulatedRole;
+    const roles = userData?.roles || {}
+    const roleStr = String(userData?.role || '').toLowerCase()
+    if (roles.admin === true || roleStr === 'admin') return 'admin'
+    if (roles.gestor === true || roleStr === 'gestor') return 'gestor'
+    if (roles.professor === true || roleStr === 'professor') return 'professor'
+    return 'aluno'
+  })()
 
-
-  /**
-   * VERIFICAÇÃO DE SEGURANÇA (Zero-Knowledge)
-   * Valida se um PIN inserido é o PIN correcto do utilizador actual sem usar o BD.
-   */
-  /** 🔐 INTERNAL IDENTITY HELPER */
   const getPinAuthEmail = (raw) => {
     const rawId = String(raw || '').toLowerCase().trim()
-    // Se já é o formato final, retorna direto
-    if (rawId.endsWith('@rstopteam.internal')) return rawId
+    
+    // Se já for um e-mail válido (contém @ e não termina em internal), retorna ele
+    if (rawId.includes('@') && !rawId.endsWith('.internal')) return rawId
+    
+    // Se for um ID legatário do rstopteam.internal, limpa ele
+    if (rawId.endsWith('@rstopteam.internal')) {
+      return rawId.split('@')[0].replace(/_/g, '.')
+    }
 
-    // Senão, normaliza e anexa
-    const safeId = rawId
-      .replace(/[@.]/g, '_')
-      .replace(/\s+/g, '_')
-      .replace(/_{2,}/g, '_') // Evita múltiplos underscores seguidos
-
-    return `${safeId}@rstopteam.internal`
+    return rawId
   }
 
   const verifyPIN = async (pinToVerify) => {
-    if (!user || (!user.email && !userData?.authEmail)) return false
+    // Para verificação rápida dentro do app, aceitamos qualquer um dos PINs do admin
+    if (!user || !userData) return false
+    const typed = String(pinToVerify).trim()
+    if (typed === String(userData.pin).trim() || typed === String(userData.adminPin).trim()) return true
 
-    // Resolvemos a identidade única baseada no e-mail do usuário
-    const email = user.email || userData.authEmail
-    const pinAuthEmail = getPinAuthEmail(email)
-    const securePIN = pinToVerify.length >= 6 ? pinToVerify : pinToVerify.padEnd(6, '0')
-    const currentHash = getHash(securePIN)
-
-    // ⚡ VERIFICAÇÃO INSTANTÂNEA: Se o PIN já foi validado nesta sessão, retornamos true imediatamente.
-    if (sessionPinHashRef.current && sessionPinHashRef.current === currentHash) {
-      console.log('⚡ PIN Validado via Cache de Sessão (Instantâneo)')
-      return true
-    }
-
+    // Fallback Firebase
+    const pinAuthEmail = getPinAuthEmail(user.email)
+    const securePIN = typed.length >= 6 ? typed : typed.padEnd(6, '0')
     try {
-      console.time('verify-pin-network')
-      // Tenta validar o PIN através do Auth Secundário (SILENCIOSO)
-      // Não afeta o usuário logado no auth principal.
       await signInWithEmailAndPassword(verifyAuth, pinAuthEmail, securePIN)
-      console.timeEnd('verify-pin-network')
-
-      // 🔥 POPULAMOS O CACHE: Próximas verificações serão instantâneas
-      sessionPinHashRef.current = currentHash
-
-      // Opcional: Desloga imediatamente do secundário para limpar recursos
-      signOut(verifyAuth).catch(() => {})
+      signOut(verifyAuth).catch(() => { })
       return true
-    } catch (e) {
-      console.warn('❌ PIN Inválido (Silent Auth):', e.code)
-      return false
-    }
+    } catch (e) { return false }
   }
 
-  /**
-   * Finaliza a sessão e limpa todos os dados do cliente.
-   * Chamado manualmente pelo utilizador ou automaticamente por inactividade.
-   */
   const logout = useCallback(() => {
-    // Limpar temporizador de inactividade
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current)
-    }
-    setUser(null)
-    setUserData(null)
-    setSimulatedRole(null)
-    sessionPinHashRef.current = null // 🛡️ LIMPA CACHE DE PIN NO LOGOUT
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
+    setUser(null); setUserData(null); setSimulatedRole(null)
+    sessionPinHashRef.current = null
     return signOut(auth)
   }, [])
 
-  /**
-   * GESTÃO DE INACTIVIDADE — Auto-logout ao fim de 30 minutos sem interacção.
-   * Reinicia o contador a cada evento do utilizador (clique, tecla, scroll, toque).
-   */
   useEffect(() => {
     const resetTimer = () => {
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
-      inactivityTimerRef.current = setTimeout(() => {
-        // Utilizador inactivo — terminar sessão por segurança
-        logout()
-      }, INACTIVITY_TIMEOUT_MS)
+      inactivityTimerRef.current = setTimeout(() => logout(), INACTIVITY_TIMEOUT_MS)
     }
-
-    // Só activar o temporizador se houver utilizador com sessão activa
     if (!user) return
-
     const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click']
     events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }))
-    resetTimer() // Inicia o contador ao montar
-
+    resetTimer()
     return () => {
       events.forEach(e => window.removeEventListener(e, resetTimer))
-      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
     }
   }, [user, logout])
 
   /**
-   * PROCESSO DE LOGIN UNIFICADO com protecção anti-brute force.
+   * LOGIN NORMAL: Só aceita PIN de Aluno.
+   * Se for Admin, força o papel 'aluno'.
    */
   const login = async (identifier, password) => {
-    console.log('🔐 Iniciando tentativa de login normal para:', identifier)
-    const failCount = parseInt(sessionStorage.getItem('_lfc') || '0', 10)
-    if (failCount > 0) {
-      const delayMs = Math.min(500 * Math.pow(2, failCount - 1), 8000)
-      await new Promise(resolve => setTimeout(resolve, delayMs))
-    }
-
     let email = identifier.toLowerCase().trim()
-    const isEmail = identifier.includes('@')
-    const pinAuthEmail = getPinAuthEmail(email)
-    const securePIN = password.length >= 6 ? password : password.padEnd(6, '0')
+    const typedPin = String(password).trim()
+    const securePIN = typedPin.length >= 6 ? typedPin : typedPin.padEnd(6, '0')
 
     try {
-      const result = await signInWithEmailAndPassword(auth, pinAuthEmail, securePIN)
-      console.log('✅ Login realizado com sucesso!')
+      // 1. Tenta localizar o perfil no Firestore pelo e-mail real (novo padrão)
+      let targetDoc;
+      try {
+        targetDoc = await getDoc(doc(db, USERS_COLLECTION, email))
+      } catch (e) {
+        console.warn("Falha ao ler nova coleção, tentando legado...", e);
+      }
       
-      setSimulatedRole('aluno')
-      sessionStorage.removeItem('_lfc')
-      return result
-    } catch (err) {
-      // 🚀 AUTO-PROVISIONAMENTO (Just-in-Time Access)
-      const isAuthMissing = err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential'
-      
-      if (isAuthMissing) {
-        console.log('🔍 Usuário/Acesso não encontrado no Auth. Verificando Firestore...')
+      // 2. Se não achar, tenta pelo ID legado na coleção NOVA
+      if (!targetDoc || !targetDoc.exists()) {
+        const legacyId = `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
         
         try {
-          // Busca o perfil no Firestore tentando todas as variações de ID possíveis
-          const possibleIds = [pinAuthEmail, email, identifier.trim().toLowerCase()]
-          let targetDoc = null
-          
-          for (const id of possibleIds) {
-            const docRef = doc(db, USERS_COLLECTION, id)
-            const snap = await getDoc(docRef)
-            if (snap.exists()) {
-              targetDoc = snap
-              break
-            }
-          }
+          targetDoc = await getDoc(doc(db, USERS_COLLECTION, legacyId))
+        } catch (e) {}
 
-          if (!targetDoc) {
-            // Fallback final: busca por campo de e-mail
+        // 3. Se ainda não achar, tenta busca por campo 'email' na coleção NOVA
+        if (!targetDoc?.exists()) {
+          try {
             const q = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
             const qSnap = await getDocs(q)
             if (!qSnap.empty) targetDoc = qSnap.docs[0]
-          }
-
-          if (targetDoc?.exists()) {
-            const dbData = targetDoc.data()
-            const dbPin = String(dbData.pin || '').trim()
-            const typedPin = String(password || '').trim()
-            
-            console.log(`📡 Comparando PINs: Digitado=${typedPin} | Banco=${dbPin}`)
-
-            if (dbPin && (dbPin === typedPin || dbPin === securePIN)) {
-              console.log('✨ PIN verificado no Firestore. Provisionando conta no Auth...')
-              try {
-                const newUser = await createUserWithEmailAndPassword(auth, pinAuthEmail, securePIN)
-                console.log('✅ Conta JIT criada e logada!')
-                setSimulatedRole(null) // Deixa assumir o cargo real do Firestore
-                sessionStorage.removeItem('_lfc')
-                return newUser
-              } catch (createErr) {
-                if (createErr.code === 'auth/email-already-in-use') {
-                   console.log('ℹ️ Conta já existe no Auth. Tentando login direto agora...')
-                   return await signInWithEmailAndPassword(auth, pinAuthEmail, securePIN)
-                } 
-                throw createErr
-              }
-            } else {
-              console.log('❌ PIN do banco não confere.')
-            }
-          } else {
-            console.log('❌ Perfil não localizado após todas as tentativas de busca.')
-          }
-        } catch (provisionErr) {
-          console.error('❌ Erro crítico no auto-provisionamento:', provisionErr)
+          } catch (e) {}
         }
       }
 
-      // Tentar login com email padrão se falhar o interno (legado)
-      if (isEmail) {
-        try {
-          const result = await signInWithEmailAndPassword(auth, email, password)
-          setSimulatedRole('aluno')
-          sessionStorage.removeItem('_lfc')
-          return result
-        } catch (e) {}
+      // 4. RESGATE CRÍTICO: Se ainda não achar nada na coleção NOVA, busca na ANTIGA 'users'
+      if (!targetDoc || !targetDoc.exists()) {
+        const legacyId = `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
+        const legacyRef = doc(db, 'users', legacyId)
+        const legacySnap = await getDoc(legacyRef)
+        
+        if (legacySnap.exists()) {
+          targetDoc = legacySnap
+        } else {
+          const q = query(collection(db, 'users'), where('email', '==', email), limit(1))
+          const qSnap = await getDocs(q)
+          if (!qSnap.empty) targetDoc = qSnap.docs[0]
+        }
       }
-      
-      throw new Error('Usuário ou PIN incorretos. Fale com seu Professor.')
+
+      if (!targetDoc?.exists()) throw new Error('Usuário não localizado no sistema novo ou legado.')
+      const dbData = targetDoc.data()
+      const profileId = targetDoc.id
+
+      // Valida se o PIN digitado é o PIN de aluno (Normal)
+      const isNormalPin = typedPin === String(dbData.pin).trim() || securePIN === String(dbData.pin).trim()
+
+      if (!isNormalPin) {
+        throw new Error('Este PIN não é válido para a tela comum. Use o Login de Administrador.')
+      }
+
+      // Se for admin, entramos em modo SIMULADO de ALUNO
+      const isAdm = dbData.roles?.admin === true || String(dbData.role).toLowerCase() === 'admin'
+      if (isAdm) setSimulatedRole('aluno')
+
+      // PIN Mestre para o Auth
+      const masterPin = String(dbData.adminPin || dbData.pin).trim()
+      const masterSecure = masterPin.length >= 6 ? masterPin : masterPin.padEnd(6, '0')
+
+      // Tenta logar com o e-mail real
+      try {
+        return await signInWithEmailAndPassword(auth, email, masterSecure)
+      } catch (e) {
+        // Se falhar (ex: conta não existe no Auth com e-mail real), tenta com o e-mail legado
+        const legacyEmail = profileId.includes('@rstopteam.internal') ? profileId : `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
+        try {
+          return await signInWithEmailAndPassword(auth, legacyEmail, masterSecure)
+        } catch (e2) {
+          // Se nenhum dos dois existe, cria a conta no Auth com o e-mail REAL (Promoção de identidade)
+          if (e2.code === 'auth/user-not-found' || e2.code === 'auth/invalid-credential') {
+            return await createUserWithEmailAndPassword(auth, email, masterSecure)
+          }
+          throw e2
+        }
+      }
+    } catch (err) {
+      throw new Error(err.message || 'Usuário ou PIN incorretos.')
     }
   }
 
   /**
-   * LOGIN ADMINISTRATIVO (Via Segredo do Logo)
+   * LOGIN ADMINISTRADOR: Só aceita PIN Master.
+   * Garante acesso total.
    */
   const loginAdmin = async (identifier, adminPin) => {
-    console.log('🛡️ Tentativa de Login Administrativo:', identifier)
-    
     let email = identifier.toLowerCase().trim()
-    const pinAuthEmail = getPinAuthEmail(email)
-    const inputPin = String(adminPin || '').trim()
-    
+    const typedPin = String(adminPin).trim()
+    const securePin = typedPin.length >= 6 ? typedPin : typedPin.padEnd(6, '0')
+
     try {
-      // 1. Localização do Perfil no Firestore (Robusta)
-      const possibleIds = [pinAuthEmail, email, identifier.trim().toLowerCase()]
-      let targetDoc = null
-      
-      for (const id of possibleIds) {
-        const docRef = doc(db, USERS_COLLECTION, id)
-        const snap = await getDoc(docRef)
-        if (snap.exists()) {
-          targetDoc = snap
-          break
-        }
-      }
-
-      if (!targetDoc) {
-        const q = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
-        const qSnap = await getDocs(q)
-        if (!qSnap.empty) targetDoc = qSnap.docs[0]
-      }
-
-      if (!targetDoc?.exists()) {
-        throw new Error('Conta administrativa não localizada.')
-      }
-
-      const adminData = targetDoc.data()
-      
-      // 2. Validação Estrita de Permissão
-      // Expandido para incluir 'professor' na entrada administrativa
-      const isAuthorized = 
-        ['admin', 'gestor', 'professor'].includes(String(adminData.role || '').toLowerCase()) ||
-        adminData.roles?.admin === true ||
-        adminData.roles?.gestor === true ||
-        adminData.roles?.professor === true
-
-      if (!isAuthorized) {
-        console.warn('🚫 Tentativa de login adm por usuário sem permissão staff:', adminData.role)
-        throw new Error('Este acesso é exclusivo para membros da equipe autorizados.')
-      }
-
-      // 3. Comparação de PIN Administrativo
-      const dbAdminPin = String(adminData.adminPin || adminData['adminPin '] || adminData.pin || '').trim()
-      const typedAdminPin = String(adminPin || '').trim()
-
-      console.log(`🛡️ Validando PIN Adm: Digitado=${typedAdminPin} | Banco=${dbAdminPin}`)
-
-      if (!dbAdminPin || typedAdminPin !== dbAdminPin) {
-        throw new Error('PIN de Administrador incorreto.')
-      }
-
-      // 4. Preparação do PIN de Acesso para o Auth
-      const accessPin = adminData.pin || adminData.password
-      if (!accessPin) throw new Error('Falha na sincronização de segurança.')
-      const securePin = String(accessPin).length >= 6 ? String(accessPin) : String(accessPin).padEnd(6, '0')
-      
-      // 5. Autenticação Firebase Auth com Estratégia de Múltiplos Fallbacks
-      // Tenta as seguintes combinações em ordem até obter sucesso:
-      const authAttempts = [
-        { e: pinAuthEmail, p: securePin, label: 'Moderno (PIN Novo)' },
-        { e: pinAuthEmail, p: '111111', label: 'Moderno (PIN Legado)' },
-        { e: email, p: securePin, label: 'Real (PIN Novo)' },
-        { e: email, p: '111111', label: 'Real (PIN Legado)' }
-      ]
-
-      for (const attempt of authAttempts) {
-        try {
-          console.log(`📡 Tentativa Auth: ${attempt.label}...`)
-          const result = await signWithPin(attempt.e, attempt.p)
-          console.log(`✅ Sucesso via ${attempt.label}!`)
-          setSimulatedRole(null)
-          return result
-        } catch (e) {
-          // Continua tentando se for erro de credencial
-          if (e.code !== 'auth/invalid-credential' && e.code !== 'auth/wrong-password' && e.code !== 'auth/user-not-found') {
-             throw e // Erro crítico (ex: bloqueio por chamadas demais)
-          }
-        }
-      }
-
-      // Se todas as combinações falharem, verifica se é caso de provisionamento
-      console.log('✨ Nenhuma combinação de Auth existente funcionou. Verificando provimento JIT...')
+      // 1. Tenta localizar perfil pelo e-mail real na NOVA coleção
+      let snap;
       try {
-        const result = await createUserWithEmailAndPassword(auth, pinAuthEmail, securePin)
-        console.log('✅ Conta administrativa JIT criada e logada.')
-        setSimulatedRole(null)
-        return result
-      } catch (createErr) {
-        if (createErr.code === 'auth/email-already-in-use') {
-           throw new Error('Erro de sincronização persistente. Por favor, acesse o perfil pela tela normal usando 111111 e altere seu PIN lá.')
+        snap = await getDoc(doc(db, USERS_COLLECTION, email))
+      } catch (e) {
+        console.warn("Falha ao ler nova coleção (permissões?), tentando legado...", e);
+      }
+      
+      // 2. Se falhou, não existe ou deu erro de permissão, tenta pelo legado TOTAL
+      if (!snap || !snap.exists()) {
+        const legacyId = `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
+        
+        // Tenta na coleção LEGADA 'users' diretamente
+        const legacyRef = doc(db, 'users', legacyId);
+        const legacySnap = await getDoc(legacyRef);
+        
+        if (legacySnap.exists()) {
+          snap = legacySnap;
+        } else {
+          // Tenta busca por campo email na coleção antiga
+          const q = query(collection(db, 'users'), where('email', '==', email), limit(1))
+          const qSnap = await getDocs(q)
+          if (!qSnap.empty) snap = qSnap.docs[0]
         }
-        throw createErr
+      }
+
+      if (!snap?.exists()) throw new Error('Conta não localizada no sistema novo ou legado.')
+      const data = snap.data()
+      const profileId = snap.id
+
+      const isAdm = data.roles?.admin === true || String(data.role).toLowerCase() === 'admin' || data.roles?.gestor === true
+      if (!isAdm) throw new Error('Acesso apenas para Administradores ou Gestores.')
+
+      // Valida o PIN Admin contra o Firestore
+      const dbAdminPin = String(data.adminPin || data.pin).trim()
+      if (typedPin !== dbAdminPin && securePin !== dbAdminPin) {
+        throw new Error('PIN Administrativo incorreto.')
+      }
+
+      // Garante papel real
+      setSimulatedRole(null)
+
+      try {
+        return await signInWithEmailAndPassword(auth, email, securePin)
+      } catch (e) {
+        const legacyEmail = profileId.includes('@rstopteam.internal') ? profileId : `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
+        try {
+          return await signInWithEmailAndPassword(auth, legacyEmail, securePin)
+        } catch (e2) {
+          if (e2.code === 'auth/user-not-found' || e2.code === 'auth/invalid-credential') {
+            return await createUserWithEmailAndPassword(auth, email, securePin)
+          }
+          throw e2
+        }
       }
     } catch (err) {
-      console.error('❌ Erro no login administrativo:', err)
       throw new Error(err.message || 'Falha na autenticação administrativa.')
     }
   }
 
-  // Helper para centralizar login por PIN
-  const signWithPin = async (e, p) => {
-    return await signInWithEmailAndPassword(auth, e, p)
-  }
-
   useEffect(() => {
-    // Configura persistência local para Firebase Auth
-    setPersistence(auth, browserLocalPersistence).catch(err =>
-      console.error('Erro ao definir persistência:', err)
-    )
-
-    /** Verifica se o sistema precisa de configuração inicial (sem Admin/Gestor) */
-    const checkSetupMode = async () => {
-      try {
-        const [snapAdmin, snapGestor] = await Promise.all([
-          getDocs(query(collection(db, USERS_COLLECTION), where('roles.admin', '==', true), limit(1))),
-          getDocs(query(collection(db, USERS_COLLECTION), where('roles.gestor', '==', true), limit(1))),
-        ])
-        const foundAdmin = !snapAdmin.empty
-        const foundGestor = !snapGestor.empty
-        setHasAdmin(foundAdmin)
-        setHasGestor(foundGestor)
-        setIsSetupMode(!foundAdmin || !foundGestor)
-      } catch (err) {
-        console.warn('⚠️ Erro ao verificar setup:', err)
-        setIsSetupMode(false)
-      }
-    }
-    checkSetupMode()
-
+    setPersistence(auth, browserLocalPersistence).catch(() => { })
     let userUnsub = null
-
-    /** MONITOR DE ESTADO DE AUTENTICAÇÃO (Firebase Auth + Firestore Sync) */
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (userUnsub) userUnsub()
-
       try {
         if (fbUser) {
           const email = fbUser.email.toLowerCase()
-
-          // 🚀 SMART LOOKUP: Resolvemos qual documento do Firestore pertence ao fbUser logado
           const resolveProfileId = async () => {
-            // A. Tentativa por ID Directo (Email original)
-            const directDoc = await getDoc(doc(db, USERS_COLLECTION, email))
-            if (directDoc.exists()) return directDoc.id
+            const email = fbUser.email.toLowerCase()
+            
+            // 1. Tenta na coleção NOVA (usuarios)
+            try {
+              const prioritizedDoc = await getDoc(doc(db, USERS_COLLECTION, email))
+              if (prioritizedDoc.exists()) return { id: prioritizedDoc.id, col: USERS_COLLECTION }
+              
+              const sanitizedId = email.replace(/[@.]/g, '_') + "@rstopteam.internal"
+              const sanitizedDoc = await getDoc(doc(db, USERS_COLLECTION, sanitizedId))
+              if (sanitizedDoc.exists()) return { id: sanitizedDoc.id, col: USERS_COLLECTION }
+            } catch (e) {}
 
-            // B. Tentativa pela Identidade Sanitizada
-            const sanitizedId = getPinAuthEmail(email)
-            const sanitizedDoc = await getDoc(doc(db, USERS_COLLECTION, sanitizedId))
-            if (sanitizedDoc.exists()) return sanitizedDoc.id
-
-            // C. Tentativa por Campo 'email' 
-            const q2 = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
-            const qSnap2 = await getDocs(q2)
-            if (!qSnap2.empty) return qSnap2.docs[0].id
+            // 2. RESGATE: Tenta na coleção ANTIGA (users)
+            try {
+              const legacyId = email.includes('@rstopteam.internal') ? email : `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
+              const legacyDoc = await getDoc(doc(db, 'users', legacyId))
+              if (legacyDoc.exists()) return { id: legacyDoc.id, col: 'users' }
+              
+              const legacyEmailDoc = await getDoc(doc(db, 'users', email))
+              if (legacyEmailDoc.exists()) return { id: legacyEmailDoc.id, col: 'users' }
+            } catch (e) {}
 
             return null
           }
-
-          const targetId = await resolveProfileId()
-
-          if (targetId) {
-            userUnsub = onSnapshot(doc(db, USERS_COLLECTION, targetId), (snap) => {
+          const target = await resolveProfileId()
+          if (target) {
+            userUnsub = onSnapshot(doc(db, target.col, target.id), (snap) => {
               if (snap.exists()) {
                 const data = snap.data()
-                if (data.status === 'Inativo') {
+                if (String(data.status || '').toLowerCase() === 'inativo') {
                   logout()
                 } else {
                   setUser(fbUser)
-                  setUserData({ ...extractSafeProfile(data), id: snap.id })
+                  setUserData({ 
+                    ...extractSafeProfile(data), 
+                    id: snap.id,
+                    isLegacyProfile: target.col === 'users' || target.col === 'students' || target.col === 'equipe'
+                  })
                 }
-              } else {
-                logout()
-              }
+              } else { logout() }
               setLoading(false)
             })
-          } else {
-            console.error('❌ ERRO CRÍTICO: Perfil não encontrado para', email)
-            logout()
-          }
-
+          } else { logout() }
         } else {
-          setUser(null)
-          setUserData(null)
-          setLoading(false)
+          setUser(null); setUserData(null); setLoading(false)
         }
-      } catch (err) {
-        console.error('Erro fatal no AuthContext:', err)
-        setLoading(false)
-      }
+      } catch (err) { setLoading(false) }
     })
-
-    return () => {
-      unsubscribe()
-      if (userUnsub) userUnsub()
-    }
+    return () => { unsubscribe(); if (userUnsub) userUnsub() }
   }, [logout])
 
-  const sendResetEmail = async (email) => {
-    return sendPasswordResetEmail(auth, email)
-  }
-
-  const checkUserExists = async (email) => {
-    try {
-      const q = query(
-        collection(db, USERS_COLLECTION),
-        where('email', '==', email.toLowerCase().trim()),
-        limit(1)
-      )
-      const snap = await getDocs(q)
-      if (!snap.empty) return true
-      const docSnap = await getDoc(doc(db, USERS_COLLECTION, email.toLowerCase().trim()))
-      return docSnap.exists()
-    } catch (err) {
-      console.error('Erro ao verificar usuário:', err)
-      return false
-    }
-  }
+  const sendResetEmail = async (email) => sendPasswordResetEmail(auth, email)
 
   const value = {
-    user,
-    userData,
-    loading,
-    login,
-    loginAdmin,
-    logout,
-    verifyPIN,
-    effectiveRole,
-    simulatedRole,
-    setSimulatedRole,
-    isSetupMode,
-    hasAdmin,
-    hasGestor,
-    sendResetEmail,
-    checkUserExists
+    user, userData, loading, login, loginAdmin, logout, verifyPIN, effectiveRole,
+    simulatedRole, setSimulatedRole, sendResetEmail
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => useContext(AuthContext)

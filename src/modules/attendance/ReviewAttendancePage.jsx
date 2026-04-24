@@ -9,8 +9,9 @@ import {
 } from 'lucide-react'
 import { db } from '../../firebase/config'
 import {
-  getDoc, getDocs, doc, collection, query, where, orderBy, writeBatch, serverTimestamp
+  getDoc, getDocs, doc, collection, writeBatch, serverTimestamp
 } from 'firebase/firestore'
+import { COLLECTIONS, SUB_COLLECTIONS } from '../../firebase/collections'
 import { useStudents } from '../../hooks/useStudents'
 import { beltConfig } from '../../data/beltConfig'
 
@@ -42,7 +43,7 @@ export default function ReviewAttendancePage() {
     setIsSaving(true)
     try {
       const batch = writeBatch(db)
-      const attendancesRef = collection(db, 'sessions', sessionId, 'attendances')
+      const attendancesRef = collection(db, COLLECTIONS.CHAMADAS, sessionId, SUB_COLLECTIONS.PRESENCAS)
 
       Object.entries(records).forEach(([studentId, status]) => {
         if (status) { // Only save if a status exists
@@ -75,7 +76,7 @@ export default function ReviewAttendancePage() {
       setIsLoading(true)
       try {
         // 1. Fetch Session Metadata (O(1) Direct Lookup)
-        const sessionRef = doc(db, 'sessions', sessionId)
+        const sessionRef = doc(db, COLLECTIONS.CHAMADAS, sessionId)
         const sessionSnap = await getDoc(sessionRef)
 
         if (!sessionSnap.exists()) {

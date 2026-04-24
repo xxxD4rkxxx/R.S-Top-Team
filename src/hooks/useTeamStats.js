@@ -7,8 +7,9 @@
  * Este hook usa cache agressivo (5 minutos) pois dados de equipe mudam raramente.
  */
 import { useState, useEffect, useRef } from 'react'
-import { collectionGroup, query, getDocs } from 'firebase/firestore'
+import { collection, query, getDocs, where } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { COLLECTIONS } from '../firebase/collections'
 
 const CACHE_TTL_MS = 5 * 60_000 // 5 minutos — dados de equipe não mudam com frequência
 
@@ -29,15 +30,22 @@ async function fetchTeamStats() {
 
   _pendingFetch = (async () => {
     try {
-      const snap = await getDocs(query(collectionGroup(db, 'membros')))
+      // O sistema moderno usa a coleção unificada 'usuarios'
+      const snap = await getDocs(query(collection(db, COLLECTIONS.USUARIOS)))
       let total = 0, active = 0
       const byRole = {}
 
       snap.forEach(doc => {
         const d = doc.data()
+        // Filtramos apenas quem tem papéis de equipe (Professor, Gestor, Admin)
+        const isTeam = d.roles?.professor || d.roles?.gestor || d.roles?.admin
+        if (!isTeam) return
+
         total++
-        if (d.status !== 'Inativo' && d.status !== 'inativo') active++
-        const r = d.role || 'membro'
+        if (d.status?.toLowerCase() === 'ativo') active++
+        
+        // Mapeia o papel principal para o gráfico
+        const r = d.roles?.admin ? 'admin' : (d.roles?.gestor ? 'gestor' : 'professor')
         byRole[r] = (byRole[r] || 0) + 1
       })
 

@@ -12,12 +12,15 @@ import {
   ArrowDownCircle, Plus, Search, Trash2, X,
   CheckCircle2, Clock, Receipt, Tag,
   ChevronDown, Loader2, RefreshCcw, Calendar, TrendingUp, TrendingDown,
-  MoreVertical, Edit2
+  MoreVertical, Edit2, AlertTriangle, Check, Briefcase, User
 } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import KPICard from '../../components/shared/KPICard'
 import { useFinance } from '../../hooks/useFinance'
+import { useSystemUsers } from '../../hooks/useSystemUsers'
+import { useModalities } from '../../hooks/useModalities'
+import { useAuth } from '../../context/AuthContext'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -87,21 +90,60 @@ function CustomSelect({ label, value, onChange, options }) {
 
 // ─── Modal de Nova Despesa ────────────────────────────────────────────────────
 
-function ModalNovaDespesa({ onClose, onSave, loading, initialData }) {
+function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegistering, setContinueRegistering }) {
+  const { users } = useSystemUsers()
+  const { modalities } = useModalities()
+  const { userData } = useAuth()
+  const isManager = userData?.roles?.gestor || userData?.roles?.admin
+
+  // Filtra professores e fornecedores (usuários com role professor ou especificamente marcados como fornecedor no futuro)
+  const professors = useMemo(() => users.filter(u => u.roles?.professor), [users])
+
   const [form, setForm] = useState(initialData ? {
     ...initialData,
-    amount: initialData.amount?.toString() || '',
-    isRecurring: initialData.isRecurring ? 'Sim' : 'Não'
+    amount: initialData.amount || 0,
+    displayAmount: initialData.amount ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(initialData.amount) : '',
+    isRecurring: initialData.isRecurring ? 'Sim' : 'Não',
+    recurrenceFrequency: initialData.recurrenceFrequency || 'monthly',
+    repeatUntil: initialData.repeatUntil || '',
+    paymentMethod: initialData.paymentMethod || 'Pix',
+    payeeId: initialData.payeeId || '',
+    costCenter: initialData.costCenter || 'Geral/Administrativo'
   } : {
     description: '',
     category: 'Aluguel',
     amount: '',
-    dueDate: '',
+    displayAmount: '', // Campo para a máscara visual
+    dueDate: new Date().toISOString().split('T')[0],
     status: 'pending',
     costType: 'Fixo',
-    isRecurring: 'Não'
+    isRecurring: 'Não',
+    recurrenceFrequency: 'monthly',
+    repeatUntil: '',
+    paymentMethod: 'Pix',
+    payeeId: '',
+    costCenter: 'Geral/Administrativo'
   })
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
+
+  // Formata o valor para exibição em Real (R$)
+  const formatValueToBRL = (val) => {
+    const rawDigits = val.replace(/\D/g, '')
+    if (!rawDigits) return ''
+    const amount = (Number(rawDigits) / 100).toFixed(2)
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(amount)
+  }
+
+  // Manipula a digitação no campo de valor
+  const handleAmountChange = (e) => {
+    const val = e.target.value
+    const formatted = formatValueToBRL(val)
+    const rawNumber = Number(val.replace(/\D/g, '')) / 100
+    setForm(p => ({ ...p, amount: rawNumber, displayAmount: formatted }))
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -111,104 +153,296 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData }) {
       amount: Number(form.amount),
       isRecurring: form.isRecurring === 'Sim'
     })
+
+    if (continueRegistering && !initialData) {
+      setForm({
+        description: '',
+        category: form.category,
+        amount: '',
+        displayAmount: '',
+        dueDate: form.dueDate,
+        status: form.status,
+        costType: form.costType,
+        isRecurring: form.isRecurring,
+        recurrenceFrequency: form.recurrenceFrequency,
+        repeatUntil: form.repeatUntil,
+        paymentMethod: form.paymentMethod,
+        payeeId: form.payeeId,
+        costCenter: form.costCenter
+      })
+    }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/[0.02]">
-          <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">{initialData ? 'Editar Despesa' : 'Nova Despesa'}</h3>
-            <p className="text-[10px] text-gray-500 font-bold mt-0.5 uppercase tracking-wider">{initialData ? 'Altere as informações do custo' : 'Registre um custo operacional'}</p>
+  // Alerta de Fluxo de Caixa: Se for uma despesa alta pendente (> R$ 2000 por exemplo)
+  const showCashFlowWarning = isManager && form.status === 'pending' && Number(form.amount) > 2000
+
+  return createPortal(
+    <motion.div
+      className="modal-backdrop"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        onClick={e => e.stopPropagation()}
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.2}
+        onDragEnd={(e, info) => {
+          if (info.offset.y > 100 || info.velocity.y > 500) {
+            onClose();
+          }
+        }}
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
+      >
+        {/* Mobile Drag Handle */}
+        <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+          <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+        </div>
+
+        {/* CABEÇALHO PREMIUM FIXO */}
+        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--clr-primary) 15%, transparent)',
+                borderColor: 'color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+              }}
+            >
+              <TrendingUp
+                size={28}
+                strokeWidth={2.5}
+                style={{ color: 'var(--clr-primary)' }}
+              />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+                {initialData ? 'Editar Despesa' : 'Nova Despesa'}
+              </h2>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                <span
+                  className="w-1 h-1 rounded-full animate-pulse transition-all duration-300"
+                  style={{
+                    backgroundColor: 'var(--clr-primary)',
+                    boxShadow: '0 0 10px var(--clr-primary)'
+                  }}
+                />
+                {initialData ? 'Altere as informações' : 'Registre um custo operacional'}
+              </p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
-            <X size={18} />
+          <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10 border border-white/5">
+            <X size={24} />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Descrição</label>
-            <input required type="text" placeholder="Ex: Aluguel do galpão"
-              className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 placeholder-gray-600"
-              value={form.description} onChange={e => set('description', e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* CONTEÚDO COM ROLAGEM */}
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-32 space-y-7 custom-scrollbar no-scrollbar">
+            {showCashFlowWarning && (
+              <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex gap-3 items-start animate-pulse">
+                <AlertTriangle className="text-orange-500 shrink-0" size={20} />
+                <div className="space-y-1">
+                  <p className="text-xs font-black text-orange-400 uppercase tracking-wide">Atenção: Fluxo de Caixa</p>
+                  <p className="text-[10px] text-orange-300/70 font-medium leading-relaxed">
+                    Esta despesa pendente possui um valor significativo. Verifique a previsão de caixa antes de confirmar o agendamento para evitar furos no saldo diário.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Categoria</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Descrição</label>
+              <input required type="text" placeholder="Ex: Aluguel do galpão"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 placeholder-gray-600"
+                value={form.description} onChange={e => set('description', e.target.value)} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Categoria</label>
+                <div className="relative">
+                  <select value={form.category} onChange={e => set('category', e.target.value)}
+                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
+                    {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status</label>
+                <div className="relative">
+                  <select value={form.status} onChange={e => set('status', e.target.value)}
+                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
+                    <option value="pending">Pendente</option>
+                    <option value="paid">Pago</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Valor</label>
+                <input required type="text" placeholder="R$ 0,00"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
+                  value={form.displayAmount || formatValueToBRL(form.amount.toString() || '')}
+                  onChange={handleAmountChange} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento</label>
+                <input required type="date"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                  value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
+              </div>
+            </div>
+
+            {/* Novos Campos Financeiros */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
+                  <Receipt size={10} /> Forma de Pagamento
+                </label>
+                <div className="relative">
+                  <select value={form.paymentMethod} onChange={e => set('paymentMethod', e.target.value)}
+                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
+                    <option value="Pix">Pix</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Conta Itaú">Conta Itaú</option>
+                    <option value="Transferência">Transferência</option>
+                    <option value="Boleto">Boleto</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
+                  <Briefcase size={10} /> Centro de Custo
+                </label>
+                <div className="relative">
+                  <select value={form.costCenter} onChange={e => set('costCenter', e.target.value)}
+                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8 text-xs">
+                    <option value="Geral/Administrativo">Geral/Administrativo</option>
+                    <optgroup label="Modalidades">
+                      {modalities.map(m => (
+                        <option key={m.id} value={m.name}>{m.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
+                <User size={10} /> Fornecedor / Professor Vinculado
+              </label>
               <div className="relative">
-                <select value={form.category} onChange={e => set('category', e.target.value)}
+                <select value={form.payeeId} onChange={e => set('payeeId', e.target.value)}
                   className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
-                  {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="">Nenhum / Externo</option>
+                  <optgroup label="Professores da Casa">
+                    {professors.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </optgroup>
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status</label>
-              <div className="relative">
-                <select value={form.status} onChange={e => set('status', e.target.value)}
-                  className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
-                  <option value="pending">Pendente</option>
-                  <option value="paid">Pago</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+
+            {/* Configurações de Recorrência */}
+            <div className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Recorrência Automática</label>
+                <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
+                  {['Não', 'Sim'].map(opt => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => set('isRecurring', opt)}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${form.isRecurring === opt ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-400'}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {form.isRecurring === 'Sim' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5"
+                >
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Frequência</label>
+                    <div className="relative">
+                      <select value={form.recurrenceFrequency} onChange={e => set('recurrenceFrequency', e.target.value)}
+                        className="w-full appearance-none bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none pr-8">
+                        <option value="weekly">Semanal</option>
+                        <option value="biweekly">Quinzenal</option>
+                        <option value="monthly">Mensal</option>
+                        <option value="yearly">Anual</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Até quando?</label>
+                    <input type="date"
+                      className="w-full bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none [color-scheme:dark]"
+                      value={form.repeatUntil} onChange={e => set('repeatUntil', e.target.value)} />
+                  </div>
+                </motion.div>
+              )}
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Valor (R$)</label>
-              <input required type="number" step="0.01" min="0" placeholder="0,00"
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
-                value={form.amount} onChange={e => set('amount', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento</label>
-              <input required type="date"
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
-                value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
-            </div>
+
+            {!initialData && (
+              <button
+                type="button"
+                onClick={() => setContinueRegistering(!continueRegistering)}
+                className="flex items-center gap-3 px-1 py-1 group cursor-pointer"
+              >
+                <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${continueRegistering ? 'bg-primary border-primary' : 'border-white/10 group-hover:border-white/20'}`}>
+                  {continueRegistering && <Check size={14} className="text-white" />}
+                </div>
+                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest group-hover:text-gray-300 transition-colors">Continuar registrando (Lote)</span>
+              </button>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tipo de Custo</label>
-              <div className="relative">
-                <select value={form.costType} onChange={e => set('costType', e.target.value)}
-                  className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
-                  <option value="Fixo">Fixo</option>
-                  <option value="Variável">Variável</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Recorrente?</label>
-              <div className="relative">
-                <select value={form.isRecurring} onChange={e => set('isRecurring', e.target.value)}
-                  className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
-                  <option value="Não">Não</option>
-                  <option value="Sim">Sim</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-3 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-gray-400 hover:text-white transition-all">
+          {/* BARRA INFERIOR (BOTÕES FIXOS) */}
+          <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
+            <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all">
               Cancelar
             </button>
-            <button type="submit" disabled={loading}
-              className="flex-1 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-black uppercase tracking-wide transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-rose-900/30">
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowDownCircle size={16} />}
-              {loading ? 'Salvando...' : 'Registrar'}
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-[2] py-4 rounded-2xl text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: 'var(--clr-primary)',
+                boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+              }}
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} strokeWidth={3} />}
+              {loading ? 'Salvando...' : (initialData ? 'Salvar Edição' : 'Registrar Despesa')}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>,
+    document.body
   )
 }
 
@@ -227,6 +461,7 @@ export default function ExpensesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
   const [catFilter, setCatFilter] = useState('todas')
+  const [continueRegistering, setContinueRegistering] = useState(false)
 
   // Fecha o menu ao rolar a página
   useEffect(() => {
@@ -298,6 +533,7 @@ export default function ExpensesPage() {
   }), [expenses, searchTerm, statusFilter, catFilter])
 
   const handleSave = async (data) => {
+    if (saving) return
     setSaving(true)
     try {
       if (editData) {
@@ -305,10 +541,23 @@ export default function ExpensesPage() {
       } else {
         await addExpense(data)
       }
-      setShowModal(false)
-      setEditData(null)
+
+      if (!continueRegistering || editData) {
+        setShowModal(false)
+        setEditData(null)
+      }
     }
-    catch (err) { console.error('Erro ao salvar despesa:', err) }
+    catch (err) {
+      console.error('❌ Erro ao salvar despesa:', err)
+      const msg = err.message || ''
+      if (msg.includes('permission-denied')) {
+        alert('🚫 Acesso Negado: Você não tem permissão para salvar despesas. Verifique se seu usuário é Admin ou Gestor.')
+      } else if (msg.includes('unavailable')) {
+        alert('🌐 Erro de Rede: Não foi possível conectar ao banco de dados. Verifique sua internet ou AdBlocker.')
+      } else {
+        alert('❌ Erro ao salvar: ' + msg)
+      }
+    }
     finally { setSaving(false) }
   }
 
@@ -320,17 +569,13 @@ export default function ExpensesPage() {
           onSave={handleSave}
           loading={saving}
           initialData={editData}
+          continueRegistering={continueRegistering}
+          setContinueRegistering={setContinueRegistering}
         />
       )}
 
       <MobileHeader
         title="Despesas"
-        actions={
-          <button onClick={() => setShowModal(true)}
-            className="p-2.5 rounded-xl bg-rose-600 text-white active:scale-90 transition-transform shadow-lg shadow-rose-900/30">
-            <Plus size={20} strokeWidth={3} />
-          </button>
-        }
       />
       <PageHeader
         icon={ArrowDownCircle}
@@ -404,7 +649,7 @@ export default function ExpensesPage() {
           <button onClick={() => setShowModal(true)}
             className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
           >
-            <Plus size={18} strokeWidth={2.5} /> 
+            <Plus size={18} strokeWidth={2.5} />
             <span className="hidden md:inline">NOVA DESPESA</span>
           </button>
 
@@ -413,7 +658,7 @@ export default function ExpensesPage() {
               onClick={() => { setSearchTerm(''); setStatusFilter('todos'); setCatFilter('todas') }}
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
-              <RefreshCcw size={18} strokeWidth={1.9} /> 
+              <RefreshCcw size={18} strokeWidth={1.9} />
               <span className="hidden md:inline">Limpar Filtros</span>
             </button>
           )}
@@ -462,12 +707,11 @@ export default function ExpensesPage() {
                 <thead>
                   <tr className="border-b border-white/10 text-[10px] uppercase font-black text-gray-500 tracking-wider bg-white/5">
                     <th className="py-3 px-5">Data</th>
-                    <th className="py-3 px-5 text-center">Categoria</th>
                     <th className="py-3 px-5">Descrição</th>
+                    <th className="py-3 px-5 text-center">Pagamento</th>
+                    <th className="py-3 px-5 text-center hidden md:table-cell">Centro de Custo</th>
                     <th className="py-3 px-5 text-right">Valor</th>
                     <th className="py-3 px-5 text-center">Status</th>
-                    <th className="py-3 px-5 text-center hidden md:table-cell">Tipo de Custo</th>
-                    <th className="py-3 px-5 text-center hidden md:table-cell">Recorrente</th>
                     <th className="py-3 px-5 text-center">Ações</th>
                   </tr>
                 </thead>
@@ -477,14 +721,24 @@ export default function ExpensesPage() {
                       <td className="py-4 px-5 font-mono text-xs text-gray-400">
                         {dataBR(d.dueDate)}
                       </td>
+                      <td className="py-4 px-5">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-app font-medium uppercase tracking-tight group-hover:text-primary transition-colors">
+                            {d.description}
+                          </span>
+                          <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mt-0.5">
+                            {d.category || 'Outros'} • {d.payeeId ? (users.find(u => u.id === d.payeeId)?.name || 'Prof. Externo') : 'Sem Vínculo'}
+                          </span>
+                        </div>
+                      </td>
                       <td className="py-4 px-5 text-center">
-                        <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase font-black whitespace-nowrap">
-                          {d.category || 'Outros'}
+                        <span className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase font-black">
+                          {d.paymentMethod || 'Pix'}
                         </span>
                       </td>
-                      <td className="py-4 px-5">
-                        <span className="text-sm text-app font-medium uppercase tracking-tight group-hover:text-primary transition-colors">
-                          {d.description}
+                      <td className="py-4 px-5 text-center hidden md:table-cell">
+                        <span className="px-2.5 py-1 rounded-lg bg-white/5 text-[10px] text-gray-400 uppercase font-bold border border-white/5">
+                          {d.costCenter || 'Geral'}
                         </span>
                       </td>
                       <td className="py-4 px-5 text-right font-black text-sm text-white font-mono">
@@ -493,16 +747,6 @@ export default function ExpensesPage() {
                       <td className="py-4 px-5 text-center">
                         <span className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border inline-flex ${STATUS_STYLE[d.status] || STATUS_STYLE.pending}`}>
                           {STATUS_LABEL[d.status] || d.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5 text-center hidden md:table-cell">
-                        <span className="px-2.5 py-1 rounded-lg bg-white/5 text-[10px] text-gray-400 uppercase font-bold border border-white/5">
-                          {d.costType || 'Fixo'}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5 text-center hidden md:table-cell">
-                        <span className="px-2.5 py-1 rounded-lg bg-white/5 text-[10px] text-gray-400 uppercase font-bold border border-white/5">
-                          {d.isRecurring ? 'Sim' : 'Não'}
                         </span>
                       </td>
                       <td className="py-4 px-5 text-center">
@@ -537,16 +781,11 @@ export default function ExpensesPage() {
       {showModal && (
         <ModalNovaDespesa
           onClose={() => { setShowModal(false); setEditData(null) }}
-          onSubmit={async (data) => {
-            if (editData) {
-              await updateExpense(editData.id, data)
-            } else {
-              await addExpense(data)
-            }
-            setShowModal(false)
-            setEditData(null)
-          }}
+          onSave={handleSave}
+          loading={saving}
           initialData={editData}
+          continueRegistering={continueRegistering}
+          setContinueRegistering={setContinueRegistering}
         />
       )}
 
@@ -582,7 +821,13 @@ export default function ExpensesPage() {
         )}
       </AnimatePresence>
 
-      <style>{`@keyframes fadeSlideUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }`}</style>
+      <style>{`
+        @keyframes fadeSlideUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+      `}</style>
     </>
   )
 }

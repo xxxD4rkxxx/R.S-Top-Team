@@ -9,22 +9,22 @@ export function useHideMobileNav(isOpen) {
   const { setIsMobileNavHidden } = useApp()
 
   useEffect(() => {
-    const mainContent = document.querySelector('.main-content')
+    if (!isOpen) return
 
-    if (isOpen) {
+    const hideNav = () => {
       setIsMobileNavHidden(true)
       document.body.style.overflow = 'hidden'
-      if (mainContent) mainContent.style.overflow = 'hidden'
-    } else {
-      setIsMobileNavHidden(false)
-      document.body.style.overflow = ''
-      if (mainContent) mainContent.style.overflow = ''
     }
 
-    return () => {
+    const showNav = () => {
       setIsMobileNavHidden(false)
       document.body.style.overflow = ''
-      if (mainContent) mainContent.style.overflow = ''
+    }
+
+    hideNav()
+
+    return () => {
+      showNav()
     }
   }, [isOpen, setIsMobileNavHidden])
 }

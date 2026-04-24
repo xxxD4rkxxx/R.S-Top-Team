@@ -9,8 +9,9 @@ import {
   getDocs, query, orderBy, limit, 
   collectionGroup, where, setDoc, deleteDoc, increment
 } from 'firebase/firestore'
+import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
 
-const USERS_COLLECTION = 'users'
+const USERS_COLLECTION = COLLECTIONS.USUARIOS
 
 export const attendanceService = {
   /**
@@ -25,10 +26,10 @@ export const attendanceService = {
       const sessionData = {
         ...payload,
         seqId: Number(simpleSeqId),
-        createdAt: serverTimestamp(),
+        [FIELDS.CRIADO_EM]: serverTimestamp(),
       }
       
-      await setDoc(doc(db, 'sessions', payload.id), sessionData)
+      await setDoc(doc(db, COLLECTIONS.CHAMADAS, payload.id), sessionData)
       console.log('✅ Sessão criada com sucesso no Firestore.')
       return sessionData
     } catch (error) {
@@ -45,7 +46,7 @@ export const attendanceService = {
     console.log(`📝 Iniciando registro em lote para ${activeList.length} registros...`)
     try {
       const batch = writeBatch(db)
-      const sessionRef = doc(db, 'sessions', activeSession.id)
+      const sessionRef = doc(db, COLLECTIONS.CHAMADAS, activeSession.id)
 
       let presences = 0
       let absents = 0
@@ -57,13 +58,13 @@ export const attendanceService = {
           else if (student.status === 'absent') absents++
           else if (student.status === 'justified') justified++
 
-          const recordRef = doc(collection(sessionRef, 'attendances'), student.id)
+          const recordRef = doc(collection(sessionRef, SUB_COLLECTIONS.PRESENCAS), student.id)
           batch.set(recordRef, {
             studentId: student.id,
             studentName: student.name,
-            status: student.status,
-            modality: activeSession.modality,
-            date: activeSession.date,
+            [FIELDS.STATUS]: student.status,
+            [FIELDS.MODALIDADE]: activeSession.modality,
+            [FIELDS.DATA]: activeSession.date,
             timestamp: serverTimestamp() 
           })
 
@@ -71,8 +72,8 @@ export const attendanceService = {
             const userRef = doc(db, USERS_COLLECTION, student.id)
             batch.update(userRef, {
               lastAttendanceAt: serverTimestamp(),
-              'tech_journey.sessions_since_last_promotion': increment(1),
-              updatedAt: serverTimestamp()
+              [`${FIELDS.JORNADA_TECNICA}.${FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO}`]: increment(1),
+              [FIELDS.ATUALIZADO_EM]: serverTimestamp()
             })
           }
         }
@@ -85,8 +86,8 @@ export const attendanceService = {
         faltasCount: absents,
         justificadosCount: justified,
         totalCount: activeList.length,
-        isFinished: true,
-        updatedAt: serverTimestamp()
+        [FIELDS.FINALIZADA]: true,
+        [FIELDS.ATUALIZADO_EM]: serverTimestamp()
       })
 
       await batch.commit()
@@ -103,7 +104,7 @@ export const attendanceService = {
    */
   async getSessionAttendances(sessionId) {
     try {
-      const attendancesRef = collection(db, 'sessions', sessionId, 'attendances')
+      const attendancesRef = collection(db, COLLECTIONS.CHAMADAS, sessionId, SUB_COLLECTIONS.PRESENCAS)
       const snapshot = await getDocs(attendancesRef)
       const records = {}
 
@@ -125,7 +126,7 @@ export const attendanceService = {
   async getLastAttendance(studentId) {
     try {
       const q = query(
-        collectionGroup(db, 'attendances'),
+        collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
         where('studentId', '==', studentId),
         orderBy('timestamp', 'desc'),
         limit(1)
@@ -147,7 +148,7 @@ export const attendanceService = {
    */
   async deleteSession(sessionId) {
     try {
-      await deleteDoc(doc(db, 'sessions', sessionId))
+      await deleteDoc(doc(db, COLLECTIONS.CHAMADAS, sessionId))
       return true
     } catch (error) {
       console.error('Erro ao deletar sessão:', error)

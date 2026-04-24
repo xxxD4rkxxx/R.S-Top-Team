@@ -1,5 +1,6 @@
 import { X, Mail, Phone, Shield, Calendar, Edit2, User, Key, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
@@ -60,11 +61,30 @@ export default function CollaboratorDetailsModal({ collaborator, onClose, onEdit
   }
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onClose}>
-      <div 
-        onClick={e => e.stopPropagation()}
-        className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
+    <AnimatePresence>
+      <motion.div 
+        className="modal-backdrop z-[1000]"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
       >
+        <motion.div 
+          onClick={e => e.stopPropagation()}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose();
+            }
+          }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
+        >
         {/* Mobile Drag Handle */}
         <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
           <div className="w-12 h-1.5 bg-white/10 rounded-full" />
@@ -202,8 +222,9 @@ export default function CollaboratorDetailsModal({ collaborator, onClose, onEdit
             Fechar Perfil
           </button>
         </div>
-      </div>
-    </div>,
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
     document.body
   )
 }

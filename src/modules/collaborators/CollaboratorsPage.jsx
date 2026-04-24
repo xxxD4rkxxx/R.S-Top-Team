@@ -19,6 +19,21 @@ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import PinVerificationModal from '../../components/shared/PinVerificationModal'
 
 
+// ────────────────────────────────────────────────
+// UTILS & HOOKS
+// ────────────────────────────────────────────────
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) setMatches(media.matches);
+    const listener = () => setMatches(media.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, [matches, query]);
+  return matches;
+}
+
 // Seletor Customizado Premium
 function CustomSelect({ label, value, onChange, options, disabled }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -70,6 +85,7 @@ function DeleteConfirmDialog({ member, onConfirm, onClose }) {
   const [deleting, setDeleting] = useState(false)
   if (!member) return null
   const match = input.trim().toLowerCase() === (member.name || '').trim().toLowerCase()
+  const isAdminTarget = member.roles?.admin || member.role === 'admin'
 
   async function handleDelete() {
     if (!match) return
@@ -85,45 +101,60 @@ function DeleteConfirmDialog({ member, onConfirm, onClose }) {
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl overflow-hidden border border-red-500/30 shadow-2xl bg-[#0d0d0d]"
+      <div className="relative w-full max-w-md rounded-[32px] overflow-hidden border border-white/10 shadow-2xl bg-[#0d0d0d]"
         style={{ animation: 'fadeSlideUp 0.22s ease both' }}>
-        <div className="px-6 py-5 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-              <Trash2 size={20} className="text-red-500" />
+        <div className="p-8 space-y-6">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <Trash2 size={32} className="text-red-500" />
             </div>
             <div>
-              <h2 className="text-base font-black text-white">Deletar Membro</h2>
-              <p className="text-[11px] text-gray-500">Esta ação é IRREVERSÍVEL.</p>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">Excluir Membro?</h2>
+              <p className="text-xs text-gray-500 font-medium mt-1">ESTA AÇÃO É IRREVERSÍVEL E PERMANENTE.</p>
             </div>
           </div>
 
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-xs text-red-300 leading-relaxed">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-xs text-red-300 leading-relaxed text-center">
             Você está prestes a <strong>deletar permanentemente</strong> o membro <strong>{member.name}</strong>.
-            Todos os logs e registros de acesso serão perdidos.
+            Todos os dados e acessos serão removidos.
           </div>
 
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-black block mb-1.5">
-              Para confirmar, digite exatamente: <span className="text-white">{member.name}</span>
+          {isAdminTarget && (
+            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 flex items-start gap-3">
+              <ShieldAlert className="text-primary shrink-0" size={18} />
+              <div className="flex-1">
+                <p className="text-[11px] font-black text-primary uppercase tracking-wider mb-1">Atenção Especial</p>
+                <p className="text-[10px] text-primary/70 font-bold leading-tight">Este perfil possui privilégios de Administrador. A exclusão removerá todo o controle de acesso associado.</p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black block text-center">
+              Para confirmar, digite: <span className="text-white">{member.name}</span>
             </label>
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500/50 transition-all font-medium"
-              placeholder="Digite o nome para confirmar..."
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white text-center focus:outline-none focus:border-red-500/50 transition-all font-medium"
+              placeholder="Digite o nome aqui..."
               autoFocus
             />
           </div>
 
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors font-medium">Cancelar</button>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              onClick={onClose}
+              className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-all active:scale-95"
+            >
+              Cancelar
+            </button>
             <button
               onClick={handleDelete}
               disabled={!match || deleting}
-              className="flex-1 py-2.5 rounded-xl text-sm font-black bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-all active:scale-95"
+              className={`py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 border ${match ? 'bg-red-600 text-white shadow-xl shadow-red-600/20 border-red-500' : 'bg-red-500/10 text-red-500/40 border-red-500/10 cursor-not-allowed'}`}
             >
-              {deleting ? 'Apagando...' : '🗑 Deletar Permanentemente'}
+              {deleting ? 'Apagando...' : 'Confirmar Exclusão'}
             </button>
           </div>
         </div>
@@ -261,30 +292,12 @@ export default function CollaboratorsPage() {
     <>
       <MobileHeader
         title="Colaboradores"
-        actions={
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="p-2.5 rounded-[5px] bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
-          >
-            <UserPlus size={20} strokeWidth={3} />
-          </button>
-        }
       />
 
       <PageHeader
         icon={Users}
         title="GESTÃO DE EQUIPE"
         subtitle="CONTROLE DE COLABORADORES E PROFESSORES"
-        extra={
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-primary text-white flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95"
-            >
-              <UserPlus size={18} strokeWidth={2} /> NOVO COLABORADOR
-            </button>
-          </div>
-        }
       />
 
       <main className="flex-1 px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6 animate-in fade-in duration-500">
@@ -315,7 +328,7 @@ export default function CollaboratorsPage() {
             onClick={() => setIsModalOpen(true)}
             className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
           >
-            <UserPlus size={18} strokeWidth={2.5} /> 
+            <UserPlus size={18} strokeWidth={2.5} />
             <span className="hidden md:inline">NOVO COLABORADOR</span>
           </button>
 
@@ -324,7 +337,7 @@ export default function CollaboratorsPage() {
               onClick={() => { setStatusFilter('todos'); setRoleFilter('all'); setSearchTerm('') }}
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
-              <RefreshCcw size={18} strokeWidth={1.9} /> 
+              <RefreshCcw size={18} strokeWidth={1.9} />
               <span className="hidden md:inline">Limpar Filtros</span>
             </button>
           )}
@@ -373,9 +386,14 @@ export default function CollaboratorsPage() {
                           )}
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-sm text-app font-medium block uppercase tracking-tight group-hover:text-primary transition-colors">
-                            {member.name || 'Sem Nome'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-app font-medium block uppercase tracking-tight group-hover:text-primary transition-colors">
+                              {member.name || 'Sem Nome'}
+                            </span>
+                            {member.id === userData?.id && (
+                              <span className="px-1.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-[8px] font-black text-primary uppercase tracking-tighter">Você</span>
+                            )}
+                          </div>
                           <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{member.role || 'COLABORADOR'}</span>
                         </div>
                       </div>
@@ -509,10 +527,15 @@ export default function CollaboratorsPage() {
         <PinVerificationModal
           onConfirm={() => {
             const { type, member } = pinModalAction;
-            setShowPinModal(false);
-            if (type === 'edit') {
+            if (type === 'view') {
+              setShowPinModal(false);
+              // Lógica de visualização se houver
+            } else if (type === 'edit') {
+              setShowPinModal(false);
               handleEdit(member);
             } else if (type === 'delete') {
+              // 🛡️ Segurança: Todos agora passam pela confirmação de nome após o PIN
+              setShowPinModal(false);
               setDeleteDialogUser(member);
             }
           }}
@@ -528,6 +551,7 @@ export default function CollaboratorsPage() {
           <CollaboratorActionMenu
             member={users.find(u => u.id === showMenu)}
             menuPosition={menuPosition}
+            isSelf={showMenu === userData?.id}
             onClose={() => setShowMenu(null)}
             onAction={(actionType, member) => {
               if (actionType === 'view') {
@@ -551,7 +575,8 @@ export default function CollaboratorsPage() {
  * CollaboratorActionMenu - Renderiza o menu de ações de um colaborador de forma unificada
  * Usa Portal nativamente para evitar cortes de overflow ou bugs de hierarquia Z-Index
  */
-function CollaboratorActionMenu({ member, menuPosition, onClose, onAction }) {
+function CollaboratorActionMenu({ member, menuPosition, isSelf, onClose, onAction }) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   if (!member) return null
 
   const getInitials = (n) => n?.substring(0, 2).toUpperCase() || '??'
@@ -568,139 +593,156 @@ function CollaboratorActionMenu({ member, menuPosition, onClose, onAction }) {
       />
 
       {/* Desktop Menu */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-        onClick={e => e.stopPropagation()}
-        className="hidden md:block absolute z-[1001] w-48 bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-1"
-        style={{
-          top: menuPosition.top,
-          left: menuPosition.left,
-          originX: 1,
-          originY: menuPosition.originY
-        }}
-      >
-        <button
-          onClick={(e) => { e.stopPropagation(); onAction('view', member) }}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium"
+      {!isMobile && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+          onClick={e => e.stopPropagation()}
+          className="hidden md:block absolute z-[1001] w-48 bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-1"
+          style={{
+            top: menuPosition.top,
+            left: menuPosition.left,
+            originX: 1,
+            originY: menuPosition.originY
+          }}
         >
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-            <Eye size={14} className="text-emerald-500" />
-          </div>
-          Ver Perfil
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onAction('edit', member) }}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium"
-        >
-          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-            <Edit2 size={14} className="text-blue-500" />
-          </div>
-          Editar Perfil
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onAction('toggleStatus', member) }}
-          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all group font-medium ${member.status === 'Ativo' ? 'text-red-500/70 hover:bg-red-500/10 hover:text-red-500' : 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-500'}`}
-        >
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${member.status === 'Ativo' ? 'bg-red-500/10 group-hover:bg-red-500/20' : 'bg-emerald-500/10 group-hover:bg-emerald-500/20'}`}>
-            {member.status === 'Ativo' ? <XCircle size={14} className="text-red-500" /> : <CheckCircle2 size={14} className="text-emerald-500" />}
-          </div>
-          {member.status === 'Ativo' ? 'Inativar' : 'Reativar'}
-        </button>
-        <div className="h-px bg-white/5 my-1" />
-        <button
-          onClick={(e) => { e.stopPropagation(); onAction('delete', member) }}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-all group font-medium"
-        >
-          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">
-            <Trash2 size={14} className="text-red-500" />
-          </div>
-          Excluir
-        </button>
-      </motion.div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onAction('view', member) }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium"
+          >
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+              <Eye size={14} className="text-emerald-500" />
+            </div>
+            Ver Perfil
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onAction('edit', member) }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <Edit2 size={14} className="text-blue-500" />
+            </div>
+            Editar Perfil
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onAction('toggleStatus', member) }}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all group font-medium ${member.status === 'Ativo' ? 'text-red-500/70 hover:bg-red-500/10 hover:text-red-500' : 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-500'}`}
+          >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${member.status === 'Ativo' ? 'bg-red-500/10 group-hover:bg-red-500/20' : 'bg-emerald-500/10 group-hover:bg-emerald-500/20'}`}>
+              {member.status === 'Ativo' ? <XCircle size={14} className="text-red-500" /> : <CheckCircle2 size={14} className="text-emerald-500" />}
+            </div>
+            {member.status === 'Ativo' ? 'Inativar' : 'Reativar'}
+          </button>
+          <div className="h-px bg-white/5 my-1" />
+          <button
+            disabled={isSelf}
+            onClick={(e) => { e.stopPropagation(); onAction('delete', member) }}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all group font-medium ${isSelf ? 'text-gray-700 cursor-not-allowed' : 'text-red-500 hover:bg-red-500/10'}`}
+            title={isSelf ? 'Você não pode excluir seu próprio perfil' : ''}
+          >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isSelf ? 'bg-gray-800' : 'bg-red-500/10 group-hover:bg-red-500/20'}`}>
+              <Trash2 size={14} className={isSelf ? 'text-gray-600' : 'text-red-500'} />
+            </div>
+            Excluir
+          </button>
+        </motion.div>
+      )}
 
       {/* Mobile Drawer */}
-      <div className="md:hidden">
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          onClick={(e) => e.stopPropagation()}
-          className="fixed inset-x-0 bottom-0 bg-[#0A0A0A] border-t border-white/10 rounded-t-[32px] p-6 pb-12 z-[1002] shadow-[0_-8px_30px_rgb(0,0,0,0.8)]"
-        >
-          <div className="w-12 h-1.5 bg-white/15 rounded-full mx-auto mb-6" />
+      {isMobile && (
+        <div className="md:hidden">
+          <motion.div
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                onClose();
+              }
+            }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-x-0 bottom-0 bg-[#0A0A0A] border-t border-white/10 rounded-t-[32px] p-6 pb-12 z-[1002] shadow-[0_-8px_30px_rgb(0,0,0,0.8)]"
+          >
+            <div className="w-12 h-1.5 bg-white/15 rounded-full mx-auto mb-6 shrink-0" />
 
-          <div className="flex items-center gap-4 mb-8 text-left">
-            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center font-black text-lg border border-white/10">
-              {member.photoURL ? (
-                <img src={member.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
-              ) : (
-                getInitials(member.name)
-              )}
+            <div className="flex items-center gap-4 mb-8 text-left">
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center font-black text-lg border border-white/10">
+                {member.photoURL ? (
+                  <img src={member.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  getInitials(member.name)
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-base font-black text-white truncate">{member.name}</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Colaborador da Academia</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-base font-black text-white truncate">{member.name}</p>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Colaborador da Academia</p>
+
+            <div className="grid grid-cols-1 gap-3 text-left">
+              <button
+                onClick={(e) => { e.stopPropagation(); onAction('view', member) }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                  <Eye size={20} className="text-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-black text-white">Ver Perfil</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Detalhes de acesso e contato</p>
+                </div>
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation(); onAction('edit', member) }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Edit2 size={20} className="text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-black text-white">Editar Perfil</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar dados e permissões</p>
+                </div>
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation(); onAction('toggleStatus', member) }}
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left group ${member.status === 'Ativo' ? 'text-red-500' : 'text-emerald-500'}`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${member.status === 'Ativo' ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
+                  {member.status === 'Ativo' ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-black">{member.status === 'Ativo' ? 'Inativar' : 'Reativar'}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar status de acesso</p>
+                </div>
+              </button>
+
+              <button
+                disabled={isSelf}
+                onClick={(e) => { e.stopPropagation(); onAction('delete', member) }}
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl border active:scale-95 text-left group ${isSelf ? 'bg-gray-500/5 border-gray-500/10 opacity-50 cursor-not-allowed' : 'bg-red-500/5 border-red-500/10'}`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelf ? 'bg-gray-500/10' : 'bg-red-500/10 group-hover:bg-red-500/20'}`}>
+                  <Trash2 size={20} className={isSelf ? 'text-gray-600' : 'text-red-500'} />
+                </div>
+                <div className="flex-1">
+                  <p className={`text-sm font-black ${isSelf ? 'text-gray-600' : 'text-red-500'}`}>Excluir Permanentemente</p>
+                  <p className={`text-[10px] font-bold uppercase tracking-widest leading-none mt-1 ${isSelf ? 'text-gray-700' : 'text-red-500/50'}`}>
+                    {isSelf ? 'Não é possível excluir a si mesmo' : 'Ação irreversível'}
+                  </p>
+                </div>
+              </button>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 text-left">
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('view', member) }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <Eye size={20} className="text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">Ver Perfil</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Detalhes de acesso e contato</p>
-              </div>
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('edit', member) }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <Edit2 size={20} className="text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">Editar Perfil</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar dados e permissões</p>
-              </div>
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('toggleStatus', member) }}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left group ${member.status === 'Ativo' ? 'text-red-500' : 'text-emerald-500'}`}
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${member.status === 'Ativo' ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-                {member.status === 'Ativo' ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
-              </div>
-              <div>
-                <p className="text-sm font-black">{member.status === 'Ativo' ? 'Inativar' : 'Reativar'}</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar status de acesso</p>
-              </div>
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('delete', member) }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 active:scale-95 text-left group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">
-                <Trash2 size={20} className="text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-red-500">Excluir Permanentemente</p>
-                <p className="text-[10px] text-red-500/50 font-bold uppercase tracking-widest leading-none mt-1">Ação irreversível</p>
-              </div>
-            </button>
-          </div>
-        </motion.div>
-      </div>
+          </motion.div>
+        </div>
+      )}
     </div>,
     document.body
   )

@@ -1,7 +1,11 @@
 import React, { useState } from 'react'
 import { X, AlertTriangle, UserX, UserMinus } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 
 export default function StatusChangeDialog({ student, action, onConfirm, onClose }) {
+  useHideMobileNav(!!action)
   const [reason, setReason] = useState('')
   const [returnDate, setReturnDate] = useState('')
   const [saving, setSaving] = useState(false)
@@ -55,80 +59,96 @@ export default function StatusChangeDialog({ student, action, onConfirm, onClose
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[9995] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="relative w-full max-w-md rounded-xll overflow-hidden border border-white/10 shadow-2xl"
-        style={{ background: '#0d0d0d', animation: 'fadeSlideUp 0.22s ease both' }}
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        className="modal-backdrop z-[9995]"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
       >
-        {/* Header */}
-        <div className={`flex items-center gap-3 px-6 py-4 border-b ${borderColor}`} style={{ background: 'rgba(255,255,255,0.02)' }}>
-          <div className={`w-9 h-9 rounded-xll flex items-center justify-center border ${bgColor} ${borderColor}`}>
-            <Icon size={18} className={color} />
+        <motion.div
+          onClick={e => e.stopPropagation()}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="modal-content modal-content-bottom-sheet relative max-w-md w-full flex flex-col max-h-[90vh] overflow-y-auto bg-[#0d0d0d]"
+        >
+          {/* Mobile Drag Handle */}
+          <div className="md:hidden flex justify-center pt-4 pb-2 shrink-0">
+            <div className="w-12 h-1.5 bg-white/10 rounded-full" />
           </div>
-          <div className="flex-1">
-            <h2 className="text-base font-bold text-white">{title}</h2>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-xll hover:bg-white/10 text-gray-500 hover:text-white transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="px-6 py-5 space-y-4">
-          {/* Aviso */}
-          <div className={`flex items-start gap-3 p-3 rounded-xll border ${bgColor} ${borderColor}`}>
-            <AlertTriangle size={16} className={`${color} shrink-0 mt-0.5`} />
-            <p className="text-xs text-gray-400 leading-relaxed">{description}</p>
-          </div>
-
-          {/* Motivo */}
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block mb-1.5">
-              Motivo <span style={{ color: 'var(--clr-primary)' }}>*</span>
-            </label>
-            <textarea
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder={isInactivate ? 'Ex: Aluno cancelou a matrícula.' : 'Ex: Lesão no joelho, fisioterapia por 3 meses.'}
-              rows={3}
-              className="form-input bg-black/40 resize-none text-sm w-full"
-            />
+          {/* Header */}
+          <div className={`flex items-center gap-3 px-6 py-4 border-b ${borderColor}`} style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <div className={`w-9 h-9 rounded-xll flex items-center justify-center border ${bgColor} ${borderColor}`}>
+              <Icon size={18} className={color} />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-base font-bold text-white">{title}</h2>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xll hover:bg-white/10 text-gray-500 hover:text-white transition-colors">
+              <X size={16} />
+            </button>
           </div>
 
-          {/* Data de Retorno (só Suspensão) */}
-          {isSuspend && (
+          <div className="px-6 py-5 space-y-4">
+            {/* Aviso */}
+            <div className={`flex items-start gap-3 p-3 rounded-xll border ${bgColor} ${borderColor}`}>
+              <AlertTriangle size={16} className={`${color} shrink-0 mt-0.5`} />
+              <p className="text-xs text-gray-400 leading-relaxed">{description}</p>
+            </div>
+
+            {/* Motivo */}
             <div>
               <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block mb-1.5">
-                Data Estimada de Retorno <span style={{ color: 'var(--clr-primary)' }}>*</span>
+                Motivo <span style={{ color: 'var(--clr-primary)' }}>*</span>
               </label>
-              <input
-                type="date"
-                value={returnDate}
-                onChange={e => setReturnDate(e.target.value)}
-                className="form-input bg-black/40 text-sm w-full"
-                min={new Date().toISOString().split('T')[0]}
+              <textarea
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                placeholder={isInactivate ? 'Ex: Aluno cancelou a matrícula.' : 'Ex: Lesão no joelho, fisioterapia por 3 meses.'}
+                rows={3}
+                className="form-input bg-black/40 resize-none text-sm w-full"
               />
             </div>
-          )}
 
-          {/* Ações */}
-          <div className="flex gap-3 pt-1">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xll text-sm text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-              Cancelar
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={saving}
-              className={`flex-1 py-2.5 rounded-xll text-sm font-bold transition-colors disabled:opacity-50 ${btnClass}`}
-            >
-              {saving ? 'Salvando...' : btnLabel}
-            </button>
+            {/* Data de Retorno (só Suspensão) */}
+            {isSuspend && (
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block mb-1.5">
+                  Data Estimada de Retorno <span style={{ color: 'var(--clr-primary)' }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  value={returnDate}
+                  onChange={e => setReturnDate(e.target.value)}
+                  className="form-input bg-black/40 text-sm w-full"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+            )}
+
+            {/* Ações */}
+            <div className="flex gap-3 pt-1">
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xll text-sm text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={saving}
+                className={`flex-1 py-2.5 rounded-xll text-sm font-bold transition-colors disabled:opacity-50 ${btnClass}`}
+              >
+                {saving ? 'Salvando...' : btnLabel}
+              </button>
+            </div>
           </div>
-        </div>
-        <style>{`@keyframes fadeSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); }}`}</style>
-      </div>
-    </div>
+          <style>{`@keyframes fadeSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); }}`}</style>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   )
 }
 

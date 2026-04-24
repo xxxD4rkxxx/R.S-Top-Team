@@ -58,11 +58,6 @@ export default function ContractsPage() {
         icon={FileText} 
         title="CONTRATOS DIGITAIS" 
         subtitle="GESTÃO DE TERMOS, ADESÕES E ASSINATURAS"
-        extra={
-          <button className="btn-primary flex items-center gap-2 px-5 py-2 rounded-xll text-[11px] font-bold uppercase shadow-xl hover:scale-105 transition-all">
-            <Plus size={16} /> Novo Contrato
-          </button>
-        }
       />
 
       <div className="px-4 md:px-6 py-6 space-y-6 w-full pb-12">
@@ -106,6 +101,9 @@ export default function ContractsPage() {
                   />
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
+                   <button className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xll text-[11px] font-bold uppercase shadow-xl hover:scale-105 transition-all">
+                      <Plus size={16} /> Novo Contrato
+                   </button>
                    <button className="flex items-center gap-2 px-4 py-2 rounded-xll text-xs font-bold bg-app-bg text-app-muted border border-white/5 hover:text-app transition-all">
                       <Filter size={16} /> Filtros
                    </button>

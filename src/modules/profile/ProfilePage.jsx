@@ -1329,16 +1329,48 @@ function SectionAcademia() {
   )
 }
 
-function SectionDados() {
+function SectionDados({ onSync }) {
+  const [syncing, setSyncing] = useState(false)
+
+  const handleSync = async () => {
+    if (!window.confirm('🚀 INICIAR MIGRAÇÃO TOTAL?\n\nEste processo irá:\n1. Mover dados de coleções antigas (users, students, sessions) para as novas (usuarios, chamadas).\n2. Traduzir todos os campos para Português.\n3. Remover sufixos internos dos IDs.\n\nDeseja continuar?')) return
+    
+    setSyncing(true)
+    try {
+      const stats = await onSync()
+      alert(`✅ MIGRACAO CONCLUÍDA!\n\nUsuários: ${stats.usuarios}\nChamadas: ${stats.chamadas}\nEventos: ${stats.eventos}`)
+    } catch (e) {
+      alert('❌ Erro na migração: ' + e.message)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <Section title="Manutenção do Sistema">
+        <SettingRow 
+          label="Migração de Banco de Dados" 
+          desc="Transpor dados legados para a nova estrutura PT-BR e limpar IDs internos." 
+          action={
+            <button 
+              onClick={handleSync}
+              disabled={syncing}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${syncing ? 'bg-white/5 text-gray-500' : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 active:scale-95'}`}
+            >
+              {syncing ? 'Processando...' : 'Iniciar Migração'}
+            </button>
+          } 
+        />
+      </Section>
+
       <Section title="Exportar dados">
         <SettingRow label="Exportar alunos" desc="Baixar lista completa em CSV" action={<ChipButton label="Exportar CSV" />} />
         <SettingRow label="Exportar presenças" desc="Histórico completo de presenças" action={<ChipButton label="Exportar CSV" />} />
       </Section>
-      <Section title="Firestore">
+      <Section title="Infraestrutura Firestore">
         <SettingRow label="Projeto Firebase" desc="academia-rstopteam" action={<span className="text-xs text-emerald-500 font-semibold">conectado ✓</span>} />
-        <SettingRow label="Backup automático" desc="Exportar dados semanalmente" action={<Toggle />} />
+        <SettingRow label="Status das Coleções" desc="Nova estrutura PT-BR ativa" action={<div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />} />
       </Section>
     </div>
   )
@@ -1496,7 +1528,7 @@ export default function ProfilePage() {
       onDeleteUser={deleteUser}
       onSync={runDeepMigration}
     />,
-    dados: <ModuleUnderDevelopment icon={Database} title="Dados & Backup" />,
+    dados: <SectionDados onSync={runDeepMigration} />,
     logs: <SectionLogs logs={logs} loading={logsLoading} />,
     erros: <SectionErros logs={logs} loading={logsLoading} />,
     sobre: <SectionSobre />,

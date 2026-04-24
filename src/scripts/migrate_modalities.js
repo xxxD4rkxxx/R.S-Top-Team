@@ -15,11 +15,12 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections';
 
 export async function migrateModalitiesToNamedIds() {
   console.log('--- Iniciando Migração de IDs de Modalidades ---');
   
-  const modalitiesSnap = await getDocs(collection(db, 'modalities'));
+  const modalitiesSnap = await getDocs(collection(db, COLLECTIONS.MODALIDADES));
   
   for (const modDoc of modalitiesSnap.docs) {
     const data = modDoc.data();
@@ -36,17 +37,17 @@ export async function migrateModalitiesToNamedIds() {
     
     try {
       // 1. Criar novo documento com o Nome como ID
-      const newDocRef = doc(db, 'modalities', newId);
+      const newDocRef = doc(db, COLLECTIONS.MODALIDADES, newId);
       await setDoc(newDocRef, {
         ...data,
         updatedAt: serverTimestamp()
       });
       
       // 2. Migrar subcoleção 'turmas'
-      const turmasSnap = await getDocs(collection(db, 'modalities', oldId, 'turmas'));
+      const turmasSnap = await getDocs(collection(db, COLLECTIONS.MODALIDADES, oldId, SUB_COLLECTIONS.TURMAS));
       for (const turmaDoc of turmasSnap.docs) {
         const turmaData = turmaDoc.data();
-        const newTurmaRef = doc(db, 'modalities', newId, 'turmas', turmaDoc.id);
+        const newTurmaRef = doc(db, COLLECTIONS.MODALIDADES, newId, SUB_COLLECTIONS.TURMAS, turmaDoc.id);
         await setDoc(newTurmaRef, turmaData);
         // Opcional: deletar a turma antiga (feito automaticamente se deletarmos o pai)
       }
@@ -54,7 +55,7 @@ export async function migrateModalitiesToNamedIds() {
       // 3. Deletar documento antigo
       // ATENÇÃO: Verifique se não há referências a este ID em outros locais antes de deletar!
       // Se houver, é melhor manter o antigo por enquanto.
-      await deleteDoc(doc(db, 'modalities', oldId));
+      await deleteDoc(doc(db, COLLECTIONS.MODALIDADES, oldId));
       
       console.log(`[SUCESSO] ${newId} migrado.`);
     } catch (err) {

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth'
 import { auth, db } from '../../firebase/config'
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore'
+import { COLLECTIONS } from '../../firebase/collections'
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -57,13 +58,13 @@ export default function ResetPasswordPage() {
 
       // 2. Sincronizar com o Firestore para aparecer nas tabelas
       if (email) {
-        const usersRef = collection(db, 'users')
+        const usersRef = collection(db, COLLECTIONS.USUARIOS)
         const q = query(usersRef, where('email', '==', email))
         const querySnapshot = await getDocs(q)
         
         if (!querySnapshot.empty) {
           const userDoc = querySnapshot.docs[0]
-          await updateDoc(doc(db, 'users', userDoc.id), {
+          await updateDoc(doc(db, COLLECTIONS.USUARIOS, userDoc.id), {
             pin: newPin // Atualiza o PIN visível no painel
           })
         }

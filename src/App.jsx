@@ -14,28 +14,29 @@ import MobileNav from './components/navigation/MobileNav'
 import SiteFooter from './components/shared/SiteFooter'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import ErrorBoundary from './components/shared/ErrorBoundary'
+import { useSystemUsers } from './hooks/useSystemUsers'
 import { Toaster } from 'react-hot-toast'
+import NotificationCenter from './components/notifications/NotificationCenter'
 
 // ─── Lazy-loaded pages ───────────────────────────────────────────────────────
 // Each route gets its own chunk — only loaded when navigated to.
 // This cuts the initial bundle by ~80% (800KB → ~150KB).
-const DashboardPage        = lazy(() => import('./modules/dashboard/DashboardPage'))
-const AttendancePage       = lazy(() => import('./modules/attendance/AttendancePage'))
-const StudentsPage         = lazy(() => import('./modules/students/StudentsPage'))
-const CollaboratorsPage    = lazy(() => import('./modules/collaborators/CollaboratorsPage'))
-const EventsPage           = lazy(() => import('./modules/events/EventsPage'))
-const ProfilePage          = lazy(() => import('./modules/profile/ProfilePage'))
+const DashboardPage = lazy(() => import('./modules/dashboard/DashboardPage'))
+const AttendancePage = lazy(() => import('./modules/attendance/AttendancePage'))
+const StudentsPage = lazy(() => import('./modules/students/StudentsPage'))
+const CollaboratorsPage = lazy(() => import('./modules/collaborators/CollaboratorsPage'))
+const EventsPage = lazy(() => import('./modules/events/EventsPage'))
+const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'))
 const ReviewAttendancePage = lazy(() => import('./modules/attendance/ReviewAttendancePage'))
-const LoginPage            = lazy(() => import('./modules/auth/LoginPage'))
-const RegisterPage         = lazy(() => import('./modules/auth/RegisterPage'))
-const ResetPasswordPage    = lazy(() => import('./modules/auth/ResetPasswordPage'))
-const ContractsPage        = lazy(() => import('./modules/contracts/ContractsPage'))
+const LoginPage = lazy(() => import('./modules/auth/LoginPage'))
+const ResetPasswordPage = lazy(() => import('./modules/auth/ResetPasswordPage'))
+const ContractsPage = lazy(() => import('./modules/contracts/ContractsPage'))
 const ModuleUnderDevelopment = lazy(() => import('./components/shared/ModuleUnderDevelopment'))
-const ModalitiesPage       = lazy(() => import('./modules/modalities/ModalitiesPage'))
+const ModalitiesPage = lazy(() => import('./modules/modalities/ModalitiesPage'))
 // Módulo Financeiro — 3 páginas independentes com responsabilidade única
-const BillingPage          = lazy(() => import('./modules/finance/BillingPage'))   // Cobrança
-const ExpensesPage         = lazy(() => import('./modules/finance/ExpensesPage'))  // Despesas
-const ReportsPage          = lazy(() => import('./modules/finance/ReportsPage'))   // Relatórios Financeiros
+const BillingPage = lazy(() => import('./modules/finance/BillingPage'))   // Cobrança
+const ExpensesPage = lazy(() => import('./modules/finance/ExpensesPage'))  // Despesas
+const ReportsPage = lazy(() => import('./modules/finance/ReportsPage'))   // Relatórios Financeiros
 // ─── ScrollToTop Helper ───────────────────────────────────────────────────────
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -97,13 +98,24 @@ function AppContent() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const { user, isSetupMode } = useAuth()
-  const isAuthPage = ['/login', '/register'].includes(location.pathname)
+  const { user, userData, isSetupMode, loading: authLoading } = useAuth()
+  const { autoMigrateIfLegacy } = useSystemUsers()
 
-  // 1. MODO SETUP: Se o sistema não tiver nenhum administrador, força o registro do primeiro.
-  if (isSetupMode && location.pathname !== '/register') {
-    return <Navigate to="/register" replace />
+  // 0. AUTO-MIGRAÇÃO: Se o usuário for Staff e estiver vindo de uma coleção legada, migra automaticamente.
+  useEffect(() => {
+    if (user && userData?.isLegacyProfile) {
+      autoMigrateIfLegacy(userData)
+    }
+  }, [user, userData, autoMigrateIfLegacy])
+
+  const isAuthPage = ['/login', '/registro'].includes(location.pathname)
+
+  // 0. CARREGAMENTO: Enquanto verifica auth/setup, evitamos tela preta e redirects precipitados.
+  if (authLoading) {
+    return <PageSkeleton />
   }
+
+  // 1. MODO SETUP: (Desativado o redirecionamento forçado por solicitação)
 
   // 2. REDIRECIONAMENTO: Se o usuário já estiver logado, admite acesso às telas de login/registro.
   if (user && isAuthPage) {
@@ -117,7 +129,7 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/registro" element={<LoginPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     )
@@ -141,35 +153,47 @@ function AppContent() {
             {/* Wrapper Centralizado para as Páginas e Rodapé */}
             <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col">
               <Toaster position="top-right" />
+              <NotificationCenter />
               <ScrollToTop />
               <Suspense fallback={<PageSkeleton />}>
                 <AnimatePresence mode="wait" initial={false}>
                   <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<ProtectedRoute><AnimatedPage><DashboardPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/home" element={<ProtectedRoute><AnimatedPage><DashboardPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/attendance" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><AttendancePage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/students" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><StudentsPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/collaborators" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><CollaboratorsPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/events" element={<ProtectedRoute><AnimatedPage><EventsPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/profile" element={<ProtectedRoute><AnimatedPage><ProfilePage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/attendance/review/:sessionId" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReviewAttendancePage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/contracts" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ContractsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/inicio" element={<ProtectedRoute><AnimatedPage><DashboardPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/chamadas" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><AttendancePage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/alunos" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><StudentsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/equipe" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><CollaboratorsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/eventos" element={<ProtectedRoute><AnimatedPage><EventsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/perfil" element={<ProtectedRoute><AnimatedPage><ProfilePage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/chamadas/revisao/:sessionId" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReviewAttendancePage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/contratos" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ContractsPage /></AnimatedPage></ProtectedRoute>} />
 
-                    {/* Módulo Financeiro — páginas independentes por intenção */}
-                    <Route path="/billing"  element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/expenses" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/reports"  element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReportsPage /></AnimatedPage></ProtectedRoute>} />
-                    {/* Rota legada /finance redireciona para /billing */}
-                    <Route path="/finance"  element={<Navigate to="/billing" replace />} />
+                    <Route path="/financeiro" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/despesas" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/relatorios" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReportsPage /></AnimatedPage></ProtectedRoute>} />
+                    
+                    {/* Redirecionamentos de Rotas Legadas */}
+                    <Route path="/billing" element={<Navigate to="/financeiro" replace />} />
+                    <Route path="/expenses" element={<Navigate to="/despesas" replace />} />
+                    <Route path="/reports" element={<Navigate to="/relatorios" replace />} />
+                    <Route path="/finance" element={<Navigate to="/financeiro" replace />} />
+                    <Route path="/attendance" element={<Navigate to="/chamadas" replace />} />
+                    <Route path="/students" element={<Navigate to="/alunos" replace />} />
+                    <Route path="/collaborators" element={<Navigate to="/equipe" replace />} />
+                    <Route path="/events" element={<Navigate to="/eventos" replace />} />
+                    <Route path="/profile" element={<Navigate to="/perfil" replace />} />
+                    <Route path="/contracts" element={<Navigate to="/contratos" replace />} />
+                    <Route path="/modalities" element={<Navigate to="/modalidades" replace />} />
+                    <Route path="/home" element={<Navigate to="/inicio" replace />} />
 
-                    <Route path="/experimental" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
+                    <Route path="/visitantes" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
                       icon={CalendarDays} title="Aulas Experimentais"
                       features={['Cadastro de novos interessados', 'Lembretes automáticos', 'Histórico de visitas', 'Conversão para matrícula']}
                     /></AnimatedPage></ProtectedRoute>} />
 
-                    <Route path="/modalities" element={<ProtectedRoute><AnimatedPage><ModalitiesPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/modalidades" element={<ProtectedRoute><AnimatedPage><ModalitiesPage /></AnimatedPage></ProtectedRoute>} />
 
-                    <Route path="/plans" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
+                    <Route path="/planos" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
                       icon={Banknote} title="Planos"
                       features={['Planos recorrentes', 'Gestão de benefícios', 'Cobrança automática']}
                     /></AnimatedPage></ProtectedRoute>} />

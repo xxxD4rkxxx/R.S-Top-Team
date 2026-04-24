@@ -23,33 +23,33 @@ const navGroups = [
   {
     title: 'Opracional',
     items: [
-      { to: '/students', icon: Contact, label: 'Alunos', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/collaborators', icon: Users, label: 'Equipe & Professores', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/attendance', icon: CheckCircle2, label: 'Chamada', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/events', icon: BellRing, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'] },
-      { to: '/experimental', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/modalities', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/alunos', icon: Contact, label: 'Alunos', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/equipe', icon: Users, label: 'Equipe & Professores', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/chamadas', icon: CheckCircle2, label: 'Chamada', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/eventos', icon: BellRing, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'] },
+      { to: '/visitantes', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/modalidades', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'] },
     ]
   },
   {
     title: 'Acordos e Planos',
     items: [
-      { to: '/plans', icon: Gem, label: 'Planos', roles: ['admin', 'gestor'] },
-      { to: '/contracts', icon: FileDigit, label: 'Gestão de Contratos', roles: ['admin', 'gestor'] },
+      { to: '/planos', icon: Gem, label: 'Planos', roles: ['admin', 'gestor'] },
+      { to: '/contratos', icon: FileDigit, label: 'Gestão de Contratos', roles: ['admin', 'gestor'] },
     ]
   },
   {
     title: 'Inteligência Financeira',
     items: [
-      { to: '/billing',  icon: PiggyBank,      label: 'Cobrança',               roles: ['admin', 'gestor', 'professor'] },
-      { to: '/expenses', icon: ArrowDownRight,  label: 'Despesas',               roles: ['admin', 'gestor', 'professor'] },
-      { to: '/reports',  icon: PieChart,        label: 'Relatórios Financeiros', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/financeiro',  icon: PiggyBank,      label: 'Cobrança',               roles: ['admin', 'gestor', 'professor'] },
+      { to: '/despesas', icon: ArrowDownRight,  label: 'Despesas',               roles: ['admin', 'gestor', 'professor'] },
+      { to: '/relatorios',  icon: PieChart,        label: 'Relatórios Financeiros', roles: ['admin', 'gestor', 'professor'] },
     ]
   },
   {
     title: 'Sistema',
     items: [
-      { to: '/profile', icon: Settings, label: 'Configurações', roles: ['admin', 'gestor', 'professor', 'aluno'] },
+      { to: '/perfil', icon: Settings, label: 'Configurações', roles: ['admin', 'gestor', 'professor', 'aluno'] },
     ]
   }
 ]

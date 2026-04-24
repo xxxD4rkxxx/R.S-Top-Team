@@ -267,6 +267,10 @@ h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-black {
 
 /* === Belt colors === */
 .belt-white   { background: linear-gradient(135deg, #E5E7EB, #9CA3AF); }
+.belt-grey    { background: linear-gradient(135deg, #94a3b8, #64748b); }
+.belt-yellow  { background: linear-gradient(135deg, #fde047, #eab308); }
+.belt-orange  { background: linear-gradient(135deg, #fb923c, #f97316); }
+.belt-green   { background: linear-gradient(135deg, #4ade80, #16a34a); }
 .belt-blue    { background: linear-gradient(135deg, #1D4ED8, #3B82F6); }
 .belt-purple  { background: linear-gradient(135deg, #6D28D9, #A855F7); }
 .belt-brown   { background: linear-gradient(135deg, #78350F, #B45309); }
@@ -414,8 +418,8 @@ h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-black {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.85);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px);
   z-index: 9999;
   display: flex;
   align-items: center;

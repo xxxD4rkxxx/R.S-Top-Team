@@ -3,10 +3,11 @@
 // Oferece interface lateral para gestão de turmas existentes quando em modo de edição.
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   X, Save, Layers, Plus, Edit2, Trash2, Calendar, Clock, 
   Users as UsersIcon, ChevronDown, GraduationCap, Hash, CircleDot,
-  DollarSign
+  DollarSign, Settings, Check
 } from 'lucide-react'
 import { useHideMobileNav } from '../../../hooks/useHideMobileNav'
 import { useSystemUsers } from '../../../hooks/useSystemUsers'
@@ -129,13 +130,30 @@ export default function ModalityModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-4">
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
+    <AnimatePresence>
+      <motion.div 
+        className="modal-backdrop z-[200]"
         onClick={onClose}
-      />
-      
-      <div className="relative w-full max-w-4xl bg-[#0d0d0d] border-t md:border border-white/10 rounded-t-[32px] md:rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-500 flex flex-col max-h-[95vh] md:max-h-[90vh]">
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div 
+          onClick={e => e.stopPropagation()}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose();
+            }
+          }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="modal-content modal-content-bottom-sheet relative max-w-4xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
+        >
         {/* Mobile Drag Handle */}
         <div className="md:hidden flex justify-center pt-4 pb-2">
           <div className="w-12 h-1.5 bg-white/10 rounded-full" />
@@ -195,25 +213,65 @@ export default function ModalityModal({
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                    <CircleDot size={12} /> STATUS DO CATÁLOGO
-                  </label>
-                  <div className="flex gap-2">
-                    {['ativo', 'inativo'].map(s => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                      <CircleDot size={12} /> STATUS
+                    </label>
+                    <div className="flex gap-2">
+                      {['ativo', 'inativo'].map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setStatus(s)}
+                          className={`flex-1 h-[43px] rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                            status === s 
+                            ? 'bg-white border-white text-black shadow-[0_0_20px_rgba(255,255,255,0.1)]' 
+                            : 'bg-[#111] border-white/5 text-gray-600 hover:border-white/10 hover:text-gray-400'
+                          }`}
+                        >
+                          {s === 'ativo' ? 'Ativo' : 'Inativo'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                        <GraduationCap size={12} /> SISTEMA DE FAIXAS
+                      </label>
                       <button
-                        key={s}
                         type="button"
-                        onClick={() => setStatus(s)}
-                        className={`flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                          status === s 
-                          ? 'bg-white border-white text-black shadow-[0_0_20px_rgba(255,255,255,0.1)]' 
-                          : 'bg-[#111] border-white/5 text-gray-600 hover:border-white/10 hover:text-gray-400'
+                        onClick={() => setHasBelt(!hasBelt)}
+                        className={`w-full h-[43px] flex items-center justify-between px-6 rounded-xl border transition-all ${
+                          hasBelt 
+                          ? 'bg-primary/10 border-primary/30 text-primary shadow-lg shadow-primary/5' 
+                          : 'bg-[#111] border-white/5 text-gray-600 hover:border-white/10'
                         }`}
                       >
-                        {s === 'ativo' ? 'Em Atividade' : 'Suspenso'}
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full animate-pulse ${hasBelt ? 'bg-primary' : 'bg-gray-700'}`} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">
+                            {hasBelt ? 'HABILITADO' : 'SEM GRADUAÇÃO'}
+                          </span>
+                        </div>
+                        <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${hasBelt ? 'bg-primary' : 'bg-gray-800'}`}>
+                          <div className={`w-3 h-3 rounded-full bg-white transition-all ${hasBelt ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </div>
                       </button>
-                    ))}
+                    </div>
+
+                    {hasBelt && editingModality && (
+                      <button
+                        type="button"
+                        onClick={() => onSave({ ...editingModality, name, description, status, hasBelt, _openConfig: true })}
+                        className="mt-6 p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-primary transition-all group"
+                        title="Configurar Categorias e Faixas"
+                      >
+                        <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -411,17 +469,37 @@ export default function ModalityModal({
             </div>
 
             {/* Fixed Action Footer */}
-            <div className="p-6 border-t border-white/5 bg-[#0d0d0d] flex gap-3">
+            <div className="p-6 border-t border-white/5 bg-[#0d0d0d] flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-4 text-sm font-bold text-gray-500 hover:text-white transition-colors bg-white/5 rounded-2xl"
+                className="flex-1 py-4 text-sm font-bold text-gray-500 hover:text-white transition-colors bg-white/5 rounded-2xl order-3 sm:order-1"
               >
                 Cancelar
               </button>
+
+              {hasBelt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pricingData = {
+                      adulto: { ...pricing.adulto, price: Number(pricing.adulto.price) },
+                      kids: { ...pricing.kids, price: Number(pricing.kids.price) },
+                      juvenil: { ...pricing.juvenil, price: Number(pricing.juvenil.price) }
+                    }
+                    onSave({ name, description, status, hasBelt, pricing: pricingData, _openConfig: true });
+                    onClose();
+                  }}
+                  className="flex-[1.5] flex items-center justify-center gap-2 py-4 bg-white/5 border border-primary/20 text-primary rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all active:scale-95 group order-1 sm:order-2"
+                >
+                  <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+                  Salvar e Configurar Faixas
+                </button>
+              )}
+
               <button
                 type="submit"
-                className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-black rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 group px-6"
+                className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-black rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 group px-6 order-2 sm:order-3"
               >
                 <Save size={18} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
                 {editingModality ? 'Salvar' : 'Criar'}
@@ -430,19 +508,13 @@ export default function ModalityModal({
           </form>
 
           {editingModality && (
-            <div className="md:w-1/2 p-6 md:p-8 bg-black/20 overflow-y-auto no-scrollbar space-y-6 border-t border-white/5 md:border-t-0">
+            <div className="hidden md:block md:w-1/2 p-6 md:p-8 bg-black/20 overflow-y-auto no-scrollbar space-y-6 border-t border-white/5 md:border-t-0">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Turmas Registradas</h3>
                   <p className="text-[9px] text-gray-600 uppercase font-bold mt-1">{editingModality.turmas?.length || 0} Horários ativos</p>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => onAddClass(editingModality.id)}
-                  className="flex items-center gap-2 p-3 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/20 transition-all shadow-lg"
-                >
-                  <Plus size={14} /> Nova Turma
-                </button>
+                {/* Botão Nova Turma removido conforme solicitado */}
               </div>
 
               <div className="space-y-3">
@@ -493,8 +565,9 @@ export default function ModalityModal({
             </div>
           )}
         </div>
-      </div>
-    </div>,
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
     document.body
   )
 }

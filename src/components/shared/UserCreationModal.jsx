@@ -6,12 +6,14 @@ import {
   ChevronDown, Landmark, Settings, Save, RefreshCw,
   Lock
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 // Hooks para integração com Firebase e controle de UI
 import { useSystemUsers } from '../../hooks/useSystemUsers'
 import { useStudents } from '../../hooks/useStudents'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
+import { useModalities } from '../../hooks/useModalities'
 
 /**
  * UserCreationModal - Modal Unificado de Gestão de Usuários
@@ -25,6 +27,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
 
   const { createNewUser } = useSystemUsers()
   const { students, deleteStudent } = useStudents()
+  const { modalities: dbModalities } = useModalities()
 
   // Estado inicial do formulário
   const [formData, setFormData] = useState({
@@ -32,7 +35,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     email: '',
     phone: '',
     pin: '', // 🔑 OPCIONAL: Permite definir manualmente
-    roles: ['aluno'], // Array para suportar múltiplos cargos
+    roles: [], // Inicia vazio para escolha explícita
+    modalities: [], // 🥋 Modalidades do professor
     permissions: {
       viewStudents: true,
       editStudents: false,
@@ -49,17 +53,18 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     }
   })
 
-  // Controla quais categorias de permissão estão abertas (Iniciam ABERTAS conforme pedido do usuário)
+  // Controla quais categorias de permissão estão abertas (Iniciam fechadas para maior limpeza visual)
   const [expandedCategories, setExpandedCategories] = useState({
-    operational: true,
-    finance: true,
-    system: true,
-    security: true
+    operational: false,
+    finance: false,
+    system: false,
+    security: false,
+    modalities: false
   })
 
   const [studentSearch, setStudentSearch] = useState('')
   const [selectedStudentId, setSelectedStudentId] = useState(null)
-  
+
   // Efeito para popular dados em caso de EDIÇÃO
   React.useEffect(() => {
     if (isOpen) {
@@ -69,11 +74,12 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           email: initialData.email || '',
           phone: initialData.phone || '',
           pin: initialData.pin || '',
-          roles: Array.isArray(initialData.roles) 
-            ? initialData.roles 
-            : initialData.roles 
-              ? Object.keys(initialData.roles).filter(r => initialData.roles[r]) 
+          roles: Array.isArray(initialData.roles)
+            ? initialData.roles
+            : initialData.roles
+              ? Object.keys(initialData.roles).filter(r => initialData.roles[r])
               : ['aluno'],
+          modalities: initialData.modalities || [],
           permissions: {
             ...defaultRolePermissions.aluno,
             ...(initialData.permissions || {})
@@ -84,13 +90,25 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
         // Reset para nova criação
         setFormData({
           name: '', email: '', phone: '', pin: '',
-          roles: ['aluno'],
+          roles: [],
+          modalities: [],
           permissions: { ...defaultRolePermissions.aluno }
         })
         setSelectedStudentId(null)
       }
       setCreatedPin(null)
       setCountdown(0)
+
+      // 📂 RESET DE SEÇÕES: Garante que as categorias comecem fechadas ao criar novo colaborador
+      if (!initialData) {
+        setExpandedCategories({
+          operational: false,
+          finance: false,
+          system: false,
+          security: false,
+          modalities: false
+        })
+      }
     }
   }, [isOpen, initialData])
 
@@ -142,10 +160,20 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
 
   /** Preenche o formulário ao selecionar um aluno existente */
   const handleSelectStudent = (student) => {
+    // Ao selecionar um aluno, importamos os cargos dele (geralmente só 'aluno')
+    const studentRoles = Array.isArray(student.roles)
+      ? student.roles
+      : student.roles
+        ? Object.keys(student.roles).filter(r => student.roles[r])
+        : ['aluno']
+
     setFormData(prev => ({
       ...prev,
       name: student.name,
-      email: student.email || ''
+      email: student.email || '',
+      phone: student.phone || '',
+      roles: studentRoles,
+      permissions: mergePermissions(studentRoles)
     }))
     setSelectedStudentId(student.id)
     setStudentSearch('')
@@ -217,7 +245,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
         ? prev.roles.filter(r => r !== roleId)
         : [...prev.roles, roleId]
 
-      if (newRoles.length === 0) newRoles = ['aluno']
+      // Removida a trava que forçava 'aluno'
 
       return {
         ...prev,
@@ -232,6 +260,12 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    if (formData.roles.length === 0) {
+      setError('Selecione ao menos um cargo para este usuário.')
+      setLoading(false)
+      return
+    }
+
     try {
       // Determina papel principal para exibição legada
       const primaryRole = formData.roles.includes('admin') ? 'admin' :
@@ -342,306 +376,397 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
         </div>
       </div>
     ) : (
-      <div className="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm animate-in fade-in duration-300 overflow-hidden">
-        {/* Overlay click area to close */}
-        <div className="absolute inset-0" onClick={onClose} />
-
-        {/* MODAL / DRAWER */}
-    <div className="modal-backdrop" onClick={onClose}>
-      {/* Container with mobile bottom sheet logic */}
-      <div 
-        onClick={e => e.stopPropagation()}
-        className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
-      >
-        {/* Mobile Drag Handle */}
-        <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
-          <div className="w-12 h-1.5 bg-white/10 rounded-full" />
-        </div>
-
-        {/* CABEÇALHO PREMIUM FIXO */}
-        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-lg shadow-primary/5">
-              <Shield size={28} strokeWidth={2.5} />
+      <AnimatePresence>
+        <motion.div
+          className="modal-backdrop z-[1000]"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          {/* MODAL / DRAWER */}
+          <motion.div
+            onClick={e => e.stopPropagation()}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                onClose();
+              }
+            }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden bg-black/80 border border-white/5 shadow-2xl rounded-t-[32px] sm:rounded-[32px]"
+          >
+            {/* Mobile Drag Handle */}
+            <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+              <div className="w-12 h-1.5 bg-white/10 rounded-full" />
             </div>
-            <div>
-              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
-                {initialData ? 'Editar Perfil' : 'Novo Colaborador'}
-              </h2>
-              <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
-                <span className="w-1 h-1 rounded-full bg-primary animate-pulse" />
-                Sincronização Unificada
-              </p>
-            </div>
-          </div>
-          <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10">
-            <X size={24} />
-          </button>
-        </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* CONTEÚDO COM ROLAGEM */}
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-24 space-y-7 custom-scrollbar">
-              {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-[10px] uppercase font-bold text-center tracking-widest">{error}</div>}
-
-              {/* BUSCA DE ALUNOS */}
-              <div className="space-y-2">
-                <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Promover um Aluno Existente</label>
-                <div className="relative group">
-                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary transition-colors" />
-                  <input
-                    type="text"
-                    value={studentSearch}
-                    onChange={e => setStudentSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-primary/30 transition-all placeholder:text-gray-700"
-                    placeholder="Pesquisar por nome ou e-mail..."
+            {/* CABEÇALHO PREMIUM FIXO */}
+            <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--clr-primary) 15%, transparent)',
+                    borderColor: 'color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                  }}
+                >
+                  <Shield
+                    size={28}
+                    strokeWidth={2.5}
+                    style={{ color: 'var(--clr-primary)' }}
                   />
+                </div>
+                <div>
+                  <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+                    {initialData ? 'Editar Perfil' : 'Novo Colaborador'}
+                  </h2>
+                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                    <span
+                      className="w-1 h-1 rounded-full animate-pulse transition-all duration-300"
+                      style={{
+                        backgroundColor: 'var(--clr-primary)',
+                        boxShadow: '0 0 10px var(--clr-primary)'
+                      }}
+                    />
+                    Sincronização Unificada
+                  </p>
+                </div>
+              </div>
+              <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10">
+                <X size={24} />
+              </button>
+            </div>
 
-                  {filteredStudents.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#141414] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden divide-y divide-white/5">
-                      {filteredStudents.map(student => (
-                        <button key={student.id} type="button" onClick={() => handleSelectStudent(student)} className="w-full flex items-center gap-3 p-4 hover:bg-white/5 transition-colors text-left group/item">
-                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover/item:bg-primary group-hover/item:text-black transition-all">
-                            <GraduationCap size={16} />
-                          </div>
-                          <div>
-                            <p className="text-xs font-black text-white uppercase tracking-tight">{student.name}</p>
-                            <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">{student.email}</p>
-                          </div>
-                        </button>
-                      ))}
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              {/* CONTEÚDO COM ROLAGEM */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-24 space-y-7 custom-scrollbar">
+                {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-[10px] uppercase font-bold text-center tracking-widest">{error}</div>}
+
+                {/* BUSCA DE ALUNOS */}
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Promover um Aluno Existente</label>
+                  <div className="relative group">
+                    <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary transition-colors" />
+                    <input
+                      type="text"
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-primary/30 transition-all placeholder:text-gray-700"
+                      placeholder="Pesquisar por nome ou e-mail..."
+                    />
+
+                    {filteredStudents.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#141414] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden divide-y divide-white/5">
+                        {filteredStudents.map(student => (
+                          <button key={student.id} type="button" onClick={() => handleSelectStudent(student)} className="w-full flex items-center gap-3 p-4 hover:bg-white/5 transition-colors text-left group/item">
+                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover/item:bg-primary group-hover/item:text-black transition-all">
+                              <GraduationCap size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-white uppercase tracking-tight">{student.name}</p>
+                              <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">{student.email}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome Completo</label>
+                    <div className="relative">
+                      <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                      <input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="Nome do colaborador" />
                     </div>
-                  )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Telefone / WhatsApp</label>
+                    <div className="relative">
+                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 invisible" />
+                      {/* Reuse smartphone icon if possible, but Mail is already here in snippets, I'll switch to standard style */}
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600">📱</span>
+                      <input type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="(00) 00000-0000" />
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome Completo</label>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">E-mail (Único)</label>
                   <div className="relative">
-                    <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                    <input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="Nome do colaborador" />
+                    <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="email@exemplo.com" />
                   </div>
                 </div>
+
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Telefone / WhatsApp</label>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">PIN de Acesso (Opcional - 6 Dígitos)</label>
                   <div className="relative">
-                    <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 invisible" />
-                    {/* Reuse smartphone icon if possible, but Mail is already here in snippets, I'll switch to standard style */}
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600">📱</span>
-                    <input type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="(00) 00000-0000" />
+                    <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={formData.pin}
+                      onChange={e => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '') })}
+                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/30 transition-all"
+                      placeholder="Deixe em branco para gerar"
+                    />
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">E-mail (Único)</label>
-                <div className="relative">
-                  <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                  <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="email@exemplo.com" />
+                {/* SELEÇÃO MÚLTIPLA DE CARGOS */}
+                <div className="space-y-3">
+                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Atribuição de Cargos</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {availableRoles.map(r => (
+                      <button key={r.id} type="button" onClick={() => handleRoleToggle(r.id)} className={`p-2.5 md:p-3 rounded-xl border text-center transition-all relative overflow-hidden group ${formData.roles.includes(r.id) ? 'bg-primary border-primary shadow-lg shadow-primary/10' : 'bg-white/[0.02] border-white/5 hover:bg-white hover:border-white'}`}>
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${formData.roles.includes(r.id) ? 'text-white' : 'text-gray-400 group-hover:text-black'}`}>{r.label}</p>
+                        <p className={`text-[8px] uppercase font-black tracking-tighter mt-0.5 ${formData.roles.includes(r.id) ? 'text-white/70' : 'text-gray-600 group-hover:text-black/60'}`}>{r.desc}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">PIN de Acesso (Opcional - 6 Dígitos)</label>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                  <input
-                    type="text"
-                    maxLength={6}
-                    value={formData.pin}
-                    onChange={e => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '') })}
-                    className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/30 transition-all"
-                    placeholder="Deixe em branco para gerar"
-                  />
-                </div>
-              </div>
-
-              {/* SELEÇÃO MÚLTIPLA DE CARGOS */}
-              <div className="space-y-3">
-                <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Atribuição de Cargos</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {availableRoles.map(r => (
-                    <button key={r.id} type="button" onClick={() => handleRoleToggle(r.id)} className={`p-2.5 md:p-3 rounded-xl border text-center transition-all relative overflow-hidden group ${formData.roles.includes(r.id) ? 'bg-primary border-primary shadow-lg shadow-primary/10' : 'bg-white/[0.02] border-white/5 hover:bg-white hover:border-white'}`}>
-                      <p className={`text-[10px] font-black uppercase tracking-widest ${formData.roles.includes(r.id) ? 'text-white' : 'text-gray-400 group-hover:text-black'}`}>{r.label}</p>
-                      <p className={`text-[8px] uppercase font-black tracking-tighter mt-0.5 ${formData.roles.includes(r.id) ? 'text-white/70' : 'text-gray-600 group-hover:text-black/60'}`}>{r.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* PERMISSÕES CATEGORIZADAS (ACCORDIONS) */}
-              <div className="space-y-2">
-                <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Configurações de Permissão</label>
-                <div className="bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden divide-y divide-white/5">
-
-                  {/* --- OPERACIONAL --- */}
-                  <div className="group/cat">
-                    <button type="button" onClick={() => toggleCategory('operational')} className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                {/* MODALIDADES PARA PROFESSOR */}
+                {formData.roles.includes('professor') && (
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCategories(p => ({ ...p, modalities: !p.modalities }))}
+                      className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/10 transition-all"
+                    >
                       <div className="flex items-center gap-3">
-                        <Users size={14} className={expandedCategories.operational ? 'text-blue-400' : 'text-gray-600'} />
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${expandedCategories.operational ? 'text-white' : 'text-gray-500'}`}>Operacional & Alunos</span>
+                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                          <GraduationCap size={16} />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[10px] font-black uppercase text-white tracking-widest leading-none">Modalidades de Ensino</p>
+                          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1 tracking-tight">
+                            {formData.modalities?.length > 0
+                              ? `Responsável por: ${formData.modalities.join(', ')}`
+                              : 'Nenhuma modalidade vinculada'}
+                          </p>
+                        </div>
                       </div>
-                      <ChevronDown size={14} className={`text-gray-600 transition-transform duration-300 ${expandedCategories.operational ? 'rotate-180 text-blue-400' : ''}`} />
+                      <ChevronDown size={14} className={`text-gray-600 transition-transform ${expandedCategories.modalities ? 'rotate-180' : ''}`} />
                     </button>
-                    {expandedCategories.operational && (
-                      <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
-                        {[
-                          { k: 'viewStudents', l: 'Visualizar Alunos', d: 'Ver lista e perfis.' },
-                          { k: 'editStudents', l: 'Cadastrar/Editar', d: 'Criar e alterar dados.' },
-                          { k: 'manageClasses', l: 'Gerenciar Chamadas', d: 'Iniciar aulas e treinos.' },
-                          { k: 'manageEvents', l: 'Gerenciar Eventos', d: 'Eventos e graduações.' },
-                          { k: 'deleteStudents', l: 'Excluir Registros', d: 'Deletar alunos do sistema.', r: true },
-                        ].map(p => (
-                          <div key={p.k} className="flex items-center justify-between">
-                            <div className="flex-1 pr-6">
-                              <p className={`text-[11px] font-bold uppercase tracking-tight ${p.r ? 'text-red-400' : 'text-gray-200'}`}>{p.l}</p>
-                              <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
-                            </div>
-                            <button type="button" onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? (p.r ? 'bg-red-500' : 'bg-primary') : 'bg-gray-800'}`}>
-                              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
+
+                    <AnimatePresence>
+                      {expandedCategories.modalities && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden bg-black/40 border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-2"
+                        >
+                          {dbModalities.map(mod => (
+                            <button
+                              key={mod.id}
+                              type="button"
+                              onClick={() => {
+                                const isSelected = formData.modalities?.includes(mod.name)
+                                setFormData(prev => ({
+                                  ...prev,
+                                  modalities: isSelected
+                                    ? prev.modalities.filter(m => m !== mod.name)
+                                    : [...(prev.modalities || []), mod.name]
+                                }))
+                              }}
+                              className={`p-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${formData.modalities?.includes(mod.name) ? 'bg-primary border-primary text-white shadow-lg shadow-primary/10' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'}`}
+                            >
+                              {mod.name}
                             </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
+                )}
 
-                  {/* --- FINANCEIRO --- */}
-                  <div className="group/cat">
-                    <button type="button" onClick={() => toggleCategory('finance')} className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                      <div className="flex items-center gap-3">
-                        <Landmark size={14} className={expandedCategories.finance ? 'text-emerald-400' : 'text-gray-600'} />
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${expandedCategories.finance ? 'text-white' : 'text-gray-500'}`}>Financeiro</span>
-                      </div>
-                      <ChevronDown size={14} className={`text-gray-600 transition-transform duration-300 ${expandedCategories.finance ? 'rotate-180 text-emerald-400' : ''}`} />
-                    </button>
-                    {expandedCategories.finance && (
-                      <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
-                        {[
-                          { k: 'viewFinance', l: 'Ver Relatórios', d: 'Acesso a lucros e KPIs.' },
-                          { k: 'managePayments', l: 'Processar Pagamentos', d: 'Lançar mensalidades.' },
-                          { k: 'manageExpenses', l: 'Gerenciar Despesas', d: 'Lançar contas a pagar.' },
-                        ].map(p => (
-                          <div key={p.k} className="flex items-center justify-between">
-                            <div className="flex-1 pr-6">
-                              <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
-                              <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                {/* PERMISSÕES CATEGORIZADAS (ACCORDIONS) */}
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Configurações de Permissão</label>
+                  <div className="bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden divide-y divide-white/5">
+
+                    {/* --- OPERACIONAL --- */}
+                    <div className="group/cat">
+                      <button type="button" onClick={() => toggleCategory('operational')} className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Users size={14} className={expandedCategories.operational ? 'text-blue-400' : 'text-gray-600'} />
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${expandedCategories.operational ? 'text-white' : 'text-gray-500'}`}>Operacional & Alunos</span>
+                        </div>
+                        <ChevronDown size={14} className={`text-gray-600 transition-transform duration-300 ${expandedCategories.operational ? 'rotate-180 text-blue-400' : ''}`} />
+                      </button>
+                      {expandedCategories.operational && (
+                        <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
+                          {[
+                            { k: 'viewStudents', l: 'Visualizar Alunos', d: 'Ver lista e perfis.' },
+                            { k: 'editStudents', l: 'Cadastrar/Editar', d: 'Criar e alterar dados.' },
+                            { k: 'manageClasses', l: 'Gerenciar Chamadas', d: 'Iniciar aulas e treinos.' },
+                            { k: 'manageEvents', l: 'Gerenciar Eventos', d: 'Eventos e graduações.' },
+                            { k: 'deleteStudents', l: 'Excluir Registros', d: 'Deletar alunos do sistema.', r: true },
+                          ].map(p => (
+                            <div key={p.k} className="flex items-center justify-between">
+                              <div className="flex-1 pr-6">
+                                <p className={`text-[11px] font-bold uppercase tracking-tight ${p.r ? 'text-red-400' : 'text-gray-200'}`}>{p.l}</p>
+                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                              </div>
+                              <button type="button" onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? (p.r ? 'bg-red-500' : 'bg-primary') : 'bg-gray-800'}`}>
+                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
+                              </button>
                             </div>
-                            <button type="button" onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-primary' : 'bg-gray-800'}`}>
-                              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
-                  {/* --- GESTÃO --- */}
-                  <div className="group/cat">
-                    <button type="button" onClick={() => toggleCategory('system')} className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                      <div className="flex items-center gap-3">
-                        <Settings size={14} className={expandedCategories.system ? 'text-purple-400' : 'text-gray-600'} />
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${expandedCategories.system ? 'text-white' : 'text-gray-500'}`}>Gestão e Sistema</span>
-                      </div>
-                      <ChevronDown size={14} className={`text-gray-600 transition-transform duration-300 ${expandedCategories.system ? 'rotate-180 text-purple-400' : ''}`} />
-                    </button>
-                    {expandedCategories.system && (
-                      <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
-                        {[
-                          { k: 'manageUsers', l: 'Gerenciar Equipe', d: 'Criar outros colaboradores.' },
-                          { k: 'manageSystem', l: 'Configurar Regras', d: 'Modalidades e graduações.' },
-                        ].map(p => {
-                          const allowed = canGrantPermission(p.k)
-                          return (
-                            <div key={p.k} className={`flex items-center justify-between ${!allowed ? 'opacity-30 grayscale' : ''}`}>
+                    {/* --- FINANCEIRO --- */}
+                    <div className="group/cat">
+                      <button type="button" onClick={() => toggleCategory('finance')} className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Landmark size={14} className={expandedCategories.finance ? 'text-emerald-400' : 'text-gray-600'} />
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${expandedCategories.finance ? 'text-white' : 'text-gray-500'}`}>Financeiro</span>
+                        </div>
+                        <ChevronDown size={14} className={`text-gray-600 transition-transform duration-300 ${expandedCategories.finance ? 'rotate-180 text-emerald-400' : ''}`} />
+                      </button>
+                      {expandedCategories.finance && (
+                        <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
+                          {[
+                            { k: 'viewFinance', l: 'Ver Relatórios', d: 'Acesso a lucros e KPIs.' },
+                            { k: 'managePayments', l: 'Processar Pagamentos', d: 'Lançar mensalidades.' },
+                            { k: 'manageExpenses', l: 'Gerenciar Despesas', d: 'Lançar contas a pagar.' },
+                          ].map(p => (
+                            <div key={p.k} className="flex items-center justify-between">
                               <div className="flex-1 pr-6">
                                 <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
                                 <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
                               </div>
-                              <button
-                                type="button"
-                                disabled={!allowed}
-                                onClick={() => handleTogglePermission(p.k)}
-                                className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-primary' : 'bg-gray-800'} ${!allowed ? 'cursor-not-allowed' : ''}`}
-                              >
+                              <button type="button" onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-primary' : 'bg-gray-800'}`}>
                                 <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
                               </button>
                             </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
-                  {/* --- SEGURANÇA (NOVO) --- */}
-                  <div className="group/cat">
-                    <button type="button" onClick={() => setExpandedCategories(p => ({ ...p, security: !p.security }))} className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                      <div className="flex items-center gap-3">
-                        <Lock size={14} className={expandedCategories.security ? 'text-orange-400' : 'text-gray-600'} />
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${expandedCategories.security ? 'text-white' : 'text-gray-500'}`}>Segurança & Privacidade</span>
-                      </div>
-                      <ChevronDown size={14} className={`text-gray-600 transition-transform duration-300 ${expandedCategories.security ? 'rotate-180 text-orange-400' : ''}`} />
-                    </button>
-                    {expandedCategories.security && (
-                      <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
-                        {[
-                          { k: 'viewStaffPins', l: 'Ver PIN da Equipe', d: 'Acesso a senhas de colaboradores.' },
-                          { k: 'viewStudentPins', l: 'Ver PIN de Alunos', d: 'Acesso a senhas de alunos.' },
-                        ].map(p => {
-                          const allowed = canGrantPermission(p.k)
-                          return (
-                            <div key={p.k} className={`flex items-center justify-between ${!allowed ? 'opacity-30 grayscale' : ''}`}>
-                              <div className="flex-1 pr-6">
-                                <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
-                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                    {/* --- GESTÃO --- */}
+                    <div className="group/cat">
+                      <button type="button" onClick={() => toggleCategory('system')} className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Settings size={14} className={expandedCategories.system ? 'text-purple-400' : 'text-gray-600'} />
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${expandedCategories.system ? 'text-white' : 'text-gray-500'}`}>Gestão e Sistema</span>
+                        </div>
+                        <ChevronDown size={14} className={`text-gray-600 transition-transform duration-300 ${expandedCategories.system ? 'rotate-180 text-purple-400' : ''}`} />
+                      </button>
+                      {expandedCategories.system && (
+                        <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
+                          {[
+                            { k: 'manageUsers', l: 'Gerenciar Equipe', d: 'Criar outros colaboradores.' },
+                            { k: 'manageSystem', l: 'Configurar Regras', d: 'Modalidades e graduações.' },
+                          ].map(p => {
+                            const allowed = canGrantPermission(p.k)
+                            return (
+                              <div key={p.k} className={`flex items-center justify-between ${!allowed ? 'opacity-30 grayscale' : ''}`}>
+                                <div className="flex-1 pr-6">
+                                  <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
+                                  <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={!allowed}
+                                  onClick={() => handleTogglePermission(p.k)}
+                                  className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-primary' : 'bg-gray-800'} ${!allowed ? 'cursor-not-allowed' : ''}`}
+                                >
+                                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                disabled={!allowed}
-                                onClick={() => handleTogglePermission(p.k)}
-                                className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-orange-500' : 'bg-gray-800'} ${!allowed ? 'cursor-not-allowed' : ''}`}
-                              >
-                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* --- SEGURANÇA (NOVO) --- */}
+                    <div className="group/cat">
+                      <button type="button" onClick={() => setExpandedCategories(p => ({ ...p, security: !p.security }))} className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Lock size={14} className={expandedCategories.security ? 'text-orange-400' : 'text-gray-600'} />
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${expandedCategories.security ? 'text-white' : 'text-gray-500'}`}>Segurança & Privacidade</span>
+                        </div>
+                        <ChevronDown size={14} className={`text-gray-600 transition-transform duration-300 ${expandedCategories.security ? 'rotate-180 text-orange-400' : ''}`} />
+                      </button>
+                      {expandedCategories.security && (
+                        <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
+                          {[
+                            { k: 'viewStaffPins', l: 'Ver PIN da Equipe', d: 'Acesso a senhas de colaboradores.' },
+                            { k: 'viewStudentPins', l: 'Ver PIN de Alunos', d: 'Acesso a senhas de alunos.' },
+                          ].map(p => {
+                            const allowed = canGrantPermission(p.k)
+                            return (
+                              <div key={p.k} className={`flex items-center justify-between ${!allowed ? 'opacity-30 grayscale' : ''}`}>
+                                <div className="flex-1 pr-6">
+                                  <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
+                                  <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={!allowed}
+                                  onClick={() => handleTogglePermission(p.k)}
+                                  className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-orange-500' : 'bg-gray-800'} ${!allowed ? 'cursor-not-allowed' : ''}`}
+                                >
+                                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl">
+                  <Info size={16} className="text-gray-500 shrink-0" />
+                  <p className="text-[9px] text-gray-500 leading-tight uppercase font-black">O sistema gera um PIN aleatório se não for definido manualmente. Este PIN é a chave de acesso do colaborador.</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl">
-                <Info size={16} className="text-gray-500 shrink-0" />
-                <p className="text-[9px] text-gray-500 leading-tight uppercase font-black">O sistema gera um PIN aleatório se não for definido manualmente. Este PIN é a chave de acesso do colaborador.</p>
+              {/* RODAPÉ PREMIUM (STICKY) */}
+              <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-[2] py-4 rounded-2xl text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: 'var(--clr-primary)',
+                    boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                  }}
+                >
+                  {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
+                  {loading ? 'Salvando...' : (initialData ? 'Salvar Edição' : 'Confirmar Cadastro')}
+                </button>
               </div>
-            </div>
-
-            {/* RODAPÉ PREMIUM (STICKY) */}
-            <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-[2] py-4 rounded-2xl bg-primary text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
-              >
-                {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : (initialData ? 'Salvar Alterações' : 'Confirmar Cadastro')}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    )
   )
-)
 
   return createPortal(modalContent, document.body)
 }

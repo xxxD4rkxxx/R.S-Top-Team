@@ -11,6 +11,8 @@ import {
   CheckCircle2, Clock, AlertCircle, DollarSign,
   ChevronDown, Loader2, Users, RefreshCcw, Save, Edit2
 } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '../../components/shared/PageHeader'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import KPICard from '../../components/shared/KPICard'
@@ -94,67 +96,133 @@ function ModalNovaCobranca({ students, onClose, onSave, loading }) {
     onSave({ studentId: form.studentId, studentName: aluno?.name || 'Aluno', amount: Number(form.amount), dueDate: form.dueDate, referenceMonth: form.referenceMonth, status: 'pending' })
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/[0.02]">
-          <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">Nova Cobrança</h3>
-            <p className="text-[10px] text-gray-500 font-bold mt-0.5 uppercase tracking-wider">Vincule ao aluno e defina o valor</p>
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        className="modal-backdrop z-[200]"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div
+          onClick={e => e.stopPropagation()}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose();
+            }
+          }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="modal-content modal-content-bottom-sheet relative max-w-md w-full flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
+        >
+          {/* Mobile Drag Handle */}
+          <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+            <div className="w-12 h-1.5 bg-white/10 rounded-full" />
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
-            <X size={18} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Aluno</label>
-            <div className="relative">
-              <select required value={form.studentId} onChange={e => set('studentId', e.target.value)}
-                className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 pr-8">
-                <option value="">Selecione o aluno...</option>
-                {students.filter(s => !s.isPaymentExempt).map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+
+          {/* CABEÇALHO PREMIUM FIXO */}
+          <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--clr-primary) 15%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                }}
+              >
+                <DollarSign
+                  size={28}
+                  strokeWidth={2.5}
+                  style={{ color: 'var(--clr-primary)' }}
+                />
+              </div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+                  Nova Cobrança
+                </h2>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                  <span
+                    className="w-1 h-1 rounded-full animate-pulse transition-all duration-300"
+                    style={{
+                      backgroundColor: 'var(--clr-primary)',
+                      boxShadow: '0 0 10px var(--clr-primary)'
+                    }}
+                  />
+                  Vincule ao aluno e defina o valor
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Valor (R$)</label>
-              <input required type="number" step="0.01" min="0" placeholder="0,00"
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
-                value={form.amount} onChange={e => set('amount', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento</label>
-              <input required type="date"
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
-                value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
-            <input type="month"
-              className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
-              value={form.referenceMonth} onChange={e => set('referenceMonth', e.target.value)} />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-3 rounded-2xl bg-white/5 border border-white/10 text-sm font-medium text-gray-400 hover:text-white transition-all font-inter">
-              Cancelar
+            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10 border border-white/5">
+              <X size={24} />
             </button>
-            <button type="submit" disabled={loading}
-              className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black uppercase tracking-wide transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-emerald-900/30 font-inter">
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <DollarSign size={16} />}
-              {loading ? 'Salvando...' : 'Criar Cobrança'}
-            </button>
           </div>
-        </form>
-      </div>
-    </div>
+
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* CONTEÚDO COM ROLAGEM */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-32 space-y-7 custom-scrollbar no-scrollbar">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Aluno</label>
+                <div className="relative">
+                  <select required value={form.studentId} onChange={e => set('studentId', e.target.value)}
+                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 pr-8">
+                    <option value="">Selecione o aluno...</option>
+                    {students.filter(s => !s.isPaymentExempt).map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Valor (R$)</label>
+                  <input required type="number" step="0.01" min="0" placeholder="0,00"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
+                    value={form.amount} onChange={e => set('amount', e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento</label>
+                  <input required type="date"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                    value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
+                <input type="month"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                  value={form.referenceMonth} onChange={e => set('referenceMonth', e.target.value)} />
+              </div>
+            </div>
+
+            {/* BARRA INFERIOR (BOTÕES FIXOS) */}
+            <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
+              <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-[2] py-4 rounded-2xl text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'var(--clr-primary)',
+                  boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                }}
+              >
+                <DollarSign size={16} /> {loading ? 'Salvando...' : 'Criar Cobrança'}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   )
 }
 
@@ -171,45 +239,115 @@ function ModalFaturamentoLote({ onClose, onConfirm, loading }) {
     onConfirm(`${m}/${y}`, dueDate)
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden p-6 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-2 border border-primary/20">
-            <RefreshCcw size={24} className={loading ? 'animate-spin' : ''} />
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        className="modal-backdrop z-[200]"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div
+          onClick={e => e.stopPropagation()}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose();
+            }
+          }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="bg-[#0d0d0d] w-full max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl border border-white/10"
+        >
+          {/* Mobile Drag Handle */}
+          <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+            <div className="w-12 h-1.5 bg-white/10 rounded-full" />
           </div>
-          <h3 className="text-sm font-black text-white uppercase tracking-widest">Faturamento Automático</h3>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-            O sistema calculará as mensalidades baseadas nas modalidades de cada aluno ativo.
-          </p>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
-            <input required type="month" className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
-              value={referenceMonth} onChange={e => setReferenceMonth(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento das Faturas</label>
-            <input required type="date" className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
-              value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          {/* CABEÇALHO PREMIUM FIXO */}
+          <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--clr-primary) 15%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                }}
+              >
+                <RefreshCcw
+                  size={28}
+                  strokeWidth={2.5}
+                  className={loading ? 'animate-spin' : ''}
+                  style={{ color: 'var(--clr-primary)' }}
+                />
+              </div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+                  Faturamento Automático
+                </h2>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                  <span
+                    className="w-1 h-1 rounded-full animate-pulse transition-all duration-300"
+                    style={{
+                      backgroundColor: 'var(--clr-primary)',
+                      boxShadow: '0 0 10px var(--clr-primary)'
+                    }}
+                  />
+                  Cálculo em massa
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10 border border-white/5">
+              <X size={24} />
+            </button>
           </div>
 
-          <div className="flex flex-col gap-3 pt-2">
-            <button type="submit" disabled={loading}
-              className="w-full py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 shadow-xl shadow-white/5">
-              {loading ? 'Processando...' : 'GERAR COBRANÇAS'}
-            </button>
-            <button type="button" onClick={onClose}
-              className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-all">
-              Cancelar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* CONTEÚDO COM ROLAGEM */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-32 space-y-7 custom-scrollbar no-scrollbar">
+              <div className="bg-white/5 rounded-2xl p-4 text-[11px] text-gray-400 font-medium">
+                O sistema calculará as mensalidades baseadas nas modalidades de cada aluno ativo.
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
+                <input required type="month" className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                  value={referenceMonth} onChange={e => setReferenceMonth(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento das Faturas</label>
+                <input required type="date" className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                  value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              </div>
+            </div>
+
+            {/* BARRA INFERIOR (BOTÕES FIXOS) */}
+            <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
+              <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-[2] py-4 rounded-2xl text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'var(--clr-primary)',
+                  boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                }}
+              >
+                <FileUp size={16} /> {loading ? 'Processando...' : 'Gerar Cobranças'}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   )
 }
 
@@ -224,42 +362,107 @@ function ModalEditarCobranca({ bill, onClose, onSave, loading }) {
     onSave({ ...bill, amount: Number(amount) })
   }
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden p-6 space-y-6">
-        <div className="text-center">
-          <h3 className="text-sm font-black text-white uppercase tracking-widest">Ajustar Valor</h3>
-          <p className="text-[10px] text-gray-500 font-bold mt-1 uppercase tracking-wider">{bill.studentName}</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Novo Valor (R$)</label>
-            <input
-              required
-              type="number"
-              step="0.01"
-              className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 font-mono"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-            />
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        className="modal-backdrop z-[200]"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div
+          onClick={e => e.stopPropagation()}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose();
+            }
+          }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="bg-[#0d0d0d] w-full max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl border border-white/10"
+        >
+          {/* Mobile Drag Handle */}
+          <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+            <div className="w-12 h-1.5 bg-white/10 rounded-full" />
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase text-gray-500 hover:text-white transition-all">
-              Cancelar
-            </button>
-            <button type="submit" disabled={loading}
-              className="flex-1 py-3 rounded-2xl bg-white text-black text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2">
-              {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              Salvar
+          {/* CABEÇALHO PREMIUM FIXO */}
+          <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--clr-primary) 15%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                }}
+              >
+                <DollarSign size={28} strokeWidth={2.5} style={{ color: 'var(--clr-primary)' }} />
+              </div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+                  Ajustar Valor
+                </h2>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                  <span
+                    className="w-1 h-1 rounded-full animate-pulse transition-all duration-300"
+                    style={{
+                      backgroundColor: 'var(--clr-primary)',
+                      boxShadow: '0 0 10px var(--clr-primary)'
+                    }}
+                  />
+                  {bill.studentName}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10 border border-white/5">
+              <X size={24} />
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* CONTEÚDO COM ROLAGEM */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-32 space-y-7 custom-scrollbar no-scrollbar">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Novo Valor (R$)</label>
+                <input
+                  required
+                  type="number"
+                  step="0.01"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 font-mono"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* BARRA INFERIOR (BOTÕES FIXOS) */}
+            <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
+              <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-[2] py-4 rounded-2xl text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'var(--clr-primary)',
+                  boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                }}
+              >
+                <Save size={16} /> {loading ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   )
 }
 
@@ -379,29 +582,11 @@ export default function BillingPage() {
 
       <MobileHeader
         title="Cobrança"
-        actions={
-          <button onClick={() => setShowModal(true)}
-            className="p-2.5 rounded-xl bg-emerald-600 text-white active:scale-90 transition-transform shadow-lg shadow-emerald-900/30">
-            <Plus size={20} strokeWidth={3} />
-          </button>
-        }
       />
       <PageHeader
         icon={CreditCard}
         title="COBRANÇA"
         subtitle="GESTÃO DE MENSALIDADES E RECEBIMENTOS"
-        extra={
-          <div className="flex gap-3">
-            <button onClick={() => setShowBatchModal(true)}
-              className="flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all active:scale-95">
-              <RefreshCcw size={16} strokeWidth={2.5} /> OPERAR LOTE
-            </button>
-            <button onClick={() => setShowModal(true)}
-              className="btn-primary flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95">
-              <Plus size={18} strokeWidth={1.9} /> NOVA COBRANÇA
-            </button>
-          </div>
-        }
       />
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
@@ -459,13 +644,13 @@ export default function BillingPage() {
             <button onClick={() => setShowBatchModal(true)}
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
             >
-              <RefreshCcw size={16} strokeWidth={2.5} /> 
+              <RefreshCcw size={16} strokeWidth={2.5} />
               <span className="hidden md:inline">OPERAR LOTE</span>
             </button>
             <button onClick={() => setShowModal(true)}
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
             >
-              <Plus size={18} strokeWidth={2.5} /> 
+              <Plus size={18} strokeWidth={2.5} />
               <span className="hidden md:inline">NOVA COBRANÇA</span>
             </button>
           </div>

@@ -15,12 +15,13 @@ import {
   where,
   getDocs
 } from 'firebase/firestore'
-import { db, auth } from '../firebase/config'
+import { COLLECTIONS, FIELDS } from '../firebase/collections'
 import { updatePassword } from 'firebase/auth'
 import { useStudentsContext } from '../context/StudentsContext'
+import { sanitizeString } from '../utils/security'
 
 // Nome da coleção unificada
-const USERS_COLLECTION = 'users'
+const USERS_COLLECTION = COLLECTIONS.USUARIOS
 
 /**
  * Normaliza o ID do usuário (E-mail ou Nome sanitizado).
@@ -31,7 +32,7 @@ const sanitizeId = (identifier) => {
     .replace(/[@.]/g, '_')
     .replace(/\s+/g, '_')
     .replace(/_{2,}/g, '_')
-  
+
   return `${safeId}@rstopteam.internal`
 }
 
@@ -59,7 +60,7 @@ export function useStudents() {
   async function updateStudentStatus(id, newStatus) {
     const student = students.find(s => s.id === id)
     const payload = {
-      status: newStatus ?? null,
+      [FIELDS.STATUS]: newStatus ?? null,
       lastStatusAt: serverTimestamp(),
     }
 
@@ -72,7 +73,7 @@ export function useStudents() {
 
     // Registra no histórico de chamadas (coleção separada para relatórios)
     if (newStatus) {
-      await addDoc(collection(db, 'attendance'), {
+      await addDoc(collection(db, COLLECTIONS.PRESENCAS_LOG), {
         studentId: id,
         studentName: student?.name || id,
         date: serverTimestamp(),
@@ -87,7 +88,7 @@ export function useStudents() {
    */
   async function changeStudentStatus(id, newStatus, extra = {}) {
     const payload = {
-      status: newStatus,
+      [FIELDS.STATUS]: newStatus,
       lastStatusAt: serverTimestamp(),
     }
     if (extra.reason !== undefined) payload.statusReason = extra.reason
@@ -107,39 +108,48 @@ export function useStudents() {
     }
 
     console.log('🗑️ Iniciando Deleção Exhaustiva do Aluno:', studentId)
-    
+
     // 1. Localizar o aluno no nosso estado para obter dados extras (e-mail)
     const target = students.find(s => s.id === studentId)
     const email = target?.email || (studentId.includes('@') ? studentId : null)
-    
+
     // A. Deleção Primária (Imediata)
+    const safeDelete = async (ref) => {
+      try {
+        await deleteDoc(ref)
+      } catch (e) {
+        console.warn(`⚠️ Registro não encontrado ou bloqueado: ${ref.path}`)
+      }
+    }
+
     try {
       await Promise.all([
-        deleteDoc(doc(db, 'users', studentId)),
-        deleteDoc(doc(db, 'users', studentId, 'privacy', 'secrets'))
+        safeDelete(doc(db, COLLECTIONS.USUARIOS, studentId)),
+        safeDelete(doc(db, COLLECTIONS.USUARIOS, studentId, 'privacidade', 'segredos'))
       ])
+      console.log('✅ Registro principal do aluno removido.')
     } catch (e) {
-      console.error('Falha na deleção principal:', e)
+      console.error('Falha crítica na deleção do aluno:', e)
       throw e
     }
 
     // B. Limpeza de Legados em Background (Non-blocking)
     const bgCleanup = async () => {
       const tasks = []
-      
+
       if (email) {
         const cleanEmail = email.toLowerCase().trim()
-        tasks.push(deleteDoc(doc(db, 'users', cleanEmail)))
+        tasks.push(deleteDoc(doc(db, COLLECTIONS.USUARIOS, cleanEmail)))
         tasks.push(deleteDoc(doc(db, 'users', cleanEmail, 'privacy', 'secrets')))
         tasks.push(deleteDoc(doc(db, 'students', cleanEmail)))
         tasks.push(deleteDoc(doc(db, 'students', cleanEmail, 'privacy', 'secrets')))
         tasks.push(deleteDoc(doc(db, 'equipe', cleanEmail)))
         tasks.push(deleteDoc(doc(db, 'equipe', cleanEmail, 'privacy', 'secrets')))
-        
+
         try {
           const qStudents = query(collection(db, 'students'), where('email', '==', cleanEmail))
           const qEquipe = query(collection(db, 'equipe'), where('email', '==', cleanEmail))
-          
+
           const [snapS, snapE] = await Promise.all([getDocs(qStudents), getDocs(qEquipe)])
           snapS.forEach(d => tasks.push(deleteDoc(d.ref)))
           snapE.forEach(d => tasks.push(deleteDoc(d.ref)))
@@ -155,6 +165,7 @@ export function useStudents() {
 
       await Promise.allSettled(tasks)
       console.log('Background cleanup finished for student:', studentId)
+      console.warn('⚠️ AVISO DE SEGURANÇA: O Firebase Client SDK não permite excluir usuários de terceiros do Authentication. Por favor, remova o e-mail do aluno manualmente no Firebase Console para evitar conflitos de PIN.')
     }
 
     bgCleanup()
@@ -166,13 +177,28 @@ export function useStudents() {
    */
   async function addStudent(newStudent, modality, options = {}) {
     const { isVisitor = false, belt = 'white' } = options
-    
-    // Normalização de modalidades
+
+    // Lógica de Detecção de Turma Única
     let finalModalities = []
-    if (Array.isArray(modality)) {
+    
+    // Se não veio modalidade, tentamos descobrir a padrão
+    if (!modality || (Array.isArray(modality) && modality.length === 0)) {
+      try {
+        const modsSnap = await getDocs(query(collection(db, COLLECTIONS.MODALIDADES), where('status', '==', 'ativo')))
+        const activeMods = modsSnap.docs.map(d => d.data().name || d.id)
+        
+        if (activeMods.length === 1) {
+          finalModalities = [activeMods[0]]
+        } else {
+          finalModalities = ['Jiu Jitsu'] // Fallback legatário
+        }
+      } catch (err) {
+        finalModalities = ['Jiu Jitsu']
+      }
+    } else if (Array.isArray(modality)) {
       finalModalities = modality
     } else {
-      const normalized = (modality || 'Jiu Jitsu').toLowerCase()
+      const normalized = modality.toLowerCase()
       finalModalities = normalized === 'ambos' ? ['Jiu Jitsu', 'Boxe'] : [normalized === 'boxe' ? 'Boxe' : 'Jiu Jitsu']
     }
 
@@ -181,17 +207,17 @@ export function useStudents() {
     const beltFinal = hasBJJ ? (belt || 'white') : 'none'
 
     const payload = {
-      name: newStudent.name,
+      [FIELDS.NOME]: sanitizeString(newStudent.name),
       initials: buildInitials(newStudent.name),
       belt: beltFinal,
-      modality: finalModalities[0] || 'Jiu Jitsu',
-      modalities: finalModalities,
+      [FIELDS.MODALIDADE]: finalModalities[0] || 'Jiu Jitsu',
+      [FIELDS.MODALIDADES]: finalModalities,
       stripes: 0,
-      status: 'Ativo',
+      [FIELDS.STATUS]: 'Ativo',
       isVisitor,
       photo: null,
-      email: newStudent.email || '',
-      phone: newStudent.phone || '',
+      [FIELDS.EMAIL]: (newStudent.email || '').toLowerCase().trim(),
+      [FIELDS.TELEFONE]: newStudent.phone || '',
       emergency: newStudent.emergency || '',
       medical: newStudent.medical || '',
       ageCategory: newStudent.ageCategory || 'Adulto',
@@ -200,49 +226,101 @@ export function useStudents() {
       parentPhone: newStudent.parentPhone || '',
       isPaymentExempt: newStudent.isPaymentExempt || false,
       planValue: newStudent.planValue || '',
-      pin: newStudent.pin || Math.floor(100000 + Math.random() * 900000).toString(),
-      roles: isVisitor ? { visitante: true } : { aluno: true }, // Define o papel baseado no tipo de ingresso
-      tech_journey: {
-        current_belt: beltFinal,
-        current_stripes: 0,
-        sessions_since_last_promotion: 0,
-        last_promotion_date: serverTimestamp(),
-        history: [{
+      [FIELDS.PIN]: newStudent.pin || Math.floor(100000 + Math.random() * 900000).toString(),
+      [FIELDS.PAPEIS]: isVisitor ? { visitante: true } : { aluno: true },
+      [FIELDS.JORNADA_TECNICA]: {
+        [FIELDS.FAIXA_ATUAL]: beltFinal,
+        [FIELDS.GRAUS_ATUAIS]: 0,
+        [FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO]: 0,
+        [FIELDS.DATA_ULTIMA_GRADUACAO]: serverTimestamp(),
+        [FIELDS.HISTORICO]: [{
           belt: beltFinal,
           date: new Date(),
           reason: 'Ingresso na Academia'
         }]
       },
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      [FIELDS.CRIADO_EM]: serverTimestamp(),
+      [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
     }
 
     // Define o ID do documento baseado no e-mail (se existir) ou nome usando a identidade unificada
     const docId = sanitizeId(newStudent.email || newStudent.name)
+    const emailKey = (newStudent.email || '').toLowerCase().trim()
+
+    // 🔒 RECUPERAÇÃO DE PIN (MEMÓRIA DE SEGURANÇA)
+    // Se o aluno já existiu antes, puxamos o PIN antigo para manter sincronia com o Google Auth
+    if (emailKey) {
+      try {
+        const vaultRef = doc(db, COLLECTIONS.COFRE_PINS, emailKey)
+        const vaultSnap = await getDoc(vaultRef)
+
+        if (vaultSnap.exists()) {
+          console.log('🔐 PIN Antigo recuperado do Cofre para manter sincronia Auth.')
+          payload.pin = vaultSnap.data().pin
+        } else {
+          // Se é novo, registramos no cofre para o futuro
+          await setDoc(vaultRef, { pin: payload.pin, createdAt: serverTimestamp() })
+        }
+      } catch (e) {
+        console.warn('⚠️ Falha ao acessar cofre de PINs:', e)
+      }
+    }
+
     await setDoc(doc(db, USERS_COLLECTION, docId), payload)
+
+    // 💰 INTEGRAÇÃO FINANCEIRA: Se houver status de pagamento e valor, cria a cobrança inicial
+    if (newStudent.initialPaymentStatus && payload.planValue > 0) {
+      try {
+        const billingRef = collection(db, COLLECTIONS.FATURAMENTO)
+        const now = new Date()
+        const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+        const refMonth = `${months[now.getMonth()]} / ${now.getFullYear()}`
+
+        await addDoc(billingRef, {
+          studentId: docId,
+          studentName: payload.name,
+          amount: Number(payload.planValue),
+          status: newStudent.initialPaymentStatus, // 'paid' ou 'pending'
+          dueDate: now.toISOString().split('T')[0], // Hoje
+          referenceMonth: refMonth,
+          paidAt: newStudent.initialPaymentStatus === 'paid' ? serverTimestamp() : null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          category: 'Mensalidade',
+          method: 'Dinheiro', // Default para cadastro manual
+          notes: 'Gerado automaticamente no cadastro inicial'
+        })
+        console.log(`💰 Cobrança inicial (${newStudent.initialPaymentStatus}) gerada para:`, payload.name)
+      } catch (err) {
+        console.error('⚠️ Erro ao gerar cobrança inicial:', err)
+      }
+    }
   }
 
   /**
    * Atualiza dados cadastrais do perfil.
    */
   async function updateStudentProfile(id, data) {
-    const payload = { updatedAt: serverTimestamp() }
-    
+    const payload = { [FIELDS.ATUALIZADO_EM]: serverTimestamp() }
+
     if (data.name !== undefined) {
-      payload.name = data.name
+      payload[FIELDS.NOME] = sanitizeString(data.name)
       payload.initials = buildInitials(data.name)
     }
-    
+
     // Mapeamento de campos permitidos para atualização
     const updatableFields = [
-      'belt', 'stripes', 'email', 'phone', 'emergency', 'medical', 
-      'birthday', 'medicalExamDate', 'ageCategory', 'gender', 
-      'parentName', 'parentPhone', 'pin', 'modality', 'modalities',
-      'isPaymentExempt', 'planValue'
+      { old: 'belt', new: 'belt' },
+      { old: 'stripes', new: 'stripes' },
+      { old: 'email', new: FIELDS.EMAIL },
+      { old: 'phone', new: FIELDS.TELEFONE },
+      { old: 'pin', new: FIELDS.PIN },
+      { old: 'modality', new: FIELDS.MODALIDADE },
+      { old: 'modalities', new: FIELDS.MODALIDADES },
     ]
 
-    updatableFields.forEach(field => {
-      if (data[field] !== undefined) payload[field] = data[field]
+    updatableFields.forEach(f => {
+      if (data[f.old] !== undefined) payload[f.new] = data[f.old]
     })
 
     // 🔐 SINCRONIZAÇÃO DE SEGURANÇA: Se o próprio aluno estiver alterando o PIN
@@ -256,6 +334,20 @@ export function useStudents() {
         } catch (e) {
           console.warn('⚠️ Sincronização direta falhou. O sistema JIT resolverá no próximo login.')
         }
+      }
+    }
+
+    // 🔒 ATUALIZA COFRE: Garante que a memória de PIN esteja sempre atualizada
+    if (data.pin !== undefined) {
+      try {
+        const student = students.find(s => s.id === id)
+        const emailKey = (data.email || student?.email || '').toLowerCase().trim()
+        if (emailKey) {
+          const vaultRef = doc(db, COLLECTIONS.COFRE_PINS, emailKey)
+          await setDoc(vaultRef, { pin: data.pin, updatedAt: serverTimestamp() }, { merge: true })
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro ao atualizar cofre durante edição:', e)
       }
     }
 

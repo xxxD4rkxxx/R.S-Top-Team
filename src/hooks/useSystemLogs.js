@@ -8,8 +8,9 @@ import {
   collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, limit
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { COLLECTIONS } from '../firebase/collections'
 
-const COLLECTION = 'systemLogs'
+const COLLECTION = COLLECTIONS.LOGS_SISTEMA
 
 export function useSystemLogs(logType = 'all', maxLogs = 50) {
   const [logs, setLogs] = useState([])

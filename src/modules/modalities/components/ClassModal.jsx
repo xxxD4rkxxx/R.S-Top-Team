@@ -98,43 +98,76 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[210] flex items-center justify-center p-0 md:p-4">
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
+    <AnimatePresence>
+      <motion.div 
+        className="modal-backdrop z-[210]"
         onClick={onClose}
-      />
-      
-      <div className="relative w-full max-w-2xl bg-[#0d0d0d] border-t md:border border-white/10 rounded-t-[32px] md:rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-500 max-h-[92vh] flex flex-col">
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div 
+          onClick={e => e.stopPropagation()}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose();
+            }
+          }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
+        >
         {/* Mobile Drag Handle */}
-        <div className="md:hidden flex justify-center pt-4 pb-2">
+        <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
           <div className="w-12 h-1.5 bg-white/10 rounded-full" />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 md:p-8 border-b border-white/5 bg-[#111]/50">
+        {/* CABEÇALHO PREMIUM FIXO */}
+        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
-              <GraduationCap size={24} />
+            <div 
+              className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--clr-primary) 15%, transparent)',
+                borderColor: 'color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+              }}
+            >
+              <GraduationCap 
+                size={28} 
+                strokeWidth={2.5} 
+                style={{ color: 'var(--clr-primary)' }}
+              />
             </div>
             <div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">
+              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
                 {editingClass ? 'Editar Turma' : 'Nova Turma'}
               </h2>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Configurações de Horário</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                <span 
+                  className="w-1 h-1 rounded-full animate-pulse transition-all duration-300"
+                  style={{
+                    backgroundColor: 'var(--clr-primary)',
+                    boxShadow: '0 0 10px var(--clr-primary)'
+                  }}
+                />
+                Configurações de Horário
+              </p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-white/5 rounded-xl transition-colors text-gray-500 hover:text-white"
-          >
+          <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10 border border-white/5">
             <X size={24} />
           </button>
         </div>
 
         {/* Form Body and Footer Wrapper */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Scrollable Content */}
-          <div className="p-6 md:p-8 space-y-6 md:space-y-8 overflow-y-auto no-scrollbar flex-1">
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-32 space-y-7 custom-scrollbar no-scrollbar">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Seleção de Modalidade (apenas se não houver modalityId fixo) */}
               {!modalityId && !editingClass && (
@@ -330,26 +363,30 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
             </div>
           </div>
 
-          {/* Fixed Action Footer */}
-          <div className="p-6 border-t border-white/5 bg-[#0d0d0d] flex gap-3">
+          {/* BARRA INFERIOR (BOTÕES FIXOS) */}
+          <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-4 text-sm font-bold text-gray-500 hover:text-white transition-colors bg-white/5 rounded-2xl"
+              className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-black rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 group px-6"
+              className="flex-[2] py-4 rounded-2xl text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: 'var(--clr-primary)',
+                boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+              }}
             >
-              <Save size={18} strokeWidth={2.5} />
-              {editingClass ? 'Salvar' : 'Criar'}
+              <Save size={16} /> {editingClass ? 'Salvar Turma' : 'Criar Turma'}
             </button>
           </div>
         </form>
-      </div>
-    </div>,
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
     document.body
   )
 }

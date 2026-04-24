@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import {
-  Home, Calendar, Clock, Award, Users, 
+  Home, Calendar, Clock, Award, Users,
   PlusCircle, BookOpen, MessageSquare, StickyNote,
-  BarChart3, ChevronRight, PlayCircle, Eye, 
+  BarChart3, ChevronRight, PlayCircle, Eye,
   Filter, Search, Send, Settings, Smartphone,
   Zap, TrendingUp, Activity, CheckCircle2,
   AlertCircle, History, Info
@@ -13,62 +13,96 @@ import { useTodaySessions } from '../../hooks/useTodaySessions'
 import { useNotices } from '../../hooks/useNotices'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
 import { useFinance } from '../../hooks/useFinance'
-import { 
-  collection, query, where, getDocs, 
-  addDoc, serverTimestamp, doc, updateDoc, 
-  onSnapshot, orderBy, limit 
+import {
+  collection, query, where, getDocs,
+  addDoc, serverTimestamp, doc, updateDoc,
+  onSnapshot, orderBy, limit
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import PageHeader from '../../components/shared/PageHeader'
 import SlideOver from '../../components/shared/SlideOver'
 import { beltConfig } from '../../data/beltConfig'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useTeacherIntelligence } from '../../hooks/useTeacherIntelligence'
+import IntelligenceSection from './components/IntelligenceSection'
 
 // ── Shared Components ─────────────────────────────────────────
 
 function Card({ children, className = '', title, subtitle, icon: Icon, action }) {
   return (
-    <div className={`glass-card rounded-xll border border-white/10 overflow-hidden flex flex-col ${className}`}>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`glass-card rounded-[32px] border border-white/5 overflow-hidden flex flex-col bg-[#080808]/40 backdrop-blur-md shadow-2xl ${className}`}
+    >
       {(title || subtitle || Icon) && (
-        <div className="p-5 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
+        <div className="px-6 py-5 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            {Icon && <Icon size={18} strokeWidth={1.9} className="text-gray-400" />}
+            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5">
+              {Icon && <Icon size={18} strokeWidth={2} className="text-primary" />}
+            </div>
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-white leading-none">{title}</h3>
-              {subtitle && <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{subtitle}</p>}
+              <h3 className="text-xs font-black uppercase tracking-[0.15em] text-white leading-none">{title}</h3>
+              {subtitle && <p className="text-[10px] text-gray-500 mt-1.5 uppercase font-bold tracking-widest">{subtitle}</p>}
             </div>
           </div>
           {action}
         </div>
       )}
-      <div className="flex-1 p-5">
+      <div className="flex-1 px-6 pb-6 pt-2">
         {children}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
-function StatMini({ label, value, icon: Icon, colorClass = "text-white" }) {
+function StatMini({ label, value, icon: Icon, colorClass = "text-white", desc }) {
   return (
-    <div className="bg-white/5 rounded-xll p-4 border border-white/5 hover:border-white/10 transition-all group">
-      <div className="flex items-center gap-2 mb-2">
-        {Icon && <Icon size={14} className="text-gray-500 group-hover:text-white transition-colors" />}
-        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+    <motion.div
+      whileHover={{ y: -5 }}
+      whileTap={{ scale: 0.98 }}
+      className="kpi-card stat-card flex flex-col p-6 rounded-[32px] relative overflow-hidden group h-[160px] border border-white/5 bg-[#0c0c0c]/50 hover:bg-[#0f0f0f] transition-all cursor-default shadow-xl"
+    >
+      {/* Glow sutil ao fundo no hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+      {/* Linha de topo: caixinha de ícone + título */}
+      <div className="flex items-center gap-3 mb-auto relative z-10 w-full">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.05] border border-white/[0.08] shrink-0 group-hover:border-primary/20 transition-colors">
+          {Icon && <Icon size={16} strokeWidth={2.5} className="text-primary" />}
+        </div>
+        <span className="text-[10px] uppercase tracking-[0.25em] font-black text-gray-500 group-hover:text-gray-400 transition-colors leading-tight">
+          {label}
+        </span>
       </div>
-      <p className={`text-2xl font-black ${colorClass} animate-value-reveal`}>{value}</p>
-    </div>
+
+      {/* Valor + Descrição */}
+      <div className="relative z-10 flex flex-col pt-4">
+        <div className={`text-3xl lg:text-4xl font-black mb-1.5 tracking-tighter ${colorClass} animate-value-reveal`}>
+          {value}
+        </div>
+        {desc && (
+          <p className="text-[10px] text-gray-600 leading-tight font-bold tracking-wide uppercase">
+            {desc}
+          </p>
+        )}
+      </div>
+    </motion.div>
   )
 }
 
 // ── Main Module ──────────────────────────────────────────────
 
 export default function TeacherDashboard() {
-  const { user, userData } = useAuth()
+  const { user, userData, effectiveRole } = useAuth()
+  const isPowerUser = effectiveRole === 'admin' || effectiveRole === 'gestor'
   const [activeTab, setActiveTab] = useState('dashboard') // dashboard, aulas, historico, notas, turmas
   const { students } = useStudents()
-  const { sessions: todaySessions, loading: loadingToday } = useTodaySessions()
+  const { sessions: todaySessions, loading: loadingToday } = useTodaySessions(isPowerUser ? null : user?.uid)
   const { notices, loading: loadingNotices, addNotice } = useNotices()
-  const { data: stats, loading: loadingStats } = useDashboardStats('Mês')
+  const { data: stats, loading: loadingStats } = useDashboardStats('Mês', isPowerUser ? null : user?.uid)
   const { bills } = useFinance()
+  const intelligence = useTeacherIntelligence()
 
   // Mapa: studentId -> status financeiro (sem expor valores)
   // Professor só vê 'ok' | 'pendente' | 'atrasado'
@@ -83,7 +117,7 @@ export default function TeacherDashboard() {
     })
     return mapa
   }, [bills])
-  
+
   // Local state for features
   const [notes, setNotes] = useState([])
   const [loadingNotes, setLoadingNotes] = useState(true)
@@ -155,13 +189,8 @@ export default function TeacherDashboard() {
 
   const renderDashboard = () => (
     <div className="space-y-6 fade-slide-up">
-      {/* Overview Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatMini label="Aulas Ministradas" value={teacherStats.classesTaught} icon={BookOpen} colorClass="text-emerald-400" />
-        <StatMini label="Total de Alunos" value={teacherStats.totalStudents} icon={Users} colorClass="text-blue-400" />
-        <StatMini label="Frequência Média" value={`${teacherStats.avgAttendance}%`} icon={Activity} colorClass="text-purple-400" />
-        <StatMini label="Técnicas Postadas" value={teacherStats.techniques} icon={Award} colorClass="text-amber-400" />
-      </div>
+      {/* Resumo Integrado Premium (Inspirado nas imagens de referência) */}
+      <IntelligenceSection data={intelligence} userName={userData?.name || 'Professor'} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Agenda */}
@@ -173,35 +202,37 @@ export default function TeacherDashboard() {
               </div>
             ) : (
               todaySessions.map(sess => (
-                <div key={sess.id} className="group flex items-center justify-between p-4 rounded-xll bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer"
+                <div key={sess.id} className="group flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer"
                   onClick={() => setSelectedSession(sess)}>
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xll bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-black">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xs shadow-lg shadow-primary/5">
                       {sess.time?.split(':')[0]}h
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{sess.classTitle || sess.title}</p>
+                      <p className="text-sm font-bold text-white group-hover:text-primary transition-colors">{sess.classTitle || sess.title}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-gray-500 uppercase tracking-widest">{sess.modality || 'Regular'}</span>
-                        {sess.isExperimental && <span className="text-[9px] font-black bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">Experimental</span>}
+                        <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{sess.modality || 'Regular'}</span>
+                        {sess.isExperimental && <span className="text-[9px] font-black bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded border border-amber-500/20 uppercase tracking-tighter">Experimental</span>}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="text-sm font-black text-white animate-value-reveal">{sess.presentes || 0}</p>
-                      <p className="text-[9px] text-gray-600 uppercase">Check-ins</p>
+                      <p className="text-lg font-black text-white leading-none">{sess.presentes || 0}</p>
+                      <p className="text-[8px] text-gray-600 uppercase font-black tracking-widest mt-1">Check-ins</p>
                     </div>
-                    <ChevronRight size={18} className="text-gray-600 group-hover:text-white transition-colors" />
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-600 group-hover:text-white transition-all">
+                      <ChevronRight size={16} />
+                    </div>
                   </div>
                 </div>
               ))
             )}
-            
+
             {/* Quick action button */}
-            <button 
+            <button
               onClick={() => setActiveTab('aulas')}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-3 rounded-xll bg-white/5 border border-white/5 hover:bg-white/10 text-xs font-bold transition-all"
+              className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest transition-all"
             >
               <PlusCircle size={16} /> Ver Grade Completa
             </button>
@@ -214,22 +245,22 @@ export default function TeacherDashboard() {
             <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xll p-5">
               <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">Postar nova técnica</h4>
               <form onSubmit={handlePostAnnouncement} className="space-y-3">
-                <input 
-                  type="text" 
-                  placeholder="Título (ex: Raspagem de Meia Guarda)" 
+                <input
+                  type="text"
+                  placeholder="Título (ex: Raspagem de Meia Guarda)"
                   className="w-full bg-black/40 border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none"
                   value={announcement.title}
                   onChange={e => setAnnouncement(p => ({ ...p, title: e.target.value }))}
                 />
-                <textarea 
-                  placeholder="O que será ensinado?" 
+                <textarea
+                  placeholder="O que será ensinado?"
                   rows="2"
                   className="w-full bg-black/40 border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none resize-none"
                   value={announcement.content}
                   onChange={e => setAnnouncement(p => ({ ...p, content: e.target.value }))}
                 />
                 <div className="flex gap-2">
-                  <select 
+                  <select
                     className="bg-black/40 border border-white/10 rounded-xll px-3 text-xs focus:border-emerald-500/50 transition-all outline-none"
                     value={announcement.difficulty}
                     onChange={e => setAnnouncement(p => ({ ...p, difficulty: e.target.value }))}
@@ -238,13 +269,13 @@ export default function TeacherDashboard() {
                     <option value="Intermediário">Intermediário</option>
                     <option value="Avançado">Avançado</option>
                   </select>
-                  <button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs py-2.5 rounded-xll flex items-center justify-center gap-2 transition-all">
-                    <Send size={16} /> Enviar p/ Alunos
+                  <button type="submit" className="flex-1 bg-primary hover:opacity-90 text-black font-black text-[10px] uppercase tracking-widest py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20">
+                    <Send size={14} /> Enviar p/ Alunos
                   </button>
                 </div>
               </form>
             </div>
-            
+
             <div className="space-y-3">
               <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Últimos comunicados</h4>
               {notices.slice(0, 2).map((n, i) => (
@@ -332,7 +363,7 @@ export default function TeacherDashboard() {
           </div>
         </div>
       </Card>
-      
+
       {/* Historical Stats Table Placeholder or similar integrated info */}
       <Card title="Aulas Experimentais Agendadas" subtitle="Não perca potenciais alunos" icon={Activity}>
         <div className="space-y-3">
@@ -359,9 +390,9 @@ export default function TeacherDashboard() {
 
   const renderNotas = () => (
     <div className="space-y-6 fade-slide-up">
-      <Card 
-        title="Anotações Pessoais" 
-        subtitle="Privadas para você e gestores" 
+      <Card
+        title="Anotações Pessoais"
+        subtitle="Privadas para você e gestores"
         icon={StickyNote}
         action={
           <button onClick={() => setShowNoteModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-xll bg-emerald-500 text-black font-black text-[10px] uppercase hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20">
@@ -380,18 +411,17 @@ export default function TeacherDashboard() {
           ) : notes.map(note => (
             <div key={note.id} className="group p-5 rounded-xll bg-white/5 border border-white/5 hover:border-white/15 transition-all relative">
               <div className="flex justify-between items-start mb-3">
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${
-                  note.category === 'alunos' ? 'bg-blue-500/20 text-blue-400' : 
-                  note.category === 'técnica' ? 'bg-amber-500/20 text-amber-400' : 
-                  'bg-purple-500/20 text-purple-400'
-                }`}>
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${note.category === 'alunos' ? 'bg-blue-500/20 text-blue-400' :
+                  note.category === 'técnica' ? 'bg-amber-500/20 text-amber-400' :
+                    'bg-purple-500/20 text-purple-400'
+                  }`}>
                   {note.category}
                 </span>
                 <span className="text-[9px] text-gray-600 font-bold uppercase">{note.createdAt?.toDate ? note.createdAt.toDate().toLocaleDateString() : 'Recent'}</span>
               </div>
               <h4 className="text-sm font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">{note.title}</h4>
               <p className="text-xs text-gray-500 line-clamp-4 leading-relaxed">{note.content}</p>
-              
+
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button className="p-1.5 rounded-lg bg-black/50 text-gray-400 hover:text-white transition-all"><Settings size={14} /></button>
               </div>
@@ -533,16 +563,16 @@ export default function TeacherDashboard() {
           })}
         </div>
       </Card>
-      
+
       {/* Search Aluno Quick */}
       <div className="glass-card p-6 rounded-xll border border-white/10">
         <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-2">
           <Search size={16} /> Busca Rápida de Aluno
         </h3>
         <div className="relative">
-          <input 
-            type="text" 
-            placeholder="Nome ou CPF do aluno..." 
+          <input
+            type="text"
+            placeholder="Nome ou CPF do aluno..."
             className="w-full bg-white/5 border border-white/5 hover:border-white/15 rounded-xll px-5 py-4 text-sm transition-all focus:bg-white/10 focus:border-emerald-500/30 outline-none pr-12"
           />
           <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors">
@@ -555,46 +585,43 @@ export default function TeacherDashboard() {
 
   return (
     <>
-      <PageHeader 
-        icon={UserIcon} 
-        title={`Instrutor ${userData?.name?.split(' ')[0] || 'Professor'}`} 
+      <PageHeader
+        icon={UserIcon}
+        title={`Instrutor ${userData?.name?.split(' ')[0] || 'Professor'}`}
         subtitle="Portal de Ensino e Gestão Técnicas"
-        actions={
-          <div className="hidden sm:flex items-center gap-2 bg-black/40 rounded-xll p-1 border border-white/5">
-            {['dashboard', 'aulas', 'turmas'].map(tab => (
-              <button 
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all ${activeTab === tab ? 'bg-primary text-black' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+      />
+
+      <div className="px-4 md:px-6 py-6 space-y-8 w-full pb-24">
+        {/* Tabs Suavizados (Design Premium) */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-sm shadow-xl">
+            {[
+              { id: 'dashboard', label: 'Visão Geral', icon: Home },
+              { id: 'aulas', label: 'Meu Dia', icon: PlayCircle },
+              { id: 'turmas', label: 'Turmas', icon: Users },
+              { id: 'historico', label: 'Histórico', icon: History }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
+                  ${activeTab === tab.id
+                    ? 'bg-primary text-black shadow-lg shadow-primary/20 scale-105'
+                    : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
               >
-                {tab === 'dashboard' ? 'Geral' : tab}
+                <tab.icon size={14} strokeWidth={2.5} />
+                <span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
           </div>
-        }
-      />
 
-      <div className="px-4 md:px-6 py-6 space-y-8 max-w-[1400px] mx-auto w-full pb-24">
-        
-        {/* Mobile Tab Select */}
-        <div className="sm:hidden flex overflow-x-auto gap-2 no-scrollbar pb-2">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: Home },
-            { id: 'aulas', label: 'Hoje', icon: PlayCircle },
-            { id: 'turmas', label: 'Turmas', icon: Users },
-            { id: 'historico', label: 'Histórico', icon: History },
-            { id: 'notas', label: 'Notas', icon: StickyNote },
-          ].map(tab => (
-            <button 
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xll whitespace-nowrap text-[10px] font-black uppercase border transition-all ${
-                activeTab === tab.id ? 'bg-primary border-primary text-black' : 'bg-white/5 border-white/5 text-gray-500'
-              }`}
-            >
-              <tab.icon size={14} /> {tab.label}
-            </button>
-          ))}
+          <button
+            onClick={() => setActiveTab('notas')}
+            className={`p-2.5 rounded-xl border transition-all ${activeTab === 'notas' ? 'bg-amber-500/20 border-amber-500/50 text-amber-500' : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'}`}
+            title="Anotações"
+          >
+            <StickyNote size={20} />
+          </button>
         </div>
 
         {/* Dynamic Content */}
@@ -603,12 +630,11 @@ export default function TeacherDashboard() {
         {activeTab === 'turmas' && renderTurmas()}
         {activeTab === 'historico' && renderHistorico()}
         {activeTab === 'notas' && renderNotas()}
-
       </div>
 
       {/* Note Creation Modal */}
-      <SlideOver 
-        isOpen={showNoteModal} 
+      <SlideOver
+        isOpen={showNoteModal}
         onClose={() => setShowNoteModal(false)}
         title="Nova Anotação Pessoal"
         subtitle="Escolha a categoria e registre os dados"
@@ -617,9 +643,9 @@ export default function TeacherDashboard() {
         <form onSubmit={handleAddNote} className="p-6 space-y-5">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Título</label>
-            <input 
+            <input
               required
-              type="text" 
+              type="text"
               className="w-full bg-white/5 border border-white/10 rounded-xll px-4 py-3 text-sm focus:border-emerald-500/50 outline-none transition-all"
               placeholder="Ex: Observação sobre João Silva"
               value={newNote.title}
@@ -631,13 +657,12 @@ export default function TeacherDashboard() {
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Categoria</label>
             <div className="grid grid-cols-3 gap-2">
               {['alunos', 'técnica', 'geral'].map(cat => (
-                <button 
+                <button
                   key={cat}
                   type="button"
                   onClick={() => setNewNote(p => ({ ...p, category: cat }))}
-                  className={`py-2 rounded-xll text-[10px] font-black uppercase transition-all border ${
-                    newNote.category === cat ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-white/5 border-white/5 text-gray-500'
-                  }`}
+                  className={`py-2 rounded-xll text-[10px] font-black uppercase transition-all border ${newNote.category === cat ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-white/5 border-white/5 text-gray-500'
+                    }`}
                 >
                   {cat}
                 </button>
@@ -647,7 +672,7 @@ export default function TeacherDashboard() {
 
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Conteúdo</label>
-            <textarea 
+            <textarea
               required
               rows="6"
               className="w-full bg-white/5 border border-white/10 rounded-xll px-4 py-3 text-sm focus:border-emerald-500/50 outline-none transition-all resize-none"
@@ -664,8 +689,8 @@ export default function TeacherDashboard() {
       </SlideOver>
 
       {/* Session Details / Drawer integration */}
-      <SlideOver 
-        isOpen={!!selectedSession} 
+      <SlideOver
+        isOpen={!!selectedSession}
         onClose={() => setSelectedSession(null)}
         title={selectedSession?.classTitle || 'Sessão'}
         subtitle={`${selectedSession?.date} • ${selectedSession?.time}`}
@@ -701,7 +726,7 @@ export default function TeacherDashboard() {
                 </div>
                 <ChevronRight size={18} className="ml-auto text-gray-700 group-hover:text-white transition-all" />
               </button>
-              
+
               <button className="flex items-center gap-4 p-4 rounded-xll bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-left group">
                 <div className="w-10 h-10 rounded-xll bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
                   <Award size={20} />
@@ -714,7 +739,7 @@ export default function TeacherDashboard() {
               </button>
             </div>
           </div>
-          
+
           <div className="flex flex-col gap-3">
             <button className="py-4 rounded-xll bg-emerald-500 text-black font-black text-xs uppercase hover:bg-emerald-600 transition-all">
               Abrir Lista Completa
@@ -725,7 +750,6 @@ export default function TeacherDashboard() {
           </div>
         </div>
       </SlideOver>
-
     </>
   )
 }

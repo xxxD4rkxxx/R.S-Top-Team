@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [clickCount, setClickCount] = useState(0)
   const [isAdminMode, setIsAdminMode] = useState(false)
 
-  const { login, loginAdmin, isSetupMode, sendResetEmail, checkUserExists } = useAuth()
+  const { login, loginAdmin, sendResetEmail, checkUserExists } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from?.pathname || '/'
@@ -53,7 +53,11 @@ export default function LoginPage() {
       navigate(from, { replace: true })
     } catch (err) {
       console.error(err)
-      setError(err.message || 'Credenciais inválidas.')
+      if (err.code === 'auth/too-many-requests') {
+        setError('Firebase: Error (auth/too-many-requests). espera 10 ou 15 minutos')
+      } else {
+        setError(err.message || 'Credenciais inválidas.')
+      }
     } finally {
       setLoading(false)
     }
@@ -95,9 +99,9 @@ export default function LoginPage() {
           >
             <div className="relative mb-4">
               <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-              <img 
-                src="/logo.png" 
-                alt="Logo Academy" 
+              <img
+                src="/logo.png"
+                alt="Logo Academy"
                 className="w-20 h-20 object-cover rounded-full border-2 border-white/10 shadow-2xl relative z-10 transition-transform duration-500 group-hover:scale-110"
                 style={{ boxShadow: '0 0 30px color-mix(in srgb, var(--clr-primary) 30%, transparent)' }}
               />
@@ -150,15 +154,15 @@ export default function LoginPage() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Mail size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
                   </div>
-                    <input
-                      type="text"
-                      autoComplete="username"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
-                      placeholder="Digite seu e-mail"
-                      required
-                    />
+                  <input
+                    type="text"
+                    autoComplete="username"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
+                    placeholder="Digite seu e-mail"
+                    required
+                  />
                 </div>
               </div>
 
@@ -195,8 +199,8 @@ export default function LoginPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center ml-1">
                     <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold">PIN de Acesso (6 Dígitos)</label>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={handleForgotPin}
                       className="text-[10px] text-primary hover:text-primary-dark transition-colors uppercase font-bold tracking-tighter"
                     >
@@ -245,17 +249,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {isSetupMode && (
-              <div className="mt-8 pt-6 border-t border-white/5 text-center">
-                <p className="text-xs text-gray-600 mb-3 uppercase tracking-widest font-bold">Início do Sistema</p>
-                <Link
-                  to="/register"
-                  className="text-xs font-black text-primary hover:text-white transition-colors uppercase tracking-[0.2em]"
-                >
-                  Configurar Administrador Master
-                </Link>
-              </div>
-            )}
           </div>
         </div>
 

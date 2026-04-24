@@ -309,7 +309,7 @@ export default function ManagerDashboard() {
 
             <MobileHeader
                 title="Dashboard"
-                showBell={false}
+                showBell={true}
                 actions={
                     <div className="flex items-center gap-2">
                         <button
@@ -317,12 +317,6 @@ export default function ManagerDashboard() {
                             className="p-2.5 rounded-xl bg-[#1a1a1a] border border-white/5 text-gray-400 active:scale-90 transition-transform"
                         >
                             <RefreshCw size={18} />
-                        </button>
-                        <button className="relative p-2.5 rounded-xl bg-[#1a1a1a] border border-white/5 text-gray-400 active:scale-90 transition-transform">
-                            <Bell size={18} />
-                            {absentList.filter(s => s.isCritical).length > 0 && (
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#DC143C] rounded-full border border-black pulse-red" />
-                            )}
                         </button>
                     </div>
                 }

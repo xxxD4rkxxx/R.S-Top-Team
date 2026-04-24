@@ -28,6 +28,18 @@ import { beltConfig } from '../../data/beltConfig'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) setMatches(media.matches);
+    const listener = () => setMatches(media.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, [matches, query]);
+  return matches;
+}
+
 function normalizeStatus(status) {
   if (!status || status === 'ativo' || status === 'active') return 'ativo'
   if (status === 'inativo' || status === 'inactive') return 'inativo'
@@ -38,6 +50,7 @@ function normalizeStatus(status) {
 
 // Dialog de confirmação dupla para deletar
 function DeleteConfirmDialog({ student, onConfirm, onClose }) {
+  useHideMobileNav(!!student)
   const [input, setInput] = useState('')
   const [deleting, setDeleting] = useState(false)
   if (!student) return null
@@ -207,7 +220,8 @@ export default function StudentsPage() {
   }, [students])
 
   const filtered = useMemo(() => {
-    let list = students
+    // 🛡️ SEGURANÇA: Filtrar apenas quem tem o papel de ALUNO
+    let list = students.filter(s => s.roles?.aluno === true)
 
     // 🛡️ SEGURANÇA: Ocultar Administradores de quem não é Admin
     if (!isAdmin) {
@@ -244,7 +258,17 @@ export default function StudentsPage() {
           modality: modality[0] || 'Jiu Jitsu'
         })
       } else {
-        // MODO CRIAÇÃO: Adiciona novo documento
+        // MODO CRIAÇÃO: Verifica duplicidade antes de adicionar
+        const isDuplicate = students.some(s =>
+          (data.email && s.email?.toLowerCase() === data.email.toLowerCase()) ||
+          (s.name?.toLowerCase() === data.name.toLowerCase())
+        );
+
+        if (isDuplicate) {
+          alert('🛑 ATENÇÃO: Já existe um aluno cadastrado com este nome ou e-mail.');
+          return;
+        }
+
         await addStudent(data, modality, options)
       }
       setShowModal(false)
@@ -321,42 +345,12 @@ export default function StudentsPage() {
     <>
       <MobileHeader
         title="Alunos"
-        actions={
-          <div className="flex items-center gap-1.5">
-            {isAdminView && (
-              <button
-                onClick={() => { setDuplicateData(null); setShowModal(true) }}
-                className="p-2.5 rounded-xl bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
-              >
-                <Plus size={20} strokeWidth={3} />
-              </button>
-            )}
-          </div>
-        }
       />
 
       <PageHeader
         icon={Users}
         title="GESTÃO DE ALUNOS"
         subtitle="CONTROLE DE MATRÍCULAS E PRESENÇA"
-        extra={
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
-              <FileDown size={18} strokeWidth={1.9} /> IMPORTAR
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider bg-app-bg text-app-muted hover:bg-white/10 hover:text-app transition-all border border-white/5 active:scale-95">
-              <FileUp size={18} strokeWidth={1.9} /> EXPORTAR
-            </button>
-            {isAdminView && (
-              <button
-                onClick={() => { setDuplicateData(null); setShowModal(true) }}
-                className="btn-primary flex items-center gap-2 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-xl active:scale-95"
-              >
-                <Plus size={18} strokeWidth={1.9} /> NOVO ALUNO
-              </button>
-            )}
-          </div>
-        }
       />
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
@@ -397,7 +391,7 @@ export default function StudentsPage() {
               onClick={() => { setDuplicateData(null); setShowModal(true) }}
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
             >
-              <Plus size={18} strokeWidth={2.5} /> 
+              <Plus size={18} strokeWidth={2.5} />
               <span className="hidden md:inline">NOVO ALUNO</span>
             </button>
           )}
@@ -407,7 +401,7 @@ export default function StudentsPage() {
               onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setSearchTerm('') }}
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
-              <RefreshCcw size={18} strokeWidth={1.9} /> 
+              <RefreshCcw size={18} strokeWidth={1.9} />
               <span className="hidden md:inline">Limpar Filtros</span>
             </button>
           )}
@@ -623,13 +617,16 @@ export default function StudentsPage() {
         <PinVerificationModal
           onConfirm={() => {
             const { type, student } = pinModalAction;
-            setShowPinModal(false);
             if (type === 'view') {
+              setShowPinModal(false);
               setSelectedStudent(student);
             } else if (type === 'edit') {
+              setShowPinModal(false);
               setEditData(student);
               setShowModal(true);
             } else if (type === 'delete') {
+              // 🛡️ Segurança: Todos agora passam pela confirmação de nome após o PIN
+              setShowPinModal(false);
               setDeleteDialogStudent(student);
             }
           }}
@@ -681,6 +678,7 @@ export default function StudentsPage() {
  * StudentActionMenu - Renderiza o menu de ações de um aluno
  */
 function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   if (!student) return null;
 
   return createPortal(
@@ -688,221 +686,219 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
       />
 
       {/* Desktop Menu */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-        onClick={e => e.stopPropagation()}
-        className="hidden md:block absolute z-[1001] w-64 bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-2"
-        style={{
-          top: menuPosition.top,
-          left: menuPosition.left,
-          originX: 1,
-          originY: menuPosition.originY
-        }}
-      >
-        <button onClick={(e) => { e.stopPropagation(); onAction('edit', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
-            <Edit2 size={14} className="text-orange-400" />
-          </div>
-          Editar
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
-            <Copy size={14} className="text-purple-400" />
-          </div>
-          Duplicar
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onAction('attendance', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-            <CalendarDays size={14} className="text-blue-400" />
-          </div>
-          Histórico de Presença
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-            <GraduationCap size={14} className="text-emerald-400" />
-          </div>
-          Histórico de Graduações
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onAction('cards', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
-            <CreditCard size={14} className="text-indigo-400" />
-          </div>
-          Cartões / Financeiro
-        </button>
+      {!isMobile && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+          onClick={e => e.stopPropagation()}
+          className="hidden md:block absolute z-[1001] w-64 bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-2"
+          style={{
+            top: menuPosition.top,
+            left: menuPosition.left,
+            originX: 1,
+            originY: menuPosition.originY
+          }}
+        >
+          <button onClick={(e) => { e.stopPropagation(); onAction('edit', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+              <Edit2 size={14} className="text-orange-400" />
+            </div>
+            Editar
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+              <Copy size={14} className="text-purple-400" />
+            </div>
+            Duplicar
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onAction('attendance', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <CalendarDays size={14} className="text-blue-400" />
+            </div>
+            Histórico de Presença
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+              <GraduationCap size={14} className="text-emerald-400" />
+            </div>
+            Histórico de Graduações
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onAction('cards', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
+              <CreditCard size={14} className="text-indigo-400" />
+            </div>
+            Cartões / Financeiro
+          </button>
 
-        <div className="h-px bg-white/5 my-1" />
+          <div className="h-px bg-white/5 my-1" />
 
-        <button onClick={(e) => { e.stopPropagation(); onAction('inactive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-500/10 hover:text-gray-300 transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-gray-500/10 flex items-center justify-center group-hover:bg-gray-500/20 transition-colors">
-            <UserX size={14} className="text-gray-400" />
-          </div>
-          Inativar
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#FFD700] hover:bg-[#FFD700]/10 transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-[#FFD700]/10 flex items-center justify-center group-hover:bg-[#FFD700]/20 transition-colors">
-            <UserMinus size={14} className="text-[#FFD700]" />
-          </div>
-          Suspender
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onAction('archive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-500 hover:bg-blue-500/10 transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-            <Archive size={14} className="text-blue-500" />
-          </div>
-          Arquivar
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onAction('delete', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-all group font-medium">
-          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">
-            <Trash2 size={14} className="text-red-500" />
-          </div>
-          Deletar
-        </button>
-      </motion.div>
+          <button onClick={(e) => { e.stopPropagation(); onAction('inactive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-500/10 hover:text-gray-300 transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-gray-500/10 flex items-center justify-center group-hover:bg-gray-500/20 transition-colors">
+              <UserX size={14} className="text-gray-400" />
+            </div>
+            Inativar
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#FFD700] hover:bg-[#FFD700]/10 transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-[#FFD700]/10 flex items-center justify-center group-hover:bg-[#FFD700]/20 transition-colors">
+              <UserMinus size={14} className="text-[#FFD700]" />
+            </div>
+            Suspender
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onAction('archive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-500 hover:bg-blue-500/10 transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <Archive size={14} className="text-blue-500" />
+            </div>
+            Arquivar
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onAction('delete', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-all group font-medium">
+            <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">
+              <Trash2 size={14} className="text-red-500" />
+            </div>
+            Deletar
+          </button>
+        </motion.div>
+      )}
 
       {/* Mobile Drawer */}
-      <div className="md:hidden">
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          onClick={(e) => e.stopPropagation()}
-          className="fixed inset-x-0 bottom-0 bg-[#0A0A0A] border-t border-white/10 rounded-t-[32px] p-6 pb-12 z-[1002] shadow-[0_-8px_30px_rgb(0,0,0,0.8)]"
-        >
-          <div className="w-12 h-1.5 bg-white/15 rounded-full mx-auto mb-6" />
-
-          <div className="flex items-center gap-4 mb-8 text-left">
-            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center font-black text-lg border border-white/10">
-              {student.photo ? (
-                <img src={student.photo} alt="" className="w-full h-full rounded-full object-cover" />
-              ) : (
-                student.name.charAt(0)
-              )}
+      {isMobile && (
+        <div className="md:hidden">
+          <motion.div
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                onClose();
+              }
+            }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-x-0 bottom-0 bg-[#0A0A0A] border-t border-white/10 rounded-t-[32px] p-6 pb-12 z-[1002] shadow-[0_-8px_30px_rgb(0,0,0,0.8)]"
+          >
+            <div className="flex justify-center shrink-0 w-full mb-6">
+              <div className="w-12 h-1.5 bg-white/10 rounded-full" />
             </div>
-            <div className="min-w-0">
-              <p className="text-base font-black text-white truncate">{student.name}</p>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Aluno da Academia</p>
+
+            <div className="flex items-center gap-4 mb-8 text-left">
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center font-black text-lg border border-white/10">
+                {student.photo ? (
+                  <img src={student.photo} alt="" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  student.name.charAt(0)
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-base font-black text-white truncate">{student.name}</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Aluno da Academia</p>
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-3 text-left">
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('edit', student) }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                <Edit2 size={20} className="text-orange-500" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">Editar</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar dados do aluno</p>
-              </div>
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <Copy size={20} className="text-purple-500" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">Duplicar</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Copiar informações</p>
-              </div>
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('attendance', student) }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <CalendarDays size={20} className="text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">Frequência</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Histórico de aulas</p>
-              </div>
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <GraduationCap size={20} className="text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">Graduações</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Histórico de faixas</p>
-              </div>
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); onAction('cards', student) }}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                <CreditCard size={20} className="text-indigo-500" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">Financeiro</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Cartões e pagamentos</p>
-              </div>
-            </button>
-
-            <div className="grid grid-cols-2 gap-3 mt-1">
+            <div className="grid grid-cols-1 gap-3 text-left">
               <button
-                onClick={(e) => { e.stopPropagation(); onAction('inactive', student) }}
-                className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-center transition-colors hover:bg-white/10"
+                onClick={(e) => { e.stopPropagation(); onAction('edit', student) }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-gray-500/10 flex items-center justify-center">
-                  <UserX size={16} className="text-gray-400" />
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                  <Edit2 size={20} className="text-orange-500" />
                 </div>
-                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Inativar</p>
+                <div className="flex-1">
+                  <p className="text-sm font-black text-white">Editar</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Alterar dados do aluno</p>
+                </div>
               </button>
 
               <button
-                onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }}
-                className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-[#FFD700]/5 border border-[#FFD700]/10 active:scale-95 text-center transition-colors hover:bg-[#FFD700]/10"
+                onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-[#FFD700]/10 flex items-center justify-center">
-                  <UserMinus size={16} className="text-[#FFD700]" />
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                  <Copy size={20} className="text-purple-500" />
                 </div>
-                <p className="text-[11px] font-black text-[#FFD700] uppercase tracking-widest">Suspender</p>
+                <div className="flex-1">
+                  <p className="text-sm font-black text-white">Duplicar</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Copiar informações</p>
+                </div>
               </button>
 
               <button
-                onClick={(e) => { e.stopPropagation(); onAction('archive', student) }}
-                className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-blue-500/5 border border-blue-500/10 active:scale-95 text-center transition-colors hover:bg-blue-500/10"
+                onClick={(e) => { e.stopPropagation(); onAction('attendance', student) }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Archive size={16} className="text-blue-500" />
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <CalendarDays size={20} className="text-blue-500" />
                 </div>
-                <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest">Arquivar</p>
+                <div className="flex-1">
+                  <p className="text-sm font-black text-white">Presença</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Ver histórico completo</p>
+                </div>
               </button>
 
               <button
-                onClick={(e) => { e.stopPropagation(); onAction('delete', student) }}
-                className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-red-500/5 border border-red-500/10 active:scale-95 text-center transition-colors hover:bg-red-500/10"
+                onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-                  <Trash2 size={16} className="text-red-500" />
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                  <GraduationCap size={20} className="text-emerald-500" />
                 </div>
-                <p className="text-[11px] font-black text-red-500 uppercase tracking-widest">Deletar</p>
+                <div className="flex-1">
+                  <p className="text-sm font-black text-white">Graduações</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Histórico de faixas</p>
+                </div>
               </button>
+
+              <div className="grid grid-cols-2 gap-3 mt-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAction('inactive', student) }}
+                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-center transition-colors hover:bg-white/10"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-gray-500/10 flex items-center justify-center">
+                    <UserX size={16} className="text-gray-400" />
+                  </div>
+                  <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Inativar</p>
+                </button>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }}
+                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-[#FFD700]/5 border border-[#FFD700]/10 active:scale-95 text-center transition-colors hover:bg-[#FFD700]/10"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-[#FFD700]/10 flex items-center justify-center">
+                    <UserMinus size={16} className="text-[#FFD700]" />
+                  </div>
+                  <p className="text-[11px] font-black text-[#FFD700] uppercase tracking-widest">Suspender</p>
+                </button>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAction('archive', student) }}
+                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-blue-500/5 border border-blue-500/10 active:scale-95 text-center transition-colors hover:bg-blue-500/10"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <Archive size={16} className="text-blue-500" />
+                  </div>
+                  <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest">Arquivar</p>
+                </button>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAction('delete', student) }}
+                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-red-500/5 border border-red-500/10 active:scale-95 text-center transition-colors hover:bg-red-500/10"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                    <Trash2 size={16} className="text-red-500" />
+                  </div>
+                  <p className="text-[11px] font-black text-red-500 uppercase tracking-widest">Deletar</p>
+                </button>
+              </div>
             </div>
-          </div>
-        </motion.div>
-      </div>
+          </motion.div>
+        </div>
+      )}
     </div>,
     document.body
   );

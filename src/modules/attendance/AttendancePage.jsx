@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { collection, query, getDocs, orderBy, limit, doc, addDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { COLLECTIONS, SUB_COLLECTIONS } from '../../firebase/collections'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { useStudents } from '../../hooks/useStudents'
@@ -192,13 +193,13 @@ export default function AttendancePage() {
 
       // 👑 Admin/Gestor veem tudo.
       if (isPowerUser) {
-        q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'), limit(50))
+        q = query(collection(db, COLLECTIONS.CHAMADAS), orderBy('createdAt', 'desc'), limit(50))
         const snap = await getDocs(q)
         docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       } else {
         // 🎓 Professor: Busca por instructorId (Novo padrão)
         const qUid = query(
-          collection(db, 'sessions'),
+          collection(db, COLLECTIONS.CHAMADAS),
           where('instructorId', '==', user.uid),
           limit(50)
         )
@@ -208,7 +209,7 @@ export default function AttendancePage() {
         // 🔍 Se não achou nada por UID, ou achou pouco, tenta pelo NOME (Dados legados)
         if (docs.length < 10 && userData?.name) {
           const qName = query(
-            collection(db, 'sessions'),
+            collection(db, COLLECTIONS.CHAMADAS),
             where('professor', '==', userData.name),
             limit(50)
           )
@@ -237,9 +238,9 @@ export default function AttendancePage() {
     } catch (err) {
       console.error('Erro ao buscar histórico:', err)
       
-      // 🛡️ MODO DE EMERGÊNCIA: Busca simplificada
-      try {
-        const fallbackQ = query(collection(db, 'sessions'), limit(20))
+      // 🆘 FALLBACK FINAL: Se ainda não carregou nada (ex: banco vazio), carrega últimas gerais
+      if (docs.length === 0) {
+        const fallbackQ = query(collection(db, COLLECTIONS.CHAMADAS), limit(20))
         const snap = await getDocs(fallbackQ)
         const allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         
@@ -253,8 +254,6 @@ export default function AttendancePage() {
         
         filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
         setRecentSessions(filtered)
-      } catch (fallbackErr) {
-        console.error('Falha crítica ao carregar histórico:', fallbackErr)
       }
     }
   }
@@ -352,8 +351,8 @@ export default function AttendancePage() {
       return
     }
 
-    // Gera o ID localmente de forma instantânea (sem rede)
-    const tempId = doc(collection(db, 'sessions')).id
+    // Gerar ID sequencial opcional ou usar Firestore Auto ID
+    const tempId = doc(collection(db, COLLECTIONS.CHAMADAS)).id
     const payload = {
       id: tempId,
       modality: sessionModality,

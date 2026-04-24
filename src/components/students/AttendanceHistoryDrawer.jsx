@@ -243,7 +243,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
       const isAbsence = r.status === 'absent'
       const statusIcon = isPresence ? '✅' : isAbsence ? '❌' : 'ℹ️'
       const statusLabel = isPresence ? 'Presente' : isAbsence ? 'Falta' : 'Justificado'
-      
+
       return `<tr>
         <td>${r.date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
         <td style="font-weight:bold">${r.modality}</td>
@@ -282,7 +282,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
 
   return (
     <SlideOver isOpen={isOpen} onClose={onClose} title="Histórico de Presença" subtitle={student?.name} width="max-w-xl">
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col">
         {/* ── KPIs ─────────────────────────────────────── */}
         <div className="px-5 pt-5 pb-4 border-b border-white/10 space-y-4">
           <div className="grid grid-cols-3 gap-3">
@@ -385,7 +385,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                           }).join(' | ')
 
                           let cellStyle = 'text-gray-500 bg-white/[0.04] border border-transparent hover:bg-white/10'
-                          
+
                           if (hasPresent) {
                             cellStyle = 'bg-[#10b981]/15 text-[#10b981] border-2 border-[#10b981] shadow-[inset_0_0_12px_rgba(16,185,129,0.5)] cursor-help scale-[1.02]'
                           } else if (hasJustified) {
@@ -399,7 +399,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                           }
 
                           return (
-                            <div key={day} 
+                            <div key={day}
                               title={details}
                               onClick={() => {
                                 if (dayRecs.length > 0) {
@@ -408,7 +408,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                               }}
                               className={`aspect-square flex items-center justify-center rounded-xl text-[10px] font-bold transition-all relative cursor-pointer ${cellStyle}`}
                             >
-                               {day}
+                              {day}
                             </div>
                           )
                         })}
@@ -418,17 +418,16 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                       {selectedDayInfo && (
                         <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-300">
                           <div className="flex items-center justify-between mb-2">
-                             <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Detalhes: Dia {selectedDayInfo.day}</span>
-                             <button onClick={() => setSelectedDayInfo(null)} className="text-primary/60 hover:text-primary"><X size={12} /></button>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Detalhes: Dia {selectedDayInfo.day}</span>
+                            <button onClick={() => setSelectedDayInfo(null)} className="text-primary/60 hover:text-primary"><X size={12} /></button>
                           </div>
                           <div className="space-y-1.5">
                             {selectedDayInfo.details.map((d, idx) => (
                               <div key={idx} className="flex items-center justify-between text-[11px]">
                                 <span className="text-white font-medium">{d.modality}</span>
-                                <span className={`font-bold px-2 py-0.5 rounded-lg text-[9px] uppercase ${
-                                  d.status === 'present' ? 'bg-[#10b981]/20 text-[#10b981]' : 
-                                  d.status === 'absent' ? 'bg-[#ef4444]/20 text-[#ef4444]' : 'bg-[#3b82f6]/20 text-[#3b82f6]'
-                                }`}>
+                                <span className={`font-bold px-2 py-0.5 rounded-lg text-[9px] uppercase ${d.status === 'present' ? 'bg-[#10b981]/20 text-[#10b981]' :
+                                    d.status === 'absent' ? 'bg-[#ef4444]/20 text-[#ef4444]' : 'bg-[#3b82f6]/20 text-[#3b82f6]'
+                                  }`}>
                                   {d.status === 'present' ? 'Presente' : d.status === 'absent' ? 'Falta' : 'Justificado'}
                                 </span>
                               </div>
@@ -473,7 +472,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                   <div>
                     <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">Histórico Detalhado</h3>
                     {records.length > 0 ? (
-                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                      <div className="space-y-2 pr-1">
                         {[...records].reverse().slice(0, 15).map((r, i) => {
                           const mColor = modalityColors[r.modality] || 'var(--clr-primary)'
                           const isPresent = r.status === 'present'

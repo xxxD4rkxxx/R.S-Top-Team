@@ -3,8 +3,9 @@ import { db } from '../firebase/config'
 import { 
   collection, query, where, onSnapshot, 
   orderBy, getDocs, limit, addDoc, doc, 
-  updateDoc, deleteDoc, serverTimestamp 
+  updateDoc, deleteDoc, serverTimestamp, runTransaction 
 } from 'firebase/firestore'
+import { COLLECTIONS } from '../firebase/collections'
 import { useAuth } from '../context/AuthContext'
 
 /**
@@ -12,88 +13,88 @@ import { useAuth } from '../context/AuthContext'
  * Possui proteções no lado do cliente para evitar que Alunos acessem
  * ou modifiquem dados confidenciais financeiros.
  */
+// ── Cache em memória (Singleton) ───────────────────────────────────────────────
+let _cachedCobrancas = null
+let _cachedDespesas = null
+let _financeListeners = {
+  cobrancas: { unsub: null, subscribers: [], loading: true },
+  despesas: { unsub: null, subscribers: [], loading: true }
+}
+
+function subscribeToFinance(type, userId, role, callback) {
+  const channel = _financeListeners[type]
+  channel.subscribers.push(callback)
+
+  if (type === 'cobrancas' && _cachedCobrancas) callback(_cachedCobrancas, false)
+  if (type === 'despesas' && _cachedDespesas) callback(_cachedDespesas, false)
+
+  if (!channel.unsub) {
+    const ref = collection(db, type === 'cobrancas' ? COLLECTIONS.FATURAMENTO : COLLECTIONS.DESPESAS)
+    let q;
+    
+    if (type === 'cobrancas') {
+      q = role === 'aluno' ? query(ref, where('studentId', '==', userId), orderBy('dueDate', 'desc')) : query(ref, orderBy('dueDate', 'desc'))
+    } else {
+      q = query(ref, orderBy('dueDate', 'desc'))
+    }
+
+    channel.unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      if (type === 'cobrancas') _cachedCobrancas = data
+      else _cachedDespesas = data
+      channel.loading = false
+      channel.subscribers.forEach(cb => cb(data, false))
+    }, (err) => {
+      console.error(`Erro no canal ${type}:`, err)
+      channel.loading = false
+      channel.subscribers.forEach(cb => cb([], false))
+    })
+  }
+
+  return () => {
+    channel.subscribers = channel.subscribers.filter(cb => cb !== callback)
+    if (channel.subscribers.length === 0 && channel.unsub) {
+      channel.unsub()
+      channel.unsub = null
+      channel.loading = true
+    }
+  }
+}
+
 export function useFinance() {
   const { user, effectiveRole } = useAuth()
-  
-  // ==========================================
-  // ESTADOS - RECEITAS (Cobranças / Billing)
-  // ==========================================
-  const [cobrancas, setCobrancas] = useState([]) // bills
-  const [carregandoCobrancas, setCarregandoCobrancas] = useState(true)
+  const [cobrancas, setCobrancas] = useState(_cachedCobrancas || [])
+  const [carregandoCobrancas, setCarregandoCobrancas] = useState(_financeListeners.cobrancas.loading)
+  const [despesas, setDespesas] = useState(_cachedDespesas || [])
+  const [carregandoDespesas, setCarregandoDespesas] = useState(_financeListeners.despesas.loading)
 
-  // ==========================================
-  // ESTADOS - DESPESAS (Expenses)
-  // ==========================================
-  const [despesas, setDespesas] = useState([]) // expenses
-  const [carregandoDespesas, setCarregandoDespesas] = useState(true)
-
-  // -------------------------------------------------------------
-  // EFEITO: BUCAR COBRANÇAS (SEGURANÇA POR ROLE)
-  // -------------------------------------------------------------
   useEffect(() => {
     if (!user) {
       setCarregandoCobrancas(false)
-      return
-    }
-
-    const cobrancasRef = collection(db, 'billing')
-    let q;
-
-    // Se for Aluno, busca APENAS as cobranças dele mesmo para evitar VAZAMENTO (Zero Leaks).
-    if (effectiveRole === 'aluno') {
-      q = query(cobrancasRef, where('studentId', '==', user.uid), orderBy('dueDate', 'desc'))
-    } else {
-      // Admin, Gestor ou Professor (se tiver permissão) veem todas
-      q = query(cobrancasRef, orderBy('dueDate', 'desc'))
-    }
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      setCobrancas(data)
-      setCarregandoCobrancas(false)
-    }, (err) => {
-      console.error('Erro ao buscar cobranças (useFinance):', err)
-      setCarregandoCobrancas(false)
-    })
-
-    return () => unsubscribe()
-  }, [user, effectiveRole])
-
-  // -------------------------------------------------------------
-  // EFEITO: BUCAR DESPESAS (SOMENTE GESTORES)
-  // -------------------------------------------------------------
-  useEffect(() => {
-    if (!user) {
       setCarregandoDespesas(false)
       return
     }
 
-    // Alunos e professores básicos não deveriam ver despesas do negócio.
-    if (effectiveRole === 'aluno' || effectiveRole === 'professor') {
+    const unsubCob = subscribeToFinance('cobrancas', user.uid, effectiveRole, (data, loading) => {
+      setCobrancas(data)
+      setCarregandoCobrancas(loading)
+    })
+
+    let unsubDesp = () => {}
+    if (effectiveRole !== 'aluno' && effectiveRole !== 'professor') {
+      unsubDesp = subscribeToFinance('despesas', user.uid, effectiveRole, (data, loading) => {
+        setDespesas(data)
+        setCarregandoDespesas(loading)
+      })
+    } else {
       setDespesas([])
       setCarregandoDespesas(false)
-      return
     }
 
-    const despesasRef = collection(db, 'expenses')
-    const q = query(despesasRef, orderBy('dueDate', 'desc'))
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      setDespesas(data)
-      setCarregandoDespesas(false)
-    }, (err) => {
-      console.error('Erro ao buscar despesas (useFinance):', err)
-      setCarregandoDespesas(false)
-    })
-
-    return () => unsubscribe()
+    return () => {
+      unsubCob()
+      unsubDesp()
+    }
   }, [user, effectiveRole])
 
   // ==========================================
@@ -127,7 +128,7 @@ export function useFinance() {
     if (effectiveRole === 'aluno') {
       throw new Error('Segurança Operacional: Acesso Negado para criar cobranças.')
     }
-    const cobrancasRef = collection(db, 'billing')
+    const cobrancasRef = collection(db, COLLECTIONS.FATURAMENTO)
     await addDoc(cobrancasRef, {
       ...dadosCobranca,
       createdAt: serverTimestamp(),
@@ -150,7 +151,7 @@ export function useFinance() {
       a.status === 'Ativo'
     )
 
-    const cobrancasRef = collection(db, 'billing')
+    const cobrancasRef = collection(db, COLLECTIONS.FATURAMENTO)
     let criadas = 0
     
     for (const aluno of alunosAtivos) {
@@ -212,7 +213,7 @@ export function useFinance() {
     if (effectiveRole === 'aluno') {
       throw new Error('Segurança Operacional: Acesso Negado para alterar status.')
     }
-    const cobrancaRef = doc(db, 'billing', idCobranca)
+    const cobrancaRef = doc(db, COLLECTIONS.FATURAMENTO, idCobranca)
     const payload = { 
       status: novoStatus,
       updatedAt: serverTimestamp()
@@ -232,7 +233,7 @@ export function useFinance() {
     if (effectiveRole === 'aluno') {
       throw new Error('Segurança Operacional: Acesso Negado.')
     }
-    const cobrancaRef = doc(db, 'billing', idCobranca)
+    const cobrancaRef = doc(db, COLLECTIONS.FATURAMENTO, idCobranca)
     await updateDoc(cobrancaRef, {
       ...dados,
       updatedAt: serverTimestamp()
@@ -246,7 +247,7 @@ export function useFinance() {
     if (effectiveRole === 'aluno') {
       throw new Error('Segurança Operacional: Acesso Negado para deletar.')
     }
-    await deleteDoc(doc(db, 'billing', idCobranca))
+    await deleteDoc(doc(db, COLLECTIONS.FATURAMENTO, idCobranca))
   }
 
   // ==========================================
@@ -260,7 +261,7 @@ export function useFinance() {
     if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
       throw new Error('Segurança Operacional: Apenas gestores podem lançar despesas.')
     }
-    const despesasRef = collection(db, 'expenses')
+    const despesasRef = collection(db, COLLECTIONS.DESPESAS)
     await addDoc(despesasRef, {
       ...dadosDespesa,
       createdAt: serverTimestamp(),
@@ -275,7 +276,7 @@ export function useFinance() {
     if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
       throw new Error('Segurança Operacional: Apenas gestores podem editar despesas.')
     }
-    const despesaRef = doc(db, 'expenses', idDespesa)
+    const despesaRef = doc(db, COLLECTIONS.DESPESAS, idDespesa)
     await updateDoc(despesaRef, {
       ...dadosAtualizados,
       updatedAt: serverTimestamp()
@@ -289,7 +290,7 @@ export function useFinance() {
     if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
       throw new Error('Segurança Operacional: Acesso Negado.')
     }
-    await deleteDoc(doc(db, 'expenses', idDespesa))
+    await deleteDoc(doc(db, COLLECTIONS.DESPESAS, idDespesa))
   }
 
   // Compatibilidade Legada (Mantendo nomes em inglês pro restante do app não quebrar instantaneamente)

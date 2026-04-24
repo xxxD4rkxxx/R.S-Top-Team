@@ -1,7 +1,8 @@
 # Operations for Attendance Alerts
 
 # Get the latest attendance for a student
-query GetLatestAttendance($studentId: String!) @auth(level: PUBLIC) {
+query GetLatestAttendance($studentId: String!) 
+  @auth(expr: "auth != null && (auth.token.role == 'admin' || auth.token.role == 'gestor')") {
   eventParticipants(
     where: { studentId: { eq: $studentId } }
     orderBy: [{ registeredAt: DESC }]
@@ -12,7 +13,8 @@ query GetLatestAttendance($studentId: String!) @auth(level: PUBLIC) {
 }
 
 # Get attendance count for a student in a specific date range (monthly)
-query GetAttendanceCountInRange($studentId: String!, $startDate: Timestamp!) @auth(level: PUBLIC) {
+query GetAttendanceCountInRange($studentId: String!, $startDate: Timestamp!) 
+  @auth(expr: "auth != null && (auth.token.role == 'admin' || auth.token.role == 'gestor')") {
   eventParticipants(
     where: {
       studentId: { eq: $studentId }
@@ -23,8 +25,9 @@ query GetAttendanceCountInRange($studentId: String!, $startDate: Timestamp!) @au
   }
 }
 
-# Dashboard Statistics query
-query getDashboardStats($todayStart: Timestamp!, $fourteenDaysAgo: Timestamp!) @auth(level: PUBLIC) {
+# Dashboard Statistics query - PROTECTED (Admin/Gestor only)
+query getDashboardStats($todayStart: Timestamp!, $fourteenDaysAgo: Timestamp!) 
+  @auth(expr: "auth != null && (auth.token.role == 'admin' || auth.token.role == 'gestor')") {
   todayPresences: eventParticipants(where: { registeredAt: { ge: $todayStart } }) {
     studentId
     registeredAt
@@ -36,7 +39,8 @@ query getDashboardStats($todayStart: Timestamp!, $fourteenDaysAgo: Timestamp!) @
   }
 }
 
-query getStudentAttendanceStats($studentId: String!, $startOfMonth: Timestamp!) @auth(level: PUBLIC) {
+query getStudentAttendanceStats($studentId: String!, $startOfMonth: Timestamp!) 
+  @auth(expr: "auth != null && (auth.token.role == 'admin' || auth.token.role == 'gestor')") {
   eventParticipants(
     where: { studentId: { eq: $studentId }, registeredAt: { ge: $startOfMonth } }
     orderBy: [{ registeredAt: DESC }]
@@ -45,7 +49,8 @@ query getStudentAttendanceStats($studentId: String!, $startOfMonth: Timestamp!) 
   }
 }
 
-query getWeeklyFrequency($thirtyDaysAgo: Timestamp!) @auth(level: PUBLIC) {
+query getWeeklyFrequency($thirtyDaysAgo: Timestamp!) 
+  @auth(expr: "auth != null && (auth.token.role == 'admin' || auth.token.role == 'gestor')") {
   eventParticipants(where: { registeredAt: { ge: $thirtyDaysAgo } }) {
     registeredAt
   }

@@ -8,6 +8,7 @@ import {
   limit
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { COLLECTIONS } from '../firebase/collections'
 
 export function useAttendanceHistory(days = 7) {
   const [history, setHistory] = useState([])
@@ -21,7 +22,7 @@ export function useAttendanceHistory(days = 7) {
     const startDate = new Date(today)
     startDate.setDate(today.getDate() - days)
 
-    const attendanceRef = collection(db, 'attendance')
+    const attendanceRef = collection(db, COLLECTIONS.PRESENCAS_LOG)
     const q = query(
       attendanceRef,
       where('date', '>=', startDate),
