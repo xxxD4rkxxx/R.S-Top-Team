@@ -45,18 +45,37 @@ const USERS_COLLECTION = COLLECTIONS.USUARIOS
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000
 
 function extractSafeProfile(data) {
-  const { pin: _pin, password: _pwd, ...safeData } = data
-  return safeData
+  return {
+    name: data.nome || data.name || '',
+    email: data.email || '',
+    ...Object.keys(data).reduce((acc, key) => {
+      if (!['pin', 'password', 'nome', 'name', 'email'].includes(key)) {
+        acc[key] = data[key];
+      }
+      return acc;
+    }, {})
+  };
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [userData, setUserData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [simulatedRole, setSimulatedRole] = useState(null)
+  const [simulatedRole, setSimulatedRole] = useState(() => {
+    return localStorage.getItem('rs_simulated_role') || null
+  })
 
   const inactivityTimerRef = useRef(null)
   const sessionPinHashRef = useRef(null)
+
+  // Persistir papel simulado quando mudar
+  useEffect(() => {
+    if (simulatedRole) {
+      localStorage.setItem('rs_simulated_role', simulatedRole)
+    } else {
+      localStorage.removeItem('rs_simulated_role')
+    }
+  }, [simulatedRole])
 
   const getHash = (str) => {
     let hash = 0
@@ -69,21 +88,35 @@ export function AuthProvider({ children }) {
 
   const effectiveRole = (() => {
     if (simulatedRole) return simulatedRole;
+    
+    // Prioridade 1: Objeto 'papeis' (SSoT Moderno)
+    const papeis = userData?.papeis || {}
+    if (papeis.admin === true) return 'admin'
+    if (papeis.gestor === true) return 'gestor'
+    if (papeis.professor === true) return 'professor'
+
+    // Prioridade 2: Objeto 'roles' (Legado)
     const roles = userData?.roles || {}
+    if (roles.admin === true) return 'admin'
+    if (roles.gestor === true) return 'gestor'
+    if (roles.professor === true) return 'professor'
+
+    // Prioridade 3: Campo 'role' (String)
     const roleStr = String(userData?.role || '').toLowerCase()
-    if (roles.admin === true || roleStr === 'admin') return 'admin'
-    if (roles.gestor === true || roleStr === 'gestor') return 'gestor'
-    if (roles.professor === true || roleStr === 'professor') return 'professor'
+    if (roleStr === 'admin') return 'admin'
+    if (roleStr === 'gestor') return 'gestor'
+    if (roleStr === 'professor') return 'professor'
+    
     return 'aluno'
   })()
 
   const getPinAuthEmail = (raw) => {
     const rawId = String(raw || '').toLowerCase().trim()
     
-    // Se já for um e-mail válido (contém @ e não termina em internal), retorna ele
-    if (rawId.includes('@') && !rawId.endsWith('.internal')) return rawId
+    // Se já for um e-mail válido, retorna ele
+    if (rawId.includes('@')) return rawId
     
-    // Se for um ID legatário do rstopteam.internal, limpa ele
+    // Fallback para IDs sanitizados legados (apenas se necessário)
     if (rawId.endsWith('@rstopteam.internal')) {
       return rawId.split('@')[0].replace(/_/g, '.')
     }
@@ -98,7 +131,7 @@ export function AuthProvider({ children }) {
     if (typed === String(userData.pin).trim() || typed === String(userData.adminPin).trim()) return true
 
     // Fallback Firebase
-    const pinAuthEmail = getPinAuthEmail(user.email)
+    const pinAuthEmail = user.email
     const securePIN = typed.length >= 6 ? typed : typed.padEnd(6, '0')
     try {
       await signInWithEmailAndPassword(verifyAuth, pinAuthEmail, securePIN)
@@ -146,7 +179,7 @@ export function AuthProvider({ children }) {
         console.warn("Falha ao ler nova coleção, tentando legado...", e);
       }
       
-      // 2. Se não achar, tenta pelo ID legado na coleção NOVA
+      // 2. Se não achar, tenta busca por campos de e-mail ou nome na coleção NOVA
       if (!targetDoc || !targetDoc.exists()) {
         const legacyId = `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
         
@@ -154,12 +187,26 @@ export function AuthProvider({ children }) {
           targetDoc = await getDoc(doc(db, USERS_COLLECTION, legacyId))
         } catch (e) {}
 
-        // 3. Se ainda não achar, tenta busca por campo 'email' na coleção NOVA
+        // 3. Se ainda não achar, tenta busca por campos de e-mail ou nome na coleção NOVA
         if (!targetDoc?.exists()) {
           try {
-            const q = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
-            const qSnap = await getDocs(q)
-            if (!qSnap.empty) targetDoc = qSnap.docs[0]
+            // Busca por campo 'email'
+            const qEmail = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
+            const qEmailSnap = await getDocs(qEmail)
+            if (!qEmailSnap.empty) {
+              targetDoc = qEmailSnap.docs[0]
+            } else {
+              // Busca por campo 'nome' ou 'name' (Fallback amigável)
+              const qNome = query(collection(db, USERS_COLLECTION), where('nome', '==', identifier), limit(1))
+              const qNomeSnap = await getDocs(qNome)
+              if (!qNomeSnap.empty) {
+                targetDoc = qNomeSnap.docs[0]
+              } else {
+                const qName = query(collection(db, USERS_COLLECTION), where('name', '==', identifier), limit(1))
+                const qNameSnap = await getDocs(qName)
+                if (!qNameSnap.empty) targetDoc = qNameSnap.docs[0]
+              }
+            }
           } catch (e) {}
         }
       }
@@ -183,33 +230,72 @@ export function AuthProvider({ children }) {
       const dbData = targetDoc.data()
       const profileId = targetDoc.id
 
-      // Valida se o PIN digitado é o PIN de aluno (Normal)
-      const isNormalPin = typedPin === String(dbData.pin).trim() || securePIN === String(dbData.pin).trim()
-
-      if (!isNormalPin) {
-        throw new Error('Este PIN não é válido para a tela comum. Use o Login de Administrador.')
+      // Função auxiliar para pegar PIN ignorando espaços no nome do campo (ex: "adminPin ")
+      const getValueRobust = (obj, targetKey) => {
+        const foundKey = Object.keys(obj).find(k => k.trim() === targetKey)
+        return foundKey ? obj[foundKey] : null
       }
 
-      // Se for admin, entramos em modo SIMULADO de ALUNO
-      const isAdm = dbData.roles?.admin === true || String(dbData.role).toLowerCase() === 'admin'
-      if (isAdm) setSimulatedRole('aluno')
+      const dbPin = String(getValueRobust(dbData, 'pin') || '').trim()
+      const dbAdminPin = String(getValueRobust(dbData, 'adminPin') || getValueRobust(dbData, 'admPin') || '').trim()
 
-      // PIN Mestre para o Auth
-      const masterPin = String(dbData.adminPin || dbData.pin).trim()
+      // Valida se o PIN digitado é o PIN de aluno (Normal) ou o PIN Mestre
+      const isNormalPin = typedPin === dbPin || securePIN === dbPin
+      const isAdminPin = (dbAdminPin && (typedPin === dbAdminPin || securePIN === dbAdminPin))
+
+      if (!isNormalPin) {
+        // Se for admin tentando usar adminPin na tela normal, avisa que deve ser na tela de admin
+        if (isAdminPin) {
+          throw new Error('PIN incorreto.')
+        }
+        throw new Error('PIN incorreto.')
+      }
+
+      // Detecta Papéis SSoT
+      const isAdm = dbData.papeis?.admin || dbData.roles?.admin || String(dbData.role).toLowerCase() === 'admin'
+      const isGestor = dbData.papeis?.gestor || dbData.roles?.gestor || String(dbData.role).toLowerCase() === 'gestor'
+      const isProf = dbData.papeis?.professor || dbData.roles?.professor || String(dbData.role).toLowerCase() === 'professor'
+
+      // Se for admin/gestor/prof, e estiver na tela normal, podemos opcionalmente simular aluno 
+      // ou deixar o papel real se o PIN usado for o adminPin
+      if (isAdm || isGestor || isProf) {
+        if (isNormalPin && !isAdminPin) {
+          setSimulatedRole('aluno')
+        } else {
+          setSimulatedRole(null) // Papel real
+        }
+      }
+
+      // PIN Mestre para o Auth (Suporta: adminPin, admPin ou pin)
+      const masterPin = String(dbData.adminPin || dbData.admPin || dbData.pin || '').trim()
       const masterSecure = masterPin.length >= 6 ? masterPin : masterPin.padEnd(6, '0')
 
-      // Tenta logar com o e-mail real
+      // 5. Autenticação no Firebase Auth
+      const realEmail = dbData.email || (profileId.includes('@') ? profileId : email)
+      const legacyEmail = `${realEmail.replace(/[@.]/g, '_')}@rstopteam.internal`
+
+      // Prioridade: E-mail real (Gmail etc)
+      const authPassword = securePIN
+
       try {
-        return await signInWithEmailAndPassword(auth, email, masterSecure)
+        // Tenta primeiro com o e-mail real (Padrão Novo)
+        return await signInWithEmailAndPassword(auth, realEmail, authPassword)
       } catch (e) {
-        // Se falhar (ex: conta não existe no Auth com e-mail real), tenta com o e-mail legado
-        const legacyEmail = profileId.includes('@rstopteam.internal') ? profileId : `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
         try {
-          return await signInWithEmailAndPassword(auth, legacyEmail, masterSecure)
+          // Fallback para o legado (.internal)
+          return await signInWithEmailAndPassword(auth, legacyEmail, authPassword)
         } catch (e2) {
-          // Se nenhum dos dois existe, cria a conta no Auth com o e-mail REAL (Promoção de identidade)
+          // Se a senha estiver errada no real e no legado, ou se houver conflito de criação
           if (e2.code === 'auth/user-not-found' || e2.code === 'auth/invalid-credential') {
-            return await createUserWithEmailAndPassword(auth, email, masterSecure)
+            try {
+              console.log(`[AuthContext] Criando nova conta para: ${realEmail}...`);
+              return await createUserWithEmailAndPassword(auth, realEmail, authPassword)
+            } catch (createErr) {
+              if (createErr.code === 'auth/email-already-in-use') {
+                throw new Error('Este e-mail já possui uma conta com senha diferente. Por favor, use a recuperação de senha ou peça ao administrador para resetar seu PIN no Auth.')
+              }
+              throw createErr
+            }
           }
           throw e2
         }
@@ -237,52 +323,87 @@ export function AuthProvider({ children }) {
         console.warn("Falha ao ler nova coleção (permissões?), tentando legado...", e);
       }
       
-      // 2. Se falhou, não existe ou deu erro de permissão, tenta pelo legado TOTAL
-      if (!snap || !snap.exists()) {
-        const legacyId = `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
-        
-        // Tenta na coleção LEGADA 'users' diretamente
-        const legacyRef = doc(db, 'users', legacyId);
-        const legacySnap = await getDoc(legacyRef);
-        
-        if (legacySnap.exists()) {
-          snap = legacySnap;
-        } else {
-          // Tenta busca por campo email na coleção antiga
-          const q = query(collection(db, 'users'), where('email', '==', email), limit(1))
-          const qSnap = await getDocs(q)
-          if (!qSnap.empty) snap = qSnap.docs[0]
+        // 2. Tenta por e-mail ou nome na coleção NOVA e legado
+        if (!snap || !snap.exists()) {
+          const qEmail = query(collection(db, USERS_COLLECTION), where('email', '==', email), limit(1))
+          const qEmailSnap = await getDocs(qEmail)
+          if (!qEmailSnap.empty) {
+            snap = qEmailSnap.docs[0]
+          } else {
+            const qNome = query(collection(db, USERS_COLLECTION), where('nome', '==', identifier), limit(1))
+            const qNomeSnap = await getDocs(qNome)
+            if (!qNomeSnap.empty) snap = qNomeSnap.docs[0]
+          }
         }
-      }
+
+        // 3. Se falhou total na NOVA, tenta pelo legado TOTAL
+        if (!snap || !snap.exists()) {
+          const legacyId = `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
+          const legacyRef = doc(db, 'users', legacyId);
+          const legacySnap = await getDoc(legacyRef);
+          
+          if (legacySnap.exists()) {
+            snap = legacySnap;
+          } else {
+            const q = query(collection(db, 'users'), where('email', '==', email), limit(1))
+            const qSnap = await getDocs(q)
+            if (!qSnap.empty) snap = qSnap.docs[0]
+          }
+        }
 
       if (!snap?.exists()) throw new Error('Conta não localizada no sistema novo ou legado.')
       const data = snap.data()
       const profileId = snap.id
 
-      const isAdm = data.roles?.admin === true || String(data.role).toLowerCase() === 'admin' || data.roles?.gestor === true
-      if (!isAdm) throw new Error('Acesso apenas para Administradores ou Gestores.')
+      const isAdm = data.papeis?.admin || data.roles?.admin || String(data.role).toLowerCase() === 'admin'
+      const isGestor = data.papeis?.gestor || data.roles?.gestor || String(data.role).toLowerCase() === 'gestor'
+      const isProf = data.papeis?.professor || data.roles?.professor || String(data.role).toLowerCase() === 'professor'
 
-      // Valida o PIN Admin contra o Firestore
-      const dbAdminPin = String(data.adminPin || data.pin).trim()
+      if (!isAdm && !isGestor && !isProf) {
+        throw new Error('Acesso apenas para Administradores, Gestores ou Professores.')
+      }
+
+      // Valida o PIN Admin contra o Firestore (com detecção robusta de campos)
+      const getFieldRobust = (obj, key) => {
+        const k = Object.keys(obj).find(x => x.trim() === key)
+        return k ? obj[k] : null
+      }
+
+      const dbAdminPin = String(
+        getFieldRobust(data, 'adminPin') || 
+        getFieldRobust(data, 'admPin') || 
+        getFieldRobust(data, 'pin') || 
+        ''
+      ).trim()
+
       if (typedPin !== dbAdminPin && securePin !== dbAdminPin) {
-        throw new Error('PIN Administrativo incorreto.')
+        throw new Error('PIN de Acesso incorreto.')
       }
 
       // Garante papel real
       setSimulatedRole(null)
 
+      // 5. Autenticação Admin via PIN
+      const realEmail = data.email || (profileId.includes('@') ? profileId : email)
+      const legacyEmail = profileId.includes('@rstopteam.internal') 
+        ? profileId 
+        : `${realEmail.replace(/[@.]/g, '_')}@rstopteam.internal`
+
       try {
-        return await signInWithEmailAndPassword(auth, email, securePin)
-      } catch (e) {
-        const legacyEmail = profileId.includes('@rstopteam.internal') ? profileId : `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
-        try {
-          return await signInWithEmailAndPassword(auth, legacyEmail, securePin)
-        } catch (e2) {
-          if (e2.code === 'auth/user-not-found' || e2.code === 'auth/invalid-credential') {
-            return await createUserWithEmailAndPassword(auth, email, securePin)
+        console.log(`[AuthContext] Admin Login Híbrido para: ${realEmail}...`);
+        // No modo Admin, SEMPRE usamos o e-mail interno para manter os PINs separados
+        return await signInWithEmailAndPassword(auth, legacyEmail, securePin)
+      } catch (e1) {
+        // Se a conta interna não existe, criamos ela
+        if (e1.code === 'auth/user-not-found' || e1.code === 'auth/invalid-credential') {
+          try {
+            console.log(`[AuthContext] Criando conta Admin interna para: ${legacyEmail}...`);
+            return await createUserWithEmailAndPassword(auth, legacyEmail, securePin)
+          } catch (createErr) {
+            throw new Error('Erro ao configurar acesso administrativo. Por favor, contate o suporte.')
           }
-          throw e2
         }
+        throw e1
       }
     } catch (err) {
       throw new Error(err.message || 'Falha na autenticação administrativa.')
@@ -296,57 +417,114 @@ export function AuthProvider({ children }) {
       if (userUnsub) userUnsub()
       try {
         if (fbUser) {
-          const email = fbUser.email.toLowerCase()
           const resolveProfileId = async () => {
-            const email = fbUser.email.toLowerCase()
-            
-            // 1. Tenta na coleção NOVA (usuarios)
-            try {
-              const prioritizedDoc = await getDoc(doc(db, USERS_COLLECTION, email))
-              if (prioritizedDoc.exists()) return { id: prioritizedDoc.id, col: USERS_COLLECTION }
-              
-              const sanitizedId = email.replace(/[@.]/g, '_') + "@rstopteam.internal"
-              const sanitizedDoc = await getDoc(doc(db, USERS_COLLECTION, sanitizedId))
-              if (sanitizedDoc.exists()) return { id: sanitizedDoc.id, col: USERS_COLLECTION }
-            } catch (e) {}
+            const fbEmail = fbUser.email.toLowerCase()
+            console.log(`🔍 [AuthContext] Resolvendo perfil para: ${fbEmail}...`)
 
-            // 2. RESGATE: Tenta na coleção ANTIGA (users)
+            // Se for e-mail interno, tentamos reconstruir o e-mail real para busca direta
+            let reconstructedRealEmail = null;
+            if (fbEmail.includes('@rstopteam.internal')) {
+              const parts = fbEmail.split('@')[0];
+              // Tenta reverter o padrão: nome_gmail_com -> nome@gmail.com
+              if (parts.includes('_gmail_com')) {
+                reconstructedRealEmail = parts.replace('_gmail_com', '@gmail.com').replace(/_/g, '.');
+                // Ajuste fino: o replace de pontos pode ser agressivo, mas geralmente emails admin são simples
+              }
+            }
+            
+            // 🚀 Busca paralela para máxima performance
+            const tasks = [
+              // 1. Tenta o ID direto (E-mail real ou UID)
+              getDoc(doc(db, USERS_COLLECTION, fbEmail)).then(s => s.exists() ? { id: s.id, col: USERS_COLLECTION } : null),
+              // 2. Se for legado, tenta o reconstruído (E-mail real)
+              reconstructedRealEmail ? getDoc(doc(db, USERS_COLLECTION, reconstructedRealEmail)).then(s => s.exists() ? { id: s.id, col: USERS_COLLECTION } : null) : Promise.resolve(null),
+              // 3. Tenta o mapeamento legado no usuarios
+              getDoc(doc(db, USERS_COLLECTION, `${fbEmail.replace(/[@.]/g, '_')}@rstopteam.internal`)).then(s => s.exists() ? { id: s.id, col: USERS_COLLECTION } : null),
+              // 4. Tenta o mapeamento legado no users (antigo)
+              getDoc(doc(db, 'users', `${fbEmail.replace(/[@.]/g, '_')}@rstopteam.internal`)).then(s => s.exists() ? { id: s.id, col: 'users' } : null)
+            ]
+
             try {
-              const legacyId = email.includes('@rstopteam.internal') ? email : `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
-              const legacyDoc = await getDoc(doc(db, 'users', legacyId))
-              if (legacyDoc.exists()) return { id: legacyDoc.id, col: 'users' }
-              
-              const legacyEmailDoc = await getDoc(doc(db, 'users', email))
-              if (legacyEmailDoc.exists()) return { id: legacyEmailDoc.id, col: 'users' }
-            } catch (e) {}
+              // Executamos as buscas individualmente com catch para evitar que um Permission Denied trave tudo
+              const results = await Promise.all(tasks.map(t => t.catch(err => {
+                console.warn(`[AuthContext] Falha silenciada em busca de perfil: ${err.message}`);
+                return null;
+              })))
+              const found = results.find(r => r !== null)
+              if (found) {
+                console.log(`✅ [AuthContext] Perfil localizado na coleção "${found.col}" com ID "${found.id}"`)
+                return found
+              }
+
+              // Fallback: Busca por campo email se os IDs diretos falharem
+              const q = query(collection(db, USERS_COLLECTION), where('email', '==', fbEmail), limit(1))
+              const qSnap = await getDocs(q)
+              if (!qSnap.empty) {
+                console.log(`✅ [AuthContext] Perfil localizado via busca de campo na coleção "${USERS_COLLECTION}"`)
+                return { id: qSnap.docs[0].id, col: USERS_COLLECTION }
+              }
+            } catch (e) {
+              console.error("❌ [AuthContext] Erro ao resolver perfil:", e)
+            }
 
             return null
           }
+
           const target = await resolveProfileId()
           if (target) {
             userUnsub = onSnapshot(doc(db, target.col, target.id), (snap) => {
               if (snap.exists()) {
                 const data = snap.data()
                 if (String(data.status || '').toLowerCase() === 'inativo') {
+                  console.warn("⚠️ [AuthContext] Usuário inativo detectado. Deslogando...")
                   logout()
                 } else {
                   setUser(fbUser)
                   setUserData({ 
                     ...extractSafeProfile(data), 
                     id: snap.id,
-                    isLegacyProfile: target.col === 'users' || target.col === 'students' || target.col === 'equipe'
+                    isLegacyProfile: target.col === 'users'
                   })
                 }
-              } else { logout() }
+              } else { 
+                console.warn("❌ [AuthContext] Documento do usuário não encontrado no snapshot.")
+                logout() 
+              }
+              setLoading(false)
+            }, (err) => {
+              console.error("❌ [AuthContext] Erro no snapshot do perfil:", err)
               setLoading(false)
             })
-          } else { logout() }
+          } else { 
+            console.error("❌ [AuthContext] Nenhum perfil encontrado para:", fbUser.email)
+            // Se for uma conta legada sem perfil, forçamos o logout para limpeza
+            if (fbUser.email.includes('@rstopteam.internal')) {
+              console.warn("🧹 Limpando sessão legada sem perfil...");
+              logout();
+            }
+            setLoading(false)
+          }
         } else {
           setUser(null); setUserData(null); setLoading(false)
         }
-      } catch (err) { setLoading(false) }
+      } catch (err) { 
+        console.error("❌ [AuthContext] Erro crítico no observer de auth:", err)
+        setLoading(false) 
+      }
     })
-    return () => { unsubscribe(); if (userUnsub) userUnsub() }
+
+    const safetyTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn("⏱️ [AuthContext] Timeout de carregamento excedido. Forçando liberação da UI...")
+        setLoading(false)
+      }
+    }, 5000)
+
+    return () => { 
+      unsubscribe(); 
+      if (userUnsub) userUnsub(); 
+      clearTimeout(safetyTimeout);
+    }
   }, [logout])
 
   const sendResetEmail = async (email) => sendPasswordResetEmail(auth, email)

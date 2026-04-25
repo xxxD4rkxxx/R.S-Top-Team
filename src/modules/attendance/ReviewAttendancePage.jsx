@@ -51,7 +51,7 @@ export default function ReviewAttendancePage() {
           const student = students.find(s => s.id === studentId) || {}
           batch.set(docRef, {
             studentId,
-            studentName: student.name || 'Desconhecido',
+            studentName: student.nome || student.name || 'Desconhecido',
             status,
             modality: session.modality,
             date: session.date,
@@ -89,7 +89,7 @@ export default function ReviewAttendancePage() {
         setSession(sessionData)
 
         // 2. Fetch Attendance Records for this Session
-        const attendancesRef = collection(db, 'sessions', sessionId, 'attendances')
+        const attendancesRef = collection(db, COLLECTIONS.CHAMADAS, sessionId, SUB_COLLECTIONS.PRESENCAS)
         const recordsSnap = await getDocs(attendancesRef)
         const recordsMap = {}
         recordsSnap.docs.forEach(d => {
@@ -238,10 +238,10 @@ export default function ReviewAttendancePage() {
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     {student.photo ? (
-                      <img src={student.photo} alt={student.name} className="w-10 h-10 rounded-full object-cover border border-white/10" />
+                      <img src={student.photo} alt={student.nome || student.name} className="w-10 h-10 rounded-full object-cover border border-white/10" />
                     ) : (
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${bgClass}`}>
-                        {student.initials || (student.name ? student.name[0] : 'A')}
+                        {student.initials || (student.nome || student.name ? (student.nome || student.name)[0] : 'A')}
                       </div>
                     )}
                     {status === 'present' && (
@@ -257,7 +257,7 @@ export default function ReviewAttendancePage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-white truncate max-w-[120px]">{student.name}</p>
+                      <p className="text-sm font-semibold text-white truncate max-w-[120px]">{student.nome || student.name}</p>
                       {student.type === 'visitante' && (
                         <span className="bg-primary/20 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-lg uppercase tracking-tighter">Visitante</span>
                       )}

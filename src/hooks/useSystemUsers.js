@@ -144,30 +144,88 @@ export function useSystemUsers() {
     const userRef = doc(db, USERS_COLLECTION, emailId)
     const existingSnap = await getDoc(userRef)
 
+    // Normalização de papéis (Roles)
+    // Se vier como array (do estado do form), converte para Map
+    const rolesMap = Array.isArray(userData.roles)
+      ? userData.roles.reduce((acc, r) => ({ ...acc, [r]: true }), {})
+      : (userData.roles || { aluno: true })
+
+    // Mapeamento de campos usando as constantes FIELDS para SSoT
+    const basePayload = {
+      [FIELDS.NOME]: sanitizeString(userData.name || userData.nome),
+      [FIELDS.EMAIL]: email,
+      [FIELDS.TELEFONE]: userData.phone || userData.telefone || '',
+      [FIELDS.PAPEIS]: rolesMap,
+      [FIELDS.STATUS]: userData.status || 'Ativo',
+      [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
+      // Preservar campos extras como modalidades, permissões, etc.
+      ...userData,
+      // Remover campos redundantes que já mapeamos para os nomes corretos
+      name: deleteField(),
+      phone: deleteField(),
+      roles: deleteField()
+    }
+
+    // Limpeza de campos undefined para evitar erro 400 do Firestore
+    Object.keys(basePayload).forEach(key => {
+      if (basePayload[key] === undefined) {
+        delete basePayload[key]
+      }
+    })
+
     if (existingSnap.exists()) {
-      await updateDoc(userRef, {
-        ...userData,
-        [FIELDS.ATUALIZADO_EM]: serverTimestamp()
-      })
-      return { id: emailId, isExisting: true }
+      const existingData = existingSnap.data()
+      
+      // Proteção e Geração de PIN:
+      // Se o usuário está ganhando cargo de Staff (Admin/Gestor/Prof) e não tem PIN, geramos um.
+      const isStaff = rolesMap.admin || rolesMap.gestor || rolesMap.professor
+      let finalPin = userData.pin || existingData.pin
+      let pinWasGenerated = false
+
+      if (isStaff && !finalPin) {
+        finalPin = generatePIN()
+        pinWasGenerated = true
+        basePayload[FIELDS.PIN] = finalPin
+      } else if (finalPin) {
+        basePayload[FIELDS.PIN] = finalPin
+      }
+
+      await updateDoc(userRef, basePayload)
+
+      // Se geramos um PIN novo para um usuário existente, precisamos criar o Auth Secundário dele
+      if (pinWasGenerated) {
+        try {
+          const pinAuthEmail = getPinAuthEmail(emailId)
+          const securePIN = finalPin.length >= 6 ? finalPin : finalPin.padEnd(6, '0')
+          await createUserWithEmailAndPassword(vAuth, pinAuthEmail, securePIN)
+        } catch (e) {
+          console.warn('Erro ao criar Auth Secundário para Staff promovido:', e.message)
+        }
+      }
+
+      return { id: emailId, pin: finalPin, isExisting: true, pinWasGenerated }
     } else {
       const pin = userData.pin || generatePIN()
       const newUser = {
-        ...userData,
-        [FIELDS.NOME]: sanitizeString(userData.name),
+        ...basePayload,
         [FIELDS.PIN]: pin,
-        [FIELDS.STATUS]: 'Ativo',
-        [FIELDS.PAPEIS]: userData.roles || { aluno: true },
-        [FIELDS.CRIADO_EM]: serverTimestamp(),
-        [FIELDS.ATUALIZADO_EM]: serverTimestamp()
+        [FIELDS.CRIADO_EM]: serverTimestamp()
       }
+      
+      // Remove o deleteField() da criação inicial
+      delete newUser.name
+      delete newUser.phone
+      delete newUser.roles
+
       await setDoc(userRef, newUser)
       
       try {
         const pinAuthEmail = getPinAuthEmail(emailId)
         const securePIN = pin.length >= 6 ? pin : pin.padEnd(6, '0')
         await createUserWithEmailAndPassword(vAuth, pinAuthEmail, securePIN)
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Erro ao criar Auth Secundário (PIN):', e.message)
+      }
 
       return { id: emailId, pin, isExisting: false }
     }

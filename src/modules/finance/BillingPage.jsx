@@ -550,12 +550,12 @@ export default function BillingPage() {
     )
 
     const bgClass = beltConfig[student.belt]?.bgClass || 'belt-none'
-    const initials = student.initials || student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
+    const initials = student.initials || (student.nome || student.name)?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
 
     return (
       <div className="flex items-center justify-center p-0.5 shrink-0 relative">
         {student.photo ? (
-          <img src={student.photo} alt={student.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
+          <img src={student.photo} alt={student.nome || student.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
         ) : (
           <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black ring-1 ring-white/10 ${bgClass} text-white shadow-inner relative overflow-hidden`}>
             <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent opacity-40" />

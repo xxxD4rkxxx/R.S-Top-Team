@@ -166,7 +166,7 @@ export function useTeacherIntelligence() {
                     allAttendances = attSnap.docs
                         .map(d => {
                             const data = d.data()
-                            const sId = d.ref.parent?.parent?.id // d.ref.parent é a coleção 'attendances', o parent dela é o doc da sessão
+                            const sId = d.ref.parent?.parent?.id // d.ref.parent é a coleção 'presencas', o parent dela é o doc da sessão
                             return { ...data, sessionId: sId, date: safeDate(data.date || data.createdAt) }
                         })
                         .filter(a => sessionIdsSet.has(a.sessionId))

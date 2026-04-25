@@ -1,7 +1,7 @@
 // RESUMO: Tela de Login.
 // Suporta login por E-mail/Senha (Administradores) e por E-mail/PIN (Gestores/Professores).
 // Implementa detecção de cliques no logo para alternar entre os modos de acesso.
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { LogIn, Lock, Mail, Eye, EyeOff, HelpCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -20,21 +20,33 @@ export default function LoginPage() {
   const [clickCount, setClickCount] = useState(0)
   const [isAdminMode, setIsAdminMode] = useState(false)
 
+
   const { login, loginAdmin, sendResetEmail, checkUserExists } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from?.pathname || '/'
 
+  const timerRef = React.useRef(null)
+
   const handleLogoClick = () => {
+    if (isAdminMode) return // Já está no modo admin
+
     setClickCount(prev => {
       const newCount = prev + 1
-      if (newCount === 3) {
+      
+      if (timerRef.current) clearTimeout(timerRef.current)
+      
+      if (newCount >= 3) {
         setIsAdminMode(true)
         return 0
       }
+      
+      timerRef.current = setTimeout(() => {
+        setClickCount(0)
+      }, 2000) // 2 segundos para ser mais tolerante
+      
       return newCount
     })
-    setTimeout(() => setClickCount(0), 2000)
   }
 
   const handleSubmit = async (e) => {

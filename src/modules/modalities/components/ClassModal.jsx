@@ -280,17 +280,19 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                   {DAYS.map(day => (
                     <button
-                      key={day.id}
-                      type="button"
-                      onClick={() => toggleDay(day.id)}
-                      className={`py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
-                        diasSemana.includes(day.id) 
-                        ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20 scale-[1.02]' 
-                        : 'bg-[#111] border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-300'
-                      }`}
-                    >
-                      {day.label}
-                    </button>
+                  key={day.id}
+                  type="button"
+                  onClick={() => toggleDay(day.id)}
+                  className={`
+                    flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
+                    ${diasSemana.includes(day.id) 
+                      ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' 
+                      : 'bg-[#111] border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-300'}
+                    border
+                  `}
+                >
+                  <span className={diasSemana.includes(day.id) ? 'text-white' : ''}>{day.label}</span>
+                </button>
                   ))}
                 </div>
               </div>
@@ -374,13 +376,12 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
             </button>
             <button
               type="submit"
-              className="flex-[2] py-4 rounded-2xl text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-[2] py-4 rounded-2xl bg-primary text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               style={{
-                backgroundColor: 'var(--clr-primary)',
                 boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--clr-primary) 30%, transparent)'
               }}
             >
-              <Save size={16} /> {editingClass ? 'Salvar Turma' : 'Criar Turma'}
+              <Save size={16} /> <span className="text-white">{editingClass ? 'Salvar Turma' : 'Criar Turma'}</span>
             </button>
           </div>
         </form>

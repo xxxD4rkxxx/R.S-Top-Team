@@ -98,8 +98,9 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
 
   if (!student) return null;
 
+  const name = student.nome || student.name;
   const {
-    name, email, phone, modality, modalities = [],
+    email, phone, modality, modalities = [],
     isVisitor, createdAt, lastAttendanceAt, belt, stripes, ageCategory, gender
   } = student;
 
@@ -156,9 +157,9 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
           <div className="flex items-center gap-6">
             <div className={`w-[100px] h-[100px] shrink-0 rounded-full flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
               {student.photo ? (
-                <img src={student.photo} alt={name} className="w-full h-full rounded-full object-cover" />
+                <img src={student.photo} alt={student.nome || student.name} className="w-full h-full rounded-full object-cover" />
               ) : (
-                student.initials || name.charAt(0) || 'A'
+                student.initials || (student.nome || student.name)?.charAt(0) || 'A'
               )}
             </div>
             <div className="min-w-0 flex-1">

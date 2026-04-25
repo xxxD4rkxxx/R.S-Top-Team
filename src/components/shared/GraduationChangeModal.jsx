@@ -62,7 +62,7 @@ export default function GraduationChangeModal({ student, onClose, onFinish }) {
             </div>
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-wider">Registrar Graduação</h3>
-              <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Aluno: {student.name}</p>
+              <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Aluno: {student.nome || student.name}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">

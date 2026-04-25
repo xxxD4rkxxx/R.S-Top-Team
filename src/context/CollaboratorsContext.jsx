@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { db, auth } from '../firebase/config'
+import { COLLECTIONS } from '../firebase/collections'
 
 const CollaboratorsContext = createContext()
 
@@ -17,8 +18,8 @@ export function CollaboratorsProvider({ children }) {
         console.log('📡 [CollaboratorsContext] Usuário detectado. Iniciando escuta da equipe...')
         
         const q = query(
-          collection(db, 'users'), 
-          where('role', 'in', ['admin', 'professor', 'gestor', 'monitor', 'colaborador'])
+          collection(db, COLLECTIONS.USUARIOS), 
+          where('papeis.professor', '==', true)
         )
 
         const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {

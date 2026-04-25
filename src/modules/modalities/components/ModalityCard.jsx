@@ -52,9 +52,9 @@ export default function ModalityCard({
           {/* Chave de Status (Ativo/Inativo) */}
           <button 
             onClick={(e) => { e.stopPropagation(); onToggleStatus(modality.id, modality.status); }}
-            className={`w-10 h-6 rounded-full relative transition-all ${modality.status === 'ativo' ? 'bg-primary/40' : 'bg-white/5'}`}
+            className={`w-10 h-6 rounded-full relative transition-all cursor-pointer z-20 active:scale-95 hover:opacity-80 ${modality.status === 'ativo' ? 'bg-primary/40' : 'bg-white/5'}`}
           >
-            <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${modality.status === 'ativo' ? 'right-1 bg-primary' : 'left-1 bg-gray-600'}`} />
+            <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${modality.status === 'ativo' ? 'right-1 bg-primary shadow-[0_0_8px_rgba(203,255,28,0.5)]' : 'left-1 bg-gray-600'}`} />
           </button>
         </div>
       </div>
@@ -77,14 +77,15 @@ export default function ModalityCard({
             )}
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(modality) }}
-              className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-gray-400 hover:text-white transition-all"
+              className="flex-1 flex items-center justify-center gap-2 h-[42px] bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-gray-400 hover:text-white transition-all group"
               title="Editar Modalidade"
             >
-              <Edit2 size={14} />
+              <Edit2 size={14} className="group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">Editar</span>
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onDelete(modality.id); }}
-              className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 transition-all"
+              className="h-[42px] w-[42px] flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 transition-all"
               title="Excluir"
             >
               <Trash2 size={16} />

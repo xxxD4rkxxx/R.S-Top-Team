@@ -37,7 +37,7 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
         <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-primary transition-transform group-hover:scale-110 duration-500 shrink-0">
           <Icon size={18} />
         </div>
-        <span className="text-[10px] font-black tracking-[0.15em] text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
+        <span className="text-[10px] font-black tracking-[0.15em] text-gray-500 leading-tight break-words overflow-hidden">
           {title}
         </span>
       </div>
@@ -129,7 +129,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     <>
       {/* Sistema de Cabeçalhos Padronizados (Desktop & Mobile) */}
       <MobileHeader 
-        title={`Olá, ${user?.name?.split(' ')[0] || 'Aluno'}`} 
+        title={`Olá, ${(user?.nome || user?.name || 'Aluno').split(' ')[0]}`} 
         profileIconClass={beltInfo.bgClass || 'bg-primary/20'}
         profileTextClass="text-white"
       />
@@ -141,12 +141,12 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
               <img src={user.photo} alt="" className="w-full h-full object-cover" />
             ) : (
               <span className={`font-black text-sm uppercase ${user?.belt === 'white' ? 'text-black' : 'text-white'}`}>
-                {user?.initials || user?.name?.[0]}
+                {user?.initials || (user?.nome || user?.name)?.[0]}
               </span>
             )}
           </div>
         )}
-        title={`Olá, ${user?.name?.split(' ')[0] || 'Aluno'}`}
+        title={`Olá, ${(user?.nome || user?.name || 'Aluno').split(' ')[0]}`}
         subtitle="Sua jornada de evolução técnica e física"
         loading={loadingAttendance}
         showProfile={false}

@@ -1,93 +1,61 @@
 import { useState, useEffect } from 'react'
 import { db } from '../firebase/config'
 import {
-  collection, query, where, onSnapshot, getDocs
+  collection, query, where, onSnapshot
 } from 'firebase/firestore'
-import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
+import { COLLECTIONS } from '../firebase/collections'
 
 /**
- * Escuta em tempo real (onSnapshot) as sessões de HOJE na coleção `sessions`.
- * Para cada sessão, busca os totais de presença da sub-coleção `attendances`.
- *
- * Retorna:
- *  sessions: [{ id, classTitle, modality, time, date, presentes, ausentes, total, attendances[] }]
- *  loading: boolean
+ * Escuta em tempo real (onSnapshot) as sessões de HOJE.
+ * OTIMIZADO: Não busca subcoleções automaticamente para evitar o erro de Assertion Failed
+ * e melhorar a performance do Dashboard.
  */
 let sessionsCache = []
-let lastFetchTs = 0
 
 export function useTodaySessions(instructorId = null) {
   const [sessions, setSessions] = useState(sessionsCache)
   const [loading, setLoading]   = useState(sessionsCache.length === 0)
 
   useEffect(() => {
-    // today in YYYY-MM-DD (local)
     const todayStr = new Date().toLocaleDateString('en-CA')
-
     const sessRef = collection(db, COLLECTIONS.CHAMADAS)
+    
     let q = query(sessRef, where('date', '==', todayStr))
-
     if (instructorId) {
       q = query(sessRef, where('date', '==', todayStr), where('instructorId', '==', instructorId))
     }
 
-    // onSnapshot → atualiza em tempo real
-    const unsubscribe = onSnapshot(q, async (snap) => {
-      try {
-        // Para cada sessão, busca as presenças (getDocs, não precisa de listener em sub-col)
-        const enriched = await Promise.all(
-          snap.docs.map(async (docSnap) => {
-            const data = docSnap.data()
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(docSnap => {
+        const d = docSnap.data()
+        return {
+          id: docSnap.id,
+          classTitle: d.classTitle || d.title || 'Aula',
+          modality: d.modality || '',
+          time: d.time || '',
+          date: d.date || todayStr,
+          presentes: d.presencasCount || 0,
+          ausentes: d.faltasCount || 0,
+          total: d.totalCount || 0,
+          finalizada: d.finalizada || false,
+          // Não buscamos 'attendances' aqui para performance. 
+          // O drawer de detalhes deve buscar se necessário.
+        }
+      })
 
-            const attSnap = await getDocs(
-              collection(db, COLLECTIONS.CHAMADAS, docSnap.id, SUB_COLLECTIONS.PRESENCAS)
-            )
-
-            let presentes = 0
-            let ausentes  = 0
-            const attendances = []
-
-            attSnap.forEach(a => {
-              const ad = a.data()
-              attendances.push({ id: a.id, ...ad })
-              if (ad.status === 'present')       presentes++
-              else if (ad.status === 'absent')   ausentes++
-            })
-
-            return {
-              id:         docSnap.id,
-              classTitle: data.classTitle || data.title || 'Aula',
-              modality:   data.modality   || '',
-              time:       data.time       || '',
-              date:       data.date       || todayStr,
-              presentes,
-              ausentes,
-              total:      attSnap.size,
-              attendances,
-            }
-          })
-        )
-
-        // Ordena pelo horário (campo time: "08:00", "14:00" …)
-        enriched.sort((a, b) => a.time.localeCompare(b.time))
-        
-        // Atualiza Cache Singleton
-        sessionsCache = enriched
-        lastFetchTs = Date.now()
-        
-        setSessions(enriched)
-      } catch (err) {
-        console.error('useTodaySessions error:', err)
-      } finally {
-        setLoading(false)
-      }
+      // Ordena pelo horário
+      data.sort((a, b) => a.time.localeCompare(b.time))
+      
+      sessionsCache = data
+      setSessions(data)
+      setLoading(false)
     }, (err) => {
-      console.error('useTodaySessions onSnapshot error:', err)
+      console.error('useTodaySessions error:', err)
       setLoading(false)
     })
 
     return () => unsubscribe()
-  }, [instructorId]) // run once; todayStr only changes at midnight
+  }, [instructorId])
 
   return { sessions, loading }
 }

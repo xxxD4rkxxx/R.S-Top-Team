@@ -50,7 +50,7 @@ function StudentAvatar({ student, belt }) {
         {hasPhoto ? (
           <img
             src={student.photo}
-            alt={`Foto de ${student.name}`}
+            alt={`Foto de ${student.nome || student.name}`}
             loading="lazy"
             decoding="async"
             onError={() => setImageError(true)}

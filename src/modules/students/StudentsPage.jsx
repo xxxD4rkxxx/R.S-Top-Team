@@ -65,7 +65,7 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
   const [input, setInput] = useState('')
   const [deleting, setDeleting] = useState(false)
   if (!student) return null
-  const match = input.trim().toLowerCase() === (student.name || '').trim().toLowerCase()
+  const match = input.trim().toLowerCase() === (student.nome || student.name || '').trim().toLowerCase()
 
   async function handleDelete() {
     if (!match) return
@@ -95,13 +95,13 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
           </div>
 
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-xs text-red-300 leading-relaxed">
-            Você está prestes a <strong>deletar permanentemente</strong> o aluno <strong>{student.name}</strong>.
+            Você está prestes a <strong>deletar permanentemente</strong> o aluno <strong>{student.nome || student.name}</strong>.
             Todos os dados associados a este cadastro serão perdidos.
           </div>
 
           <div>
             <label className="text-[10px] uppercase tracking-widest text-gray-500 font-black block mb-1.5">
-              Para confirmar, digite exatamente: <span className="text-white">{student.name}</span>
+              Para confirmar, digite exatamente: <span className="text-white">{student.nome || student.name}</span>
             </label>
             <input
               value={input}
@@ -261,8 +261,9 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   }, [students, userData?.academyConfig?.inativacao_visitante, changeStudentStatus]);
 
   const modalities = useMemo(() => {
-    const set = new Set(students.map(s => s.modality).filter(Boolean))
-    return ['todas', ...Array.from(set)]
+    const raw = students.flatMap(s => s.modalities || [s.modality]).filter(Boolean)
+    const normalized = Array.from(new Set(raw.map(m => m.toLowerCase() === 'jiu-jitsu' ? 'Jiu Jitsu' : m)))
+    return ['todas', ...normalized]
   }, [students])
 
   const filtered = useMemo(() => {
@@ -281,7 +282,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
     if (searchTerm) {
       const lower = searchTerm.toLowerCase()
       list = list.filter(s =>
-        (s.name || '').toLowerCase().includes(lower) ||
+        (s.nome || s.name || '').toLowerCase().includes(lower) ||
         (s.email || '').toLowerCase().includes(lower) ||
         (s.phone || '').includes(lower)
       )
@@ -293,8 +294,8 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
         (Array.isArray(s.modalities) && s.modalities.includes(modalityFilter))
       )
     }
-    if (sortBy === 'az') list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    if (sortBy === 'za') list = [...list].sort((a, b) => (b.name || '').localeCompare(a.name || ''))
+    if (sortBy === 'az') list = [...list].sort((a, b) => (a.nome || a.name || '').localeCompare(b.nome || b.name || ''))
+    if (sortBy === 'za') list = [...list].sort((a, b) => (b.nome || b.name || '').localeCompare(a.nome || a.name || ''))
     return list
   }, [students, searchTerm, statusFilter, modalityFilter, sortBy, isAdmin])
 
@@ -321,7 +322,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
         // MODO CRIAÇÃO: Verifica duplicidade antes de adicionar
         const isDuplicate = students.some(s =>
           (data.email && s.email?.toLowerCase() === data.email.toLowerCase()) ||
-          (s.name?.toLowerCase() === data.name.toLowerCase())
+          ((s.nome || s.name)?.toLowerCase() === (data.nome || data.name)?.toLowerCase())
         );
 
         if (isDuplicate) {
@@ -369,12 +370,12 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
 
   function renderAvatar(student) {
     const bgClass = beltConfig[student.belt?.toLowerCase()]?.bgClass || 'belt-none'
-    const initials = student.initials || student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
+    const initials = student.initials || (student.nome || student.name)?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
 
     return (
       <div className="flex items-center justify-center p-0.5 group-hover:border-primary/30 transition-colors shrink-0 relative">
         {student.photo ? (
-          <img src={student.photo} alt={student.name} className="w-11 h-11 rounded-full object-cover ring-1 ring-white/10" />
+          <img src={student.photo} alt={student.nome || student.name} className="w-11 h-11 rounded-full object-cover ring-1 ring-white/10" />
         ) : (
           <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass} text-white shadow-inner relative overflow-hidden`}>
             <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent opacity-40" />
@@ -525,7 +526,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                           {renderAvatar(student)}
                           <div className="flex flex-col">
                             <span className="text-sm text-app font-medium block uppercase tracking-tight group-hover:text-primary transition-colors">
-                              {student.name}
+                              {student.nome || student.name}
                             </span>
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5 flex items-center gap-1.5">
                               {student.roles?.visitante ? (
@@ -571,11 +572,18 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                       )}
                       <td className="py-4 px-5 text-center">
                         <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
-                          {(student.modalities || [student.modality]).map((m, i) => (
-                            <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase font-bold whitespace-nowrap">
-                              {m}
-                            </span>
-                          ))}
+                          {(() => {
+                            const mods = Array.from(new Set(
+                              (student.modalities || [student.modality])
+                                .filter(Boolean)
+                                .map(m => m.toLowerCase() === 'jiu-jitsu' ? 'Jiu Jitsu' : m)
+                            ));
+                            return mods.map((m, i) => (
+                              <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase font-bold whitespace-nowrap">
+                                {m}
+                              </span>
+                            ));
+                          })()}
                         </div>
                       </td>
                       {typeFilter !== 'visitante' && (
@@ -746,7 +754,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
           }}
           onClose={() => setShowPinModal(false)}
           title="Confirmar Identidade"
-          message={`Você está tentando ${pinModalAction?.type === 'view' ? 'visualizar' : pinModalAction?.type === 'edit' ? 'editar' : 'excluir'} os dados de ${pinModalAction?.student?.name}.`}
+          message={`Você está tentando ${pinModalAction?.type === 'view' ? 'visualizar' : pinModalAction?.type === 'edit' ? 'editar' : 'excluir'} os dados de ${pinModalAction?.student?.nome || pinModalAction?.student?.name}.`}
         />
       )}
 

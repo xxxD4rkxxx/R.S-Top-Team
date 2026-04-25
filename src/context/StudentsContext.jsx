@@ -104,12 +104,18 @@ export function StudentsProvider({ children }) {
     const unsubUsers = onSnapshot(usersRef, snapshot => {
       const usersData = snapshot.docs.map(d => mapDoc(d))
       setRawUsers(usersData)
+    }, (err) => {
+      console.error("❌ Erro ao escutar 'usuarios' no StudentsContext:", err)
+      setRawUsers([])
     })
 
     // Escuta Visitantes (Leads)
     const unsubVisitors = onSnapshot(visitorsRef, snapshot => {
       const visitorsData = snapshot.docs.map(d => mapDoc(d, true))
       setRawVisitors(visitorsData)
+    }, (err) => {
+      console.error("❌ Erro ao escutar 'visitantes' no StudentsContext:", err)
+      setRawVisitors([])
     })
 
     return () => {
@@ -122,6 +128,9 @@ export function StudentsProvider({ children }) {
   useEffect(() => {
     const combined = [...rawUsers, ...rawVisitors]
     const sorted = combined.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    
+    console.log(`👥 [StudentsContext] Sincronização concluída: ${rawUsers.length} usuários, ${rawVisitors.length} visitantes. Total: ${combined.length}`)
+    
     setStudents(sorted)
     setIsLoadingStudents(false)
   }, [rawUsers, rawVisitors])

@@ -127,9 +127,9 @@ export default function IntelligenceSection({ data }) {
     const handleWhatsApp = (student, type = 'resgate') => {
         let text = ''
         if (type === 'resgate') {
-            text = `Fala ${student.name.split(' ')[0]}! Tudo certo? Notei que você deu uma sumida do tatame ultimamente (${student.daysAbsent} dias). Tá tudo bem? Qualquer coisa que precisar pra voltar aos treinos conta comigo! Oss! 🥋`
+            text = `Fala ${(student.nome || student.name).split(' ')[0]}! Tudo certo? Notei que você deu uma sumida do tatame ultimamente (${student.daysAbsent} dias). Tá tudo bem? Qualquer coisa que precisar pra voltar aos treinos conta comigo! Oss! 🥋`
         } else {
-            text = `Fala ${student.name.split(' ')[0]}! Passando pra parabenizar pela constância nos treinos. Você está com ${student.attendanceRate}% de presença! Continue firme. Oss! 🥋`
+            text = `Fala ${(student.nome || student.name).split(' ')[0]}! Passando pra parabenizar pela constância nos treinos. Você está com ${student.attendanceRate}% de presença! Continue firme. Oss! 🥋`
         }
         window.open(`https://wa.me/55${student.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank')
     }
@@ -371,7 +371,7 @@ export default function IntelligenceSection({ data }) {
                                                 >
                                                     <img 
                                                         src={student.photo} 
-                                                        alt={student.name} 
+                                                        alt={student.nome || student.name} 
                                                         className="w-full h-full rounded-full object-cover"
                                                         onError={() => {
                                                             setFailedPhotos(prev => {
@@ -387,14 +387,14 @@ export default function IntelligenceSection({ data }) {
                                                     className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-black text-white transition-all duration-500 shadow-inner relative overflow-hidden ${beltConfig[student.belt?.toLowerCase()]?.bgClass || 'belt-none'}`}
                                                 >
                                                     <div className="absolute inset-0 bg-gradient-to-tr from-black/40 to-transparent opacity-50" />
-                                                    <span className="relative z-10 drop-shadow-lg">{getInitials(student.name)}</span>
+                                                    <span className="relative z-10 drop-shadow-lg">{getInitials(student.nome || student.name)}</span>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Nome */}
                                         <div className="w-24 md:w-36 shrink-0">
-                                            <h4 className="text-[11px] font-black text-white truncate tracking-tight">{student.name}</h4>
+                                            <h4 className="text-[11px] font-black text-white truncate tracking-tight">{student.nome || student.name}</h4>
                                         </div>
 
                                         {/* Barra de Progresso Centralizada (Estilo Referência) */}

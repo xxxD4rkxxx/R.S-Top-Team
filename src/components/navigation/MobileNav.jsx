@@ -43,7 +43,7 @@ const drawerItems = [
   { to: '/reports', icon: PieChart, label: 'Relatórios', roles: ['admin', 'gestor', 'professor'], subtitle: 'Análise financeira' },
   { to: '/modalities', icon: Layers, label: 'Turmas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Modalidades e horários' },
   { to: '/experimental', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'], subtitle: 'Aulas experimentais' },
-  { to: '/contracts', icon: FileText, label: 'Contratos', roles: ['admin', 'gestor'], subtitle: 'Documentos e termos' },
+  // { to: '/contracts', icon: FileText, label: 'Contratos', roles: ['admin', 'gestor'], subtitle: 'Documentos e termos' },
   { to: '/collaborators', icon: ShieldCheck, label: 'Equipe', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de professores' },
   { to: '/profile', icon: Settings, label: 'Perfil', roles: ['admin', 'gestor', 'professor', 'aluno'], subtitle: 'Minha conta' },
 ]

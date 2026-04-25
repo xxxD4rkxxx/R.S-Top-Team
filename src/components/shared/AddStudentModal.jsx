@@ -93,10 +93,14 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           Array.isArray(initialData.modality) ? initialData.modality :
             (initialData.modality ? [initialData.modality] : [initialModality])
 
-        normalizedModalities = Array.from(new Set(raw.map(m => m === 'Jiu-Jitsu' ? 'Jiu Jitsu' : m)))
+        // 🔥 Normalização Crítica: Mapear IDs para Nomes se necessário e remover duplicatas
+        normalizedModalities = Array.from(new Set(raw.map(m => {
+          if (m === 'jiu-jitsu' || m === 'jiu-jitsu-id') return 'Jiu Jitsu'
+          return m === 'Jiu-Jitsu' ? 'Jiu Jitsu' : m
+        })))
 
         setForm({
-          name: initialData.name || '',
+          name: initialData.nome || initialData.name || '',
           email: initialData.email || '',
           phone: initialData.phone || '',
           emergency: initialData.emergency || '',
@@ -112,9 +116,11 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           initialPaymentStatus: 'pending',
         })
       } else {
+        // Garantir que initialModality seja o nome amigável
+        const startMod = initialModality === 'jiu-jitsu' ? 'Jiu Jitsu' : initialModality
         setForm({
           name: '', email: '', phone: '', emergency: '', medical: '',
-          belt: 'none', modality: [initialModality], type: initialType,
+          belt: 'none', modality: [startMod], type: initialType,
           ageCategory: 'Adulto', gender: 'Masculino',
           parentName: '', parentPhone: '',
           planValue: '',
@@ -370,13 +376,13 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       ))
                     ) : (
                       activeModalities.map(m => {
-                        const isSelected = form.modality.includes(m.id);
+                        const isSelected = form.modality.includes(m.name);
                         return (
                           <button
                             key={m.id}
                             type="button"
                             onClick={() => {
-                              const newMods = isSelected ? form.modality.filter(id => id !== m.id) : [...form.modality, m.id];
+                              const newMods = isSelected ? form.modality.filter(name => name !== m.name) : [...form.modality, m.name];
                               setForm({ ...form, modality: newMods });
                             }}
                             className={`flex items-center justify-center px-3 py-2.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all ${isSelected ? 'bg-primary/20 border-primary text-primary' : 'bg-white/[0.02] border-white/10 text-gray-500'}`}
@@ -537,7 +543,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
+              className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 hover:text-gray-300 transition-all"
             >
               Cancelar
             </button>
@@ -551,7 +557,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
               ) : (
                 <>
                   <Save size={16} />
-                  {initialData ? 'Salvar Alterações' : 'Confirmar Cadastro'}
+                  <span className="text-white">{initialData ? 'Salvar Alterações' : 'Confirmar Cadastro'}</span>
                 </>
               )}
             </button>

@@ -9,7 +9,7 @@ import {
   getDocs, query, orderBy, limit, 
   collectionGroup, where, setDoc, deleteDoc, increment
 } from 'firebase/firestore'
-import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
+import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../firebase/collections'
 
 const USERS_COLLECTION = COLLECTIONS.USUARIOS
 
@@ -26,6 +26,10 @@ export const attendanceService = {
       const sessionData = {
         ...payload,
         seqId: Number(simpleSeqId),
+        presencasCount: 0,
+        faltasCount: 0,
+        totalCount: 0,
+        [FIELDS.FINALIZADA]: false,
         [FIELDS.CRIADO_EM]: serverTimestamp(),
       }
       

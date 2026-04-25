@@ -24,6 +24,7 @@ import MobileHeader from '../../components/navigation/MobileHeader'
 import PageHeader from '../../components/shared/PageHeader'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
 import { useFinance } from '../../hooks/useFinance'
+import { attendanceService } from '../../services/attendanceService'
 
 // ── Custom sport PNG icon wrappers ───────────────────────────────
 function IconJiuJitsu({ size = 16, className = '' }) {
@@ -100,8 +101,17 @@ function SessionDrawer({ session, isOpen, onClose, students }) {
                     </div>
                 </div>
 
+                {/* Loading State */}
+                {session.loadingDetails && (
+                    <div className="space-y-4">
+                        <Skeleton className="w-full h-20" />
+                        <Skeleton className="w-full h-10" />
+                        <Skeleton className="w-full h-10" />
+                    </div>
+                )}
+
                 {/* Presentes */}
-                {presentIds.length > 0 && (
+                {!session.loadingDetails && presentIds.length > 0 && (
                     <div>
                         <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">✅ Presentes ({presentIds.length})</h3>
                         <div className="space-y-2">
@@ -121,7 +131,7 @@ function SessionDrawer({ session, isOpen, onClose, students }) {
                 )}
 
                 {/* Ausentes */}
-                {absentIds.length > 0 && (
+                {!session.loadingDetails && absentIds.length > 0 && (
                     <div>
                         <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">❌ Ausentes ({absentIds.length})</h3>
                         <div className="space-y-2">
@@ -138,7 +148,7 @@ function SessionDrawer({ session, isOpen, onClose, students }) {
                     </div>
                 )}
 
-                {attList.length === 0 && (
+                {!session.loadingDetails && attList.length === 0 && (
                     <p className="text-center text-gray-600 text-sm py-8">Nenhum registro de presença nesta sessão.</p>
                 )}
             </div>
@@ -206,6 +216,26 @@ export default function ManagerDashboard() {
     const [showComparison, setShowComparison] = useState(false)
     const [selectedSession, setSelectedSession] = useState(null)
     const [showAbsents, setShowAbsents] = useState(false)
+
+    // Efeito para carregar detalhes da sessão selecionada
+    const handleSelectSession = async (sess) => {
+        setSelectedSession({ ...sess, loadingDetails: true })
+        try {
+            const attendancesMap = await attendanceService.getSessionAttendances(sess.id)
+            const list = Object.entries(attendancesMap).map(([id, status]) => ({
+                studentId: id,
+                status
+            }))
+            setSelectedSession(prev => ({
+                ...prev,
+                attendances: list,
+                loadingDetails: false
+            }))
+        } catch (err) {
+            console.error("Erro ao carregar detalhes da sessão:", err)
+            setSelectedSession(prev => ({ ...prev, loadingDetails: false }))
+        }
+    }
 
     const safeStudents = Array.isArray(students) ? students : []
     const today = new Date()
@@ -453,7 +483,7 @@ export default function ManagerDashboard() {
                                     return (
                                         <div key={sess.id}
                                             className="group relative flex items-center justify-between p-4 rounded-xl stat-card border border-white/5 hover:border-white/15 hover:bg-white/[0.03] cursor-pointer transition-all overflow-hidden"
-                                            onClick={() => setSelectedSession(sess)}>
+                                            onClick={() => handleSelectSession(sess)}>
 
                                             {/* Left accent bar */}
                                             <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full transition-all"
@@ -585,7 +615,7 @@ export default function ManagerDashboard() {
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {(stats.sessions).slice(0, 6).map((s, i) => (
-                                <button key={i} onClick={() => setSelectedSession(s)}
+                                <button key={i} onClick={() => handleSelectSession(s)}
                                     className="text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 hover:bg-white/[0.07] transition-all group">
                                     <div className="flex items-center justify-between mb-2">
                                         <p className="text-sm font-bold text-white group-hover:text-[#DC143C] transition-colors">{s.classTitle || s.title || 'Aula'}</p>

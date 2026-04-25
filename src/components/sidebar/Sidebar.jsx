@@ -31,13 +31,13 @@ const navGroups = [
       { to: '/modalidades', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'] },
     ]
   },
-  {
-    title: 'Acordos e Planos',
-    items: [
-      { to: '/planos', icon: Gem, label: 'Planos', roles: ['admin', 'gestor'] },
-      { to: '/contratos', icon: FileDigit, label: 'Gestão de Contratos', roles: ['admin', 'gestor'] },
-    ]
-  },
+  // {
+  //   title: 'Acordos e Planos',
+  //   items: [
+  //     { to: '/planos', icon: Gem, label: 'Planos', roles: ['admin', 'gestor'] },
+  //     { to: '/contratos', icon: FileDigit, label: 'Gestão de Contratos', roles: ['admin', 'gestor'] },
+  //   ]
+  // },
   {
     title: 'Inteligência Financeira',
     items: [

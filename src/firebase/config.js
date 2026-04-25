@@ -20,7 +20,7 @@ import {
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager,
+  persistentSingleTabManager,
   CACHE_SIZE_UNLIMITED
 } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
@@ -37,28 +37,27 @@ export const firebaseConfig = {
 // Inicializa o App (HMR Safe)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
-// ─── Firestore Initialization (Resilient Singleton) ──────────────────────────
+// ─── Firestore Initialization (Ultra-Stable Singleton) ──────────────────────
 let dbInstance = null
 try {
-  // Verificamos se já existe um app inicializado
   if (app) {
+    // Usamos SingleTabManager por padrão para evitar o erro b815/ca9 de sincronização
     dbInstance = initializeFirestore(app, {
       localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
+        tabManager: persistentSingleTabManager(),
         cacheSizeBytes: CACHE_SIZE_UNLIMITED
       })
     })
-    console.log('🔥 [Firebase/Config] Firestore inicializado com Persistent Cache (Multi-Tab).')
+    console.log('🔥 [Firebase/Config] Firestore inicializado com Persistent Cache (Single-Tab para estabilidade).')
   }
 } catch (error) {
-  // Se falhar (ex: erro b815 ou disco cheio), tentamos o fallback em memória
-  if (error.code === 'failed-precondition' || error.message?.includes('INTERNAL ASSERTION FAILED')) {
-    console.warn('⚠️ [Firebase/Config] Persistent cache falhou ou já está em uso. Fallback para cache em memória...')
-    dbInstance = getFirestore(app)
+  const errMsg = error.message || ''
+  if (errMsg.includes('INTERNAL ASSERTION FAILED') || error.code === 'failed-precondition') {
+    console.warn('⚠️ [Firebase/Config] Conflito de cache detectado. Reiniciando Firestore em modo padrão...')
   } else {
-    console.error('❌ [Firebase/Config] Erro crítico ao inicializar Firestore:', error)
-    dbInstance = getFirestore(app)
+    console.error('❌ [Firebase/Config] Erro ao inicializar Firestore:', error)
   }
+  dbInstance = getFirestore(app)
 }
 
 export const db = dbInstance
@@ -67,12 +66,19 @@ export const storage = getStorage(app)
 
 export default app
 
-// 🕵️ Monitor de Conectividade (Detecta AdBlockers/Firewalls)
+// 🕵️ Monitor de Bloqueios (Detecta AdBlockers ou Firewalls agressivos)
 if (typeof window !== 'undefined') {
+  const checkConnectivity = async () => {
+    try {
+      const response = await fetch('https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel', { method: 'HEAD', mode: 'no-cors' })
+      if (response.type === 'opaque') {
+        // Sucesso parcial (opaque é esperado com no-cors)
+      }
+    } catch (e) {
+      console.warn('🚨 [CIBERSEGURANÇA] Bloqueio de rede detectado! O navegador ou um AdBlocker está impedindo a comunicação com o Firebase. Isso causará erros de escrita e o dashboard pode não carregar.')
+    }
+  }
   window.addEventListener('load', () => {
-    fetch('https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel', { mode: 'no-cors' })
-      .catch(() => {
-        console.error('🚨 [ALERTA] Conexão com Google Cloud bloqueada! Desative seu AdBlocker ou verifique o Firewall para evitar o erro b815.')
-      })
+    setTimeout(checkConnectivity, 3000)
   })
 }

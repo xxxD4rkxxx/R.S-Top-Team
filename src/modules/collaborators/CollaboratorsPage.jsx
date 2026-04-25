@@ -84,7 +84,7 @@ function DeleteConfirmDialog({ member, onConfirm, onClose }) {
   const [input, setInput] = useState('')
   const [deleting, setDeleting] = useState(false)
   if (!member) return null
-  const match = input.trim().toLowerCase() === (member.name || '').trim().toLowerCase()
+  const match = input.trim().toLowerCase() === (member.nome || member.name || '').trim().toLowerCase()
   const isAdminTarget = member.roles?.admin || member.role === 'admin'
 
   async function handleDelete() {
@@ -115,7 +115,7 @@ function DeleteConfirmDialog({ member, onConfirm, onClose }) {
           </div>
 
           <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-xs text-red-300 leading-relaxed text-center">
-            Você está prestes a <strong>deletar permanentemente</strong> o membro <strong>{member.name}</strong>.
+            Você está prestes a <strong>deletar permanentemente</strong> o membro <strong>{member.nome || member.name}</strong>.
             Todos os dados e acessos serão removidos.
           </div>
 
@@ -131,7 +131,7 @@ function DeleteConfirmDialog({ member, onConfirm, onClose }) {
 
           <div className="space-y-3">
             <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black block text-center">
-              Para confirmar, digite: <span className="text-white">{member.name}</span>
+              Para confirmar, digite: <span className="text-white">{member.nome || member.name}</span>
             </label>
             <input
               value={input}
@@ -210,16 +210,24 @@ export default function CollaboratorsPage() {
    * 🎯 Filtra por 'roles' para garantir precisão no modelo Multi-Role.
    */
   const stats = useMemo(() => {
-    const active = users.filter(u => u.status === 'Ativo').length
     const getRoles = (u) => u.papeis || u.roles || {}
-    const professors = users.filter(u => getRoles(u).professor).length
-    const gestors = users.filter(u => getRoles(u).gestor || getRoles(u).admin).length
-    // Total de equipe: qualquer usuário que tenha uma role administrativa/docente
-    const team = users.filter(u => {
+    
+    // 🏷️ Filtramos para ignorar Admins nos cálculos, conforme solicitado
+    const staffExcludingAdmins = users.filter(u => {
       const r = getRoles(u)
-      return r.admin || r.gestor || r.professor
-    }).length
-    return { total: team, active, professors, gestors }
+      return !r.admin && (r.gestor || r.professor)
+    })
+
+    const active = staffExcludingAdmins.filter(u => u.status === 'Ativo').length
+    const professors = staffExcludingAdmins.filter(u => getRoles(u).professor).length
+    const gestors = staffExcludingAdmins.filter(u => getRoles(u).gestor).length
+    
+    return { 
+      total: staffExcludingAdmins.length, 
+      active, 
+      professors, 
+      gestors 
+    }
   }, [users])
 
   /**
@@ -239,7 +247,7 @@ export default function CollaboratorsPage() {
       if (!isAdmin && uRoles.admin) return false
 
       // 2. Filtro Textual (Nome/Email)
-      const matchesSearch = (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = (user.nome || user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
 
       // 3. Filtro por Categoria de Cargo
@@ -254,8 +262,8 @@ export default function CollaboratorsPage() {
     })
 
     // Ordenação alfabética
-    if (sortBy === 'az') list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    if (sortBy === 'za') list = [...list].sort((a, b) => (b.name || '').localeCompare(a.name || ''))
+    if (sortBy === 'az') list = [...list].sort((a, b) => (a.nome || a.name || '').localeCompare(b.nome || b.name || ''))
+    if (sortBy === 'za') list = [...list].sort((a, b) => (b.nome || b.name || '').localeCompare(a.nome || a.name || ''))
     return list
   }, [users, searchTerm, roleFilter, statusFilter, sortBy])
 
@@ -270,7 +278,7 @@ export default function CollaboratorsPage() {
 
   const toggleStatus = async (user) => {
     const newStatus = user.status === 'Ativo' ? 'Inativo' : 'Ativo'
-    if (confirm(`Deseja alterar o status de ${user.name} para ${newStatus}?`)) {
+    if (confirm(`Deseja alterar o status de ${user.nome || user.name} para ${newStatus}?`)) {
       await updateProfile(user.id, { status: newStatus })
     }
     setShowMenu(null)
@@ -384,17 +392,17 @@ export default function CollaboratorsPage() {
                       <div className="flex items-center gap-4">
                         <div className="flex items-center justify-center p-0.5 group-hover:border-primary/30 transition-colors shrink-0 relative">
                           {member.photoURL ? (
-                            <img src={member.photoURL} alt={member.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
+                            <img src={member.photoURL} alt={member.nome || member.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
                           ) : (
                             <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 bg-gradient-to-br from-primary to-black/10 text-white shadow-inner">
-                              {getInitials(member.name)}
+                              {getInitials(member.nome || member.name)}
                             </div>
                           )}
                         </div>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-app font-medium block uppercase tracking-tight group-hover:text-primary transition-colors">
-                              {member.name || 'Sem Nome'}
+                              {member.nome || member.name || 'Sem Nome'}
                             </span>
                             {member.id === userData?.id && (
                               <span className="px-1.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-[8px] font-black text-primary uppercase tracking-tighter">Você</span>
@@ -445,15 +453,10 @@ export default function CollaboratorsPage() {
                     <td className="py-4 px-5 text-center">
                       {canSeeStaff ? (
                         <div className="flex flex-col items-center gap-1">
-
+                          {/* 🔐 Mostra apenas o PIN de acesso principal (Admin se houver) */}
                           <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-emerald-400 tracking-[0.2em] min-w-[80px]">
-                            {member.pin || fetchedPins[member.id] || '---'}
+                            {member.adminPin || member.pin || fetchedPins[member.id] || '---'}
                           </div>
-                          {member.adminPin && (
-                            <span className="text-[9px] font-black text-primary/50 uppercase tracking-widest">
-                              Admin: {member.adminPin}
-                            </span>
-                          )}
                         </div>
                       ) : (
                         <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-gray-700 tracking-widest min-w-[80px]">
@@ -547,7 +550,7 @@ export default function CollaboratorsPage() {
           }}
           onClose={() => setShowPinModal(false)}
           title="Confirmar Identidade"
-          message={`Você está tentando ${pinModalAction?.type === 'edit' ? 'editar' : 'excluir'} os dados de ${pinModalAction?.member?.name}.`}
+          message={`Você está tentando ${pinModalAction?.type === 'edit' ? 'editar' : 'excluir'} os dados de ${pinModalAction?.member?.nome || pinModalAction?.member?.name}.`}
         />
       )}
 
@@ -681,11 +684,11 @@ function CollaboratorActionMenu({ member, menuPosition, isSelf, onClose, onActio
                 {member.photoURL ? (
                   <img src={member.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  getInitials(member.name)
+                  getInitials(member.nome || member.name)
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-base font-black text-white truncate">{member.name}</p>
+                <p className="text-base font-black text-white truncate">{member.nome || member.name}</p>
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Colaborador da Academia</p>
               </div>
             </div>

@@ -17,6 +17,7 @@ import ErrorBoundary from './components/shared/ErrorBoundary'
 import { useSystemUsers } from './hooks/useSystemUsers'
 import { Toaster } from 'react-hot-toast'
 import NotificationCenter from './components/notifications/NotificationCenter'
+import NetworkStatusIndicator from './components/navigation/NetworkStatusIndicator'
 
 // ─── Lazy-loaded pages ───────────────────────────────────────────────────────
 // Each route gets its own chunk — only loaded when navigated to.
@@ -146,6 +147,7 @@ function AppContent() {
             <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col">
               <Toaster position="top-right" />
               <NotificationCenter />
+              <NetworkStatusIndicator />
               <ScrollToTop />
               <Suspense fallback={<PageSkeleton />}>
                 <AnimatePresence mode="wait" initial={false}>

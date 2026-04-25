@@ -5,6 +5,7 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, Award, Activity,
   Trophy, FileDown, Target, MessageSquare, Plus, X, Star
 } from 'lucide-react'
+import { COLLECTIONS, SUB_COLLECTIONS } from '../../firebase/collections'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts'
 import SlideOver from '../shared/SlideOver'
 
@@ -62,7 +63,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
     try {
       // All attendance records for this student (from sessions -> attendances)
       const q = query(
-        collectionGroup(db, 'attendances'),
+        collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
         where('studentId', '==', student.id)
       )
       const snap = await getDocs(q)
@@ -79,7 +80,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
       setRecords(recs)
 
       // Professor notes
-      const notesSnap = await getDocs(fsCollection(db, 'students', student.id, 'notes'))
+      const notesSnap = await getDocs(fsCollection(db, COLLECTIONS.ALUNOS, student.id, SUB_COLLECTIONS.ANOTACOES))
       const nts = notesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
       setNotes(nts)
@@ -224,7 +225,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
     if (!noteText.trim()) return
     setSavingNote(true)
     try {
-      const doc = await addDoc(fsCollection(db, 'students', student.id, 'notes'), {
+      const doc = await addDoc(fsCollection(db, COLLECTIONS.ALUNOS, student.id, SUB_COLLECTIONS.ANOTACOES), {
         text: noteText.trim(),
         author: 'Professor',
         createdAt: serverTimestamp()
@@ -251,7 +252,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
       </tr>`
     }).join('')
     w.document.write(`
-      <html><head><title>Frequência — ${student.name}</title><style>
+      <html><head><title>Frequência — ${student.nome || student.name}</title><style>
         body{font-family:sans-serif;padding:32px;color:#111}
         h1{font-size:20px;margin-bottom:4px}p{color:#555;font-size:13px;margin:0 0 24px}
         table{width:100%;border-collapse:collapse}th,td{padding:10px 14px;text-align:left;border-bottom:1px solid #eee;font-size:13px}
@@ -261,7 +262,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
         .kpi b{display:block;font-size:24px}
       </style></head><body>
         <h1>Relatório de Frequência</h1>
-        <p>${student.name} — Gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
+        <p>${student.nome || student.name} — Gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
         <div class="kpis">
           <div class="kpi"><b>${presentRecords.length}</b>Total de Presenças</div>
           <div class="kpi"><b>${thisMonthCount}</b>Presenças este Mês</div>

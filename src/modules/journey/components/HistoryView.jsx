@@ -40,14 +40,14 @@ export default function HistoryView({ student, onBack }) {
           </button>
           <div className="flex items-center gap-4">
              {student.photo ? (
-               <img src={student.photo} alt={student.name} className="w-14 h-14 rounded-2xl object-cover ring-2 ring-white/10 shadow-2xl" />
+               <img src={student.photo} alt={student.nome || student.name} className="w-14 h-14 rounded-2xl object-cover ring-2 ring-white/10 shadow-2xl" />
              ) : (
                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-black ring-2 ring-white/10 ${beltConfig[student.belt]?.bgClass || 'belt-white'}`}>
-                 {student.initials || student.name?.[0]}
+                 {student.initials || (student.nome || student.name)?.[0]}
                </div>
              )}
              <div>
-               <h2 className="text-xl font-black text-white uppercase tracking-tight">{student.name}</h2>
+               <h2 className="text-xl font-black text-white uppercase tracking-tight">{student.nome || student.name}</h2>
                <div className="flex items-center gap-2 mt-1">
                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${beltConfig[student.belt]?.bgClass || 'belt-white'} ${beltConfig[student.belt]?.textColor === '#FFFFFF' ? 'text-white' : 'text-black'}`}>
                    {beltConfig[student.belt]?.label}

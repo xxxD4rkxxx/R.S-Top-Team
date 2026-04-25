@@ -50,26 +50,30 @@ export default function ModalitiesPage() {
   }
 
   const handleSaveModality = async (data) => {
-    const shouldOpenConfig = data._openConfig
-    delete data._openConfig
+    try {
+      const shouldOpenConfig = data._openConfig
+      delete data._openConfig
 
-    let savedModalityId = editingModality?.id
-    if (editingModality) {
-      await updateModality(editingModality.id, data)
-    } else {
-      const newModality = await addModality(data)
-      savedModalityId = newModality?.id
-    }
+      let savedModalityId = editingModality?.id
+      if (editingModality) {
+        await updateModality(editingModality.id, data)
+      } else {
+        const newModalityId = await addModality(data)
+        savedModalityId = newModalityId
+      }
 
-    setIsModalityModalOpen(false)
+      setIsModalityModalOpen(false)
 
-    if (shouldOpenConfig && savedModalityId) {
-      // Pequeno delay para suavidade na transição de modais
-      setTimeout(() => {
-        const mod = modalities.find(m => m.id === savedModalityId) || { ...data, id: savedModalityId }
-        setModalityForConfig(mod)
-        setIsBeltConfigModalOpen(true)
-      }, 300)
+      if (shouldOpenConfig && savedModalityId) {
+        // Pequeno delay para suavidade na transição de modais
+        setTimeout(() => {
+          const mod = modalities.find(m => m.id === savedModalityId) || { ...data, id: savedModalityId }
+          setModalityForConfig(mod)
+          setIsBeltConfigModalOpen(true)
+        }, 300)
+      }
+    } catch (err) {
+      alert(`Erro ao salvar modalidade: ${err.message}`)
     }
   }
 
@@ -89,7 +93,13 @@ export default function ModalitiesPage() {
   }
 
   const handleDeleteModality = async (id) => {
-    if (confirm('Deseja realmente excluir esta modalidade?')) await deleteModality(id)
+    if (confirm('Deseja realmente excluir esta modalidade?')) {
+      try {
+        await deleteModality(id)
+      } catch (err) {
+        alert(`Erro ao excluir: ${err.message}`)
+      }
+    }
   }
 
   const handleAddClass = (modalityId) => {
@@ -105,9 +115,13 @@ export default function ModalitiesPage() {
   }
 
   const handleSaveClass = async (data) => {
-    if (editingClass) await updateClass(activeModalityId, editingClass.id, data)
-    else await addClass(activeModalityId, data)
-    setIsClassModalOpen(false)
+    try {
+      if (editingClass) await updateClass(activeModalityId, editingClass.id, data)
+      else await addClass(activeModalityId, data)
+      setIsClassModalOpen(false)
+    } catch (err) {
+      alert(`Erro ao salvar turma: ${err.message}`)
+    }
   }
 
   const handleDeleteClass = async (modalityId, classId) => {
@@ -184,10 +198,10 @@ export default function ModalitiesPage() {
 
           <button
             onClick={handleAddModality}
-            className="flex items-center justify-center w-[48px] sm:w-auto sm:px-6 md:px-8 h-[48px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-black shadow-xl shadow-primary/20 hover:shadow-primary/30"
+            className="flex items-center justify-center w-[48px] sm:w-auto sm:px-6 md:px-8 h-[48px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:opacity-90" 
           >
-            <Plus size={18} strokeWidth={3} /> 
-            <span className="hidden md:inline ml-2">NOVA MODALIDADE</span>
+            <Plus size={18} strokeWidth={2.5} /> 
+            <span className="hidden md:inline ml-2 text-white">NOVA MODALIDADE</span>
           </button>
         </div>
 

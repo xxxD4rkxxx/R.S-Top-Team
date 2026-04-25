@@ -38,6 +38,7 @@ export default function ModalityModal({
   const [startTime, setStartTime] = useState('08:00')
   const [endTime, setEndTime] = useState('09:00')
   const [capacity, setCapacity] = useState(20)
+  const [isUnlimited, setIsUnlimited] = useState(false)
   const [showProfessors, setShowProfessors] = useState(false)
 
   const days = [
@@ -79,6 +80,7 @@ export default function ModalityModal({
       setStartTime('08:00')
       setEndTime('09:00')
       setCapacity(20)
+      setIsUnlimited(false)
     }
   }, [editingModality, isOpen])
 
@@ -120,7 +122,7 @@ export default function ModalityModal({
         diasSemana: selectedDays,
         horarioInicio: startTime,
         horarioFim: endTime,
-        capacidade: Number(capacity),
+        capacidade: isUnlimited ? null : Number(capacity),
         status: 'ativo'
       }
     }
@@ -152,7 +154,7 @@ export default function ModalityModal({
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="modal-content modal-content-bottom-sheet relative max-w-4xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
+          className="modal-content modal-content-bottom-sheet relative md:!max-w-6xl md:w-[95vw] w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
         >
         {/* Mobile Drag Handle */}
         <div className="md:hidden flex justify-center pt-4 pb-2">
@@ -448,17 +450,29 @@ export default function ModalityModal({
                           </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                             <UsersIcon size={12} /> LIMITE DE ALUNOS
-                          </label>
-                          <input 
-                            type="number"
-                            value={capacity}
-                            onChange={(e) => setCapacity(e.target.value)}
-                            placeholder="Ex: 20"
-                            className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
-                          />
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between px-1">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 flex items-center gap-2">
+                               <UsersIcon size={12} /> LIMITE DE ALUNOS
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setIsUnlimited(!isUnlimited)}
+                              className={`text-[9px] font-black uppercase tracking-widest transition-colors ${isUnlimited ? 'text-primary' : 'text-gray-600'}`}
+                            >
+                              {isUnlimited ? 'SEM LIMITE ATIVADO' : 'ATIVAR SEM LIMITE'}
+                            </button>
+                          </div>
+                          
+                          {!isUnlimited && (
+                            <input 
+                              type="number"
+                              value={capacity}
+                              onChange={(e) => setCapacity(e.target.value)}
+                              placeholder="Ex: 20"
+                              className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
+                            />
+                          )}
                         </div>
                       </div>
                     )}
@@ -499,7 +513,7 @@ export default function ModalityModal({
 
               <button
                 type="submit"
-                className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-black rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 group px-6 order-2 sm:order-3"
+                className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-white rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-primary/20 active:scale-95 group px-6 order-2 sm:order-3"
               >
                 <Save size={18} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
                 {editingModality ? 'Salvar' : 'Criar'}
@@ -514,7 +528,14 @@ export default function ModalityModal({
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Turmas Registradas</h3>
                   <p className="text-[9px] text-gray-600 uppercase font-bold mt-1">{editingModality.turmas?.length || 0} Horários ativos</p>
                 </div>
-                {/* Botão Nova Turma removido conforme solicitado */}
+                <button
+                  type="button"
+                  onClick={() => onAddClass(editingModality.id)}
+                  className="flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-xl text-primary text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 group"
+                >
+                  <Plus size={14} className="group-hover:rotate-90 transition-transform duration-300" />
+                  Nova Turma
+                </button>
               </div>
 
               <div className="space-y-3">

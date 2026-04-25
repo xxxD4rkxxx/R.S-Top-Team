@@ -4,7 +4,7 @@ import {
   X, User, Users, Mail, Shield, Check, Copy,
   AlertCircle, Info, Search, GraduationCap,
   ChevronDown, Landmark, Settings, Save, RefreshCw,
-  Lock
+  Lock, PhoneCall, HeartPulse, Smartphone
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 // Hooks para integração com Firebase e controle de UI
@@ -14,6 +14,54 @@ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { useModalities } from '../../hooks/useModalities'
+
+/**
+ * Seletor Customizado Premium (Copiado do AddStudentModal para consistência)
+ */
+function CustomSelect({ label, value, onChange, options, disabled }) {
+  const [isOpen, setIsOpen] = React.useState(false)
+  const ref = React.useRef(null)
+
+  React.useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find(o => o[0] === value) || options[0]
+
+  return (
+    <div className="flex flex-col gap-1.5 relative w-full font-sans" ref={ref}>
+      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1 font-sans">{label}</label>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20 font-sans"
+      >
+        <span className="truncate font-sans">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={14} className="text-gray-500 transition-transform duration-200 shrink-0 ml-2" />
+      </button>
+
+      {isOpen && !disabled && (
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2 font-sans">
+          {options.map(([v, l]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => { onChange(v); setIsOpen(false) }}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 font-sans ${value === v ? 'text-white bg-white/5 font-bold' : 'text-gray-400 font-medium'}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 /**
  * UserCreationModal - Modal Unificado de Gestão de Usuários
@@ -37,6 +85,14 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     pin: '', // 🔑 OPCIONAL: Permite definir manualmente
     roles: [], // Inicia vazio para escolha explícita
     modalities: [], // 🥋 Modalidades do professor
+    // --- NOVOS CAMPOS SINCRONIZADOS COM ALUNOS ---
+    gender: 'Masculino',
+    ageCategory: 'Adulto',
+    emergency: '',
+    medical: '',
+    parentName: '',
+    parentPhone: '',
+    // ------------------------------------------
     permissions: {
       viewStudents: true,
       editStudents: false,
@@ -70,7 +126,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     if (isOpen) {
       if (initialData) {
         setFormData({
-          name: initialData.name || '',
+          name: initialData.nome || initialData.name || '',
           email: initialData.email || '',
           phone: initialData.phone || '',
           pin: initialData.pin || '',
@@ -80,6 +136,14 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
               ? Object.keys(initialData.roles).filter(r => initialData.roles[r])
               : ['aluno'],
           modalities: initialData.modalities || [],
+          // --- NOVOS CAMPOS SINCRONIZADOS ---
+          gender: initialData.gender || 'Masculino',
+          ageCategory: initialData.ageCategory || 'Adulto',
+          emergency: initialData.emergency || '',
+          medical: initialData.medical || '',
+          parentName: initialData.parentName || '',
+          parentPhone: initialData.parentPhone || '',
+          // --------------------------------
           permissions: {
             ...defaultRolePermissions.aluno,
             ...(initialData.permissions || {})
@@ -92,6 +156,12 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           name: '', email: '', phone: '', pin: '',
           roles: [],
           modalities: [],
+          gender: 'Masculino',
+          ageCategory: 'Adulto',
+          emergency: '',
+          medical: '',
+          parentName: '',
+          parentPhone: '',
           permissions: { ...defaultRolePermissions.aluno }
         })
         setSelectedStudentId(null)
@@ -151,28 +221,35 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
   }, [shouldLock, isOpen])
 
   // Filtro de busca para promoção de alunos
-  const filteredStudents = studentSearch.length > 1
+  const filteredStudents = studentSearch
     ? students.filter(s =>
-      s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      s.email.toLowerCase().includes(studentSearch.toLowerCase())
+      (s.nome || s.name || '').toLowerCase().includes(studentSearch.toLowerCase()) ||
+      (s.email || '').toLowerCase().includes(studentSearch.toLowerCase())
     ).slice(0, 5)
     : []
 
   /** Preenche o formulário ao selecionar um aluno existente */
   const handleSelectStudent = (student) => {
     // Ao selecionar um aluno, importamos os cargos dele (geralmente só 'aluno')
-    const studentRoles = Array.isArray(student.roles)
-      ? student.roles
-      : student.roles
-        ? Object.keys(student.roles).filter(r => student.roles[r])
-        : ['aluno']
+    const rawRoles = student.papeis || student.roles || { aluno: true }
+    const studentRoles = Array.isArray(rawRoles)
+      ? rawRoles
+      : Object.keys(rawRoles).filter(r => rawRoles[r])
 
     setFormData(prev => ({
       ...prev,
-      name: student.name,
+      name: student.nome || student.name,
       email: student.email || '',
       phone: student.phone || '',
       roles: studentRoles,
+      // --- NOVOS CAMPOS SINCRONIZADOS ---
+      gender: student.gender || 'Masculino',
+      ageCategory: student.ageCategory || 'Adulto',
+      emergency: student.emergency || '',
+      medical: student.medical || '',
+      parentName: student.parentName || '',
+      parentPhone: student.parentPhone || '',
+      // --------------------------------
       permissions: mergePermissions(studentRoles)
     }))
     setSelectedStudentId(student.id)
@@ -469,7 +546,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                               <GraduationCap size={16} />
                             </div>
                             <div>
-                              <p className="text-xs font-black text-white uppercase tracking-tight">{student.name}</p>
+                              <p className="text-xs font-black text-white uppercase tracking-tight">{student.nome || student.name}</p>
                               <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">{student.email}</p>
                             </div>
                           </button>
@@ -490,9 +567,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Telefone / WhatsApp</label>
                     <div className="relative">
-                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 invisible" />
-                      {/* Reuse smartphone icon if possible, but Mail is already here in snippets, I'll switch to standard style */}
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600">📱</span>
+                      <Smartphone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
                       <input type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="(00) 00000-0000" />
                     </div>
                   </div>
@@ -504,6 +579,22 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                     <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
                     <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="email@exemplo.com" />
                   </div>
+                </div>
+
+                {/* --- NOVOS CAMPOS: GÊNERO E CATEGORIA --- */}
+                <div className="grid grid-cols-2 gap-4">
+                  <CustomSelect
+                    label="Gênero"
+                    value={formData.gender}
+                    onChange={v => setFormData({ ...formData, gender: v })}
+                    options={[['Masculino', 'Masculino'], ['Feminino', 'Feminino']]}
+                  />
+                  <CustomSelect
+                    label="Categoria de Idade"
+                    value={formData.ageCategory}
+                    onChange={v => setFormData({ ...formData, ageCategory: v })}
+                    options={[['Adulto', 'Adulto'], ['Juvenil', 'Juvenil'], ['Kids', 'Kids']]}
+                  />
                 </div>
 
                 <div className="space-y-1.5">
@@ -589,6 +680,68 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                     </AnimatePresence>
                   </div>
                 )}
+
+                {/* --- NOVOS CAMPOS: SAÚDE E SEGURANÇA --- */}
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-3">
+                    Saúde e Segurança
+                    <div className="h-px flex-1 bg-primary/5" />
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Contato de Emergência</label>
+                      <div className="relative">
+                        <PhoneCall size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                        <input
+                          type="text"
+                          value={formData.emergency}
+                          onChange={e => setFormData({ ...formData, emergency: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                          placeholder="Nome e Telefone"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Restrições Médicas</label>
+                      <div className="relative">
+                        <HeartPulse size={14} className="absolute left-3.5 top-4 text-gray-600" />
+                        <textarea
+                          value={formData.medical}
+                          onChange={e => setFormData({ ...formData, medical: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium min-h-[100px] outline-none"
+                          placeholder="Ex: Alergias, problemas físicos..."
+                        />
+                      </div>
+                    </div>
+
+                    {(formData.ageCategory === 'Kids' || formData.ageCategory === 'Juvenil') && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Responsável Legal</label>
+                          <input
+                            type="text"
+                            value={formData.parentName}
+                            onChange={e => setFormData({ ...formData, parentName: e.target.value })}
+                            className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                            placeholder="Nome do Pai/Mãe"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">WhatsApp Responsável</label>
+                          <input
+                            type="text"
+                            value={formData.parentPhone}
+                            onChange={e => setFormData({ ...formData, parentPhone: e.target.value })}
+                            className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                            placeholder="(00) 00000-0000"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* PERMISSÕES CATEGORIZADAS (ACCORDIONS) */}
                 <div className="space-y-2">
