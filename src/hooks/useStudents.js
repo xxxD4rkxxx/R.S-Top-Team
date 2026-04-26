@@ -227,6 +227,7 @@ export function useStudents() {
       parentPhone: newStudent.parentPhone || '',
       isPaymentExempt: newStudent.isPaymentExempt || false,
       planValue: newStudent.planValue || '',
+      turmas: newStudent.turmas || [],
       [FIELDS.PIN]: pin,
       pin: pin,
       [FIELDS.PAPEIS]: isVisitor ? { visitante: true } : { aluno: true },

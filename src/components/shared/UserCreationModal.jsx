@@ -109,7 +109,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       manageSystem: false,
       viewStaffPins: false,   // 🔐 NOVA
       viewStudentPins: false, // 🔐 NOVA
-    }
+    },
+    turmas: []
   })
 
   // Controla quais categorias de permissão estão abertas (Iniciam fechadas para maior limpeza visual)
@@ -148,6 +149,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           medical: initialData.medical || '',
           parentName: initialData.parentName || '',
           parentPhone: initialData.parentPhone || '',
+          turmas: initialData.turmas || [],
           // --------------------------------
           permissions: {
             ...defaultRolePermissions.aluno,
@@ -169,6 +171,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           medical: '',
           parentName: '',
           parentPhone: '',
+          turmas: [],
           permissions: { ...defaultRolePermissions.aluno }
         })
         setSelectedStudentId(null)
@@ -188,6 +191,40 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       }
     }
   }, [isOpen, initialData])
+
+  // 🔥 Sincronização Automática de Turmas Únicas
+  React.useEffect(() => {
+    if (!dbModalities || dbModalities.length === 0) return
+
+    setFormData(prev => {
+      const currentTurmas = [...(prev.turmas || [])]
+      let changed = false
+
+      prev.modalities.forEach(modName => {
+        const mod = dbModalities.find(m => m.name === modName)
+        if (mod && mod.turmas && mod.turmas.length === 1) {
+          const singleTurmaId = mod.turmas[0].id
+          if (!currentTurmas.includes(singleTurmaId)) {
+            currentTurmas.push(singleTurmaId)
+            changed = true
+          }
+        }
+      })
+
+      // Remover turmas de modalidades que não estão mais selecionadas
+      const updatedTurmas = currentTurmas.filter(tId => {
+        const turmaObj = (dbModalities || []).flatMap(m => m.turmas || []).find(t => t.id === tId)
+        if (!turmaObj) return false
+        const parentMod = dbModalities.find(m => m.id === turmaObj.modalityId)
+        return parentMod && prev.modalities.includes(parentMod.name)
+      })
+
+      if (changed || updatedTurmas.length !== currentTurmas.length) {
+        return { ...prev, turmas: updatedTurmas }
+      }
+      return prev
+    })
+  }, [formData.modalities, dbModalities])
 
   const [createdPin, setCreatedPin] = useState(null)
   const [countdown, setCountdown] = useState(10)
@@ -705,6 +742,77 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                     </AnimatePresence>
                   </div>
                 )}
+
+                {/* --- SELEÇÃO DE TURMAS (Estilo Barra de Pesquisa) --- */}
+                {(() => {
+                  const relevantClasses = (dbModalities || [])
+                    .filter(m => formData.modalities?.includes(m.name))
+                    .flatMap(m => (m.turmas || []).map(t => ({ ...t, modalityName: m.name })));
+
+                  const modsWithMultipleClasses = (dbModalities || [])
+                    .filter(m => formData.modalities?.includes(m.name) && (m.turmas || []).length > 1);
+
+                  if (modsWithMultipleClasses.length === 0) return null;
+
+                  return (
+                    <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-white/5" />
+                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em]">Turmas e Horários</span>
+                        <div className="h-px flex-1 bg-white/5" />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {relevantClasses.map(turma => {
+                          const isSelected = (formData.turmas || []).includes(turma.id);
+                          
+                          return (
+                            <button
+                              key={turma.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => {
+                                  const currentTurmas = prev.turmas || [];
+                                  const exists = currentTurmas.includes(turma.id);
+                                  return {
+                                    ...prev,
+                                    turmas: exists 
+                                      ? currentTurmas.filter(id => id !== turma.id)
+                                      : [...currentTurmas, turma.id]
+                                  };
+                                });
+                              }}
+                              className={`flex items-center justify-between p-4 rounded-2xl border transition-all group ${
+                                isSelected 
+                                  ? 'bg-primary/10 border-primary/40 shadow-lg shadow-primary/5' 
+                                  : 'bg-black/40 border-white/5 hover:border-white/10'
+                              }`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${isSelected ? 'bg-primary text-white scale-110 rotate-[360deg]' : 'bg-white/5 text-gray-600 group-hover:text-gray-400'}`}>
+                                  {isSelected ? <Check size={18} strokeWidth={3} /> : <Users size={18} />}
+                                </div>
+                                <div className="text-left">
+                                  <p className={`text-[11px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                                    {turma.name}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 font-medium">
+                                    {turma.days?.join(', ')} • {turma.startTime} - {turma.endTime}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${isSelected ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-600'}`}>
+                                  {turma.modalityName}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* GRADUAÇÃO (Somente se Jiu Jitsu estiver selecionado) */}
                 {(formData.modalities?.some(m => m.toLowerCase().includes('jiu')) || formData.roles.includes('aluno')) && (

@@ -90,13 +90,13 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
               <Trash2 size={20} className="text-red-500" />
             </div>
             <div>
-              <h2 className="text-base font-black text-white">Deletar Aluno</h2>
+              <h2 className="text-base font-black text-white">Deletar {student.roles?.visitante ? 'Visitante' : 'Aluno'}</h2>
               <p className="text-[11px] text-gray-500">Esta ação é IRREVERSÍVEL.</p>
             </div>
           </div>
 
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-xs text-red-300 leading-relaxed">
-            Você está prestes a <strong>deletar permanentemente</strong> o aluno <strong>{student.nome || student.name}</strong>.
+            Você está prestes a <strong>deletar permanentemente</strong> o {student.roles?.visitante ? 'visitante' : 'aluno'} <strong>{student.nome || student.name}</strong>.
             Todos os dados associados a este cadastro serão perdidos.
           </div>
 
@@ -108,7 +108,7 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
               value={input}
               onChange={e => setInput(e.target.value)}
               className="form-input bg-black/40 text-sm w-full"
-              placeholder="Digite o nome do aluno..."
+              placeholder={`Digite o nome do ${student.roles?.visitante ? 'visitante' : 'aluno'}...`}
               autoFocus
             />
           </div>
@@ -668,7 +668,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
 
           {!isLoadingStudents && (
             <p className="text-[11px] text-gray-600 text-center mt-4">
-              Exibindo {filtered.length} de {students.length} aluno{students.length !== 1 ? 's' : ''}
+              Exibindo {filtered.length} de {students.length} {typeFilter === 'visitante' ? 'visitante' : 'aluno'}{students.length !== 1 ? 's' : ''}
             </p>
           )}
         </div >
