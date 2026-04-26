@@ -91,15 +91,24 @@ export const attendanceService = {
 
       console.log(`📊 Totais da sessão: ${presences} presenças, ${absents} faltas.`)
       
+      const CRIADO_EM = FIELDS.CRIADO_EM || 'criadoEm'
+      const now = new Date()
+      // Fallback para seqId baseado no horário atual se não houver no payload
+      const simpleSeqId = activeSession.seqId || `99${now.getMinutes()}${now.getSeconds()}`
+
       batch.set(sessionRef, {
+        ...activeSession,
+        seqId: Number(simpleSeqId),
         presencasCount: presences,
         faltasCount: absents,
         justificadosCount: justified,
         totalCount: activeList.length,
         [FIELDS.FINALIZADA]: true,
+        [CRIADO_EM]: serverTimestamp(),
         [FIELDS.ATUALIZADO_EM]: serverTimestamp()
       }, { merge: true })
 
+      console.log('🚀 Iniciando commit do lote de presença...')
       await batch.commit()
       console.log('✅ Lote de presença persistido com sucesso.')
       return true

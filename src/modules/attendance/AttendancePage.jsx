@@ -440,25 +440,13 @@ export default function AttendancePage() {
         instructorId: user?.uid || 'system',
         [NOME_INSTRUTOR]: userData?.name || user?.displayName || 'Sistema',
         instructorName: userData?.name || user?.displayName || 'Sistema',
-        [CRIADO_EM]: new Date().toISOString() // Valor local temporário para a UI
+        [CRIADO_EM]: new Date().toISOString()
       }
 
-      // Transição instantânea para a lista (Optimistic UI)
+      // Transição instantânea para a lista (MANTIDO LOCALMENTE ATÉ FINALIZAR)
       setActiveSession(payload)
       setShowMobileConfig(false)
-
-      // Salva no banco "em silêncio" no fundo para não bloquear o Professor
-      setIsSavingSession(true)
-      attendanceService.createSession(payload)
-        .then(() => {
-          fetchRecentSessions()
-          setIsSavingSession(false)
-        })
-        .catch((err) => {
-          console.error(err)
-          setToastMessage('Erro ao sincronizar com servidor')
-          setIsSavingSession(false)
-        })
+      setToastMessage('Sessão iniciada localmente')
     } catch (err) {
       console.error('Erro crítico ao iniciar chamada:', err)
       setToastMessage('Erro interno ao iniciar chamada')
@@ -476,18 +464,13 @@ export default function AttendancePage() {
   }
 
   async function handleDiscardSession() {
-    if (!activeSession?.id) return
-    if (!window.confirm('Deseja cancelar e excluir esta chamada atual?')) return
+    if (!activeSession) return
+    if (!window.confirm('Deseja cancelar esta chamada atual?')) return
 
-    try {
-      await attendanceService.deleteSession(activeSession.id)
-      setActiveSession(null)
-      setToastMessage('Chamada cancelada')
-      fetchRecentSessions()
-    } catch (err) {
-      console.error(err)
-      setToastMessage('Erro ao excluir')
-    }
+    // Como agora não salvamos no início, apenas limpamos o estado local
+    setActiveSession(null)
+    setSessionAttendance({})
+    setToastMessage('Chamada cancelada')
   }
 
   async function handleFinalizeSession() {
@@ -501,26 +484,22 @@ export default function AttendancePage() {
     setIsFinishingSession(true)
     try {
       await attendanceService.markAttendanceBatch(activeSession, activeList)
-      setToastMessage("Chamada salva com sucesso!")
-
       const savedSessionId = activeSession.id
+      setToastMessage("Chamada finalizada e salva!")
+      console.log("✅ Chamada finalizada com ID:", savedSessionId)
 
-      // Pequeno delay para o professor ver o "Sucesso!" antes de ir para a revisão
+      // Limpa estado local antes de ir para a revisão
+      setActiveSession(null)
+      setSessionAttendance({})
+      
+      // Pequeno delay para garantir que o Firestore propagou (UX)
       setTimeout(() => {
-        setActiveSession(null)
-        setSearchActive('')
-        fetchRecentSessions()
-        setIsFinishingSession(false)
-        // Redireciona para a página de revisão (histórico) desta sessão (Novo padrão PT-BR)
         navigate(`/chamadas/revisao/${savedSessionId}`)
-      }, 800)
+      }, 500)
     } catch (err) {
-      console.error('Erro ao finalizar sessão:', err)
-      if (err.message?.includes('permission')) {
-        setToastMessage("Erro: Sem permissão no banco de dados!")
-      } else {
-        setToastMessage("Erro ao salvar! Verifique sua conexão.")
-      }
+      console.error("❌ ERRO FATAL AO FINALIZAR:", err)
+      setToastMessage("Erro ao salvar chamada: " + (err.message || 'Erro desconhecido'))
+    } finally {
       setIsFinishingSession(false)
     }
   }

@@ -286,7 +286,7 @@ export default function ReviewAttendancePage() {
                       {status === 'present' && <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Presente</span>}
                       {status === 'absent' && <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Falta</span>}
                       {status === 'justified' && <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Justificada</span>}
-                      {!status && <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Ausente</span>}
+                      {!status && <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Sem Registro</span>}
                     </div>
                   ) : (
                     <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-xl border border-white/10">
