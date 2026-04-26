@@ -9,7 +9,8 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   collection, onSnapshot, query, orderBy, limit,
   updateDoc, doc, serverTimestamp, setDoc,
-  getDoc, deleteDoc, getDocs, deleteField, where, addDoc
+  getDoc, deleteDoc, getDocs, deleteField, where, addDoc,
+  increment, arrayUnion, arrayRemove
 } from 'firebase/firestore'
 import { initializeApp, getApps } from 'firebase/app'
 import {
@@ -133,6 +134,55 @@ export function useSystemUsers() {
       const isStaff = userData.roles?.admin || userData.roles?.gestor || userData.roles?.professor
       if (isStaff) payload.adminPin = data.pin
     }
+
+    // 🏆 Sincronização de Turmas no Update Perfil
+    if (data.turmas) {
+      try {
+        const userDoc = await getDoc(userRef)
+        if (userDoc.exists()) {
+          const oldData = userDoc.data()
+          const oldTurmas = oldData.turmas || []
+          const newTurmas = data.turmas || []
+          const studentEmail = oldData.email || emailId
+
+          const toAdd = newTurmas.filter(t => !oldTurmas.includes(t))
+          const toRemove = oldTurmas.filter(t => !newTurmas.includes(t))
+
+          const syncPromises = []
+
+          toAdd.forEach(uniqueId => {
+            const [mIdRaw, tIdRaw] = uniqueId.includes(':') ? uniqueId.split(':') : [null, uniqueId];
+            if (mIdRaw && tIdRaw) {
+              const mId = mIdRaw.toLowerCase();
+              const tId = tIdRaw.toLowerCase();
+              const tRef = doc(db, COLLECTIONS.MODALIDADES, mId, SUB_COLLECTIONS.TURMAS, tId);
+              syncPromises.push(updateDoc(tRef, {
+                totalAlunos: increment(1),
+                alunos: arrayUnion(studentEmail)
+              }))
+            }
+          })
+
+          toRemove.forEach(uniqueId => {
+            const [mIdRaw, tIdRaw] = uniqueId.includes(':') ? uniqueId.split(':') : [null, uniqueId];
+            if (mIdRaw && tIdRaw) {
+              const mId = mIdRaw.toLowerCase();
+              const tId = tIdRaw.toLowerCase();
+              const tRef = doc(db, COLLECTIONS.MODALIDADES, mId, SUB_COLLECTIONS.TURMAS, tId);
+              syncPromises.push(updateDoc(tRef, {
+                totalAlunos: increment(-1),
+                alunos: arrayRemove(studentEmail)
+              }))
+            }
+          })
+
+          if (syncPromises.length > 0) await Promise.all(syncPromises)
+        }
+      } catch (err) {
+        console.error('❌ Erro ao sincronizar turmas no updateProfile:', err)
+      }
+    }
+
     await updateDoc(userRef, payload)
   }, [])
 
@@ -191,6 +241,43 @@ export function useSystemUsers() {
         basePayload[FIELDS.PIN] = finalPin
       }
 
+      // 🏆 Sincronização de Turmas no Update (Existing User)
+      if (userData.turmas) {
+        try {
+          const oldTurmas = existingData.turmas || []
+          const newTurmas = userData.turmas || []
+          const studentEmail = existingData.email || emailId
+
+          const toAdd = newTurmas.filter(t => !oldTurmas.includes(t))
+          const toRemove = oldTurmas.filter(t => !newTurmas.includes(t))
+
+          const syncPromises = []
+          toAdd.forEach(uId => {
+            const [mIdRaw, tIdRaw] = uId.includes(':') ? uId.split(':') : [null, uId];
+            if (mIdRaw && tIdRaw) {
+              const mId = mIdRaw.toLowerCase();
+              const tId = tIdRaw.toLowerCase();
+              syncPromises.push(updateDoc(doc(db, COLLECTIONS.MODALIDADES, mId, SUB_COLLECTIONS.TURMAS, tId), {
+                totalAlunos: increment(1),
+                alunos: arrayUnion(studentEmail)
+              }))
+            }
+          })
+          toRemove.forEach(uId => {
+            const [mIdRaw, tIdRaw] = uId.includes(':') ? uId.split(':') : [null, uId];
+            if (mIdRaw && tIdRaw) {
+              const mId = mIdRaw.toLowerCase();
+              const tId = tIdRaw.toLowerCase();
+              syncPromises.push(updateDoc(doc(db, COLLECTIONS.MODALIDADES, mId, SUB_COLLECTIONS.TURMAS, tId), {
+                totalAlunos: increment(-1),
+                alunos: arrayRemove(studentEmail)
+              }))
+            }
+          })
+          if (syncPromises.length > 0) await Promise.all(syncPromises)
+        } catch (e) { }
+      }
+
       await updateDoc(userRef, basePayload)
 
       // Se geramos um PIN novo para um usuário existente, precisamos criar o Auth Secundário dele
@@ -225,6 +312,25 @@ export function useSystemUsers() {
       })
 
       await setDoc(userRef, newUser)
+      
+      // 🏆 Sincronização de Turmas na Criação
+      if (newUser.turmas && newUser.turmas.length > 0) {
+        try {
+          const studentEmail = newUser.email || emailId
+          const promises = newUser.turmas.map(async (uId) => {
+            const [mIdRaw, tIdRaw] = uId.includes(':') ? uId.split(':') : [null, uId];
+            if (mIdRaw && tIdRaw) {
+              const mId = mIdRaw.toLowerCase();
+              const tId = tIdRaw.toLowerCase();
+              await updateDoc(doc(db, COLLECTIONS.MODALIDADES, mId, SUB_COLLECTIONS.TURMAS, tId), {
+                totalAlunos: increment(1),
+                alunos: arrayUnion(studentEmail)
+              })
+            }
+          })
+          await Promise.all(promises)
+        } catch (e) { }
+      }
       
       try {
         const pinAuthEmail = getPinAuthEmail(emailId)
@@ -278,7 +384,47 @@ export function useSystemUsers() {
   }, [updateProfile])
 
   const deleteUser = useCallback(async (userId) => {
-    await deleteDoc(doc(db, USERS_COLLECTION, userId))
+    try {
+      const userRef = doc(db, USERS_COLLECTION, userId)
+      const snap = await getDoc(userRef)
+      if (snap.exists()) {
+        const userData = snap.data()
+        const studentEmail = userData.email || userId
+
+        // 1. Limpeza de Turmas (Decremento de contador e remoção da lista)
+        if (userData.turmas && userData.turmas.length > 0) {
+          const promises = userData.turmas.map(async (uId) => {
+            const [mIdRaw, tIdRaw] = uId.includes(':') ? uId.split(':') : [null, uId]
+            if (mIdRaw && tIdRaw) {
+              const mId = mIdRaw.toLowerCase()
+              const tId = tIdRaw.toLowerCase()
+              try {
+                await updateDoc(doc(db, COLLECTIONS.MODALIDADES, mId, SUB_COLLECTIONS.TURMAS, tId), {
+                  totalAlunos: increment(-1),
+                  alunos: arrayRemove(studentEmail)
+                })
+              } catch (e) { console.warn(`Falha ao limpar turma ${uId}:`, e.message) }
+            }
+          })
+          await Promise.all(promises)
+        }
+
+        // 2. Limpeza de Subcoleções (Anotações e Graduações) - Dados internos do usuário
+        try {
+          const notesSnap = await getDocs(collection(userRef, SUB_COLLECTIONS.ANOTACOES))
+          await Promise.all(notesSnap.docs.map(d => deleteDoc(d.ref)))
+          const gradsSnap = await getDocs(collection(userRef, SUB_COLLECTIONS.GRADUACOES))
+          await Promise.all(gradsSnap.docs.map(d => deleteDoc(d.ref)))
+        } catch (e) { console.warn('Falha ao limpar subcoleções:', e.message) }
+      }
+
+      // Finalmente, deleta o documento principal
+      await deleteDoc(userRef)
+      console.log(`✅ Usuário ${userId} removido. Turmas e dados internos limpos. Financeiro preservado.`)
+    } catch (e) {
+      console.error('❌ Erro crítico ao deletar usuário:', e)
+      throw e
+    }
   }, [])
 
   return {

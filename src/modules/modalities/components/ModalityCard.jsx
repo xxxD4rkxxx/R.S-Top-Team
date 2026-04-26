@@ -174,10 +174,10 @@ export default function ModalityCard({
                             <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-primary transition-all duration-700" 
-                                style={{ width: `${Math.min(100, ((turma.enrolledCount || 0) / (turma.capacidade || 1)) * 100)}%` }} 
+                                style={{ width: `${Math.min(100, ((turma.totalAlunos || 0) / (turma.capacidade || 1)) * 100)}%` }} 
                               />
                             </div>
-                            <span className="text-[10px] font-mono text-gray-400">{turma.enrolledCount || 0}/{turma.capacidade}</span>
+                            <span className="text-[10px] font-mono text-gray-400">{turma.totalAlunos || 0}/{turma.capacidade}</span>
                           </div>
                         </div>
 

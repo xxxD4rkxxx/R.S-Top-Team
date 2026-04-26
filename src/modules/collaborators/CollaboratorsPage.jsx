@@ -57,7 +57,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`form-input bg-black/80 input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
+        className={`form-input bg-[#0B0B0D] backdrop-blur-md input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
         <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
@@ -82,11 +82,12 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
 
 // Dialog de confirmação dupla para deletar
 function DeleteConfirmDialog({ member, onConfirm, onClose }) {
+  useHideMobileNav(!!member)
   const [input, setInput] = useState('')
   const [deleting, setDeleting] = useState(false)
   if (!member) return null
-  const match = input.trim().toLowerCase() === (member.nome || member.name || '').trim().toLowerCase()
-  const isAdminTarget = member.roles?.admin || member.role === 'admin'
+  const normalize = (str) => (str || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/\s+/g, ' ')
+  const match = normalize(input) === normalize(member.nome || member.name)
 
   async function handleDelete() {
     if (!match) return
@@ -100,62 +101,47 @@ function DeleteConfirmDialog({ member, onConfirm, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9995] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-[32px] overflow-hidden border border-white/10 shadow-2xl bg-[#0d0d0d]"
+      <div className="relative w-full max-w-md rounded-2xl overflow-hidden border border-red-500/30 shadow-2xl bg-[#0d0d0d]"
         style={{ animation: 'fadeSlideUp 0.22s ease both' }}>
-        <div className="p-8 space-y-6">
-          <div className="flex flex-col items-center text-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-              <Trash2 size={32} className="text-red-500" />
+        <div className="px-6 py-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+              <Trash2 size={20} className="text-red-500" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">Excluir Membro?</h2>
-              <p className="text-xs text-gray-500 font-medium mt-1">ESTA AÇÃO É IRREVERSÍVEL E PERMANENTE.</p>
+              <h2 className="text-base font-black text-white">Deletar Membro da Equipe</h2>
+              <p className="text-[11px] text-gray-500">Esta ação é IRREVERSÍVEL.</p>
             </div>
           </div>
 
-          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-xs text-red-300 leading-relaxed text-center">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-xs text-red-300 leading-relaxed">
             Você está prestes a <strong>deletar permanentemente</strong> o membro <strong>{member.nome || member.name}</strong>.
-            Todos os dados e acessos serão removidos.
+            Todos os dados associados a este cadastro serão perdidos.
           </div>
 
-          {isAdminTarget && (
-            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 flex items-start gap-3">
-              <ShieldAlert className="text-primary shrink-0" size={18} />
-              <div className="flex-1">
-                <p className="text-[11px] font-black text-primary uppercase tracking-wider mb-1">Atenção Especial</p>
-                <p className="text-[10px] text-primary/70 font-bold leading-tight">Este perfil possui privilégios de Administrador. A exclusão removerá todo o controle de acesso associado.</p>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black block text-center">
-              Para confirmar, digite: <span className="text-white">{member.nome || member.name}</span>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-black block mb-1.5">
+              Para confirmar, digite exatamente: <span className="text-white">{member.nome || member.name}</span>
             </label>
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white text-center focus:outline-none focus:border-red-500/50 transition-all font-medium"
-              placeholder="Digite o nome aqui..."
+              className="form-input bg-black/40 text-sm w-full"
+              placeholder="Digite o nome do membro..."
               autoFocus
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className="py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-all active:scale-95"
-            >
-              Cancelar
-            </button>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10">Cancelar</button>
             <button
               onClick={handleDelete}
               disabled={!match || deleting}
-              className={`py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 border ${match ? 'bg-red-600 text-white shadow-xl shadow-red-600/20 border-red-500' : 'bg-red-500/10 text-red-500/40 border-red-500/10 cursor-not-allowed'}`}
+              className="flex-1 py-2.5 rounded-xl text-sm font-black bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
             >
-              {deleting ? 'Apagando...' : 'Confirmar Exclusão'}
+              {deleting ? 'Apagando...' : '🗑 Deletar Permanentemente'}
             </button>
           </div>
         </div>
@@ -164,6 +150,7 @@ function DeleteConfirmDialog({ member, onConfirm, onClose }) {
     </div>
   )
 }
+
 
 export default function CollaboratorsPage() {
 
@@ -212,7 +199,7 @@ export default function CollaboratorsPage() {
    */
   const stats = useMemo(() => {
     const getRoles = (u) => u.papeis || u.roles || {}
-    
+
     // 🏷️ Filtramos para ignorar Admins nos cálculos, conforme solicitado
     const staffExcludingAdmins = users.filter(u => {
       const r = getRoles(u)
@@ -222,12 +209,12 @@ export default function CollaboratorsPage() {
     const active = staffExcludingAdmins.filter(u => u.status === 'Ativo').length
     const professors = staffExcludingAdmins.filter(u => getRoles(u).professor).length
     const gestors = staffExcludingAdmins.filter(u => getRoles(u).gestor).length
-    
-    return { 
-      total: staffExcludingAdmins.length, 
-      active, 
-      professors, 
-      gestors 
+
+    return {
+      total: staffExcludingAdmins.length,
+      active,
+      professors,
+      gestors
     }
   }, [users])
 
@@ -291,7 +278,24 @@ export default function CollaboratorsPage() {
     setIsModalOpen(true)
   }
 
-  // handleConfirmDelete foi removido pois estamos usando a versão inline mais robusta no componente
+  async function handleConfirmDelete() {
+    if (!deleteDialogUser || !deleteDialogUser.id) {
+      console.error('❌ Usuário não selecionado para deleção')
+      return
+    }
+
+    const isSelf = deleteDialogUser.id.toLowerCase() === userData?.id?.toLowerCase() ||
+      deleteDialogUser.email?.toLowerCase() === userData?.email?.toLowerCase()
+
+    if (isSelf) {
+      alert("🛑 SEGURANÇA: Você não pode excluir sua própria conta administrativa enquanto estiver logado no sistema.")
+      setDeleteDialogUser(null)
+      return
+    }
+
+    await deleteUser(deleteDialogUser.id)
+    setDeleteDialogUser(null)
+  }
 
 
 
@@ -531,38 +535,30 @@ export default function CollaboratorsPage() {
         onEdit={handleEdit}
       />
 
-      {deleteDialogUser && (
-        <DeleteConfirmDialog
-          member={deleteDialogUser}
-          onClose={() => setDeleteDialogUser(null)}
-          onConfirm={() => {
-            if (deleteDialogUser?.id) {
-              deleteUser(deleteDialogUser.id)
-            }
-            setDeleteDialogUser(null)
-          }}
-        />
-      )}
-
+      {/* 🛡️ Pin Verification for Sensitive Actions */}
       {showPinModal && (
         <PinVerificationModal
           onConfirm={() => {
             const { type, member } = pinModalAction;
-            if (type === 'view') {
-              setShowPinModal(false);
-              // Lógica de visualização se houver
-            } else if (type === 'edit') {
+            if (type === 'edit') {
               setShowPinModal(false);
               handleEdit(member);
             } else if (type === 'delete') {
-              // 🛡️ Segurança: Todos agora passam pela confirmação de nome após o PIN
               setShowPinModal(false);
               setDeleteDialogUser(member);
             }
           }}
           onClose={() => setShowPinModal(false)}
           title="Confirmar Identidade"
-          message={`Você está tentando ${pinModalAction?.type === 'edit' ? 'editar' : 'excluir'} os dados de ${pinModalAction?.member?.nome || pinModalAction?.member?.name}.`}
+          message={`Você está tentando ${pinModalAction?.type === 'edit' ? 'editar' : 'deletar'} os dados de ${pinModalAction?.member?.nome || pinModalAction?.member?.name}.`}
+        />
+      )}
+
+      {deleteDialogUser && (
+        <DeleteConfirmDialog
+          member={deleteDialogUser}
+          onClose={() => setDeleteDialogUser(null)}
+          onConfirm={handleConfirmDelete}
         />
       )}
 
@@ -665,7 +661,7 @@ function CollaboratorActionMenu({ member, menuPosition, isSelf, onClose, onActio
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isSelf ? 'bg-gray-800' : 'bg-red-500/10 group-hover:bg-red-500/20'}`}>
               <Trash2 size={14} className={isSelf ? 'text-gray-600' : 'text-red-500'} />
             </div>
-            Excluir
+            Deletar
           </button>
         </motion.div>
       )}
@@ -754,7 +750,7 @@ function CollaboratorActionMenu({ member, menuPosition, isSelf, onClose, onActio
                   <Trash2 size={20} className={isSelf ? 'text-gray-600' : 'text-red-500'} />
                 </div>
                 <div className="flex-1">
-                  <p className={`text-sm font-black ${isSelf ? 'text-gray-600' : 'text-red-500'}`}>Excluir Permanentemente</p>
+                  <p className={`text-sm font-black ${isSelf ? 'text-gray-600' : 'text-red-500'}`}>Deletar Permanentemente</p>
                   <p className={`text-[10px] font-bold uppercase tracking-widest leading-none mt-1 ${isSelf ? 'text-gray-700' : 'text-red-500/50'}`}>
                     {isSelf ? 'Não é possível excluir a si mesmo' : 'Ação irreversível'}
                   </p>

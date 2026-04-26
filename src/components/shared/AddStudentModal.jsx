@@ -5,7 +5,7 @@ import {
   Mail, Smartphone, Shield, Info,
   ChevronDown, Check, Save, Landmark,
   Settings, User, MapPin, Activity,
-  PhoneCall, HeartPulse
+  PhoneCall, HeartPulse, Clock
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStudents } from '../../hooks/useStudents'
@@ -38,7 +38,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`form-input bg-black/80 input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
+        className={`form-input bg-[#0B0B0D] backdrop-blur-md input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
         <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
@@ -66,6 +66,8 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   const { modalities, loading: loadingModalities } = useModalities()
   const activeModalities = (modalities || []).filter(m => m.status === 'ativo')
   const { effectiveRole } = useAuth()
+  const [showTurmasDropdown, setShowTurmasDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
   useHideMobileNav(isOpen)
 
@@ -165,19 +167,28 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
       prev.modality.forEach(modName => {
         const mod = modalities.find(m => m.name === modName)
         if (mod && mod.turmas && mod.turmas.length === 1) {
-          const singleTurmaId = mod.turmas[0].id
-          if (!currentTurmas.includes(singleTurmaId)) {
-            currentTurmas.push(singleTurmaId)
+          const uniqueId = `${mod.id}:${mod.turmas[0].id}`
+          if (!currentTurmas.includes(uniqueId)) {
+            currentTurmas.push(uniqueId)
             changed = true
           }
         }
       })
 
       // Remover turmas de modalidades que não estão mais selecionadas
-      const updatedTurmas = currentTurmas.filter(tId => {
-        const turmaObj = (modalities || []).flatMap(m => m.turmas || []).find(t => t.id === tId)
-        if (!turmaObj) return false
-        const parentMod = modalities.find(m => m.id === turmaObj.modalityId)
+      const updatedTurmas = currentTurmas.filter(tUniqueId => {
+        const [modId, tId] = tUniqueId.includes(':') ? tUniqueId.split(':') : [null, tUniqueId]
+
+        // Se for ID legado (sem :), tenta encontrar de qualquer forma
+        if (!modId) {
+          const turmaObj = (modalities || []).flatMap(m => m.turmas || []).find(t => t.id === tId)
+          if (!turmaObj) return false
+          const parentMod = modalities.find(m => m.id === turmaObj.modalityId)
+          return parentMod && prev.modality.includes(parentMod.name)
+        }
+
+        // Se for ID novo (com :), verifica se a modalidade pai ainda está selecionada
+        const parentMod = modalities.find(m => m.id === modId)
         return parentMod && prev.modality.includes(parentMod.name)
       })
 
@@ -187,6 +198,48 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
       return prev
     })
   }, [form.modality, modalities])
+
+  // 🔥 Auto-seleção de turmas para modalidades com apenas uma turma
+  useEffect(() => {
+    if (!modalities) return;
+    
+    setForm(prev => {
+      const currentTurmas = prev.turmas || [];
+      const newTurmas = [...currentTurmas];
+      let changed = false;
+
+      prev.modality.forEach(modName => {
+        const mod = modalities.find(m => 
+          m.name.toLowerCase() === modName.toLowerCase() || 
+          m.id.toLowerCase() === modName.toLowerCase()
+        );
+        if (mod && mod.turmas && mod.turmas.length === 1) {
+          const classId = mod.turmas[0].id;
+          const uniqueId = `${mod.id}:${classId}`;
+          if (!newTurmas.includes(uniqueId)) {
+            newTurmas.push(uniqueId);
+            changed = true;
+          }
+        }
+      });
+
+      if (changed) return { ...prev, turmas: newTurmas };
+      return prev;
+    });
+  }, [form.modality, modalities]);
+
+  // Click-away logic for turmas dropdown
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowTurmasDropdown(false)
+      }
+    }
+    if (showTurmasDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showTurmasDropdown])
 
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -467,72 +520,112 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                   </div>
                 </div>
 
-                {/* --- SELEÇÃO DE TURMAS (Estilo Barra de Pesquisa) --- */}
+                {/* --- SELEÇÃO DE TURMAS (Estilo Dropdown ModalityModal) --- */}
                 {(() => {
-                  const relevantClasses = (modalities || [])
-                    .filter(m => form.modality.includes(m.name))
-                    .flatMap(m => (m.turmas || []).map(t => ({ ...t, modalityName: m.name })));
+                  const relevantClasses = modalities
+                  .filter(m => 
+                    form.modality.some(modName => modName.toLowerCase() === m.name.toLowerCase()) || 
+                    form.modality.some(modName => modName.toLowerCase() === m.id.toLowerCase())
+                  )
+                    .flatMap(m => (m.turmas || []).map(t => ({
+                      ...t,
+                      modalityName: m.name,
+                      uniqueId: `${m.id}:${t.id}`
+                    })));
 
-                  const modsWithMultipleClasses = (modalities || [])
-                    .filter(m => form.modality.includes(m.name) && (m.turmas || []).length > 1);
+                  const hasRelevantClasses = (modalities || [])
+                    .some(m => form.modality.includes(m.name) && (m.turmas || []).length > 0);
 
-                  if (modsWithMultipleClasses.length === 0) return null;
+                  if (!hasRelevantClasses) return null;
+
+                  const selectedCount = (form.turmas || []).length;
 
                   return (
-                    <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
-                      <div className="flex items-center gap-3">
-                        <div className="h-px flex-1 bg-white/5" />
-                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em]">Turmas e Horários</span>
-                        <div className="h-px flex-1 bg-white/5" />
-                      </div>
-                      
-                      <div className="grid grid-cols-1 gap-2.5">
-                        {relevantClasses.map(turma => {
-                          const isSelected = (form.turmas || []).includes(turma.id);
-                          
-                          return (
-                            <button
-                              key={turma.id}
-                              type="button"
-                              onClick={() => {
-                                setForm(prev => {
-                                  const currentTurmas = prev.turmas || [];
-                                  const exists = currentTurmas.includes(turma.id);
-                                  return {
-                                    ...prev,
-                                    turmas: exists 
-                                      ? currentTurmas.filter(id => id !== turma.id)
-                                      : [...currentTurmas, turma.id]
-                                  };
-                                });
-                              }}
-                              className={`flex items-center justify-between p-4 rounded-2xl border transition-all group ${
-                                isSelected 
-                                  ? 'bg-primary/10 border-primary/40 shadow-lg shadow-primary/5' 
-                                  : 'bg-black/40 border-white/5 hover:border-white/10'
-                              }`}
+                    <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2" ref={dropdownRef}>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
+                        <Users size={12} /> SELECIONAR TURMAS E HORÁRIOS
+                      </label>
+
+                      <div className="relative">
+                        <div
+                          onClick={() => setShowTurmasDropdown(!showTurmasDropdown)}
+                          className={`w-full h-[54px] bg-[#0B0B0D] border text-sm text-gray-300 font-medium flex items-center justify-between cursor-pointer transition-all rounded-2xl px-6 py-4 hover:bg-black/90 ${showTurmasDropdown ? 'ring-1 ring-primary/50 border-primary/50' : 'border-white/10'}`}
+                        >
+                          <div className="flex items-center gap-3 truncate">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${selectedCount > 0 ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-600'}`}>
+                              <Clock size={14} />
+                            </div>
+                            <span className={`${selectedCount > 0 ? 'text-white' : 'text-gray-500'} truncate text-[11px] font-bold uppercase tracking-tight`}>
+                              {selectedCount > 0
+                                ? `${selectedCount} ${selectedCount === 1 ? 'turma selecionada' : 'turmas selecionadas'}`
+                                : 'Escolha os horários...'}
+                            </span>
+                          </div>
+                          <ChevronDown size={14} className={`text-gray-500 transition-transform duration-300 ${showTurmasDropdown ? 'rotate-180 text-primary' : ''}`} />
+                        </div>
+
+                        <AnimatePresence>
+                          {showTurmasDropdown && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[150] overflow-y-auto max-h-64 no-scrollbar shadow-2xl py-2"
                             >
-                              <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${isSelected ? 'bg-primary text-white scale-110 rotate-[360deg]' : 'bg-white/5 text-gray-600 group-hover:text-gray-400'}`}>
-                                  {isSelected ? <Check size={18} strokeWidth={3} /> : <Users size={18} />}
+                              {relevantClasses.length === 0 ? (
+                                <div className="px-6 py-8 text-center">
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-600">Nenhuma turma encontrada</p>
                                 </div>
-                                <div className="text-left">
-                                  <p className={`text-[11px] font-black uppercase tracking-wider ${isSelected ? 'text-white' : 'text-gray-400'}`}>
-                                    {turma.name}
-                                  </p>
-                                  <p className="text-[10px] text-gray-500 font-medium">
-                                    {turma.days?.join(', ')} • {turma.startTime} - {turma.endTime}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex flex-col items-end gap-1">
-                                <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${isSelected ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-600'}`}>
-                                  {turma.modalityName}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
+                              ) : (
+                                relevantClasses.map(turma => {
+                                  const isSelected = (form.turmas || []).includes(turma.uniqueId);
+                                  return (
+                                    <button
+                                      key={turma.uniqueId}
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setForm(prev => {
+                                          const currentTurmas = prev.turmas || [];
+                                          const exists = currentTurmas.includes(turma.uniqueId);
+                                          return {
+                                            ...prev,
+                                            turmas: exists
+                                              ? currentTurmas.filter(id => id !== turma.uniqueId)
+                                              : [...currentTurmas, turma.uniqueId]
+                                          };
+                                        });
+                                      }}
+                                      className={`w-full text-left px-5 py-3.5 transition-all flex items-center justify-between group border-b border-white/[0.02] last:border-0 ${isSelected ? 'bg-primary/5' : 'hover:bg-white/[0.03]'}`}
+                                    >
+                                      <div className="flex items-center gap-4">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isSelected ? 'bg-primary text-white' : 'bg-white/5 text-gray-600 group-hover:text-gray-400'}`}>
+                                          {isSelected ? <Check size={12} strokeWidth={3} /> : <Users size={12} />}
+                                        </div>
+                                        <div className="flex flex-col">
+                                          <div className="flex items-center gap-2">
+                                            <span className={`text-[11px] font-black uppercase tracking-wider ${isSelected ? 'text-primary' : 'text-gray-300'}`}>
+                                              {turma.name}
+                                            </span>
+                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-md bg-white/5 text-gray-600 uppercase tracking-widest">
+                                              {turma.modalityName}
+                                            </span>
+                                          </div>
+                                          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-tight mt-0.5">
+                                            {turma.days?.join(', ')} • {turma.startTime} - {turma.endTime}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      {isSelected && (
+                                        <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]" />
+                                      )}
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
                   );

@@ -87,10 +87,16 @@ export function useModalities() {
   // DADOS ENRIQUECIDOS (Modalidades + Turmas)
   // ==========================================
   const enrichedModalities = useMemo(() => {
-    return modalities.map(mod => ({
-      ...mod,
-      turmas: turmas.filter(t => t.modalityId === mod.id)
-    }))
+    return modalities.map(mod => {
+      const modalityTurmas = turmas.filter(t => t.modalityId === mod.id);
+      const studentCount = modalityTurmas.reduce((acc, t) => acc + (t.totalAlunos || 0), 0);
+      
+      return {
+        ...mod,
+        turmas: modalityTurmas,
+        studentCount // 🔥 Dinâmico baseado nas turmas
+      };
+    });
   }, [modalities, turmas])
 
   // ==========================================

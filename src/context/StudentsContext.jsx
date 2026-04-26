@@ -96,7 +96,8 @@ export function StudentsProvider({ children }) {
         birthday: parseFirestoreDate(data.birthday),
         createdAt: parseFirestoreDate(data.createdAt || data.criadoEm),
         lastAttendanceAt: parseFirestoreDate(data.lastAttendanceAt),
-        roles: data.roles || data.papeis || {}
+        roles: data.roles || data.papeis || {},
+        turmas: data.turmas || []
       }
     }
 

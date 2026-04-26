@@ -38,9 +38,11 @@ function formatInputDate(dateObj) {
 }
 
 function ensureTimeFormat(time) {
-  if (!time) return '20:00'
-  const [hours, minutes] = time.split(':')
-  return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`
+  if (!time || typeof time !== 'string') return '20:00'
+  const parts = time.split(':')
+  const hours = (parts[0] || '20').padStart(2, '0')
+  const minutes = (parts[1] || '00').padStart(2, '0')
+  return `${hours}:${minutes}`
 }
 
 // ── Componente de Seleção Customizado ──────────────────────────────────────────
@@ -76,7 +78,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
           <>
             {/* Backdrop invisível para fechar ao clicar fora */}
             <div className="fixed inset-0 z-[998]" onClick={() => setIsOpen(false)} />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
@@ -120,7 +122,7 @@ export default function AttendancePage() {
   const { modalities, loading: loadingModalities } = useModalities()
   const { users: staffMembers } = useSystemUsers()
   const { user, userData, effectiveRole } = useAuth()
-  
+
   const isPowerUser = effectiveRole === 'admin' || effectiveRole === 'gestor'
   const CRIADO_EM = FIELDS.CRIADO_EM || 'criadoEm'
   const INSTRUTOR_ID = FIELDS.INSTRUTOR_ID || 'instrutorId'
@@ -233,7 +235,7 @@ export default function AttendancePage() {
           )
           const snapName = await getDocs(qName)
           const nameDocs = snapName.docs.map(d => ({ id: d.id, ...d.data() }))
-          
+
           const existingIds = new Set(docs.map(d => d.id))
           nameDocs.forEach(nd => {
             if (!existingIds.has(nd.id)) docs.push(nd)
@@ -252,22 +254,22 @@ export default function AttendancePage() {
       setRecentSessions(docs.slice(0, 15))
     } catch (err) {
       console.error('Erro ao buscar histórico:', err)
-      
+
       // 🆘 FALLBACK FINAL: Se ainda não carregou nada (ex: banco vazio), carrega últimas gerais
       if (docs.length === 0) {
         const fallbackQ = query(collection(db, COLLECTIONS.CHAMADAS), limit(20))
         const snap = await getDocs(fallbackQ)
         const allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-        
+
         let filtered = allDocs
         if (!isPowerUser) {
-          filtered = allDocs.filter(d => 
-            d[INSTRUTOR_ID] === user.uid || 
+          filtered = allDocs.filter(d =>
+            d[INSTRUTOR_ID] === user.uid ||
             d.instructorId === user.uid ||
             d.professor === userData?.name
           )
         }
-        
+
         filtered.sort((a, b) => (b[CRIADO_EM]?.seconds || b.createdAt?.seconds || 0) - (a[CRIADO_EM]?.seconds || a.createdAt?.seconds || 0))
         setRecentSessions(filtered)
 
@@ -306,7 +308,7 @@ export default function AttendancePage() {
       const now = new Date()
       const currentMonth = now.getMonth()
       const currentYear = now.getFullYear()
-      
+
       list = list.filter(s => {
         if (!s.date) return false
         const sessDate = new Date(s.date)
@@ -347,13 +349,28 @@ export default function AttendancePage() {
     return list
   }, [recentSessions, historyModalityFilter, historyProfessorFilter, historyTypeFilter, historyPeriodFilter, historySortBy, instructorsOnly])
 
-  // Lógica de filtragem de alunos para a chamada
+  // Lógica de filtragem de alunos para a chamada (Sincronizada com Turmas)
   const activeList = useMemo(() => {
     if (!activeSession) return []
-    let list = students.filter(student => (student.modalities || [student.modality]).includes(activeSession.modality))
+    
+    let list = students.filter(student => {
+      // Regra 1: Deve ter a modalidade da sessão
+      const hasModality = (student.modalities || [student.modality] || []).includes(activeSession.modality)
+      if (!hasModality) return false
+
+      // Regra 2: Se a sessão está vinculada a uma turma específica, filtra por ela (SSoT)
+      if (activeSession.turmaId) {
+        return (student.turmas || []).includes(activeSession.turmaId)
+      }
+
+      // Fallback: Se não houver ID de turma na sessão, mostra todos da modalidade (legado)
+      return true
+    })
+
     if (searchActive) {
-      list = list.filter(s => s.name.toLowerCase().includes(searchActive.toLowerCase()))
+      list = list.filter(s => (s.name || '').toLowerCase().includes(searchActive.toLowerCase()))
     }
+
     return list.map(student => ({
       ...student,
       status: sessionAttendance[student.id] || null
@@ -388,47 +405,65 @@ export default function AttendancePage() {
   }
 
   async function handleStartSession() {
-    if (!sessionModality) {
-      setToastMessage('Selecione uma modalidade')
-      return
+    try {
+      if (!sessionModality) {
+        setToastMessage('Selecione uma modalidade')
+        return
+      }
+
+      if (!sessionProfessor) {
+        setToastMessage('Informe o professor responsável')
+        return
+      }
+
+      // Busca o ID da Turma para filtragem precisa
+      let foundTurmaId = null
+      const mod = modalities.find(m => m.name === sessionModality)
+      if (mod && mod.turmas) {
+        const time = ensureTimeFormat(sessionTime)
+        const turma = mod.turmas.find(t => ensureTimeFormat(t.horario || t.horarioInicio) === time)
+        if (turma) {
+          foundTurmaId = `${mod.id}:${turma.id}`.toLowerCase()
+        }
+      }
+
+      const tempId = doc(collection(db, COLLECTIONS.CHAMADAS)).id
+      const payload = {
+        id: tempId,
+        [MODALIDADE]: sessionModality,
+        modality: sessionModality,
+        turmaId: foundTurmaId, // 🔥 Link direto com a turma para SSoT
+        date: sessionDate,
+        time: ensureTimeFormat(sessionTime),
+        professor: sessionProfessor,
+        [INSTRUTOR_ID]: user?.uid || 'system',
+        instructorId: user?.uid || 'system',
+        [NOME_INSTRUTOR]: userData?.name || user?.displayName || 'Sistema',
+        instructorName: userData?.name || user?.displayName || 'Sistema',
+        [CRIADO_EM]: new Date().toISOString() // Valor local temporário para a UI
+      }
+
+      // Transição instantânea para a lista (Optimistic UI)
+      setActiveSession(payload)
+      setShowMobileConfig(false)
+
+      // Salva no banco "em silêncio" no fundo para não bloquear o Professor
+      setIsSavingSession(true)
+      attendanceService.createSession(payload)
+        .then(() => {
+          fetchRecentSessions()
+          setIsSavingSession(false)
+        })
+        .catch((err) => {
+          console.error(err)
+          setToastMessage('Erro ao sincronizar com servidor')
+          setIsSavingSession(false)
+        })
+    } catch (err) {
+      console.error('Erro crítico ao iniciar chamada:', err)
+      setToastMessage('Erro interno ao iniciar chamada')
+      setIsSavingSession(false)
     }
-
-    if (!sessionProfessor) {
-      setToastMessage('Informe o professor responsável')
-      return
-    }
-
-    const tempId = doc(collection(db, COLLECTIONS.CHAMADAS)).id
-    const payload = {
-      id: tempId,
-      [MODALIDADE]: sessionModality,
-      modality: sessionModality, 
-      date: sessionDate,
-      time: ensureTimeFormat(sessionTime),
-      professor: sessionProfessor,
-      [INSTRUTOR_ID]: user?.uid || 'system',
-      instructorId: user?.uid || 'system', 
-      [NOME_INSTRUTOR]: userData?.name || user?.displayName || 'Sistema',
-      instructorName: userData?.name || user?.displayName || 'Sistema',
-      [CRIADO_EM]: new Date().toISOString() // Valor local temporário para a UI
-    }
-
-    // Transição instantânea para a lista (Optimistic UI)
-    setActiveSession(payload)
-    setShowMobileConfig(false)
-
-    // Salva no banco "em silêncio" no fundo para não bloquear o Professor
-    setIsSavingSession(true)
-    attendanceService.createSession(payload)
-      .then(() => {
-        fetchRecentSessions()
-        setIsSavingSession(false)
-      })
-      .catch((err) => {
-        console.error(err)
-        setToastMessage('Erro ao sincronizar com servidor')
-        setIsSavingSession(false)
-      })
   }
 
   const handleOpenDrawer = (modality, time) => {
@@ -467,9 +502,9 @@ export default function AttendancePage() {
     try {
       await attendanceService.markAttendanceBatch(activeSession, activeList)
       setToastMessage("Chamada salva com sucesso!")
-      
+
       const savedSessionId = activeSession.id
-      
+
       // Pequeno delay para o professor ver o "Sucesso!" antes de ir para a revisão
       setTimeout(() => {
         setActiveSession(null)
@@ -595,9 +630,9 @@ export default function AttendancePage() {
                                 const time = ensureTimeFormat(t.horario || t.horarioInicio)
                                 const isSel = sessionTime === time && sessionModality === mod.name
                                 return (
-                                  <button key={t.id} onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    setSessionModality(mod.name); 
+                                  <button key={t.id} onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSessionModality(mod.name);
                                     setSessionTime(time);
                                     syncProfessors(mod.name, time);
                                   }}
@@ -665,9 +700,9 @@ export default function AttendancePage() {
                               return (
                                 <button
                                   key={t.id}
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    handleOpenDrawer(mod.name, time); 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDrawer(mod.name, time);
                                   }}
                                   className={`px-8 py-3 rounded-2xl font-black text-xs transition-all active:scale-95 border
                                       ${isSel ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-white/5 border-white/10 text-gray-400'}`}
@@ -830,41 +865,41 @@ export default function AttendancePage() {
               <div className="bg-[#0B0B0D]/80 backdrop-blur-md rounded-[24px] p-5 md:p-6 border border-white/5 shadow-2xl relative animate-in fade-in slide-in-from-top-4 duration-500 z-30">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-50" />
                 <div className={`grid gap-4 ${isPowerUser ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
-                  <CustomSelect 
-                    label="Ordenar por" 
-                    value={historySortBy} 
-                    onChange={setHistorySortBy} 
-                    options={[['recente', 'Mais Recente'], ['antigas', 'Antigas'], ['az', 'Modalidade A-Z']]} 
+                  <CustomSelect
+                    label="Ordenar por"
+                    value={historySortBy}
+                    onChange={setHistorySortBy}
+                    options={[['recente', 'Mais Recente'], ['antigas', 'Antigas'], ['az', 'Modalidade A-Z']]}
                   />
-                  
-                  <CustomSelect 
-                    label="Modalidade" 
-                    value={historyModalityFilter} 
-                    onChange={setHistoryModalityFilter} 
-                    options={[['todas', 'Todas'], ...modalities.map(m => [m.name, m.name])]} 
+
+                  <CustomSelect
+                    label="Modalidade"
+                    value={historyModalityFilter}
+                    onChange={setHistoryModalityFilter}
+                    options={[['todas', 'Todas'], ...modalities.map(m => [m.name, m.name])]}
                   />
 
                   {isPowerUser ? (
                     <>
-                      <CustomSelect 
-                        label="Professor" 
-                        value={historyProfessorFilter} 
-                        onChange={setHistoryProfessorFilter} 
-                        options={[['todos', 'Todos'], ...Array.from(new Set(recentSessions.map(s => s.professor).filter(Boolean))).map(p => [p, p])]} 
+                      <CustomSelect
+                        label="Professor"
+                        value={historyProfessorFilter}
+                        onChange={setHistoryProfessorFilter}
+                        options={[['todos', 'Todos'], ...Array.from(new Set(recentSessions.map(s => s.professor).filter(Boolean))).map(p => [p, p])]}
                       />
-                      <CustomSelect 
-                        label="Tipo" 
-                        value={historyTypeFilter} 
-                        onChange={setHistoryTypeFilter} 
-                        options={[['todos', 'Todos'], ['equipe', 'Equipe'], ['visitante', 'Visitante']]} 
+                      <CustomSelect
+                        label="Tipo"
+                        value={historyTypeFilter}
+                        onChange={setHistoryTypeFilter}
+                        options={[['todos', 'Todos'], ['equipe', 'Equipe'], ['visitante', 'Visitante']]}
                       />
                     </>
                   ) : (
-                    <CustomSelect 
-                      label="Período" 
-                      value={historyPeriodFilter} 
-                      onChange={setHistoryPeriodFilter} 
-                      options={[['todos', 'Todo Histórico'], ['este-mes', 'Este Mês'], ['mes-passado', 'Mês Passado']]} 
+                    <CustomSelect
+                      label="Período"
+                      value={historyPeriodFilter}
+                      onChange={setHistoryPeriodFilter}
+                      options={[['todos', 'Todo Histórico'], ['este-mes', 'Este Mês'], ['mes-passado', 'Mês Passado']]}
                     />
                   )}
                 </div>
@@ -876,10 +911,10 @@ export default function AttendancePage() {
                     <div className="w-full">
                       <h5 className="text-xs md:text-base font-black text-white uppercase tracking-tight leading-tight line-clamp-1">{s.modality}</h5>
                       <p className="text-[8px] md:text-[9px] text-gray-500 uppercase font-black tracking-widest mt-1 line-clamp-1">
-                        {s.date?.split('-').reverse().slice(0,2).join('/')} · {s.time}
+                        {s.date?.split('-').reverse().slice(0, 2).join('/')} · {s.time}
                       </p>
                       <p className="text-[7px] md:text-[8px] text-gray-400 uppercase font-bold tracking-widest mt-0.5 line-clamp-1">
-                        {s.professor || s.instructorName} 
+                        {s.professor || s.instructorName}
                         {s.professor === userData?.name ? (
                           <span className="text-primary ml-1">(Eu)</span>
                         ) : (

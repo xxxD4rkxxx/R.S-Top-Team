@@ -66,7 +66,8 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
   const [input, setInput] = useState('')
   const [deleting, setDeleting] = useState(false)
   if (!student) return null
-  const match = input.trim().toLowerCase() === (student.nome || student.name || '').trim().toLowerCase()
+  const normalize = (str) => (str || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/\s+/g, ' ')
+  const match = normalize(input) === normalize(student.nome || student.name)
 
   async function handleDelete() {
     if (!match) return
@@ -151,7 +152,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`form-input bg-black/80 input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
+        className={`form-input bg-[#0B0B0D] backdrop-blur-md input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
         <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
@@ -219,10 +220,10 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
     let active = 0, inactive = 0, suspended = 0, archived = 0
     students.forEach(s => {
       // 🛡️ Filtramos estatísticas pelo tipo atual (Aluno ou Visitante)
-      const isTypeMatch = typeFilter === 'todos' || 
-                         (typeFilter === 'aluno' && s.roles?.aluno) || 
-                         (typeFilter === 'visitante' && s.roles?.visitante);
-      
+      const isTypeMatch = typeFilter === 'todos' ||
+        (typeFilter === 'aluno' && s.roles?.aluno) ||
+        (typeFilter === 'visitante' && s.roles?.visitante);
+
       if (!isTypeMatch) return;
 
       const n = normalizeStatus(s.status)
@@ -237,19 +238,19 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   // ⚡ Lógica de Inativação Automática de Visitantes (SSoT)
   useEffect(() => {
     if (!students || students.length === 0 || !userData?.academyConfig?.inativacao_visitante) return;
-    
+
     const limitDays = userData.academyConfig.inativacao_visitante;
     const now = new Date();
-    
+
     // Filtramos apenas visitantes ATIVOS que excederam o limite de dias desde a última visita (ou criação)
     const visitorsToInactivate = students.filter(s => {
       if (!s.roles?.visitante || normalizeStatus(s.status) !== 'ativo') return false;
-      
+
       const d = s.lastAttendanceAt || s.createdAt;
       const lastVisit = d ? (typeof d.toDate === 'function' ? d.toDate() : new Date(d)) : new Date();
       const diffTime = Math.abs(now - lastVisit);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       return diffDays > limitDays;
     });
 
@@ -304,7 +305,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
     try {
       if (editData) {
         const wasVisitor = editData.isVisitor || editData.roles?.visitante
-        
+
         if (wasVisitor && !options.isVisitor) {
           // PROMOÇÃO: Transformar Visitante em Aluno
           // 1. Criar novo registro na coleção USARIOS
@@ -424,7 +425,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
             onClick={() => setStatusFilter(statusFilter === 'ativo' ? 'todos' : 'ativo')} active={statusFilter === 'ativo'} />
           <KPICard title="Inativos" value={stats.inactive} description={typeFilter === 'visitante' ? "Visitantes inativos" : "Alunos que cancelaram ou pararam"} icon={UserX}
             onClick={() => setStatusFilter(statusFilter === 'inativo' ? 'todos' : 'inativo')} active={statusFilter === 'inativo'} />
-          
+
           {typeFilter === 'visitante' ? (
             <>
               <KPICard title="Total Visitantes" value={students.filter(s => s.roles?.visitante).length} description="Todos os leads/visitantes" icon={Users} valueColor="text-blue-400"
@@ -584,12 +585,12 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                             const raw = student[FIELDS.MODALIDADES] || student.modalities || [student[FIELDS.MODALIDADE] || student.modality]
                             const mods = Array.from(new Set(
                               raw.filter(Boolean)
-                                 .map(m => {
-                                   if (typeof m !== 'string') return m
-                                   const t = m.trim()
-                                   if (t.toLowerCase() === 'jiu-jitsu' || t.toLowerCase() === 'jiu jitsu') return 'Jiu Jitsu'
-                                   return t
-                                 })
+                                .map(m => {
+                                  if (typeof m !== 'string') return m
+                                  const t = m.trim()
+                                  if (t.toLowerCase() === 'jiu-jitsu' || t.toLowerCase() === 'jiu jitsu') return 'Jiu Jitsu'
+                                  return t
+                                })
                             ));
                             return mods.map((m, i) => (
                               <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase font-bold whitespace-nowrap">
@@ -623,7 +624,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                               if (!d) return '--/--/----';
                               try {
                                 return (typeof d.toDate === 'function' ? d.toDate() : new Date(d)).toLocaleDateString('pt-BR');
-                              } catch(e) {
+                              } catch (e) {
                                 return '--/--/----';
                               }
                             })()}

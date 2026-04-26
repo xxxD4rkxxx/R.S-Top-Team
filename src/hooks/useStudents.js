@@ -16,7 +16,10 @@ import {
   where,
   getDocs,
   getDoc,
-  deleteField
+  deleteField,
+  increment,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore'
 import { initializeApp, getApps } from 'firebase/app'
 import {
@@ -25,7 +28,7 @@ import {
   inMemoryPersistence,
   createUserWithEmailAndPassword
 } from 'firebase/auth'
-import { COLLECTIONS, FIELDS } from '../firebase/collections'
+import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../firebase/collections'
 import { useStudentsContext } from '../context/StudentsContext'
 import { sanitizeString } from '../utils/security'
 
@@ -162,11 +165,40 @@ export function useStudents() {
 
     try {
       const collectionName = target?.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
+      const userRef = doc(db, collectionName, studentId)
+
+      // 🏆 DECREMENTO DE TURMAS (Limpeza antes de deletar)
+      if (!target.isVisitor && target.turmas && target.turmas.length > 0) {
+        try {
+          const studentEmail = target.email || studentId;
+          const turmaPromises = target.turmas.map(async (uniqueId) => {
+            const [modId, tId] = uniqueId.includes(':') ? uniqueId.split(':') : [null, uniqueId];
+            if (modId && tId) {
+              const tRef = doc(db, COLLECTIONS.MODALIDADES, modId, SUB_COLLECTIONS.TURMAS, tId);
+              await updateDoc(tRef, {
+                totalAlunos: increment(-1),
+                alunos: arrayRemove(studentEmail)
+              });
+            }
+          });
+          await Promise.all(turmaPromises);
+        } catch (err) {
+          console.error('❌ Erro ao limpar turmas na deleção:', err);
+        }
+      }
+
+      // 🏆 LIMPEZA DE SUBCOLEÇÕES (Anotações, Graduações)
+      try {
+        const notesSnap = await getDocs(collection(userRef, SUB_COLLECTIONS.ANOTACOES))
+        await Promise.all(notesSnap.docs.map(d => deleteDoc(d.ref)))
+        const gradsSnap = await getDocs(collection(userRef, SUB_COLLECTIONS.GRADUACOES))
+        await Promise.all(gradsSnap.docs.map(d => deleteDoc(d.ref)))
+      } catch (e) { console.warn('Erro ao limpar subcoleções:', e.message) }
 
       // Realizamos o Hard Delete (Exclusão Permanente)
-      await deleteDoc(doc(db, collectionName, studentId))
+      await deleteDoc(userRef)
 
-      console.log(`✅ Aluno ${studentId} removido permanentemente.`)
+      console.log(`✅ Aluno ${studentId} removido. Turmas e dados internos limpos. Financeiro preservado.`)
     } catch (e) {
       console.error('Erro ao remover aluno:', e)
       throw e
@@ -267,6 +299,33 @@ export function useStudents() {
     const targetCollection = isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
     await setDoc(doc(db, targetCollection, docId), payload)
 
+    // 🏆 ATUALIZAÇÃO DE TURMAS (Contabilização)
+    if (!isVisitor && payload.turmas && payload.turmas.length > 0) {
+      try {
+        const studentId = docId; // O ID do aluno (e-mail ou slug)
+        const studentEmail = payload.email || docId;
+
+        const turmaPromises = payload.turmas.map(async (uniqueId) => {
+          const [mIdRaw, tIdRaw] = uniqueId.includes(':') ? uniqueId.split(':') : [null, uniqueId];
+          if (!mIdRaw || !tIdRaw) return;
+
+          const modalityId = mIdRaw.toLowerCase();
+          const turmaId = tIdRaw.toLowerCase();
+
+          const turmaRef = doc(db, COLLECTIONS.MODALIDADES, modalityId, SUB_COLLECTIONS.TURMAS, turmaId);
+          await updateDoc(turmaRef, {
+            totalAlunos: increment(1),
+            alunos: arrayUnion(studentEmail)
+          });
+        });
+
+        await Promise.all(turmaPromises);
+        console.log(`✅ Sincronização: ${payload.turmas.length} turmas atualizadas para ${studentEmail}`);
+      } catch (err) {
+        console.error('❌ Erro CRÍTICO na sincronização de turmas:', err);
+      }
+    }
+
     // 🔐 CRIAÇÃO DE AUTH (SSoT): Apenas para Alunos Reais
     if (!isVisitor && emailKey) {
       try {
@@ -348,6 +407,55 @@ export function useStudents() {
         payload[FIELDS.GRAUS_ATUAIS] = payload.stripes
         if (payload[FIELDS.JORNADA_TECNICA]) {
           payload[FIELDS.JORNADA_TECNICA][FIELDS.GRAUS_ATUAIS] = payload.stripes
+        }
+      }
+
+      // 🏆 ATUALIZAÇÃO DE TURMAS NO UPDATE (Delta Sync)
+      if (!student?.isVisitor && updates.turmas) {
+        try {
+          const oldTurmas = student.turmas || [];
+          const newTurmas = updates.turmas || [];
+          const studentEmail = student.email || id;
+
+          // Turmas para ADICIONAR (estão no novo, não estavam no antigo)
+          const toAdd = newTurmas.filter(t => !oldTurmas.includes(t));
+          // Turmas para REMOVER (estavam no antigo, não estão no novo)
+          const toRemove = oldTurmas.filter(t => !newTurmas.includes(t));
+
+          const syncPromises = [];
+
+          toAdd.forEach(uniqueId => {
+            const [mIdRaw, tIdRaw] = uniqueId.includes(':') ? uniqueId.split(':') : [null, uniqueId];
+            if (mIdRaw && tIdRaw) {
+              const mId = mIdRaw.toLowerCase();
+              const tId = tIdRaw.toLowerCase();
+              const ref = doc(db, COLLECTIONS.MODALIDADES, mId, SUB_COLLECTIONS.TURMAS, tId);
+              syncPromises.push(updateDoc(ref, {
+                totalAlunos: increment(1),
+                alunos: arrayUnion(studentEmail)
+              }));
+            }
+          });
+
+          toRemove.forEach(uniqueId => {
+            const [mIdRaw, tIdRaw] = uniqueId.includes(':') ? uniqueId.split(':') : [null, uniqueId];
+            if (mIdRaw && tIdRaw) {
+              const mId = mIdRaw.toLowerCase();
+              const tId = tIdRaw.toLowerCase();
+              const ref = doc(db, COLLECTIONS.MODALIDADES, mId, SUB_COLLECTIONS.TURMAS, tId);
+              syncPromises.push(updateDoc(ref, {
+                totalAlunos: increment(-1),
+                alunos: arrayRemove(studentEmail)
+              }));
+            }
+          });
+
+          if (syncPromises.length > 0) {
+            await Promise.all(syncPromises);
+            console.log(`📊 Sincronização de turmas concluída para ${id}`);
+          }
+        } catch (err) {
+          console.error('❌ Erro ao sincronizar turmas no update:', err);
         }
       }
 
