@@ -152,7 +152,11 @@ export default function ModalityCard({
                         <div>
                           <h5 className="text-sm font-bold text-white uppercase">{turma.name}</h5>
                           <div className="flex items-center gap-2 mt-1">
-                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{turma.professor || 'Sem Professor'}</p>
+                            <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                              {turma.professors?.length > 0 
+                                ? turma.professors.map(p => p.nome).join(' / ')
+                                : turma.professor || 'Sem Professor'}
+                            </p>
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {turma.diasSemana?.map(day => (

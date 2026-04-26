@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { collection, query, getDocs, orderBy, limit, doc, addDoc, setDoc, serverTimestamp, increment, where } from 'firebase/firestore'
-import { COLLECTIONS, SUB_COLLECTIONS } from '../../firebase/collections'
+import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../../firebase/collections'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { useStudents } from '../../hooks/useStudents'
@@ -59,13 +59,13 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className="flex flex-col gap-1.5 relative" ref={ref}>
+    <div className={`flex flex-col gap-1.5 relative ${isOpen ? 'z-[110]' : 'z-[10]'}`} ref={ref}>
       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/40 text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+        className="form-input bg-black/80 text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20"
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
         <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
@@ -75,12 +75,12 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
         {isOpen && !disabled && (
           <>
             {/* Backdrop invisível para fechar ao clicar fora */}
-            <div className="fixed inset-0 z-[90]" onClick={() => setIsOpen(false)} />
+            <div className="fixed inset-0 z-[998]" onClick={() => setIsOpen(false)} />
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2"
+              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[999] overflow-hidden shadow-2xl py-2"
             >
               {options.map(([v, l]) => (
                 <button
@@ -106,10 +106,10 @@ export default function AttendancePage() {
   const navigate = useNavigate()
 
   const [showModal, setShowModal] = useState(false)
-  const [sessionProfessor, setSessionProfessor] = useState('Prof. Robson')
   const [sessionModality, setSessionModality] = useState(currentModality)
   const [sessionDate, setSessionDate] = useState(formatInputDate(new Date()))
   const [sessionTime, setSessionTime] = useState('20:00')
+  const [sessionProfessor, setSessionProfessor] = useState('')
   const [activeSession, setActiveSession] = useState(null)
   const [isSavingSession, setIsSavingSession] = useState(false)
   const [searchActive, setSearchActive] = useState('')
@@ -122,6 +122,10 @@ export default function AttendancePage() {
   const { user, userData, effectiveRole } = useAuth()
   
   const isPowerUser = effectiveRole === 'admin' || effectiveRole === 'gestor'
+  const CRIADO_EM = FIELDS.CRIADO_EM || 'criadoEm'
+  const INSTRUTOR_ID = FIELDS.INSTRUTOR_ID || 'instrutorId'
+  const NOME_INSTRUTOR = FIELDS.NOME_INSTRUTOR || 'nomeInstrutor'
+  const MODALIDADE = FIELDS.MODALIDADE || 'modalidade'
 
   // 🥋 Filter modalities for professors (RBAC)
   const availableModalities = useMemo(() => {
@@ -169,16 +173,19 @@ export default function AttendancePage() {
 
   const instructorsOnly = useMemo(() => {
     return staffMembers.filter(s => {
-      const roles = s.roles || {}
+      const roles = s.papeis || s.roles || {}
       return roles.gestor || roles.professor
-    })
+    }).map(s => ({
+      ...s,
+      name: s.nome || s.name || 'Sem Nome'
+    }))
   }, [staffMembers])
 
   useEffect(() => {
-    if (userData?.name && sessionProfessor === 'Prof. Robson') {
+    if (userData?.name && !sessionProfessor) {
       setSessionProfessor(userData.name)
     }
-  }, [userData?.name])
+  }, [userData?.name, sessionProfessor])
 
   useEffect(() => {
     setSessionModality(currentModality)
@@ -193,44 +200,52 @@ export default function AttendancePage() {
 
       // 👑 Admin/Gestor veem tudo.
       if (isPowerUser) {
-        q = query(collection(db, COLLECTIONS.CHAMADAS), orderBy('createdAt', 'desc'), limit(50))
+        q = query(collection(db, COLLECTIONS.CHAMADAS), orderBy(CRIADO_EM, 'desc'), limit(50))
         const snap = await getDocs(q)
         docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       } else {
-        // 🎓 Professor: Busca por instructorId (Novo padrão)
+        // 🎓 Professor: Busca por instrutorId (Novo padrão PT-BR)
         const qUid = query(
           collection(db, COLLECTIONS.CHAMADAS),
-          where('instructorId', '==', user.uid),
+          where(INSTRUTOR_ID, '==', user.uid),
           limit(50)
         )
         const snapUid = await getDocs(qUid)
         docs = snapUid.docs.map(d => ({ id: d.id, ...d.data() }))
 
-        // 🔍 Se não achou nada por UID, ou achou pouco, tenta pelo NOME (Dados legados)
-        if (docs.length < 10 && userData?.name) {
+        // 🔍 Se não achou nada por UID (PT-BR), tenta pelo instructorId (Legado EN)
+        if (docs.length === 0) {
+          const qLegacy = query(
+            collection(db, COLLECTIONS.CHAMADAS),
+            where('instructorId', '==', user.uid),
+            limit(50)
+          )
+          const snapLegacy = await getDocs(qLegacy)
+          docs = snapLegacy.docs.map(d => ({ id: d.id, ...d.data() }))
+        }
+
+        // 🔍 Se ainda não achou nada, tenta pelo NOME (Professor - Dados muito antigos)
+        if (docs.length < 5 && userData?.name) {
           const qName = query(
             collection(db, COLLECTIONS.CHAMADAS),
             where('professor', '==', userData.name),
             limit(50)
           )
           const snapName = await getDocs(qName)
-          const legacyDocs = snapName.docs.map(d => ({ id: d.id, ...d.data() }))
+          const nameDocs = snapName.docs.map(d => ({ id: d.id, ...d.data() }))
           
-          // Mescla e remove duplicatas por ID
           const existingIds = new Set(docs.map(d => d.id))
-          legacyDocs.forEach(ld => {
-            if (!existingIds.has(ld.id)) docs.push(ld)
+          nameDocs.forEach(nd => {
+            if (!existingIds.has(nd.id)) docs.push(nd)
           })
         }
       }
 
       // 🕒 Ordenação manual no cliente para garantir que os mais recentes apareçam primeiro
-      // (Isso evita a necessidade de índices compostos complexos no Firestore para o Professor)
       docs.sort((a, b) => {
-        const dateA = a.createdAt?.seconds || 0
-        const dateB = b.createdAt?.seconds || 0
+        const dateA = (a[CRIADO_EM]?.seconds || a.createdAt?.seconds || 0)
+        const dateB = (b[CRIADO_EM]?.seconds || b.createdAt?.seconds || 0)
         if (dateB !== dateA) return dateB - dateA
-        // Fallback para data string se createdAt for nulo (casos de cache/offline)
         return (b.date || '').localeCompare(a.date || '')
       })
 
@@ -247,13 +262,19 @@ export default function AttendancePage() {
         let filtered = allDocs
         if (!isPowerUser) {
           filtered = allDocs.filter(d => 
-            d.instructorId === user.uid || 
+            d[INSTRUTOR_ID] === user.uid || 
+            d.instructorId === user.uid ||
             d.professor === userData?.name
           )
         }
         
-        filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+        filtered.sort((a, b) => (b[CRIADO_EM]?.seconds || b.createdAt?.seconds || 0) - (a[CRIADO_EM]?.seconds || a.createdAt?.seconds || 0))
         setRecentSessions(filtered)
+
+        // Se não houver professor selecionado, tenta pegar o último usado
+        if (!sessionProfessor && filtered.length > 0) {
+          setSessionProfessor(filtered[0].professor || '')
+        }
       }
     }
   }
@@ -345,22 +366,51 @@ export default function AttendancePage() {
     return { present, total, pct: total ? Math.round((present / total) * 100) : 0 }
   }, [activeList])
 
+  // Helper to sync professors when modality/time changes
+  const syncProfessors = (modName, timeStr) => {
+    const mod = modalities.find(m => m.name === modName)
+    if (mod && mod.turmas) {
+      const time = ensureTimeFormat(timeStr)
+      const turma = mod.turmas.find(t => ensureTimeFormat(t.horario || t.horarioInicio) === time)
+      if (turma && turma.professors && turma.professors.length > 0) {
+        // Pega os nomes e junta em string
+        setSessionProfessor(turma.professors.map(p => p.nome || p.name).join(', '))
+        return
+      } else if (turma && (turma.professor || turma.professorId)) {
+        setSessionProfessor(turma.professor || 'Professor')
+        return
+      }
+    }
+    // Fallback se não achar turma ou professores
+    if (userData?.name && !sessionProfessor) {
+      setSessionProfessor(userData.name)
+    }
+  }
+
   async function handleStartSession() {
     if (!sessionModality) {
       setToastMessage('Selecione uma modalidade')
       return
     }
 
-    // Gerar ID sequencial opcional ou usar Firestore Auto ID
+    if (!sessionProfessor) {
+      setToastMessage('Informe o professor responsável')
+      return
+    }
+
     const tempId = doc(collection(db, COLLECTIONS.CHAMADAS)).id
     const payload = {
       id: tempId,
-      modality: sessionModality,
+      [MODALIDADE]: sessionModality,
+      modality: sessionModality, 
       date: sessionDate,
       time: ensureTimeFormat(sessionTime),
       professor: sessionProfessor,
-      instructorId: user?.uid || 'system',
-      instructorName: userData?.name || user?.displayName || 'Sistema'
+      [INSTRUTOR_ID]: user?.uid || 'system',
+      instructorId: user?.uid || 'system', 
+      [NOME_INSTRUTOR]: userData?.name || user?.displayName || 'Sistema',
+      instructorName: userData?.name || user?.displayName || 'Sistema',
+      [CRIADO_EM]: new Date().toISOString() // Valor local temporário para a UI
     }
 
     // Transição instantânea para a lista (Optimistic UI)
@@ -383,9 +433,10 @@ export default function AttendancePage() {
 
   const handleOpenDrawer = (modality, time) => {
     setSessionModality(modality)
-    setSessionTime(ensureTimeFormat(time))
+    const formattedTime = ensureTimeFormat(time)
+    setSessionTime(formattedTime)
     setSessionDate(new Date().toISOString().split('T')[0])
-    setSessionProfessor(recentSessions[0]?.professor || 'Prof. Robson')
+    syncProfessors(modality, formattedTime)
     setShowMobileConfig(true)
   }
 
@@ -425,8 +476,8 @@ export default function AttendancePage() {
         setSearchActive('')
         fetchRecentSessions()
         setIsFinishingSession(false)
-        // Redireciona para a página de revisão (histórico) desta sessão
-        navigate(`/attendance/review/${savedSessionId}`)
+        // Redireciona para a página de revisão (histórico) desta sessão (Novo padrão PT-BR)
+        navigate(`/chamadas/revisao/${savedSessionId}`)
       }, 800)
     } catch (err) {
       console.error('Erro ao finalizar sessão:', err)
@@ -511,7 +562,9 @@ export default function AttendancePage() {
                             setSessionModality(mod.name);
                             setCurrentModality(mod.name);
                             if (turmas.length > 0) {
-                              setSessionTime(ensureTimeFormat(turmas[0].horario || turmas[0].horarioInicio));
+                              const time = ensureTimeFormat(turmas[0].horario || turmas[0].horarioInicio)
+                              setSessionTime(time);
+                              syncProfessors(mod.name, time)
                             }
                           }}
                           animate={{ scale: isSelection ? 1.03 : 1 }}
@@ -542,7 +595,12 @@ export default function AttendancePage() {
                                 const time = ensureTimeFormat(t.horario || t.horarioInicio)
                                 const isSel = sessionTime === time && sessionModality === mod.name
                                 return (
-                                  <button key={t.id} onClick={(e) => { e.stopPropagation(); setSessionModality(mod.name); setSessionTime(time); }}
+                                  <button key={t.id} onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setSessionModality(mod.name); 
+                                    setSessionTime(time);
+                                    syncProfessors(mod.name, time);
+                                  }}
                                     className={`flex-1 min-w-[120px] px-5 py-2.5 rounded-xl text-[10px] font-black border transition-all duration-300
                                       ${isSel
                                         ? 'bg-rose-600 border-rose-600 text-white scale-105 shadow-lg shadow-rose-600/20'
@@ -607,7 +665,10 @@ export default function AttendancePage() {
                               return (
                                 <button
                                   key={t.id}
-                                  onClick={(e) => { e.stopPropagation(); handleOpenDrawer(mod.name, time); }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    handleOpenDrawer(mod.name, time); 
+                                  }}
                                   className={`px-8 py-3 rounded-2xl font-black text-xs transition-all active:scale-95 border
                                       ${isSel ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-white/5 border-white/10 text-gray-400'}`}
                                 >
@@ -671,12 +732,12 @@ export default function AttendancePage() {
                       <AnimatePresence>
                         {showProfessorDropdown && (
                           <>
-                            <div className="fixed inset-0 z-30" onClick={() => setShowProfessorDropdown(false)} />
+                            <div className="fixed inset-0 z-[998]" onClick={() => setShowProfessorDropdown(false)} />
                             <motion.div
                               initial={{ opacity: 0, y: -5, scale: 0.98 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: -5, scale: 0.98 }}
-                              className="absolute left-0 right-0 bottom-full mb-2 z-40 bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+                              className="absolute left-0 right-0 bottom-full mb-2 z-[999] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
                             >
                               <div className="bg-white/5 p-2.5 border-b border-white/5">
                                 <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Equipe</p>
@@ -694,7 +755,7 @@ export default function AttendancePage() {
                                     {sessionProfessor === s.name && <Check size={12} />}
                                   </button>
                                 ))}
-                                {sessionProfessor && !instructorsOnly.find(s => s.name === sessionProfessor) && (
+                                {sessionProfessor && !instructorsOnly.some(s => s.name.trim().toLowerCase() === sessionProfessor.trim().toLowerCase()) && (
                                   <div className="px-4 py-2 border-t border-white/5 bg-primary/5">
                                     <p className="text-[8px] font-black text-primary uppercase mb-0.5 tracking-tighter">VISITANTE</p>
                                     <p className="text-white text-[11px] font-bold">{sessionProfessor}</p>
@@ -822,14 +883,14 @@ export default function AttendancePage() {
                         {s.professor === userData?.name ? (
                           <span className="text-primary ml-1">(Eu)</span>
                         ) : (
-                          !instructorsOnly.some(inst => inst.name === s.professor) && (
+                          !instructorsOnly.some(inst => inst.name.trim().toLowerCase() === s.professor?.trim().toLowerCase()) && (
                             <span className="text-rose-500 ml-1">(Visitante)</span>
                           )
                         )}
                       </p>
                     </div>
                     <button
-                      onClick={() => navigate(`/attendance/review/${s.id}`)}
+                      onClick={() => navigate(`/chamadas/revisao/${s.id}`)}
                       className="w-full py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-gray-400 transition-all font-black"
                     >
                       Revisar

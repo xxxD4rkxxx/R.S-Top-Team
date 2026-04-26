@@ -4,7 +4,7 @@ import {
     collection, query, where, getDocs,
     orderBy, Timestamp, collectionGroup
 } from 'firebase/firestore'
-import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
+import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../firebase/collections'
 import { useAuth } from '../context/AuthContext'
 import { useStudents } from './useStudents'
 import { beltConfig } from '../data/beltConfig'
@@ -107,41 +107,45 @@ export function useTeacherIntelligence() {
                 let sessions = []
                 try {
                     let qSess
+                    const CRIADO_EM = FIELDS.CRIADO_EM || 'criadoEm'
+                    const MODALIDADE = FIELDS.MODALIDADE || 'modalidade'
+                    const INSTRUTOR_ID = FIELDS.INSTRUTOR_ID || 'instrutorId'
+
                     if (isPowerUser) {
-                        qSess = query(sessionsRef, where('createdAt', '>=', Timestamp.fromDate(sixtyDaysAgo)))
+                        qSess = query(sessionsRef, where(CRIADO_EM, '>=', Timestamp.fromDate(sixtyDaysAgo)))
                     } else if (teacherModalities.length > 0) {
                         qSess = query(
                             sessionsRef,
-                            where('modality', 'in', teacherModalities),
-                            where('createdAt', '>=', Timestamp.fromDate(sixtyDaysAgo))
+                            where(MODALIDADE, 'in', teacherModalities),
+                            where(CRIADO_EM, '>=', Timestamp.fromDate(sixtyDaysAgo))
                         )
                     } else {
                         qSess = query(
                             sessionsRef,
-                            where('instructorId', '==', userData?.uid || ''),
-                            where('createdAt', '>=', Timestamp.fromDate(sixtyDaysAgo))
+                            where(INSTRUTOR_ID, '==', userData?.uid || ''),
+                            where(CRIADO_EM, '>=', Timestamp.fromDate(sixtyDaysAgo))
                         )
                     }
 
                     const sessionsSnap = await getDocs(qSess)
                     sessions = sessionsSnap.docs.map(d => ({
                         id: d.id,
-                        createdAt: safeDate(d.data().createdAt || d.data().date),
+                        createdAt: safeDate(d.data()[CRIADO_EM] || d.data().createdAt || d.data().date),
                         ...d.data()
                     }))
 
-                    // Fallback Crítico: Se não achou nada por modalidade, tenta buscar as aulas DELE
+                    // Fallback Crítico
                     if (sessions.length === 0 && !isPowerUser) {
                         console.warn("[Intelligence] Nenhuma sessão encontrada por modalidade. Tentando fallback por instructorId...");
                         const qFallback = query(
                             sessionsRef,
-                            where('instructorId', '==', userData?.uid || ''),
-                            where('createdAt', '>=', Timestamp.fromDate(sixtyDaysAgo))
+                            where(INSTRUTOR_ID, '==', userData?.uid || ''),
+                            where(CRIADO_EM, '>=', Timestamp.fromDate(sixtyDaysAgo))
                         )
                         const fallbackSnap = await getDocs(qFallback)
                         sessions = fallbackSnap.docs.map(d => ({
                             id: d.id,
-                            createdAt: safeDate(d.data().createdAt || d.data().date),
+                            createdAt: safeDate(d.data()[CRIADO_EM] || d.data().createdAt || d.data().date),
                             ...d.data()
                         }))
                     }
@@ -157,7 +161,7 @@ export function useTeacherIntelligence() {
                 try {
                     const attQuery = query(
                         collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
-                        where('status', '==', 'present')
+                        where(FIELDS.STATUS || 'status', '==', 'present')
                     )
 
                     const attSnap = await getDocs(attQuery)

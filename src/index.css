@@ -524,6 +524,18 @@ h1, h2, h3, h4, h5, h6, b, strong, .font-bold, .font-black {
    para utilizadores que preferem movimento reduzido (ex: epilepsia, vertigem)
    ou dispositivos com GPU limitada que ativam esta setting automaticamente.
    Animações JS (framer-motion) têm tratamento separado no componente. */
+/* === Classes de Faixas (Jiu Jitsu) === */
+.belt-none { background: #1F2937; } /* Gray-800 */
+.belt-white { background: linear-gradient(135deg, #FFFFFF 0%, #F3F4F6 100%); }
+.belt-grey { background: linear-gradient(135deg, #9CA3AF 0%, #4B5563 100%); }
+.belt-yellow { background: linear-gradient(135deg, #FBBF24 0%, #D97706 100%); }
+.belt-orange { background: linear-gradient(135deg, #F97316 0%, #C2410C 100%); }
+.belt-green { background: linear-gradient(135deg, #10B981 0%, #047857 100%); }
+.belt-blue { background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%); }
+.belt-purple { background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); }
+.belt-brown { background: linear-gradient(135deg, #78350F 0%, #451A03 100%); }
+.belt-black { background: linear-gradient(135deg, #111111 0%, #000000 100%); border: 1px solid rgba(255,255,255,0.1); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration:        0.01ms !important;

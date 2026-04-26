@@ -50,6 +50,9 @@ export const FIELDS = {
   PIN: 'pin',
   AVATAR_URL: 'avatarUrl',
   BANNER_URL: 'bannerUrl',
+  DDD: 'ddd',
+  TELEFONE_LIMPO: 'telefone_limpo',
+  TELEFONE_COMPLETO: 'telefone_completo',
 
   // Alunos / Jornada Técnica
   JORNADA_TECNICA: 'jornada_tecnica',

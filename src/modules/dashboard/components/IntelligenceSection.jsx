@@ -131,7 +131,7 @@ export default function IntelligenceSection({ data }) {
         } else {
             text = `Fala ${(student.nome || student.name).split(' ')[0]}! Passando pra parabenizar pela constância nos treinos. Você está com ${student.attendanceRate}% de presença! Continue firme. Oss! 🥋`
         }
-        window.open(`https://wa.me/55${student.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank')
+        window.open(`https://wa.me/${student.telefone_completo || ('55' + (student.phone || '').replace(/\D/g, ''))}?text=${encodeURIComponent(text)}`, '_blank')
     }
 
     return (

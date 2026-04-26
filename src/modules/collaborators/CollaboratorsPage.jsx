@@ -17,6 +17,7 @@ import KPICard from '../../components/shared/KPICard'
 import CollaboratorDetailsModal from '../../components/shared/CollaboratorDetailsModal'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import PinVerificationModal from '../../components/shared/PinVerificationModal'
+import { beltConfig } from '../../data/beltConfig'
 
 
 // ────────────────────────────────────────────────
@@ -50,25 +51,25 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className="flex flex-col gap-1.5 relative" ref={ref}>
+    <div className={`flex flex-col gap-1.5 relative ${isOpen ? 'z-[110]' : 'z-[10]'}`} ref={ref}>
       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+        className={`form-input bg-black/80 input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={14} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2" style={{ animation: 'fadeSlideUp 0.15s ease-out forwards' }}>
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[150] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(([v, l]) => (
             <button
               key={v}
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-bold' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/10 font-black' : 'text-gray-400 font-medium'}`}
             >
               {l}
             </button>
@@ -394,10 +395,11 @@ export default function CollaboratorsPage() {
                           {member.photoURL ? (
                             <img src={member.photoURL} alt={member.nome || member.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
                           ) : (
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 bg-gradient-to-br from-primary to-black/10 text-white shadow-inner">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 text-white shadow-inner ${beltConfig[member.belt]?.bgClass || 'bg-gradient-to-br from-primary to-black/10'}`}>
                               {getInitials(member.nome || member.name)}
                             </div>
                           )}
+
                         </div>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
@@ -408,7 +410,17 @@ export default function CollaboratorsPage() {
                               <span className="px-1.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-[8px] font-black text-primary uppercase tracking-tighter">Você</span>
                             )}
                           </div>
-                          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{member.role || 'COLABORADOR'}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{member.role || 'COLABORADOR'}</span>
+                            {member.belt && member.belt !== 'none' && (
+                              <>
+                                <span className="w-1 h-1 rounded-full bg-gray-800" />
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${beltConfig[member.belt]?.bgClass.replace('belt-', 'text-') || 'text-gray-500'}`}>
+                                  {beltConfig[member.belt]?.label}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -420,7 +432,7 @@ export default function CollaboratorsPage() {
                     <td className="py-4 px-5 text-center">
                       {member.phone ? (
                         <a
-                          href={`https://wa.me/${member.phone.replace(/\D/g, '')}`}
+                          href={`https://wa.me/${member.telefone_completo || ('55' + (member.phone || '').replace(/\D/g, ''))}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all font-mono"

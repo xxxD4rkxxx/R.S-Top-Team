@@ -128,7 +128,11 @@ export function AuthProvider({ children }) {
     // Para verificação rápida dentro do app, aceitamos qualquer um dos PINs do admin
     if (!user || !userData) return false
     const typed = String(pinToVerify).trim()
-    if (typed === String(userData.pin).trim() || typed === String(userData.adminPin).trim()) return true
+    // Aceita qualquer PIN válido do usuário (Normal ou Admin)
+    const pin = String(userData.pin || '').trim()
+    const adminPin = String(userData.adminPin || userData.admPin || '').trim()
+    
+    if (typed === pin || typed === adminPin) return true
 
     // Fallback Firebase
     const pinAuthEmail = user.email
@@ -239,15 +243,11 @@ export function AuthProvider({ children }) {
       const dbPin = String(getValueRobust(dbData, 'pin') || '').trim()
       const dbAdminPin = String(getValueRobust(dbData, 'adminPin') || getValueRobust(dbData, 'admPin') || '').trim()
 
-      // Valida se o PIN digitado é o PIN de aluno (Normal) ou o PIN Mestre
-      const isNormalPin = typedPin === dbPin || securePIN === dbPin
-      const isAdminPin = (dbAdminPin && (typedPin === dbAdminPin || securePIN === dbAdminPin))
+      // Valida o PIN (Aceita tanto o PIN de aluno quanto o PIN de admin/mestre)
+      const isValidPin = typedPin === dbPin || securePIN === dbPin || 
+                         (dbAdminPin && (typedPin === dbAdminPin || securePIN === dbAdminPin))
 
-      if (!isNormalPin) {
-        // Se for admin tentando usar adminPin na tela normal, avisa que deve ser na tela de admin
-        if (isAdminPin) {
-          throw new Error('PIN incorreto.')
-        }
+      if (!isValidPin) {
         throw new Error('PIN incorreto.')
       }
 
@@ -256,14 +256,9 @@ export function AuthProvider({ children }) {
       const isGestor = dbData.papeis?.gestor || dbData.roles?.gestor || String(dbData.role).toLowerCase() === 'gestor'
       const isProf = dbData.papeis?.professor || dbData.roles?.professor || String(dbData.role).toLowerCase() === 'professor'
 
-      // Se for admin/gestor/prof, e estiver na tela normal, podemos opcionalmente simular aluno 
-      // ou deixar o papel real se o PIN usado for o adminPin
+      // 🛡️ ACESSO DIRETO: Se for colaborador, entra com papel real (sem simular aluno)
       if (isAdm || isGestor || isProf) {
-        if (isNormalPin && !isAdminPin) {
-          setSimulatedRole('aluno')
-        } else {
-          setSimulatedRole(null) // Papel real
-        }
+        setSimulatedRole(null)
       }
 
       // PIN Mestre para o Auth (Suporta: adminPin, admPin ou pin)
@@ -515,10 +510,10 @@ export function AuthProvider({ children }) {
 
     const safetyTimeout = setTimeout(() => {
       if (loading) {
-        console.warn("⏱️ [AuthContext] Timeout de carregamento excedido. Forçando liberação da UI...")
+        console.warn("⏱️ [AuthContext] Timeout de carregamento excedido (15s). Forçando liberação da UI...")
         setLoading(false)
       }
-    }, 5000)
+    }, 15000)
 
     return () => { 
       unsubscribe(); 

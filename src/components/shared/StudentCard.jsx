@@ -22,16 +22,7 @@ function BeltBadge({ belt }) {
   )
 }
 
-function Stripes({ count }) {
-  if (!count) return null
-  return (
-    <div className="flex gap-0.5 items-center">
-      {Array.from({ length: count }).map((_, i) => (
-        <span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--clr-primary)', opacity: 0.8 }} />
-      ))}
-    </div>
-  )
-}
+
 
 function StudentAvatar({ student, belt }) {
   const [imageError, setImageError] = useState(false)
@@ -115,7 +106,6 @@ export default function StudentCard({ student, onClick }) {
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <BeltBadge belt={belt} />
-            <Stripes count={stripes} />
             {status && (
               <span
                 className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm"

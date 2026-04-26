@@ -97,7 +97,12 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
   const isManager = userData?.roles?.gestor || userData?.roles?.admin
 
   // Filtra professores e fornecedores (usuários com role professor ou especificamente marcados como fornecedor no futuro)
-  const professors = useMemo(() => users.filter(u => u.roles?.professor), [users])
+  const professors = useMemo(() => users.filter(u => {
+    const roles = u.papeis || u.roles || {};
+    const roleStr = String(u.role || '').toLowerCase();
+    return roles.professor || roles.gestor || roles.admin || 
+           ['professor', 'gestor', 'admin'].includes(roleStr);
+  }), [users])
 
   const [form, setForm] = useState(initialData ? {
     ...initialData,

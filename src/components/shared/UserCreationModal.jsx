@@ -14,6 +14,7 @@ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { useModalities } from '../../hooks/useModalities'
+import { formatPhoneUI, parsePhoneData } from '../../utils/phoneUtils'
 
 /**
  * Seletor Customizado Premium (Copiado do AddStudentModal para consistência)
@@ -33,26 +34,26 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className="flex flex-col gap-1.5 relative w-full font-sans" ref={ref}>
-      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1 font-sans">{label}</label>
+    <div className={`flex flex-col gap-1.5 relative w-full ${isOpen ? 'z-[110]' : 'z-[10]'}`} ref={ref}>
+      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20 font-sans"
+        className={`form-input bg-black/80 input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
-        <span className="truncate font-sans">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={14} className="text-gray-500 transition-transform duration-200 shrink-0 ml-2" />
+        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2 font-sans">
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[150] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(([v, l]) => (
             <button
               key={v}
               type="button"
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 font-sans ${value === v ? 'text-white bg-white/5 font-bold' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/10 font-black' : 'text-gray-400 font-medium'}`}
             >
               {l}
             </button>
@@ -85,6 +86,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     pin: '', // 🔑 OPCIONAL: Permite definir manualmente
     roles: [], // Inicia vazio para escolha explícita
     modalities: [], // 🥋 Modalidades do professor
+    belt: 'none',
+    stripes: 0,
     // --- NOVOS CAMPOS SINCRONIZADOS COM ALUNOS ---
     gender: 'Masculino',
     ageCategory: 'Adulto',
@@ -136,6 +139,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
               ? Object.keys(initialData.roles).filter(r => initialData.roles[r])
               : ['aluno'],
           modalities: initialData.modalities || [],
+          belt: initialData.belt || 'none',
+          stripes: initialData.stripes || 0,
           // --- NOVOS CAMPOS SINCRONIZADOS ---
           gender: initialData.gender || 'Masculino',
           ageCategory: initialData.ageCategory || 'Adulto',
@@ -156,6 +161,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           name: '', email: '', phone: '', pin: '',
           roles: [],
           modalities: [],
+          belt: 'none',
+          stripes: 0,
           gender: 'Masculino',
           ageCategory: 'Adulto',
           emergency: '',
@@ -352,8 +359,20 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       // Converte roles de Array para Objeto (Padrão SSoT / RBAC)
       const rolesMap = formData.roles.reduce((acc, r) => ({ ...acc, [r]: true }), {})
 
+      // 📱 Processamento do Telefone
+      const phoneData = parsePhoneData(formData.phone)
+      if (!phoneData) {
+        setError('Telefone inválido. Use o padrão: 91 99999-9999')
+        setLoading(false)
+        return
+      }
+
       const result = await createNewUser({
         ...formData,
+        phone: phoneData.display,
+        ddd: phoneData.ddd,
+        telefone_limpo: phoneData.telefone_limpo,
+        telefone_completo: phoneData.telefone_completo,
         role: primaryRole,
         roles: rolesMap
       })
@@ -568,7 +587,13 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                     <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Telefone / WhatsApp</label>
                     <div className="relative">
                       <Smartphone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                      <input type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="(00) 00000-0000" />
+                      <input
+                        type="text"
+                        value={formData.phone}
+                        onChange={e => setFormData({ ...formData, phone: formatPhoneUI(e.target.value) })}
+                        className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                        placeholder="91 99999-9999"
+                      />
                     </div>
                   </div>
                 </div>
@@ -681,13 +706,48 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                   </div>
                 )}
 
+                {/* GRADUAÇÃO (Somente se Jiu Jitsu estiver selecionado) */}
+                {(formData.modalities?.some(m => m.toLowerCase().includes('jiu')) || formData.roles.includes('aluno')) && (
+                  <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                    <CustomSelect
+                      label="Faixa (Jiu Jitsu)"
+                      value={formData.belt}
+                      onChange={v => setFormData({ ...formData, belt: v })}
+                      options={[
+                        ['none', 'Sem Faixa'],
+                        ['white', 'Branca'],
+                        ['grey', 'Cinza'],
+                        ['yellow', 'Amarela'],
+                        ['orange', 'Laranja'],
+                        ['green', 'Verde'],
+                        ['blue', 'Azul'],
+                        ['purple', 'Roxa'],
+                        ['brown', 'Marrom'],
+                        ['black', 'Preta']
+                      ]}
+                    />
+                    <CustomSelect
+                      label="Grau"
+                      value={formData.stripes}
+                      onChange={v => setFormData({ ...formData, stripes: v })}
+                      options={[
+                        [0, '0 Graus'],
+                        [1, '1 Grau'],
+                        [2, '2 Graus'],
+                        [3, '3 Graus'],
+                        [4, '4 Graus']
+                      ]}
+                    />
+                  </div>
+                )}
+
                 {/* --- NOVOS CAMPOS: SAÚDE E SEGURANÇA --- */}
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-3">
                     Saúde e Segurança
                     <div className="h-px flex-1 bg-primary/5" />
                   </h3>
-                  
+
                   <div className="space-y-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Contato de Emergência</label>
@@ -733,9 +793,9 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                           <input
                             type="text"
                             value={formData.parentPhone}
-                            onChange={e => setFormData({ ...formData, parentPhone: e.target.value })}
+                            onChange={e => setFormData({ ...formData, parentPhone: formatPhoneUI(e.target.value) })}
                             className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
-                            placeholder="(00) 00000-0000"
+                            placeholder="91 99999-9999"
                           />
                         </div>
                       </div>

@@ -57,12 +57,12 @@ const VISITORS_COLLECTION = 'visitantes' // Nova coleção para Leads
  */
 const sanitizeId = (identifier, forceName = false) => {
   if (!identifier) return 'visitante_' + Date.now()
-  
+
   const idStr = identifier.toString().toLowerCase().trim()
 
   // Se forçado a usar nome ou não for um e-mail válido, sanitizamos como slug
   const isEmail = idStr.includes('@') && idStr.includes('.')
-  
+
   if (forceName || !isEmail) {
     return idStr
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -70,7 +70,7 @@ const sanitizeId = (identifier, forceName = false) => {
       .replace(/_+/g, '_')
       .replace(/^_|_$/g, '')
   }
-  
+
   return idStr
 }
 
@@ -162,10 +162,10 @@ export function useStudents() {
 
     try {
       const collectionName = target?.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
-      
+
       // Realizamos o Hard Delete (Exclusão Permanente)
       await deleteDoc(doc(db, collectionName, studentId))
-      
+
       console.log(`✅ Aluno ${studentId} removido permanentemente.`)
     } catch (e) {
       console.error('Erro ao remover aluno:', e)
@@ -177,17 +177,19 @@ export function useStudents() {
    * ADICIONAR NOVO ALUNO / VISITANTE
    */
   const addStudent = useCallback(async (newStudent, modality, options = {}) => {
-    const { isVisitor = false, belt = 'white' } = options
+    const { isVisitor = false, belt = 'white', stripes = 0 } = options
 
     // Normalização de modalidades (Deduplicação e Padronização)
-    let rawModalities = Array.isArray(modality) ? modality : [modality || 'Jiu Jitsu']
-    
+    let rawModalities = Array.isArray(modality) ? modality : (modality ? [modality] : [])
+
     // Filtramos e normalizamos para evitar 'jiu-jitsu' vs 'Jiu Jitsu'
     const finalModalities = Array.from(new Set(rawModalities.map(m => {
       if (typeof m !== 'string') return m
-      // Se for o ID 'jiu-jitsu', normalizamos para o nome padrão 'Jiu Jitsu'
-      // Isso será reforçado no Modal para enviar apenas os nomes oficiais
-      return m.toLowerCase() === 'jiu-jitsu' ? 'Jiu Jitsu' : m
+      const trimmed = m.trim()
+      // Normalização agressiva para SSoT
+      if (trimmed.toLowerCase() === 'jiu-jitsu' || trimmed.toLowerCase() === 'jiu jitsu') return 'Jiu Jitsu'
+      if (trimmed.toLowerCase() === 'boxe') return 'Boxe'
+      return trimmed
     }))).filter(Boolean)
 
     if (finalModalities.length === 0) finalModalities.push('Jiu Jitsu')
@@ -205,7 +207,7 @@ export function useStudents() {
       modality: finalModalities[0],
       [FIELDS.MODALIDADES]: finalModalities,
       modalities: finalModalities,
-      stripes: 0,
+      stripes: Number(stripes) || 0,
       [FIELDS.STATUS]: 'ativo',
       status: 'ativo',
       isVisitor,
@@ -214,6 +216,9 @@ export function useStudents() {
       email: (newStudent.email || '').toLowerCase().trim(),
       [FIELDS.TELEFONE]: newStudent.phone || '',
       phone: newStudent.phone || '',
+      ddd: newStudent.ddd || '',
+      telefone_limpo: newStudent.telefone_limpo || '',
+      telefone_completo: newStudent.telefone_completo || '',
       emergency: newStudent.emergency || '',
       medical: newStudent.medical || '',
       ageCategory: newStudent.ageCategory || 'Adulto',
@@ -228,7 +233,7 @@ export function useStudents() {
       roles: isVisitor ? { visitante: true } : { aluno: true },
       [FIELDS.JORNADA_TECNICA]: {
         [FIELDS.FAIXA_ATUAL]: beltFinal,
-        [FIELDS.GRAUS_ATUAIS]: 0,
+        [FIELDS.GRAUS_ATUAIS]: Number(stripes) || 0,
         [FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO]: 0,
         [FIELDS.DATA_ULTIMA_GRADUACAO]: serverTimestamp(),
         [FIELDS.HISTORICO]: [{
@@ -244,10 +249,10 @@ export function useStudents() {
     }
 
     // 🔥 REGRA: Visitantes usam NOME como ID, Alunos usam E-MAIL
-    const docId = isVisitor 
-      ? sanitizeId(newStudent.name, true) 
+    const docId = isVisitor
+      ? sanitizeId(newStudent.name, true)
       : sanitizeId(newStudent.email || newStudent.name)
-    
+
     const emailKey = (newStudent.email || '').toLowerCase().trim()
 
     // Gerencia o Cofre de PINs
@@ -255,7 +260,7 @@ export function useStudents() {
       try {
         const vaultRef = doc(db, COLLECTIONS.COFRE_PINS, emailKey)
         await setDoc(vaultRef, { pin: payload.pin, updatedAt: serverTimestamp() }, { merge: true })
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const targetCollection = isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
@@ -294,7 +299,7 @@ export function useStudents() {
             referenceMonth: `${new Date().toLocaleString('pt-BR', { month: 'long' })} / ${new Date().getFullYear()}`,
             createdAt: serverTimestamp()
           })
-        } catch (err) {}
+        } catch (err) { }
       }
     }
   }, [])
@@ -307,17 +312,43 @@ export function useStudents() {
     try {
       const student = (students || []).find(s => s.id === id)
       const collectionName = student?.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
-      
+
       const payload = {
         ...updates,
         [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
       }
-      
+
+      // 🔥 Sincronização SSoT: Garantir que se modalidades forem alteradas, os campos EN/PT fiquem iguais
+      const newModalities = updates[FIELDS.MODALIDADES] || updates.modalities || updates[FIELDS.MODALIDADE] || updates.modality
+      if (newModalities) {
+        const raw = Array.isArray(newModalities) ? newModalities : [newModalities]
+        const normalized = Array.from(new Set(raw.map(m => {
+          if (typeof m !== 'string') return m
+          const t = m.trim()
+          if (t.toLowerCase() === 'jiu-jitsu' || t.toLowerCase() === 'jiu jitsu') return 'Jiu Jitsu'
+          return t
+        }))).filter(Boolean)
+
+        payload[FIELDS.MODALIDADES] = normalized
+        payload.modalities = normalized
+        payload[FIELDS.MODALIDADE] = normalized[0] || 'Jiu Jitsu'
+        payload.modality = normalized[0] || 'Jiu Jitsu'
+      }
+
       if (payload.name) {
         payload[FIELDS.NOME] = sanitizeString(payload.name)
         payload.initials = buildInitials(payload.name)
       }
       if (payload.email) payload[FIELDS.EMAIL] = payload.email.toLowerCase().trim()
+
+      // 🔥 Sincronização de Graus/Stripes
+      if (payload.stripes !== undefined) {
+        payload.stripes = Number(payload.stripes)
+        payload[FIELDS.GRAUS_ATUAIS] = payload.stripes
+        if (payload[FIELDS.JORNADA_TECNICA]) {
+          payload[FIELDS.JORNADA_TECNICA][FIELDS.GRAUS_ATUAIS] = payload.stripes
+        }
+      }
 
       await updateDoc(doc(db, collectionName, id), payload)
     } catch (err) {

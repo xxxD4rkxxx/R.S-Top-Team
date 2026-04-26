@@ -26,6 +26,7 @@ import StudentDetailsModal from '../../components/shared/StudentDetailsModal'
 import KPICard from '../../components/shared/KPICard'
 import PinVerificationModal from '../../components/shared/PinVerificationModal'
 import { beltConfig } from '../../data/beltConfig'
+import { FIELDS } from '../../firebase/collections'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 
@@ -144,25 +145,25 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className="flex flex-col gap-1.5 relative" ref={ref}>
+    <div className={`flex flex-col gap-1.5 relative ${isOpen ? 'z-[110]' : 'z-[10]'}`} ref={ref}>
       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+        className={`form-input bg-black/80 input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2" style={{ animation: 'fadeSlideUp 0.15s ease-out forwards' }}>
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(([v, l]) => (
             <button
               key={v}
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-black' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/10 font-black' : 'text-gray-400 font-medium'}`}
             >
               {l}
             </button>
@@ -297,7 +298,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
     if (sortBy === 'az') list = [...list].sort((a, b) => (a.nome || a.name || '').localeCompare(b.nome || b.name || ''))
     if (sortBy === 'za') list = [...list].sort((a, b) => (b.nome || b.name || '').localeCompare(a.nome || a.name || ''))
     return list
-  }, [students, searchTerm, statusFilter, modalityFilter, sortBy, isAdmin])
+  }, [students, searchTerm, statusFilter, modalityFilter, sortBy, isAdmin, typeFilter])
 
   async function handleAddStudent(data, modality, options) {
     try {
@@ -369,16 +370,19 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   }
 
   function renderAvatar(student) {
-    const bgClass = beltConfig[student.belt?.toLowerCase()]?.bgClass || 'belt-none'
+    const belt = student.belt?.toLowerCase() || 'none'
+    const config = beltConfig[belt] || beltConfig.none
+    const bgClass = config.bgClass || 'belt-none'
+    const textColor = config.textColor === '#111111' ? 'text-[#111111]' : 'text-white'
     const initials = student.initials || (student.nome || student.name)?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
 
     return (
       <div className="flex items-center justify-center p-0.5 group-hover:border-primary/30 transition-colors shrink-0 relative">
         {student.photo ? (
-          <img src={student.photo} alt={student.nome || student.name} className="w-11 h-11 rounded-full object-cover ring-1 ring-white/10" />
+          <img src={student.photo} alt={student.nome || student.name} className="w-11 h-11 rounded-full object-cover ring-1 ring-white/10 shadow-lg" />
         ) : (
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass} text-white shadow-inner relative overflow-hidden`}>
-            <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent opacity-40" />
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass} ${textColor} shadow-inner relative overflow-hidden transition-all duration-300`}>
+            <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-white/10 opacity-40" />
             <span className="relative z-10 drop-shadow-md">{initials}</span>
           </div>
         )}
@@ -405,7 +409,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   return (
     <>
       <MobileHeader
-        title="Alunos"
+        title={typeFilter === 'visitante' ? "Visitantes" : "Alunos"}
       />
 
       <PageHeader
@@ -416,9 +420,9 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
 
       <div className="px-4 md:px-6 py-6 pb-12 fade-slide-up space-y-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-          <KPICard title="Ativos" value={stats.active} description="Alunos matriculados e frequentando" icon={UserCheck} valueColor="text-emerald-400"
+          <KPICard title="Ativos" value={stats.active} description={typeFilter === 'visitante' ? "Visitantes ativos" : "Alunos matriculados e frequentando"} icon={UserCheck} valueColor="text-emerald-400"
             onClick={() => setStatusFilter(statusFilter === 'ativo' ? 'todos' : 'ativo')} active={statusFilter === 'ativo'} />
-          <KPICard title="Inativos" value={stats.inactive} description="Alunos que cancelaram ou pararam" icon={UserX}
+          <KPICard title="Inativos" value={stats.inactive} description={typeFilter === 'visitante' ? "Visitantes inativos" : "Alunos que cancelaram ou pararam"} icon={UserX}
             onClick={() => setStatusFilter(statusFilter === 'inativo' ? 'todos' : 'inativo')} active={statusFilter === 'inativo'} />
           
           {typeFilter === 'visitante' ? (
@@ -439,7 +443,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
               <KPICard
                 title="Aptos a Avaliar"
                 value={journeyStats?.dueForAssessment || 0}
-                description="Alunos em período de troca"
+                description={typeFilter === 'visitante' ? "Visitantes convertidos" : "Alunos em período de troca"}
                 icon={Target}
                 valueColor="text-rose-500"
               />
@@ -480,7 +484,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
         </div>
 
 
-        <div className="bg-[#0B0B0D]/80 backdrop-blur-md rounded-[24px] p-6 md:p-8 border border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="bg-[#0B0B0D]/80 backdrop-blur-md rounded-[24px] p-6 md:p-8 border border-white/5 shadow-2xl relative overflow-visible">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-50" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
@@ -495,17 +499,17 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
 
           <div className="w-full overflow-x-auto rounded-2xl border border-white/5 bg-black/20">
             {isLoadingStudents ? (
-              <div className="text-center py-16 text-gray-500">Carregando alunos...</div>
+              <div className="text-center py-16 text-gray-500">Carregando {typeFilter === 'visitante' ? 'visitantes' : 'alunos'}...</div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-16 text-gray-500">
                 <Users size={48} strokeWidth={1.5} className="mx-auto mb-4 opacity-20" />
-                <p className="text-sm font-medium">Nenhum aluno encontrado.</p>
+                <p className="text-sm font-medium">Nenhum {typeFilter === 'visitante' ? 'visitante' : 'aluno'} encontrado.</p>
               </div>
             ) : (
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                   <tr className="border-b border-white/10 text-[10px] uppercase font-black text-gray-500 tracking-wider bg-white/5">
-                    <th className="py-3 px-5">Aluno</th>
+                    <th className="py-3 px-5">{typeFilter === 'visitante' ? 'Visitante' : 'Aluno'}</th>
                     <th className="py-3 px-5 text-center">Telefone</th>
                     {typeFilter !== 'visitante' && <th className="py-3 px-5 text-center">PIN</th>}
                     <th className="py-3 px-5 text-center">Modalidade</th>
@@ -529,13 +533,17 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                               {student.nome || student.name}
                             </span>
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5 flex items-center gap-1.5">
-                              {student.roles?.visitante ? (
-                                <span className="text-primary flex items-center gap-1 font-black"><User size={10} /> VISITANTE</span>
-                              ) : (
+                              {student.roles?.visitante && (
+                                <span className="text-primary flex items-center gap-1 font-black mr-1"><User size={10} /> VISITANTE</span>
+                              )}
+                              {student.belt && student.belt !== 'none' ? (
                                 <>
-                                  {beltConfig[student.belt?.toLowerCase()]?.label || 'Sem faixa'}
+                                  {student.roles?.visitante && <span className="opacity-30">·</span>}
+                                  {beltConfig[student.belt?.toLowerCase()]?.label || student.belt}
                                   {student.stripes > 0 ? ` · ${student.stripes} GRAUS` : ''}
                                 </>
+                              ) : !student.roles?.visitante && (
+                                <span>Sem faixa</span>
                               )}
                             </span>
                           </div>
@@ -544,7 +552,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                       <td className="py-4 px-5 text-center text-sm text-gray-300">
                         {student.phone ? (
                           <a
-                            href={`https://wa.me/${student.phone.replace(/\D/g, '')}`}
+                            href={`https://wa.me/${student.telefone_completo || ('55' + (student.phone || '').replace(/\D/g, ''))}`}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all font-mono"
@@ -573,10 +581,15 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                       <td className="py-4 px-5 text-center">
                         <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
                           {(() => {
+                            const raw = student[FIELDS.MODALIDADES] || student.modalities || [student[FIELDS.MODALIDADE] || student.modality]
                             const mods = Array.from(new Set(
-                              (student.modalities || [student.modality])
-                                .filter(Boolean)
-                                .map(m => m.toLowerCase() === 'jiu-jitsu' ? 'Jiu Jitsu' : m)
+                              raw.filter(Boolean)
+                                 .map(m => {
+                                   if (typeof m !== 'string') return m
+                                   const t = m.trim()
+                                   if (t.toLowerCase() === 'jiu-jitsu' || t.toLowerCase() === 'jiu jitsu') return 'Jiu Jitsu'
+                                   return t
+                                 })
                             ));
                             return mods.map((m, i) => (
                               <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase font-bold whitespace-nowrap">
@@ -715,7 +728,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
         showModal && (
           <AddStudentModal
             isOpen={true}
-            initialModality={currentModality}
+            initialModality={modalityFilter !== 'todas' ? modalityFilter : null}
             initialData={editData || duplicateData}
             initialType={typeFilter === 'aluno' ? 'aluno' : 'visitante'}
             isDuplicate={!!duplicateData}
@@ -925,7 +938,7 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
               </div>
               <div className="min-w-0">
                 <p className="text-base font-black text-white truncate">{student.name}</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Aluno da Academia</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{student.roles?.visitante ? 'Visitante da Academia' : 'Aluno da Academia'}</p>
               </div>
             </div>
 

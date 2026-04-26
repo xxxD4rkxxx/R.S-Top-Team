@@ -14,7 +14,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
   // If roles are specified, check if effectiveRole is authorized
   if (allowedRoles && !allowedRoles.includes(effectiveRole)) {
-    // If Admin is simulating, allow them to stay, otherwise redirect to dashboard
+    console.warn(`🚫 [ProtectedRoute] Acesso negado para rota: ${location.pathname}. Papel atual: ${effectiveRole}. Permitidos: ${allowedRoles.join(', ')}`)
     return <Navigate to="/" replace />
   }
 

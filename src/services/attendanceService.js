@@ -74,28 +74,31 @@ export const attendanceService = {
 
           if (student.status === 'present') {
             const userRef = doc(db, USERS_COLLECTION, student.id)
-            batch.update(userRef, {
+            const JORNADA = FIELDS.JORNADA_TECNICA || 'jornada_tecnica'
+            const AULAS = FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO || 'aulas_desde_ultima_graduacao'
+            
+            batch.set(userRef, {
               lastAttendanceAt: serverTimestamp(),
               ultima_visita: serverTimestamp(),
               total_visitas: increment(1),
-              [FIELDS.STATUS]: 'Ativo', // Reativa automaticamente se houver presença
-              [`${FIELDS.JORNADA_TECNICA}.${FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO}`]: increment(1),
+              [FIELDS.STATUS]: 'Ativo',
+              [`${JORNADA}.${AULAS}`]: increment(1),
               [FIELDS.ATUALIZADO_EM]: serverTimestamp()
-            })
+            }, { merge: true })
           }
         }
       })
 
       console.log(`📊 Totais da sessão: ${presences} presenças, ${absents} faltas.`)
       
-      batch.update(sessionRef, {
+      batch.set(sessionRef, {
         presencasCount: presences,
         faltasCount: absents,
         justificadosCount: justified,
         totalCount: activeList.length,
         [FIELDS.FINALIZADA]: true,
         [FIELDS.ATUALIZADO_EM]: serverTimestamp()
-      })
+      }, { merge: true })
 
       await batch.commit()
       console.log('✅ Lote de presença persistido com sucesso.')

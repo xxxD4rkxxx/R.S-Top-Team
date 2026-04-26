@@ -11,7 +11,7 @@ import { db } from '../../firebase/config'
 import {
   getDoc, getDocs, doc, collection, writeBatch, serverTimestamp
 } from 'firebase/firestore'
-import { COLLECTIONS, SUB_COLLECTIONS } from '../../firebase/collections'
+import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../../firebase/collections'
 import { useStudents } from '../../hooks/useStudents'
 import { beltConfig } from '../../data/beltConfig'
 
@@ -46,16 +46,18 @@ export default function ReviewAttendancePage() {
       const attendancesRef = collection(db, COLLECTIONS.CHAMADAS, sessionId, SUB_COLLECTIONS.PRESENCAS)
 
       Object.entries(records).forEach(([studentId, status]) => {
-        if (status) { // Only save if a status exists
+        if (status) {
           const docRef = doc(attendancesRef, studentId)
           const student = students.find(s => s.id === studentId) || {}
           batch.set(docRef, {
-            studentId,
-            studentName: student.nome || student.name || 'Desconhecido',
-            status,
-            modality: session.modality,
-            date: session.date,
-            timestamp: serverTimestamp()
+            studentId: studentId,
+            studentName: student[FIELDS.NOME] || student.nome || student.name || 'Desconhecido',
+            [FIELDS.STATUS]: status,
+            [FIELDS.MODALIDADE]: session[FIELDS.MODALIDADE] || session.modality || '',
+            [FIELDS.DATA]: session[FIELDS.DATA] || session.date || '',
+            [FIELDS.CRIADO_EM]: serverTimestamp(),
+            [FIELDS.INSTRUTOR_ID]: session[FIELDS.INSTRUTOR_ID] || session.instructorId || '',
+            [FIELDS.NOME_INSTRUTOR]: session[FIELDS.NOME_INSTRUTOR] || session.instructorName || ''
           }, { merge: true })
         }
       })
@@ -94,13 +96,13 @@ export default function ReviewAttendancePage() {
         const recordsMap = {}
         recordsSnap.docs.forEach(d => {
           const data = d.data()
-          recordsMap[data.studentId] = data.status
+          recordsMap[data.studentId] = data[FIELDS.STATUS] || data.status
         })
         setRecords(recordsMap)
 
       } catch (err) {
-        console.error('Erro ao buscar dados da chamada:', err)
-        setError('Ocorreu um erro ao carregar os dados. Verifique sua conexão.')
+        console.error('Erro ao buscar dados:', err)
+        setError(`Erro: ${err.message || 'Não foi possível carregar esta chamada.'}`)
       } finally {
         setIsLoading(false)
       }
@@ -110,11 +112,21 @@ export default function ReviewAttendancePage() {
   }, [sessionId])
 
   const filteredStudents = useMemo(() => {
-    if (!session?.modality || !Array.isArray(students)) return []
+    const MODALIDADE = FIELDS.MODALIDADE || 'modalidade'
+    const sessMod = session?.[MODALIDADE] || session?.modality
+    if (!sessMod || !Array.isArray(students)) return []
+
     // Filter students belonging to this modality
-    let list = students.filter(s => (s.modalities || [s.modality || '']).includes(session.modality))
+    let list = students.filter(s => {
+      const studentMods = s[FIELDS.MODALIDADES] || s.modalities || [s[MODALIDADE] || s.modality || '']
+      return studentMods.includes(sessMod)
+    })
+
     if (search) {
-      list = list.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()))
+      list = list.filter(s => {
+        const name = s[FIELDS.NOME] || s.nome || s.name || ''
+        return name.toLowerCase().includes(search.toLowerCase())
+      })
     }
     return list
   }, [students, session, search])
@@ -145,7 +157,7 @@ export default function ReviewAttendancePage() {
           <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Ops! Algo deu errado</h2>
           <p className="text-gray-400 mb-6">{error}</p>
           <button
-            onClick={() => navigate('/attendance')}
+            onClick={() => navigate('/chamadas')}
             className="btn-primary w-full py-3 rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2"
           >
             <ChevronLeft size={18} strokeWidth={1.9} />
@@ -163,7 +175,7 @@ export default function ReviewAttendancePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <button
-            onClick={() => navigate('/attendance')}
+            onClick={() => navigate('/chamadas')}
             className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors mb-2 group"
           >
             <ChevronLeft size={18} strokeWidth={1.9} className="group-hover:-translate-x-1 transition-transform" />
@@ -174,11 +186,11 @@ export default function ReviewAttendancePage() {
               #{session.seqId || 'SESSÃO'}
             </span>
             <h1 className="text-2xl font-black text-white uppercase tracking-tight">
-              Revisão: {session.modality}
+              Revisão: {session[FIELDS.MODALIDADE] || session.modality}
             </h1>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            {session.date ? formatFriendly(session.date, session.time) : 'Data não informada'} às {session.time || '--:--'} · Prof. {session.professor || 'Não informado'}
+            {session[FIELDS.DATA] || session.date ? formatFriendly(session[FIELDS.DATA] || session.date, session[FIELDS.HORARIO] || session.time) : 'Data não informada'} às {session[FIELDS.HORARIO] || session.time || '--:--'} · Prof. {session.professor || 'Não informado'}
           </p>
         </div>
 
@@ -257,7 +269,7 @@ export default function ReviewAttendancePage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-white truncate max-w-[120px]">{student.nome || student.name}</p>
+                      <p className="text-sm font-semibold text-white truncate max-w-[120px]">{student[FIELDS.NOME] || student.nome || student.name}</p>
                       {student.type === 'visitante' && (
                         <span className="bg-primary/20 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-lg uppercase tracking-tighter">Visitante</span>
                       )}

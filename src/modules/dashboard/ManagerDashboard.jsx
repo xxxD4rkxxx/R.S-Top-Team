@@ -177,7 +177,7 @@ function AbsentDrawer({ students, isOpen, onClose }) {
                             <div className="text-right shrink-0">
                                 <p className={`font-black text-lg ${s.isCritical ? 'text-red-400' : 'text-yellow-400'}`}>{daysLabel}</p>
                                 {s.phone && (
-                                    <a href={`https://wa.me/${s.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                                    <a href={`https://wa.me/${s.telefone_completo || ('55' + (s.phone || '').replace(/\D/g, ''))}`} target="_blank" rel="noreferrer"
                                         className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 justify-end mt-1">
                                         <Phone size={10} /> Telefone
                                     </a>
@@ -309,7 +309,12 @@ export default function ManagerDashboard() {
             desc: 'Aptos a graduar', icon: Award, color: 'text-white', iconColor: 'text-[#DC143C]'
         },
         {
-            title: 'Professores', value: loadingStaff ? '...' : String(staffMembers.filter(s => s.role === 'professor' || s.role === 'admin').length),
+            title: 'Professores', value: loadingStaff ? '...' : String(staffMembers.filter(s => {
+                const roles = s.papeis || s.roles || {};
+                const roleStr = String(s.role || '').toLowerCase();
+                return roles.professor || roles.gestor || roles.admin || 
+                       ['professor', 'gestor', 'admin'].includes(roleStr);
+            }).length),
             desc: 'Equipe técnica ativa', icon: ShieldCheck, color: 'text-emerald-400', iconColor: 'text-emerald-400'
         },
         {
@@ -589,7 +594,7 @@ export default function ManagerDashboard() {
                                                 <p className="text-sm text-gray-400 truncate">{s.name} — {s.daysAbsent ?? '?'}d sem treino</p>
                                             </div>
                                             {s.phone && (
-                                                <a href={`https://wa.me/${s.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                                                <a href={`https://wa.me/${s.telefone_completo || ('55' + (s.phone || '').replace(/\D/g, ''))}`} target="_blank" rel="noreferrer"
                                                     className="text-emerald-400 hover:text-emerald-300 shrink-0">
                                                     <Phone size={14} />
                                                 </a>

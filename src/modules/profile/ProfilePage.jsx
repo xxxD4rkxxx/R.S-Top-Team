@@ -17,6 +17,7 @@ import { useSystemLogs } from '../../hooks/useSystemLogs'
 import { useTheme, THEMES } from '../../context/ThemeContext'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
+import { formatPhoneUI, parsePhoneData } from '../../utils/phoneUtils'
 
 // ── Ícones de role ──────────────────────────────────────────────
 const roleConfig = {
@@ -413,12 +414,32 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
     setSaving(true)
     try {
       if (editingId) {
-        await onUpdateUser(editingId, form, form.role)
+        // 📱 Processamento do Telefone para edição
+        const phoneData = parsePhoneData(form.phone)
+        const updates = { ...form }
+        if (phoneData) {
+          updates.phone = phoneData.display
+          updates.ddd = phoneData.ddd
+          updates.telefone_limpo = phoneData.telefone_limpo
+          updates.telefone_completo = phoneData.telefone_completo
+        }
+        await onUpdateUser(editingId, updates, form.role)
         resetForm()
         setShowAdd(false)
       } else {
+        // 📱 Processamento do Telefone para criação
+        const phoneData = parsePhoneData(form.phone)
+        if (!phoneData) {
+          setErrors(['phone'])
+          return
+        }
+
         const payload = {
           ...form,
+          phone: phoneData.display,
+          ddd: phoneData.ddd,
+          telefone_limpo: phoneData.telefone_limpo,
+          telefone_completo: phoneData.telefone_completo,
           createdAt: new Date().toISOString()
         }
         const res = await onAddUser(payload)
@@ -475,19 +496,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
       .slice(0, 14)
   }
 
-  const formatPhone = (val) => {
-    const numbers = val.replace(/\D/g, '')
-    if (numbers.length <= 10) {
-      return numbers
-        .replace(/(\d{2})(\d)/, '($1) $2')
-        .replace(/(\d{4})(\d)/, '$1-$2')
-        .slice(0, 14)
-    }
-    return numbers
-      .replace(/(\d{2})(\d)/, '($1) $2')
-      .replace(/(\d{5})(\d)/, '$1-$2')
-      .slice(0, 15)
-  }
+  const formatPhone = (val) => formatPhoneUI(val)
 
   const isJiuJitsu = form.modalities.some(m => m.toLowerCase().includes('jiu'))
 
@@ -593,7 +602,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
                 placeholder="roberto@email.com"
                 error={errors.includes('email')}
               />
-              <FormInput label="Telefone" value={form.phone} onChange={(val) => updateForm({ phone: formatPhone(val) })} placeholder="(51) 99999-9999" />
+              <FormInput label="Telefone" value={form.phone} onChange={(val) => updateForm({ phone: formatPhone(val) })} placeholder="91 99999-9999" />
             </div>
           </div>
 

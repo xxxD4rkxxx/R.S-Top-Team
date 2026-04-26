@@ -155,7 +155,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar">
           {/* Header Info */}
           <div className="flex items-center gap-6">
-            <div className={`w-[100px] h-[100px] shrink-0 rounded-full flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
+            <div className={`w-[100px] h-[100px] shrink-0 rounded-full flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 relative ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
               {student.photo ? (
                 <img src={student.photo} alt={student.nome || student.name} className="w-full h-full rounded-full object-cover" />
               ) : (

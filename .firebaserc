@@ -2,14 +2,6 @@
   "projects": {
     "default": "academia-rstopteam"
   },
-  "targets": {
-    "academia-rstopteam": {
-      "hosting": {
-        "principal": [
-          "rstopteam"
-        ]
-      }
-    }
-  },
+  "targets": {},
   "etags": {}
 }

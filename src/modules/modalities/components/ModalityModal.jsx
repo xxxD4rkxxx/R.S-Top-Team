@@ -1,7 +1,7 @@
 // RESUMO: Modal de criação e edição de Modalidades.
 // Gerencia os dados principais da modalidade e permite a configuração inicial de sua primeira turma.
 // Oferece interface lateral para gestão de turmas existentes quando em modo de edição.
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -18,6 +18,8 @@ export default function ModalityModal({
 }) {
   useHideMobileNav(isOpen)
   const { users: staffMembers } = useSystemUsers()
+
+  const professorRef = useRef(null)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -40,6 +42,20 @@ export default function ModalityModal({
   const [capacity, setCapacity] = useState(20)
   const [isUnlimited, setIsUnlimited] = useState(false)
   const [showProfessors, setShowProfessors] = useState(false)
+
+  // Lógica para fechar ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (professorRef.current && !professorRef.current.contains(event.target)) {
+        setShowProfessors(false)
+      }
+    }
+
+    if (showProfessors) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showProfessors])
 
   const days = [
     { id: 'seg', label: 'SEG' },
@@ -84,7 +100,6 @@ export default function ModalityModal({
     }
   }, [editingModality, isOpen])
 
-  if (!isOpen) return null
 
   const toggleDay = (dayId) => {
     setSelectedDays(prev => 
@@ -133,7 +148,8 @@ export default function ModalityModal({
 
   return createPortal(
     <AnimatePresence>
-      <motion.div 
+      {isOpen && (
+        <motion.div 
         className="modal-backdrop z-[200]"
         onClick={onClose}
         initial={{ opacity: 0 }}
@@ -415,7 +431,7 @@ export default function ModalityModal({
                             </div>
                           </div>
 
-                          <div className="space-y-2 relative">
+                          <div ref={professorRef} className="space-y-2 relative">
                             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                               <GraduationCap size={12} /> PROFESSOR
                             </label>
@@ -430,19 +446,29 @@ export default function ModalityModal({
                             </div>
                             {showProfessors && (
                               <div className="absolute bottom-full md:top-full left-0 w-full mb-2 md:mt-2 bg-[#111] border border-white/10 rounded-xl py-2 shadow-2xl z-[60] max-h-48 overflow-y-auto no-scrollbar">
-                                {staffMembers?.filter(s => s.role === 'professor' || s.role === 'admin').map(staff => (
+                                {staffMembers?.filter(s => {
+                                  const roles = s.papeis || s.roles || {};
+                                  const roleStr = String(s.role || '').toLowerCase();
+                                  // Exclui Admin da seleção de professor responsável
+                                  if (roles.admin || roleStr === 'admin') return false;
+
+                                  return roles.professor || roles.gestor || 
+                                         ['professor', 'gestor'].includes(roleStr);
+                                }).map(staff => (
                                   <button
                                     key={staff.id}
                                     type="button"
                                     onClick={() => { 
                                       setProfessorId(staff.id); 
-                                      setProfessorName(staff.name); 
+                                      setProfessorName(staff.nome || staff.name); 
                                       setShowProfessors(false) 
                                     }}
                                     className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between"
                                   >
-                                    {staff.name}
-                                    <span className="opacity-30 text-[8px] tracking-widest">{staff.role}</span>
+                                    {staff.nome || staff.name}
+                                    <span className="opacity-30 text-[8px] tracking-widest">
+                                      {staff.papeis?.gestor || staff.roles?.gestor || staff.role === 'gestor' ? 'Gestor' : 'Professor'}
+                                    </span>
                                   </button>
                                 ))}
                               </div>
@@ -553,7 +579,11 @@ export default function ModalityModal({
                           <h5 className="text-sm font-black text-white uppercase">{turma.name}</h5>
                           <div className="flex items-center gap-2 mt-1">
                             <GraduationCap size={10} className="text-gray-600" />
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{turma.professor || 'Sem Professor'}</p>
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                              {turma.professors?.length > 0 
+                                ? turma.professors.map(p => p.nome).join(', ')
+                                : turma.professor || 'Sem Professor'}
+                            </p>
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-3">
                             {turma.diasSemana?.map(day => (
@@ -588,6 +618,7 @@ export default function ModalityModal({
         </div>
         </motion.div>
       </motion.div>
+    )}
     </AnimatePresence>,
     document.body
   )

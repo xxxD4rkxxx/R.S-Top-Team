@@ -133,6 +133,11 @@ export default function ModalitiesPage() {
     [modalities, searchTerm]
   )
 
+  const currentEditingModality = useMemo(() => {
+    if (!editingModality) return null
+    return modalities.find(m => m.id === editingModality.id) || editingModality
+  }, [modalities, editingModality])
+
   return (
     <>
       <MobileHeader
@@ -238,7 +243,7 @@ export default function ModalitiesPage() {
         isOpen={isModalityModalOpen}
         onClose={() => setIsModalityModalOpen(false)}
         onSave={handleSaveModality}
-        editingModality={editingModality}
+        editingModality={currentEditingModality}
         onAddClass={handleAddClass}
         onEditClass={handleEditClass}
         onDeleteClass={handleDeleteClass}

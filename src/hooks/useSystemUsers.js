@@ -152,29 +152,30 @@ export function useSystemUsers() {
 
     // Mapeamento de campos usando as constantes FIELDS para SSoT
     const basePayload = {
+      // Preservar campos extras como modalidades, permissões, etc.
+      ...userData,
       [FIELDS.NOME]: sanitizeString(userData.name || userData.nome),
       [FIELDS.EMAIL]: email,
       [FIELDS.TELEFONE]: userData.phone || userData.telefone || '',
+      [FIELDS.DDD]: userData.ddd || '',
+      [FIELDS.TELEFONE_LIMPO]: userData.telefone_limpo || '',
+      [FIELDS.TELEFONE_COMPLETO]: userData.telefone_completo || '',
       [FIELDS.PAPEIS]: rolesMap,
       [FIELDS.STATUS]: userData.status || 'Ativo',
-      [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
-      // Preservar campos extras como modalidades, permissões, etc.
-      ...userData,
-      // Remover campos redundantes que já mapeamos para os nomes corretos
-      name: deleteField(),
-      phone: deleteField(),
-      roles: deleteField()
+      [FIELDS.ATUALIZADO_EM]: serverTimestamp()
     }
 
-    // Limpeza de campos undefined para evitar erro 400 do Firestore
-    Object.keys(basePayload).forEach(key => {
-      if (basePayload[key] === undefined) {
-        delete basePayload[key]
-      }
-    })
+    // Lista de campos temporários/redundantes que devem ser removidos para manter o schema limpo.
+    // Apenas incluímos campos cujos nomes no Firestore (via FIELDS) são diferentes do nome no formulário.
+    const redundantFields = ['name', 'phone', 'roles']
 
     if (existingSnap.exists()) {
       const existingData = existingSnap.data()
+
+      // Para updateDoc, usamos deleteField() para limpar campos legados se existirem
+      redundantFields.forEach(f => {
+        basePayload[f] = deleteField()
+      })
       
       // Proteção e Geração de PIN:
       // Se o usuário está ganhando cargo de Staff (Admin/Gestor/Prof) e não tem PIN, geramos um.
@@ -212,10 +213,16 @@ export function useSystemUsers() {
         [FIELDS.CRIADO_EM]: serverTimestamp()
       }
       
-      // Remove o deleteField() da criação inicial
-      delete newUser.name
-      delete newUser.phone
-      delete newUser.roles
+      // Para setDoc (criação), NÃO podemos usar deleteField().
+      // Usamos o operador delete do JS para remover as propriedades do objeto.
+      redundantFields.forEach(f => {
+        delete newUser[f]
+      })
+
+      // Limpeza de campos undefined para evitar erro 400 do Firestore
+      Object.keys(newUser).forEach(key => {
+        if (newUser[key] === undefined) delete newUser[key]
+      })
 
       await setDoc(userRef, newUser)
       

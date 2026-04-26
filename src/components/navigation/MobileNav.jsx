@@ -149,7 +149,7 @@ export default function MobileNav() {
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => {
-                      if (!isNavLocked) navigate('/attendance')
+                      if (!isNavLocked) navigate('/chamadas')
                     }}
                     className="relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 border-[6px] border-[#08080B]"
                     style={{ 

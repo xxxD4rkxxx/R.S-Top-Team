@@ -12,6 +12,7 @@ import { useStudents } from '../../hooks/useStudents'
 import { useModalities } from '../../hooks/useModalities'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { useAuth } from '../../context/AuthContext'
+import { formatPhoneUI, parsePhoneData } from '../../utils/phoneUtils'
 
 /**
  * Seletor Customizado Premium
@@ -31,26 +32,26 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className="flex flex-col gap-1.5 relative w-full font-sans" ref={ref}>
-      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1 font-sans">{label}</label>
+    <div className={`flex flex-col gap-1.5 relative w-full ${isOpen ? 'z-[110]' : 'z-[10]'}`} ref={ref}>
+      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20 font-sans"
+        className={`form-input bg-black/80 input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
-        <span className="truncate font-sans">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={14} className="text-gray-500 transition-transform duration-200 shrink-0 ml-2" />
+        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2 font-sans">
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[150] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(([v, l]) => (
             <button
               key={v}
               type="button"
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 font-sans ${value === v ? 'text-white bg-white/5 font-bold' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/10 font-black' : 'text-gray-400 font-medium'}`}
             >
               {l}
             </button>
@@ -68,6 +69,19 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
 
   useHideMobileNav(isOpen)
 
+  // Helper para inicialização segura
+  function getSafeModality(mod) {
+    if (!mod) return []
+    // Usamos activeModalities da closure ou passamos como param se necessário, 
+    // mas aqui o activeModalities já está definido no escopo do componente.
+    const found = (modalities || []).find(am => am.id === mod || am.name === mod)
+    if (found) return [found.name]
+    if (mod === 'todas') return []
+    return [mod === 'jiu-jitsu' ? 'Jiu Jitsu' : mod]
+  }
+
+  const startModArray = initialData ? [] : getSafeModality(initialModality)
+
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -75,7 +89,8 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
     emergency: '',
     medical: '',
     belt: 'none',
-    modality: [initialModality],
+    stripes: 0,
+    modality: startModArray,
     type: initialType,
     ageCategory: 'Adulto',
     gender: 'Masculino',
@@ -95,9 +110,12 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
 
         // 🔥 Normalização Crítica: Mapear IDs para Nomes se necessário e remover duplicatas
         normalizedModalities = Array.from(new Set(raw.map(m => {
+          if (!m) return null
+          const found = activeModalities.find(am => am.id === m || am.name === m)
+          if (found) return found.name
           if (m === 'jiu-jitsu' || m === 'jiu-jitsu-id') return 'Jiu Jitsu'
           return m === 'Jiu-Jitsu' ? 'Jiu Jitsu' : m
-        })))
+        }))).filter(Boolean)
 
         setForm({
           name: initialData.nome || initialData.name || '',
@@ -106,8 +124,9 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           emergency: initialData.emergency || '',
           medical: initialData.medical || '',
           belt: initialData.belt || 'none',
-          modality: normalizedModalities,
-          type: initialData.isPromoting ? 'aluno' : (initialData.roles?.visitante ? 'visitante' : 'aluno'),
+          stripes: initialData.stripes || 0,
+          modality: normalizedModalities.length > 0 ? normalizedModalities : ['Jiu Jitsu'],
+          type: initialData.roles?.equipe ? 'equipe' : (initialData.roles?.visitante ? 'visitante' : 'aluno'),
           ageCategory: initialData.ageCategory || 'Adulto',
           gender: initialData.gender || 'Masculino',
           parentName: initialData.parentName || '',
@@ -116,11 +135,13 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           initialPaymentStatus: 'pending',
         })
       } else {
-        // Garantir que initialModality seja o nome amigável
-        const startMod = initialModality === 'jiu-jitsu' ? 'Jiu Jitsu' : initialModality
+        // Se não houver modalidade inicial (ex: filtro 'todas'), começa vazio para evitar seleções fantasmas
+        const found = initialModality ? activeModalities.find(am => am.id === initialModality || am.name === initialModality) : null
+        const startMod = found ? [found.name] : (initialModality && initialModality !== 'todas' ? [initialModality === 'jiu-jitsu' ? 'Jiu Jitsu' : initialModality] : [])
+
         setForm({
           name: '', email: '', phone: '', emergency: '', medical: '',
-          belt: 'none', modality: [startMod], type: initialType,
+          belt: 'none', stripes: 0, modality: startMod, type: initialType,
           ageCategory: 'Adulto', gender: 'Masculino',
           parentName: '', parentPhone: '',
           planValue: '',
@@ -129,7 +150,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
       }
       setErrorMsg('')
     }
-  }, [isOpen, initialData, initialModality])
+  }, [isOpen, initialData, initialModality, activeModalities.length])
 
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -161,8 +182,8 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
     form.modality.forEach(modId => {
       const mod = modalities?.find(m => m.id === modId || m.name === modId);
       if (mod?.beltSystem?.categories) {
-        const category = mod.beltSystem.categories.find(c => 
-          c.name.toLowerCase() === currentCategoryName || 
+        const category = mod.beltSystem.categories.find(c =>
+          c.name.toLowerCase() === currentCategoryName ||
           c.id.toLowerCase() === currentCategoryName
         );
 
@@ -187,8 +208,21 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
     setErrorMsg('')
     try {
       const isVisitor = form.type === 'visitante'
+      const isEquipe = form.type === 'equipe'
+      // 📱 Processamento do Telefone
+      const phoneData = parsePhoneData(form.phone)
+      if (!phoneData) {
+        setErrorMsg('Telefone inválido. Use o padrão: 91 99999-9999')
+        setSaving(false)
+        return
+      }
+
       const normalizedForm = {
         ...form,
+        phone: phoneData.display,
+        ddd: phoneData.ddd,
+        telefone_limpo: phoneData.telefone_limpo,
+        telefone_completo: phoneData.telefone_completo,
         planValue: form.planValue ? (Number(form.planValue.replace(/\D/g, '')) / 100).toFixed(2) : ''
       }
 
@@ -196,7 +230,12 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
         delete normalizedForm.initialPaymentStatus;
       }
 
-      await onAdd(normalizedForm, form.modality, { isVisitor, belt: form.belt })
+      await onAdd(normalizedForm, form.modality, {
+        isVisitor,
+        isEquipe,
+        belt: form.belt,
+        stripes: form.stripes
+      })
       onClose()
     } catch (err) {
       console.error('Erro ao processar aluno:', err)
@@ -209,11 +248,11 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   if (!isOpen) return null
 
   return createPortal(
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      exit={{ opacity: 0 }} 
-      className="modal-backdrop" 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="modal-backdrop"
       onClick={onClose}
     >
       <motion.div
@@ -231,28 +270,15 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
         </div>
 
         {/* CABEÇALHO */}
-        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center border border-white/10 bg-primary/10 shadow-lg">
-              {form.type === 'visitante' ? (
-                <User size={28} strokeWidth={2.5} className="text-primary" />
-              ) : (
-                <GraduationCap size={28} strokeWidth={2.5} className="text-primary" />
-              )}
-            </div>
-            <div>
-              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
-                {initialData?.isPromoting ? 'Promover para Aluno' : 
-                 initialData ? (form.type === 'visitante' ? 'Perfil Visitante' : 'Perfil Aluno') : 
-                 (form.type === 'visitante' ? 'Novo Visitante' : 'Novo Aluno')}
-              </h2>
-              <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
-                <span className="w-1 h-1 rounded-full animate-pulse bg-primary" />
-                {form.type === 'visitante' ? 'Aula Experimental / Lead' : 'Matrícula & Cadastro SSoT'}
-              </p>
-            </div>
+        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+              {initialData?.isPromoting ? 'Promover para Aluno' :
+                initialData ? (form.type === 'visitante' ? 'Perfil Visitante' : 'Perfil Aluno') :
+                  (form.type === 'visitante' ? 'Novo Visitante' : 'Novo Aluno')}
+            </h2>
           </div>
-          <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10">
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-all">
             <X size={24} />
           </button>
         </div>
@@ -265,6 +291,32 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
               </div>
             )}
 
+            {/* SELEÇÃO DE TIPO (Como era antes, oculto para visitantes) */}
+            {!initialData && initialType !== 'visitante' && (
+              <div className="space-y-4">
+                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                  Tipo de Perfil
+                  <div className="h-px flex-1 bg-white/5" />
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, type: 'aluno' })}
+                    className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'aluno' ? 'bg-primary border-primary text-white' : 'bg-white/5 border-white/10 text-gray-500'}`}
+                  >
+                    Aluno
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, type: 'visitante' })}
+                    className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'visitante' ? 'bg-primary border-primary text-white' : 'bg-white/5 border-white/10 text-gray-500'}`}
+                  >
+                    Visitante
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Dados Básicos */}
             <div className="space-y-4">
               <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
@@ -272,25 +324,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                 <div className="h-px flex-1 bg-white/5" />
               </h3>
 
-              <div className="pt-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1 mb-2 block">Tipo de Perfil</label>
-                <div className="p-1 bg-black/40 border border-white/5 rounded-2xl flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, type: 'aluno' })}
-                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-2 ${form.type === 'aluno' ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-transparent text-gray-500 border-transparent hover:text-gray-300'}`}
-                  >
-                    <GraduationCap size={14} /> Aluno
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, type: 'visitante' })}
-                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-2 ${form.type === 'visitante' ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-transparent text-gray-500 border-transparent hover:text-gray-300'}`}
-                  >
-                    <User size={14} /> Visitante
-                  </button>
-                </div>
-              </div>
+
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -316,9 +350,9 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       type="text"
                       required
                       value={form.phone}
-                      onChange={e => setForm({ ...form, phone: e.target.value })}
+                      onChange={e => setForm({ ...form, phone: formatPhoneUI(e.target.value) })}
                       className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
-                      placeholder="(00) 00000-0000"
+                      placeholder="91 99999-9999"
                     />
                   </div>
                 </div>
@@ -395,13 +429,25 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                   </div>
                 </div>
 
-                {form.type === 'aluno' && activeModalities.some(m => form.modality.includes(m.id) && m.hasBelt !== false) && (
+                {activeModalities.some(m => form.modality.includes(m.name) && m.hasBelt !== false) && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <CustomSelect
                       label="Faixa Atual"
                       value={form.belt}
                       onChange={v => setForm({ ...form, belt: v })}
                       options={getBeltOptions()}
+                    />
+                    <CustomSelect
+                      label="Graus (Stripes)"
+                      value={form.stripes}
+                      onChange={v => setForm({ ...form, stripes: v })}
+                      options={[
+                        [0, 'Nenhum Grau'],
+                        [1, '1 Grau'],
+                        [2, '2 Graus'],
+                        [3, '3 Graus'],
+                        [4, '4 Graus'],
+                      ]}
                     />
                   </div>
                 )}

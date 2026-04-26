@@ -1,7 +1,7 @@
 // RESUMO: Modal de inclusão e edição de Turmas (Horários).
 // Define o professor responsável, horários de início e fim, dias da semana e capacidade máxima.
 // Vinculado a uma modalidade específica.
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Save, GraduationCap, Clock, Users, Calendar, Layers, Hash, CircleDot, ChevronDown } from 'lucide-react'
@@ -24,9 +24,14 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
   const { users } = useSystemUsers()
 
   const { modalities } = useModalities()
+  
+  // Referências para fechar ao clicar fora
+  const professorRef = useRef(null)
+  const modalityRef = useRef(null)
+
   const [name, setName] = useState('')
   const [selectedModalityId, setSelectedModalityId] = useState('')
-  const [professorId, setProfessorId] = useState('')
+  const [selectedProfessors, setSelectedProfessors] = useState([]) // Array de {id, nome}
   const [diasSemana, setDiasSemana] = useState([])
   const [horarioInicio, setHorarioInicio] = useState('08:00')
   const [horarioFim, setHorarioFim] = useState('09:00')
@@ -34,23 +39,48 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
   const [status, setStatus] = useState('ativo')
   const [showProfessors, setShowProfessors] = useState(false)
   const [showModalities, setShowModalities] = useState(false)
-  const [professorName, setProfessorName] = useState('')
+
+  // Lógica para fechar ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (professorRef.current && !professorRef.current.contains(event.target)) {
+        setShowProfessors(false)
+      }
+      if (modalityRef.current && !modalityRef.current.contains(event.target)) {
+        setShowModalities(false)
+      }
+    }
+
+    if (showProfessors || showModalities) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showProfessors, showModalities])
 
   useEffect(() => {
     if (editingClass) {
       setName(editingClass.name || '')
-      setProfessorId(editingClass.professorId || '')
+      
+      // Carregar professores selecionados (Suporte a legado e multi-select)
+      if (editingClass.professors && editingClass.professors.length > 0) {
+        setSelectedProfessors(editingClass.professors)
+      } else if (editingClass.professorId) {
+        setSelectedProfessors([{ 
+          id: editingClass.professorId, 
+          nome: editingClass.professor || 'Professor' 
+        }])
+      } else {
+        setSelectedProfessors([])
+      }
+
       setDiasSemana(editingClass.diasSemana || [])
       setHorarioInicio(editingClass.horarioInicio || '08:00')
       setHorarioFim(editingClass.horarioFim || '09:00')
       setCapacidade(editingClass.capacidade || 20)
       setStatus(editingClass.status || 'ativo')
-      const prof = users.find(u => u.id === editingClass.professorId)
-      setProfessorName(prof?.name || editingClass.professor || '')
     } else {
       setName('')
-      setProfessorId('')
-      setProfessorName('')
+      setSelectedProfessors([])
       setDiasSemana([])
       setHorarioInicio('08:00')
       setHorarioFim('09:00')
@@ -59,7 +89,21 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
     }
   }, [editingClass, isOpen, users])
 
-  if (!isOpen) return null
+  const toggleProfessor = (p) => {
+    const profObj = { id: p.id, nome: p.nome || p.name }
+    setSelectedProfessors(prev => {
+      const exists = prev.find(item => item.id === p.id)
+      if (exists) {
+        return prev.filter(item => item.id !== p.id)
+      }
+      if (prev.length >= 3) {
+        alert('Limite de 3 professores por turma atingido.')
+        return prev
+      }
+      return [...prev, profObj]
+    })
+  }
+
 
   const toggleDay = (dayId) => {
     setDiasSemana(prev => 
@@ -79,15 +123,17 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
       return
     }
 
-    // Busca o nome do professor para salvar como metadado (facilita exibição em listas)
-    const professor = users.find(u => u.id === professorId)
-    const professorName = professor?.name || 'Professor'
+    if (selectedProfessors.length === 0) {
+      alert('Selecione pelo menos um professor responsável')
+      return
+    }
 
     onSave({ 
       name, 
       modalityId: finalModalityId,
-      professorId, 
-      professor: professorName, // Adicionado para exibição imediata
+      professors: selectedProfessors,
+      professor: selectedProfessors[0]?.nome, // Legado: primeiro prof
+      professorId: selectedProfessors[0]?.id, // Legado: primeiro prof
       diasSemana, 
       horarioInicio, 
       horarioFim, 
@@ -99,7 +145,8 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
 
   return createPortal(
     <AnimatePresence>
-      <motion.div 
+      {isOpen && (
+        <motion.div 
         className="modal-backdrop z-[210]"
         onClick={onClose}
         initial={{ opacity: 0 }}
@@ -171,7 +218,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Seleção de Modalidade (apenas se não houver modalityId fixo) */}
               {!modalityId && !editingClass && (
-                <div className="space-y-2 relative">
+                <div ref={modalityRef} className="space-y-2 relative">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                     <Layers size={12} /> MODALIDADE
                   </label>
@@ -227,20 +274,32 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                 />
               </div>
 
-              {/* Professor */}
-              <div className="space-y-2 relative">
+              {/* Professor (Multi-Select) */}
+              <div ref={professorRef} className="space-y-2 relative md:col-span-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                  <GraduationCap size={12} /> PROFESSOR RESPONSÁVEL
+                  <GraduationCap size={12} /> PROFESSORES RESPONSÁVEIS ({selectedProfessors.length}/3)
                 </label>
                 <div 
                   onClick={() => setShowProfessors(!showProfessors)}
-                  className="w-full h-[54px] bg-[#111] border border-white/5 rounded-xl px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all font-medium"
+                  className="w-full min-h-[54px] bg-[#111] border border-white/5 rounded-xl px-4 py-3 flex flex-wrap gap-2 items-center cursor-pointer hover:border-white/10 transition-all"
                 >
-                  <span className={`${professorId ? 'text-white' : 'text-gray-700'} truncate`}>
-                    {professorName || 'Selecione...'}
-                  </span>
-                  <ChevronDown size={14} className={`text-gray-600 transition-transform ${showProfessors ? 'rotate-180' : ''}`} />
+                  {selectedProfessors.length === 0 ? (
+                    <span className="text-gray-700 text-sm font-medium ml-2">Selecione os professores...</span>
+                  ) : (
+                    selectedProfessors.map(p => (
+                      <span 
+                        key={p.id}
+                        onClick={(e) => { e.stopPropagation(); toggleProfessor(p) }}
+                        className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-lg text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 group/chip hover:bg-primary/20 transition-all"
+                      >
+                        {p.nome}
+                        <X size={12} className="text-primary/50 group-hover/chip:text-primary" />
+                      </span>
+                    ))
+                  )}
+                  <ChevronDown size={14} className={`text-gray-600 ml-auto transition-transform ${showProfessors ? 'rotate-180' : ''}`} />
                 </div>
+                
                 <AnimatePresence>
                   {showProfessors && (
                     <motion.div 
@@ -249,24 +308,30 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
                       exit={{ opacity: 0, y: -10 }}
                       className="absolute top-full left-0 w-full mt-2 bg-[#151515] border border-white/10 rounded-xl py-2 shadow-2xl z-[220] max-h-48 overflow-y-auto no-scrollbar"
                     >
-                      {(users || []).filter(u => 
-                        u.role === 'professor' || u.role === 'admin' || u.role === 'gestor' ||
-                        u.roles?.admin || u.roles?.gestor || u.roles?.professor
-                      ).map(p => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => {
-                            setProfessorId(p.id)
-                            setProfessorName(p.name)
-                            setShowProfessors(false)
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-between"
-                        >
-                          {p.name}
-                          <span className="opacity-30 text-[8px]">{p.role || Object.keys(p.roles || {}).join(', ')}</span>
-                        </button>
-                      ))}
+                      {(users || []).filter(u => {
+                        const roles = u.papeis || u.roles || {};
+                        const roleStr = String(u.role || '').toLowerCase();
+                        if (roles.admin || roleStr === 'admin') return false;
+                        return roles.professor || roles.gestor || ['professor', 'gestor'].includes(roleStr);
+                      }).map(p => {
+                        const isSelected = selectedProfessors.some(item => item.id === p.id)
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => toggleProfessor(p)}
+                            className={`w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-between ${isSelected ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:bg-white/5'}`}
+                          >
+                            <div className="flex flex-col">
+                              <span>{p.nome || p.name}</span>
+                              <span className="opacity-30 text-[8px] mt-0.5">
+                                {p.papeis?.gestor || p.roles?.gestor || p.role === 'gestor' ? 'Gestor' : 'Professor'}
+                              </span>
+                            </div>
+                            {isSelected && <Save size={14} className="text-primary" />}
+                          </button>
+                        )
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -387,6 +452,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
         </form>
         </motion.div>
       </motion.div>
+    )}
     </AnimatePresence>,
     document.body
   )

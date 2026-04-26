@@ -178,22 +178,23 @@ export function useDashboardStats(period = 'Semana', instructorId = null) {
         const rangeStartStr = toYMD(rangeStart)
         const prevRangeStartStr = toYMD(prevRangeStart)
 
-        // Busca ambos os períodos em paralelo
-        let currentQ = query(sessRef, where('date', '>=', rangeStartStr), where('date', '<=', todayStr))
-        let prevQ = query(sessRef, where('date', '>=', prevRangeStartStr), where('date', '<', rangeStartStr))
-
-        if (instructorId) {
-          // Nota: Firestore não permite OR entre campos diferentes facilmente.
-          // Para o Dashboard, priorizamos o ID, mas se for necessário legar, o professor precisaria migrar.
-          // Como o Dashboard é analítico, focamos no UID para precisão.
-          currentQ = query(sessRef, where('instructorId', '==', instructorId), where('date', '>=', rangeStartStr), where('date', '<=', todayStr))
-          prevQ = query(sessRef, where('instructorId', '==', instructorId), where('date', '>=', prevRangeStartStr), where('date', '<', rangeStartStr))
-        }
+        // 📊 Query simplificada para evitar necessidade de índices compostos complexos
+        const currentQ = query(sessRef, where('date', '>=', rangeStartStr), where('date', '<=', todayStr))
+        const prevQ = query(sessRef, where('date', '>=', prevRangeStartStr), where('date', '<', rangeStartStr))
 
         const [currentSnap, prevSnap] = await Promise.all([
           getDocs(currentQ),
-          getDocs(prevQ),
+          getDocs(prevQ)
         ])
+
+        let currentDocs = currentSnap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() }))
+        let prevDocs = prevSnap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() }))
+
+        // 🎓 Filtro de Instrutor na memória (mais rápido que criar índices para cada combinação)
+        if (instructorId) {
+          currentDocs = currentDocs.filter(d => d.instructorId === instructorId || d.instrutorId === instructorId)
+          prevDocs = prevDocs.filter(d => d.instructorId === instructorId || d.instrutorId === instructorId)
+        }
 
         // ── 3. Montar skeleton do gráfico ────────────────────────────────────────
         let skeleton = []

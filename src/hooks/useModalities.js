@@ -3,7 +3,7 @@ import { db } from '../firebase/config'
 import { 
   collection, query, onSnapshot, 
   setDoc, doc, updateDoc, deleteDoc, 
-  serverTimestamp, collectionGroup 
+  serverTimestamp, collectionGroup, arrayUnion 
 } from 'firebase/firestore'
 import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
 
@@ -187,6 +187,9 @@ export function useModalities() {
       modalityId,
       createdAt: serverTimestamp()
     })
+
+    // Sincronizar modalidades no perfil dos professores
+    await syncProfessorModalities(data.professors || [], modalityId)
   }
 
   const updateClass = async (modalityId, classId, data) => {
@@ -195,6 +198,37 @@ export function useModalities() {
       ...data,
       updatedAt: serverTimestamp()
     })
+
+    // Sincronizar modalidades no perfil dos professores
+    await syncProfessorModalities(data.professors || [], modalityId)
+  }
+
+  /**
+   * Sincroniza as modalidades no perfil dos professores designados.
+   * Adiciona a modalidade ao array 'modalities' de cada professor.
+   */
+  const syncProfessorModalities = async (professors, modalityId) => {
+    if (!professors || professors.length === 0) return
+
+    const modalityDoc = modalities.find(m => m.id === modalityId)
+    const modalityName = modalityDoc?.name || modalityId
+
+    try {
+      const promises = professors.map(async (p) => {
+        if (!p.id) return
+        const userRef = doc(db, COLLECTIONS.USUARIOS, p.id)
+        
+        // Adiciona a modalidade à lista do professor (sem duplicar)
+        await updateDoc(userRef, {
+          modalities: arrayUnion(modalityName),
+          updatedAt: serverTimestamp()
+        })
+      })
+
+      await Promise.all(promises)
+    } catch (err) {
+      console.error('❌ Erro ao sincronizar modalidades do professor:', err)
+    }
   }
 
   const deleteClass = async (modalityId, classId) => {
