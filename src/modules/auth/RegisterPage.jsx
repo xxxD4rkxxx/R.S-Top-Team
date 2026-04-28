@@ -154,7 +154,7 @@ export default function RegisterPage() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
+                    className="block w-full pl-10 pr-4 py-3.5 bg-black border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
                     placeholder="Ex: Mestre Rickson"
                     required
                   />
@@ -172,7 +172,7 @@ export default function RegisterPage() {
                     autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
+                    className="block w-full pl-10 pr-4 py-3.5 bg-black border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
                     placeholder="exemplo@rstoppteam.com"
                     required
                   />
@@ -193,7 +193,7 @@ export default function RegisterPage() {
                       autoComplete="new-password"
                       value={pin}
                       onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 tracking-[0.8em] font-black"
+                      className="block w-full pl-10 pr-4 py-3.5 bg-black border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 tracking-[0.8em] font-black"
                       placeholder="000000"
                       required
                     />
@@ -213,7 +213,7 @@ export default function RegisterPage() {
                       maxLength={6}
                       value={password}
                       onChange={(e) => setPassword(e.target.value.replace(/\D/g, ''))}
-                      className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-primary/20 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-sans tabular-nums tracking-[0.8em]"
+                      className="block w-full pl-10 pr-4 py-3.5 bg-black border border-primary/20 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all font-sans tabular-nums tracking-[0.8em]"
                       placeholder="000000"
                       required
                     />

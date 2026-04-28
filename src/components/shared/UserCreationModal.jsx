@@ -34,26 +34,26 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className={`flex flex-col gap-1.5 relative w-full ${isOpen ? 'z-[110]' : 'z-[10]'}`} ref={ref}>
+    <div className={`flex flex-col gap-1.5 relative w-full ${isOpen ? 'z-[500]' : 'z-[10]'}`} ref={ref}>
       <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`form-input bg-[#0B0B0D] backdrop-blur-md input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
+        className={`form-input bg-black h-[54px] opacity-100 text-sm px-6 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-[#080808] focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
-        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
+        <span className="truncate font-bold">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={14} className={`text-gray-500 transition-transform duration-300 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[150] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0B] opacity-100 border border-white/10 rounded-2xl z-[600] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(([v, l]) => (
             <button
               key={v}
               type="button"
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/10 font-black' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-6 py-4 text-[11px] font-black uppercase tracking-wider transition-colors hover:bg-white/5 border-b border-white/[0.02] last:border-0 ${value === v ? 'text-primary bg-primary/5' : 'text-gray-400'}`}
             >
               {l}
             </button>
@@ -428,6 +428,33 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     })
   }
 
+  // 🥋 Lógica de Faixas Dinâmicas (Idêntica ao AddStudentModal)
+  const getBeltOptions = () => {
+    const baseOptions = [['none', 'Sem Faixa']];
+    const dynamicBelts = [];
+    const currentCategoryName = (formData.ageCategory || 'Adulto').toLowerCase();
+
+    formData.modalities.forEach(modId => {
+      const mod = dbModalities?.find(m => m.id === modId || m.name === modId);
+      if (mod?.beltSystem?.categories) {
+        const category = mod.beltSystem.categories.find(c =>
+          c.name.toLowerCase() === currentCategoryName ||
+          c.id.toLowerCase() === currentCategoryName
+        );
+
+        if (category?.belts) {
+          category.belts.forEach(belt => {
+            if (!dynamicBelts.find(db => db[0] === belt.name)) {
+              dynamicBelts.push([belt.name, belt.name.toUpperCase()]);
+            }
+          });
+        }
+      }
+    });
+
+    return dynamicBelts.length > 0 ? [...baseOptions, ...dynamicBelts] : baseOptions;
+  };
+
   /** Envia os dados para o Firebase */
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -534,7 +561,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
               : 'O cofre foi liberado. Agora você pode prosseguir.'}
           </p>
 
-          <div className="bg-black/40 border border-white/5 rounded-2xl p-6 mb-8 relative group">
+          <div className="bg-black border border-white/5 rounded-2xl p-6 mb-8 relative group">
             <p className="text-[10px] text-gray-600 uppercase tracking-widest font-bold mb-2">PIN DE ACESSO</p>
             <p className="text-5xl font-mono font-black text-white tracking-[0.2em]">{createdPin}</p>
             <button
@@ -642,7 +669,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                       type="text"
                       value={studentSearch}
                       onChange={e => setStudentSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-primary/30 transition-all placeholder:text-gray-700"
+                      className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-primary/30 transition-all placeholder:text-gray-700"
                       placeholder="Pesquisar por nome ou e-mail..."
                     />
 
@@ -669,7 +696,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                     <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome Completo</label>
                     <div className="relative">
                       <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                      <input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="Nome do colaborador" />
+                      <input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="Nome do colaborador" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
@@ -680,7 +707,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                         type="text"
                         value={formData.phone}
                         onChange={e => setFormData({ ...formData, phone: formatPhoneUI(e.target.value) })}
-                        className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                        className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
                         placeholder="91 99999-9999"
                       />
                     </div>
@@ -691,7 +718,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                   <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">E-mail (Único)</label>
                   <div className="relative">
                     <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                    <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="email@exemplo.com" />
+                    <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="email@exemplo.com" />
                   </div>
                 </div>
 
@@ -720,7 +747,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                       maxLength={6}
                       value={formData.pin}
                       onChange={e => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '') })}
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/30 transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/30 transition-all"
                       placeholder="Deixe em branco para gerar"
                     />
                   </div>
@@ -769,7 +796,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden bg-black/40 border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-2"
+                          className="overflow-hidden bg-black border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-2"
                         >
                           {dbModalities.map(mod => (
                             <button
@@ -798,7 +825,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                 {/* --- SELEÇÃO DE TURMAS (Estilo Dropdown ModalityModal) --- */}
                 {(() => {
                   const relevantClasses = (dbModalities || [])
-                    .filter(m => formData.modalities.includes(m.name))
+                    .filter(m => formData.modalities.some(modName => modName.toLowerCase() === m.name.toLowerCase()))
                     .flatMap(m => (m.turmas || []).map(t => ({
                       ...t,
                       modalityName: m.name,
@@ -806,14 +833,14 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                     })));
 
                   const hasRelevantClasses = (dbModalities || [])
-                    .some(m => formData.modalities.includes(m.name) && (m.turmas || []).length > 0);
+                    .some(m => formData.modalities.some(modName => modName.toLowerCase() === m.name.toLowerCase()) && (m.turmas || []).length > 0);
 
                   if (!hasRelevantClasses) return null;
 
                   const selectedCount = (formData.turmas || []).length;
 
                   return (
-                    <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2" ref={dropdownRef}>
+                    <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 relative z-[100]" ref={dropdownRef}>
                       <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                         <Users size={12} /> SELECIONAR TURMAS E HORÁRIOS
                       </label>
@@ -821,7 +848,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                       <div className="relative">
                         <div
                           onClick={() => setShowTurmasDropdown(!showTurmasDropdown)}
-                          className={`w-full h-[54px] bg-[#0B0B0D] border text-sm text-gray-300 font-medium flex items-center justify-between cursor-pointer transition-all rounded-2xl px-6 py-4 hover:bg-black/90 ${showTurmasDropdown ? 'ring-1 ring-primary/50 border-primary/50' : 'border-white/10'}`}
+                          className={`w-full h-[54px] bg-black border text-sm text-gray-300 font-medium flex items-center justify-between cursor-pointer transition-all rounded-2xl px-6 py-4 hover:bg-black ${showTurmasDropdown ? 'ring-1 ring-primary/50 border-primary/50' : 'border-white/10'}`}
                         >
                           <div className="flex items-center gap-3 truncate">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${selectedCount > 0 ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-600'}`}>
@@ -842,7 +869,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                               initial={{ opacity: 0, y: 10, scale: 0.95 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[150] overflow-y-auto max-h-64 no-scrollbar shadow-2xl py-2"
+                              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0B] opacity-100 border border-white/10 rounded-2xl z-[600] overflow-y-auto max-h-64 no-scrollbar shadow-2xl py-2"
                             >
                               {relevantClasses.length === 0 ? (
                                 <div className="px-6 py-8 text-center">
@@ -905,30 +932,19 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
 
                 {/* GRADUAÇÃO (Somente se Jiu Jitsu estiver selecionado) */}
                 {(formData.modalities?.some(m => m.toLowerCase().includes('jiu')) || formData.roles.includes('aluno')) && (
-                  <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 relative z-[40]">
                     <CustomSelect
-                      label="Faixa (Jiu Jitsu)"
+                      label="Faixa Atual"
                       value={formData.belt}
                       onChange={v => setFormData({ ...formData, belt: v })}
-                      options={[
-                        ['none', 'Sem Faixa'],
-                        ['white', 'Branca'],
-                        ['grey', 'Cinza'],
-                        ['yellow', 'Amarela'],
-                        ['orange', 'Laranja'],
-                        ['green', 'Verde'],
-                        ['blue', 'Azul'],
-                        ['purple', 'Roxa'],
-                        ['brown', 'Marrom'],
-                        ['black', 'Preta']
-                      ]}
+                      options={getBeltOptions()}
                     />
                     <CustomSelect
-                      label="Grau"
+                      label="Graus (Stripes)"
                       value={formData.stripes}
                       onChange={v => setFormData({ ...formData, stripes: v })}
                       options={[
-                        [0, '0 Graus'],
+                        [0, 'Nenhum Grau'],
                         [1, '1 Grau'],
                         [2, '2 Graus'],
                         [3, '3 Graus'],
@@ -954,7 +970,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                           type="text"
                           value={formData.emergency}
                           onChange={e => setFormData({ ...formData, emergency: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                          className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
                           placeholder="Nome e Telefone"
                         />
                       </div>
@@ -967,7 +983,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                         <textarea
                           value={formData.medical}
                           onChange={e => setFormData({ ...formData, medical: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium min-h-[100px] outline-none"
+                          className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium min-h-[100px] outline-none"
                           placeholder="Ex: Alergias, problemas físicos..."
                         />
                       </div>
@@ -981,7 +997,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                             type="text"
                             value={formData.parentName}
                             onChange={e => setFormData({ ...formData, parentName: e.target.value })}
-                            className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                            className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
                             placeholder="Nome do Pai/Mãe"
                           />
                         </div>
@@ -991,7 +1007,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                             type="text"
                             value={formData.parentPhone}
                             onChange={e => setFormData({ ...formData, parentPhone: formatPhoneUI(e.target.value) })}
-                            className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                            className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
                             placeholder="91 99999-9999"
                           />
                         </div>

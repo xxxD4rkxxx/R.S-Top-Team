@@ -122,7 +122,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
           x: mobileOpen ? 0 : (isMobile ? '-100%' : 0)
         }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="sidebar no-scrollbar flex flex-col bg-[#0B0B0B] relative z-40 backdrop-blur-xl"
+        className="sidebar no-scrollbar flex flex-col bg-black relative z-40 backdrop-blur-xl"
         style={{ borderRight: '1px solid rgba(255, 255, 255, 0.05)' }}
       >
         {/* Logotipo da Academia */}

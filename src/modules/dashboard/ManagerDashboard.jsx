@@ -312,8 +312,8 @@ export default function ManagerDashboard() {
             title: 'Professores', value: loadingStaff ? '...' : String(staffMembers.filter(s => {
                 const roles = s.papeis || s.roles || {};
                 const roleStr = String(s.role || '').toLowerCase();
-                return roles.professor || roles.gestor || roles.admin || 
-                       ['professor', 'gestor', 'admin'].includes(roleStr);
+                return roles.professor || roles.gestor || roles.admin ||
+                    ['professor', 'gestor', 'admin'].includes(roleStr);
             }).length),
             desc: 'Equipe técnica ativa', icon: ShieldCheck, color: 'text-emerald-400', iconColor: 'text-emerald-400'
         },
@@ -397,7 +397,7 @@ export default function ManagerDashboard() {
                             </button>
 
                             {/* Period buttons */}
-                            <div className="flex items-center gap-1 bg-black/40 rounded-xl p-1 border border-white/5">
+                            <div className="flex items-center gap-1 bg-black rounded-xl p-1 border border-white/5">
                                 {['Semana', 'Mês', 'Ano'].map(v => (
                                     <button key={v} onClick={() => setPeriod(v)}
                                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === v ? 'bg-[#DC143C] text-white shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>

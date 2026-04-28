@@ -61,8 +61,10 @@ service cloud.firestore {
       match /graduacoes/{id} { allow read: if isAuth(); allow write: if isStaff(); }
 
       allow create, update: if isAuth() && (isStaff() || request.auth.token.email.lower() == userId.lower())
-                            && request.resource.data.get('telefone', '').size() >= 12 
-                            && request.resource.data.get('telefone', '').size() <= 13;
+                            && (
+                              request.resource.data.get('telefone', '').size() == 0 || 
+                              (request.resource.data.get('telefone', '').size() >= 10 && request.resource.data.get('telefone', '').size() <= 15)
+                            );
       allow delete: if isAdmin();
     }
 
@@ -109,8 +111,10 @@ service cloud.firestore {
     match /visitantes/{id} {
       allow read: if isStaff();
       allow write: if (isStaff() || request.auth == null) 
-                   && request.resource.data.get('telefone', '').size() >= 12 
-                   && request.resource.data.get('telefone', '').size() <= 13;
+                   && (
+                     request.resource.data.get('telefone', '').size() == 0 ||
+                     (request.resource.data.get('telefone', '').size() >= 10 && request.resource.data.get('telefone', '').size() <= 15)
+                   );
     }
 
     // ── Configurações e Logs ──────────────────────────────────────────────────
@@ -121,14 +125,10 @@ service cloud.firestore {
     // ── Compatibilidade Legada ────
     match /users/{id}    { allow read, write: if isStaff(); }
     match /alunos/{id}   { 
-      allow read, write: if isStaff()
-                         && request.resource.data.get('telefone', '').size() >= 12 
-                         && request.resource.data.get('telefone', '').size() <= 13; 
+      allow read, write: if isStaff(); 
     }
     match /students/{id} { 
-      allow read, write: if isStaff()
-                         && request.resource.data.get('telefone', '').size() >= 12 
-                         && request.resource.data.get('telefone', '').size() <= 13; 
+      allow read, write: if isStaff(); 
     }
   }
 }

@@ -108,7 +108,7 @@ function DeleteConfirmDialog({ student, onConfirm, onClose }) {
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
-              className="form-input bg-black/40 text-sm w-full"
+              className="form-input bg-black text-sm w-full"
               placeholder={`Digite o nome do ${student.roles?.visitante ? 'visitante' : 'aluno'}...`}
               autoFocus
             />
@@ -152,14 +152,14 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`form-input bg-[#0B0B0D] backdrop-blur-md input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
+        className={`form-input bg-black opacity-100 input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
         <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-black opacity-100 border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(([v, l]) => (
             <button
               key={v}

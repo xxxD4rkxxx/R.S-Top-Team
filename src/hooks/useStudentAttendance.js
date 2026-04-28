@@ -24,12 +24,25 @@ export function useStudentAttendance(studentId) {
           limit(100)
         )
         const snap = await getDocs(q)
-        const docs = snap.docs.map(d => ({
-          id: d.id,
-          ...d.data(),
-          // Se date for string (YYYY-MM-DD), converter para objeto Date se necessário para cálculos
-          parsedDate: new Date(d.data().date + 'T12:00:00') 
-        }))
+        const docs = snap.docs.map(d => {
+          const data = d.data()
+          
+          // Normalização da data: Suporta Firestore Timestamp ou String ISO
+          let parsedDate
+          if (data.date && typeof data.date.toDate === 'function') {
+            parsedDate = data.date.toDate()
+          } else if (typeof data.date === 'string') {
+            parsedDate = new Date(data.date + 'T12:00:00')
+          } else {
+            parsedDate = new Date()
+          }
+
+          return {
+            id: d.id,
+            ...data,
+            parsedDate
+          }
+        })
         setAttendances(docs)
       } catch (err) {
         console.error('Erro ao buscar presenças do aluno:', err)
@@ -54,8 +67,13 @@ export function useStudentAttendance(studentId) {
 
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    
+    // Início da semana: Segunda-feira (Padrão Brasil)
     const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() - now.getDay()) // Início da semana (Domingo)
+    const day = weekStart.getDay()
+    const diffToMonday = (day + 6) % 7
+    weekStart.setDate(now.getDate() - diffToMonday)
+    weekStart.setHours(0, 0, 0, 0)
 
     let monthly = 0
     let weekly = 0
@@ -70,23 +88,18 @@ export function useStudentAttendance(studentId) {
     })
 
     // Cálculo da Sequência (Streak)
-    // Ordenar por data decrescente (já está pelo query, mas garantimos)
+    const uniqueDates = [...new Set(presentDocs.map(a => a.parsedDate.toDateString()))]
+      .sort((a, b) => new Date(b) - new Date(a))
+    
     let streak = 0
-    let lastDate = null
-    
-    // Simplificado score de treino consecutivo (mesma semana ou dias próximos)
-    // Para artes marciais, streak geralmente é medido por frequência rítmica
-    // Vamos considerar streak como treinos em dias diferentes sem hiatos > 4 dias
-    const uniqueDates = [...new Set(presentDocs.map(a => a.date))].sort().reverse()
-    
     if (uniqueDates.length > 0) {
       streak = 1
       for (let i = 0; i < uniqueDates.length - 1; i++) {
-        const d1 = new Date(uniqueDates[i] + 'T12:00:00')
-        const d2 = new Date(uniqueDates[i+1] + 'T12:00:00')
+        const d1 = new Date(uniqueDates[i])
+        const d2 = new Date(uniqueDates[i+1])
         const diffDays = (d1 - d2) / (1000 * 60 * 60 * 24)
         
-        if (diffDays <= 4) { // Se treinou no máximo 4 dias depois do último
+        if (diffDays <= 4) { 
           streak++
         } else {
           break
@@ -99,7 +112,7 @@ export function useStudentAttendance(studentId) {
       monthly,
       weekly,
       streak,
-      recent: attendances.slice(0, 10)
+      recent: presentDocs.slice(0, 10)
     }
   }, [attendances, loading])
 

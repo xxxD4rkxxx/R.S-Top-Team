@@ -154,7 +154,7 @@ export default function ResetPasswordPage() {
                     maxLength={6}
                     value={newPin}
                     onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-                    className={`block w-full pl-10 pr-12 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800 ${!showPin ? 'tracking-[0.8em]' : ''}`}
+                    className={`block w-full pl-10 pr-12 py-3.5 bg-black border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800 ${!showPin ? 'tracking-[0.8em]' : ''}`}
                     placeholder="000000"
                     required
                   />

@@ -12,6 +12,7 @@ import {
 import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../firebase/collections'
 
 const USERS_COLLECTION = COLLECTIONS.USUARIOS
+const VISITORS_COLLECTION = 'visitantes'
 
 export const attendanceService = {
   /**
@@ -62,7 +63,8 @@ export const attendanceService = {
           else if (student.status === 'absent') absents++
           else if (student.status === 'justified') justified++
 
-          const recordRef = doc(collection(sessionRef, SUB_COLLECTIONS.PRESENCAS), student.id)
+          if (!student.id) return;
+          const recordRef = doc(collection(sessionRef, SUB_COLLECTIONS.PRESENCAS), String(student.id))
           batch.set(recordRef, {
             studentId: student.id,
             studentName: student.name,
@@ -73,7 +75,8 @@ export const attendanceService = {
           })
 
           if (student.status === 'present') {
-            const userRef = doc(db, USERS_COLLECTION, student.id)
+            const collectionName = student.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
+            const userRef = doc(db, collectionName, String(student.id))
             const JORNADA = FIELDS.JORNADA_TECNICA || 'jornada_tecnica'
             const AULAS = FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO || 'aulas_desde_ultima_graduacao'
             

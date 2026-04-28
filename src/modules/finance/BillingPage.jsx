@@ -60,7 +60,7 @@ function CustomSelect({ label, value, onChange, options }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+        className="form-input bg-black input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
         <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
@@ -170,7 +170,7 @@ function ModalNovaCobranca({ students, onClose, onSave, loading }) {
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Aluno</label>
                 <div className="relative">
                   <select required value={form.studentId} onChange={e => set('studentId', e.target.value)}
-                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 pr-8">
+                    className="w-full appearance-none bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 pr-8">
                     <option value="">Selecione o aluno...</option>
                     {students.filter(s => !s.isPaymentExempt).map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
@@ -183,20 +183,20 @@ function ModalNovaCobranca({ students, onClose, onSave, loading }) {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Valor (R$)</label>
                   <input required type="number" step="0.01" min="0" placeholder="0,00"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
+                    className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
                     value={form.amount} onChange={e => set('amount', e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento</label>
                   <input required type="date"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                    className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
                     value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
                 <input type="month"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                  className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
                   value={form.referenceMonth} onChange={e => set('referenceMonth', e.target.value)} />
               </div>
             </div>
@@ -316,12 +316,12 @@ function ModalFaturamentoLote({ onClose, onConfirm, loading }) {
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
-                <input required type="month" className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                <input required type="month" className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
                   value={referenceMonth} onChange={e => setReferenceMonth(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento das Faturas</label>
-                <input required type="date" className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                <input required type="date" className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
                   value={dueDate} onChange={e => setDueDate(e.target.value)} />
               </div>
             </div>
@@ -434,7 +434,7 @@ function ModalEditarCobranca({ bill, onClose, onSave, loading }) {
                   required
                   type="number"
                   step="0.01"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 font-mono"
+                  className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 font-mono"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                 />

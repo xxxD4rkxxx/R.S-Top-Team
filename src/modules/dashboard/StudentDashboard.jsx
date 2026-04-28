@@ -60,7 +60,7 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
 
 export default function StudentDashboard({ user, cobrancas = [] }) {
   const { total, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.uid)
-  const { notices, loading: loadingNotices } = useNotices()
+  const { notices, userViews = new Set(), loading: loadingNotices } = useNotices(user?.uid)
   const { sessions, loading: loadingSessions } = useTodaySessions()
 
   // Filtro de cobranças pendentes
@@ -289,24 +289,33 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
               {loadingNotices ? (
                 <div className="h-24 bg-white/5 rounded-2xl animate-pulse" />
               ) : activeNotices.length > 0 ? (
-                activeNotices.map((notice, idx) => (
-                  <div key={idx} className="p-5 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/20 transition-all group">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[9px] font-black px-2 py-0.5 rounded bg-primary/20 text-primary uppercase tracking-widest">
-                        {notice.category || 'Aviso'}
-                      </span>
-                      <span className="text-[9px] font-bold text-gray-600 uppercase">
-                        {new Date(notice.createdAt?.toDate ? notice.createdAt.toDate() : notice.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                      </span>
+                activeNotices.map((notice, idx) => {
+                  const isRead = userViews.has(notice.id);
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`relative p-5 rounded-2xl bg-white/5 border transition-all group ${isRead ? 'border-white/5 opacity-70' : 'border-primary/20 bg-primary/5'}`}
+                    >
+                      {!isRead && (
+                        <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--clr-primary-rgb),0.6)] animate-pulse" />
+                      )}
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded bg-primary/20 text-primary uppercase tracking-widest">
+                          {notice.category || 'Aviso'}
+                        </span>
+                        <span className="text-[9px] font-bold text-gray-600 uppercase">
+                          {new Date(notice.createdAt?.toDate ? notice.createdAt.toDate() : notice.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary transition-colors">
+                        {notice.title}
+                      </h4>
+                      <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter leading-tight line-clamp-2">
+                        {notice.content}
+                      </p>
                     </div>
-                    <h4 className="text-sm font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary transition-colors">
-                      {notice.title}
-                    </h4>
-                    <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter leading-tight line-clamp-2">
-                      {notice.content}
-                    </p>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 <div className="py-10 text-center">
                   <p className="text-[11px] font-black text-gray-600 uppercase tracking-widest">Nenhum aviso importante no momento.</p>

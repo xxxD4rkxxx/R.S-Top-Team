@@ -110,7 +110,7 @@ export default function StatusChangeDialog({ student, action, onConfirm, onClose
                 onChange={e => setReason(e.target.value)}
                 placeholder={isInactivate ? 'Ex: Aluno cancelou a matrícula.' : 'Ex: Lesão no joelho, fisioterapia por 3 meses.'}
                 rows={3}
-                className="form-input bg-black/40 resize-none text-sm w-full"
+                className="form-input bg-black resize-none text-sm w-full"
               />
             </div>
 
@@ -124,7 +124,7 @@ export default function StatusChangeDialog({ student, action, onConfirm, onClose
                   type="date"
                   value={returnDate}
                   onChange={e => setReturnDate(e.target.value)}
-                  className="form-input bg-black/40 text-sm w-full"
+                  className="form-input bg-black text-sm w-full"
                   min={new Date().toISOString().split('T')[0]}
                 />
               </div>

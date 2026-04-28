@@ -116,10 +116,27 @@ export default function ReviewAttendancePage() {
     const sessMod = session?.[MODALIDADE] || session?.modality
     if (!sessMod || !Array.isArray(students)) return []
 
+    // Normalizar modalidade da sessão para comparação
+    const normalizedSessMod = sessMod.trim().toLowerCase()
+
     // Filter students belonging to this modality
     let list = students.filter(s => {
-      const studentMods = s[FIELDS.MODALIDADES] || s.modalities || [s[MODALIDADE] || s.modality || '']
-      return studentMods.includes(sessMod)
+      // Regra 0: Ocultar usuários que possuem papéis de equipe (Professor, Gestor, Admin)
+      const roles = s.papeis || s.roles || {};
+      if (roles.professor || roles.gestor || roles.admin) return false;
+      if (s.role === 'professor' || s.role === 'admin' || s.role === 'gestor') return false;
+
+      // Normalizar modalidades do aluno
+      const rawMods = s[FIELDS.MODALIDADES] || s.modalities || []
+      const studentMods = Array.isArray(rawMods) 
+        ? rawMods.map(m => String(m).trim().toLowerCase())
+        : [String(s[FIELDS.MODALIDADE] || s.modality || '').trim().toLowerCase()]
+
+      // Inclui se o aluno pertence à modalidade OU se ele já tem um registro nesta chamada específica
+      const hasModality = studentMods.includes(normalizedSessMod)
+      const hasRecord = !!records[s.id]
+
+      return hasModality || hasRecord
     })
 
     if (search) {
@@ -129,7 +146,7 @@ export default function ReviewAttendancePage() {
       })
     }
     return list
-  }, [students, session, search])
+  }, [students, session, search, records])
 
   const stats = useMemo(() => {
     const total = filteredStudents.length
@@ -289,7 +306,7 @@ export default function ReviewAttendancePage() {
                       {!status && <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Sem Registro</span>}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-1 bg-black p-1.5 rounded-xl border border-white/10">
                       <button
                         onClick={() => setRecords(prev => ({ ...prev, [student.id]: 'present' }))}
                         className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${status === 'present' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}

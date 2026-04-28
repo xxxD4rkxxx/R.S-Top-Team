@@ -308,36 +308,38 @@ export default function EventsPage() {
 
       <div className="flex-1 px-4 md:px-6 py-6 w-full pb-32 space-y-8 max-w-[1600px] mx-auto">
 
-        {/* ── KPIs ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 fade-slide-up">
-          <KPICard
-            title="Total"
-            value={loading ? '...' : totalNotices}
-            description="Ativos no sistema"
-            icon={BellRing}
-          />
-          <KPICard
-            title="Atenção"
-            value={loading ? '...' : highPriority}
-            description="Prioridade alta"
-            icon={Zap}
-            valueColor="text-yellow-400"
-          />
-          <KPICard
-            title="Urgentes"
-            value={loading ? '...' : urgents}
-            description="Requer ação"
-            icon={Flame}
-            valueColor="text-primary"
-          />
-          <KPICard
-            title="Engajamento"
-            value={loading ? '...' : totalViews}
-            description="Visualizações totais"
-            icon={BarChart3}
-            valueColor="text-blue-400"
-          />
-        </div>
+        {/* ── KPIs (Visible only for staff) ── */}
+        {canEdit && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 fade-slide-up">
+            <KPICard
+              title="Total"
+              value={loading ? '...' : totalNotices}
+              description="Ativos no sistema"
+              icon={BellRing}
+            />
+            <KPICard
+              title="Atenção"
+              value={loading ? '...' : highPriority}
+              description="Prioridade alta"
+              icon={Zap}
+              valueColor="text-yellow-400"
+            />
+            <KPICard
+              title="Urgentes"
+              value={loading ? '...' : urgents}
+              description="Requer ação"
+              icon={Flame}
+              valueColor="text-primary"
+            />
+            <KPICard
+              title="Engajamento"
+              value={loading ? '...' : totalViews}
+              description="Visualizações totais"
+              icon={BarChart3}
+              valueColor="text-blue-400"
+            />
+          </div>
+        )}
 
         {/* ── ACTION BAR & FILTERS ── */}
         <div className="flex flex-col gap-6 fade-slide-up delay-100 mt-6 mb-8">

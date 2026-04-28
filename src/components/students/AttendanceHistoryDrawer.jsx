@@ -438,7 +438,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                       )}
 
                       {/* Legend Container */}
-                      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 mt-4 justify-center bg-black/40 p-2.5 rounded-2xl border border-white/5 shadow-inner">
+                      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 mt-4 justify-center bg-black p-2.5 rounded-2xl border border-white/5 shadow-inner">
                         <div className="w-full text-center text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-1 opacity-50">Legenda de Status</div>
                         <div className="flex items-center gap-2">
                           <div className="w-3.5 h-3.5 rounded-sm border-2 border-[#10b981] bg-[#10b981]/10" />

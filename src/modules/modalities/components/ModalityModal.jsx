@@ -324,7 +324,7 @@ export default function ModalityModal({
                               disabled={!pricing[cat.id].enabled}
                               value={pricing[cat.id].price}
                               onChange={(e) => updatePricing(cat.id, 'price', e.target.value)}
-                              className="w-32 bg-black/40 border border-white/5 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-mono disabled:opacity-20"
+                              className="w-32 bg-black border border-white/5 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-mono disabled:opacity-20"
                             />
                           </div>
                           
@@ -376,7 +376,7 @@ export default function ModalityModal({
                             value={className}
                             onChange={(e) => setClassName(e.target.value)}
                             placeholder="Ex: Geral, Kids, Noite..."
-                            className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
+                            className="w-full bg-black border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
                           />
                         </div>
 
@@ -414,7 +414,7 @@ export default function ModalityModal({
                                 type="time"
                                 value={startTime}
                                 onChange={(e) => setStartTime(e.target.value)}
-                                className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
+                                className="w-full bg-black border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
                               />
                             </div>
 
@@ -426,7 +426,7 @@ export default function ModalityModal({
                                 type="time"
                                 value={endTime}
                                 onChange={(e) => setEndTime(e.target.value)}
-                                className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
+                                className="w-full bg-black border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium"
                               />
                             </div>
                           </div>
@@ -437,7 +437,7 @@ export default function ModalityModal({
                             </label>
                             <div 
                               onClick={() => setShowProfessors(!showProfessors)}
-                              className="w-full h-[54px] bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all"
+                              className="w-full h-[54px] bg-black border border-white/5 rounded-xl px-6 py-4 text-sm text-white flex items-center justify-between cursor-pointer hover:border-white/10 transition-all"
                             >
                               <span className={`${professorId ? 'text-white' : 'text-gray-700'} truncate text-[11px] font-bold`}>
                                 {professorName || 'Selecione...'}
@@ -496,7 +496,7 @@ export default function ModalityModal({
                               value={capacity}
                               onChange={(e) => setCapacity(e.target.value)}
                               placeholder="Ex: 20"
-                              className="w-full bg-black/40 border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
+                              className="w-full bg-black border border-white/5 rounded-xl px-6 py-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-medium placeholder:text-gray-800"
                             />
                           )}
                         </div>

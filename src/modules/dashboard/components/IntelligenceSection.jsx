@@ -210,7 +210,7 @@ export default function IntelligenceSection({ data }) {
                                 </button>
 
                                 {/* Period buttons */}
-                                <div className="flex items-center gap-1 bg-black/40 rounded-xl p-1 border border-white/5">
+                                <div className="flex items-center gap-1 bg-black rounded-xl p-1 border border-white/5">
                                     {['semana', 'mes', 'ano'].map(v => (
                                         <button key={v} onClick={() => setPeriod(v)}
                                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === v ? 'bg-[#DC143C] text-white shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>
@@ -288,7 +288,7 @@ export default function IntelligenceSection({ data }) {
                                     <p className="text-xs text-gray-500 mt-1 tracking-tighter">Eficiência e retenção da turma</p>
                                 </div>
 
-                                <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                                <div className="flex bg-black p-1 rounded-xl border border-white/5">
                                     {['semana', 'mes', 'ano'].map(v => (
                                         <button
                                             key={v}
@@ -479,7 +479,7 @@ export default function IntelligenceSection({ data }) {
                                     <div key={i} className="flex items-center justify-between group">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white relative overflow-hidden ${beltConfig[s.belt?.toLowerCase()]?.bgClass || 'belt-none'}`}>
-                                                <div className="absolute inset-0 bg-black/40" />
+                                                <div className="absolute inset-0 bg-black" />
                                                 <span className="relative z-10">{getInitials(s.name)}</span>
                                             </div>
                                             <div>

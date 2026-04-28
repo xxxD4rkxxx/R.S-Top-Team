@@ -678,7 +678,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
                   <select
                     value={form.jiuJitsu.belt}
                     onChange={(e) => updateForm({ jiuJitsu: { ...form.jiuJitsu, belt: e.target.value } })}
-                    className="w-full bg-black/40 border border-primary/30 rounded-md px-4 py-3 text-sm text-white"
+                    className="w-full bg-black border border-primary/30 rounded-md px-4 py-3 text-sm text-white"
                   >
                     {Object.entries(beltConfig).map(([id, cfg]) => (
                       <option key={id} value={id} className="bg-[#111]">{cfg.label}</option>
@@ -1818,7 +1818,7 @@ export default function ProfilePage() {
 function InfoCard({ icon: Icon, label, value }) {
   return (
     <div className="stat-card border border-white/5 rounded-xl p-5 flex items-center gap-4 transition-all hover:border-white/10 group">
-      <div className="w-12 h-12 rounded-2xl bg-black/40 flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors">
+      <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors">
         <Icon size={20} />
       </div>
       <div className="min-w-0">

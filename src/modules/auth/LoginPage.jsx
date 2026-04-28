@@ -171,7 +171,7 @@ export default function LoginPage() {
                     autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
+                    className="block w-full pl-10 pr-4 py-3.5 bg-black border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800"
                     placeholder="Digite seu e-mail"
                     required
                   />
@@ -230,7 +230,7 @@ export default function LoginPage() {
                       maxLength={6}
                       value={pin}
                       onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      className="block w-full pl-10 pr-12 py-3.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800 font-sans tabular-nums tracking-[0.8em] placeholder:font-inter placeholder:tracking-normal"
+                      className="block w-full pl-10 pr-12 py-3.5 bg-black border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800 font-sans tabular-nums tracking-[0.8em] placeholder:font-inter placeholder:tracking-normal"
                       placeholder="000000"
                       required
                     />

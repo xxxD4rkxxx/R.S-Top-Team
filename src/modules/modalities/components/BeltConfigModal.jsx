@@ -261,7 +261,7 @@ export default function BeltConfigModal({ isOpen, onClose, modalities, onSave, i
                         className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/5 rounded-[20px] transition-all hover:bg-white/[0.05] border-l-[6px]"
                         style={{ borderLeftColor: belt.color || '#fff' }}
                       >
-                        <div className="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center text-[10px] font-black text-gray-500 shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center text-[10px] font-black text-gray-500 shrink-0">
                           {bIdx + 1}
                         </div>
                         <input 

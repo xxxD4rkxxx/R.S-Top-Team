@@ -61,7 +61,7 @@ export default function HistoryView({ student, onBack }) {
         {/* Mini Stats Grid */}
         <div className="grid grid-cols-3 gap-3 md:w-auto">
           {stats.map(s => (
-            <div key={s.label} className="bg-black/40 border border-white/5 rounded-2xl p-3 flex flex-col items-center min-w-[100px]">
+            <div key={s.label} className="bg-black border border-white/5 rounded-2xl p-3 flex flex-col items-center min-w-[100px]">
               <s.icon size={14} className="text-primary mb-1" />
               <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest leading-none mb-1">{s.label}</span>
               <span className="text-sm text-white font-black">{s.value}</span>

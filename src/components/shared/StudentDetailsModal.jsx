@@ -51,7 +51,7 @@ const AssiduityCard = ({ student }) => {
             <span className="text-gray-400 uppercase tracking-wider">Frequência Mensal</span>
             <span className="text-white bg-white/10 px-2 py-0.5 rounded-md">{monthlyCount} / 12 aulas</span>
           </div>
-          <div className="h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
+          <div className="h-2.5 bg-black rounded-full overflow-hidden border border-white/5 relative">
             <div 
               className={`h-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(0,0,0,0.5)] ${status === 'active' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : status === 'warning' ? 'bg-gradient-to-r from-yellow-700 to-yellow-500' : 'bg-gradient-to-r from-rose-900 to-rose-600'}`} 
               style={{ width: `${progress}%` }} 

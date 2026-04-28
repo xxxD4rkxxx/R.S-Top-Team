@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   collection,
   onSnapshot,
   query,
-  where,
-  orderBy,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -13,25 +11,50 @@ import {
   setDoc,
   serverTimestamp,
   increment,
-  collectionGroup
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
 import { sanitizeHTML } from '../utils/security'
 
+const LS_KEY = 'academy_notice_views'
+
+// Lê o Set de IDs vistos do localStorage
+function loadViewsFromLS(userId) {
+  try {
+    const raw = localStorage.getItem(`${LS_KEY}_${userId}`)
+    if (!raw) return new Set()
+    return new Set(JSON.parse(raw))
+  } catch { return new Set() }
+}
+
+// Salva o Set no localStorage
+function saveViewsToLS(userId, set) {
+  try {
+    localStorage.setItem(`${LS_KEY}_${userId}`, JSON.stringify([...set]))
+  } catch {}
+}
+
 /**
- * Hook para gerenciar os Avisos e Eventos (coleção "notices")
+ * Hook para gerenciar Avisos e Eventos.
+ * userViews é mantido em localStorage para evitar flicker causado por
+ * erros de permissão no collectionGroup do Firestore.
  */
 export function useNotices(userId = null) {
   const [notices, setNotices] = useState([])
-  const [userViews, setUserViews] = useState(new Set())
+  const [userViews, setUserViews] = useState(() =>
+    userId ? loadViewsFromLS(userId) : new Set()
+  )
   const [loading, setLoading] = useState(true)
+  const knownIds = useRef(null)
 
+  // Sincroniza userViews quando userId muda
   useEffect(() => {
-    // Escuta em tempo real os avisos, ordenando pelos mais recentes
-    const q = query(
-      collection(db, COLLECTIONS.EVENTOS)
-    )
+    setUserViews(userId ? loadViewsFromLS(userId) : new Set())
+  }, [userId])
+
+  // ── Listener de Avisos + notificação ao postar novo ──
+  useEffect(() => {
+    const q = query(collection(db, COLLECTIONS.EVENTOS))
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(docSnap => {
@@ -39,14 +62,27 @@ export function useNotices(userId = null) {
         return {
           id: docSnap.id,
           ...d,
-          // Parsing seguro de datas do Firestore para Objetos JS Date
           createdAt: d.createdAt?.toDate ? d.createdAt.toDate() : new Date(),
           updatedAt: d.updatedAt?.toDate ? d.updatedAt.toDate() : null,
         }
       })
-
-      // Ordenação no cliente para evitar erros de índice ausente ou campos nulos
       data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+
+      // Notificação nativa ao detectar novo aviso postado
+      if (knownIds.current !== null) {
+        data.forEach(notice => {
+          if (!knownIds.current.has(notice.id)) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification(`📢 ${notice.title || 'Novo Aviso'}`, {
+                body: notice.content || notice.description || 'Novo aviso publicado.',
+                icon: '/favicon.ico',
+                tag: `notice_new_${notice.id}`,
+              })
+            }
+          }
+        })
+      }
+      knownIds.current = new Set(data.map(n => n.id))
 
       setNotices(data)
       setLoading(false)
@@ -58,31 +94,18 @@ export function useNotices(userId = null) {
     return () => unsubscribe()
   }, [])
 
-  // Escuta as visualizações do usuário logado para o "ponto azul"
+  // Solicitar permissão de notificação uma vez
   useEffect(() => {
-    if (!userId) {
-      setUserViews(new Set())
-      return
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
     }
+  }, [])
 
-    const q = query(
-      collectionGroup(db, SUB_COLLECTIONS.VISUALIZACOES),
-      where('userId', '==', userId)
-    )
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ids = new Set(snapshot.docs.map(d => d.data().noticeId))
-      setUserViews(ids)
-    })
-
-    return () => unsubscribe()
-  }, [userId])
-
-  // ── Adicionar ──────────────────────────────────────────────────
+  // ── Adicionar ──
   async function addNotice(noticeData) {
     const payload = {
       ...noticeData,
-      description: sanitizeHTML(noticeData.description), // 🛡️ Proteção XSS
+      description: sanitizeHTML(noticeData.description || ''),
       views: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -91,56 +114,62 @@ export function useNotices(userId = null) {
     return docRef.id
   }
 
-  // ── Atualizar ──────────────────────────────────────────────────
+  // ── Atualizar ──
   async function updateNotice(id, updates) {
-    const docRef = doc(db, COLLECTIONS.EVENTOS, id)
-    
     const cleanUpdates = { ...updates }
     if (cleanUpdates.description) {
-      cleanUpdates.description = sanitizeHTML(cleanUpdates.description) // 🛡️ Proteção XSS
+      cleanUpdates.description = sanitizeHTML(cleanUpdates.description)
     }
-
-    await updateDoc(docRef, {
+    await updateDoc(doc(db, COLLECTIONS.EVENTOS, id), {
       ...cleanUpdates,
       updatedAt: serverTimestamp(),
     })
   }
 
-  // ── Deletar ────────────────────────────────────────────────────
+  // ── Deletar ──
   async function deleteNotice(id) {
-    const docRef = doc(db, COLLECTIONS.EVENTOS, id)
-    await deleteDoc(docRef)
+    await deleteDoc(doc(db, COLLECTIONS.EVENTOS, id))
   }
 
-  // ── Incrementar Visualização (Única por usuário) ─────────────
-  async function markAsViewed(noticeId, userId) {
-    if (!noticeId || !userId) return
+  // ── Marcar como Visto ──
+  // Atualiza localStorage imediatamente (sem flicker) e persiste no Firestore em background
+  const markAsViewed = useCallback(async (noticeId, viewerUserId) => {
+    if (!noticeId || !viewerUserId) return
 
-    const viewRef = doc(db, COLLECTIONS.EVENTOS, noticeId, SUB_COLLECTIONS.VISUALIZACOES, userId)
-    const viewSnap = await getDoc(viewRef)
+    // 1. Atualiza estado local imediatamente (evita o flicker)
+    setUserViews(prev => {
+      if (prev.has(noticeId)) return prev
+      const next = new Set(prev)
+      next.add(noticeId)
+      saveViewsToLS(viewerUserId, next)
+      return next
+    })
 
-    // Só incrementa se o usuário ainda não viu este aviso
-    if (!viewSnap.exists()) {
+    // 2. Persiste no Firestore em background (idempotente)
+    try {
+      const viewRef = doc(
+        db,
+        COLLECTIONS.EVENTOS,
+        noticeId,
+        SUB_COLLECTIONS.VISUALIZACOES,
+        viewerUserId
+      )
+      const viewSnap = await getDoc(viewRef)
+      if (viewSnap.exists()) return // já registrado
+
       await setDoc(viewRef, {
         noticeId,
-        userId,
+        userId: viewerUserId,
         viewedAt: serverTimestamp()
       })
 
-      const noticeRef = doc(db, COLLECTIONS.EVENTOS, noticeId)
-      await updateDoc(noticeRef, {
+      await updateDoc(doc(db, COLLECTIONS.EVENTOS, noticeId), {
         views: increment(1)
       })
+    } catch (err) {
+      console.warn('markAsViewed: erro ao persistir no Firestore:', err.message)
     }
-  }
-
-  // ── Buscar Histórico de Visualizações do Usuário ─────────────
-  async function getUserViews(userId) {
-    if (!userId) return []
-    // Como queremos algo simples, podemos opcionalmente retornar um set de IDs
-    // Mas para o "ponto azul" (não lido), talvez seja melhor fazer essa lógica no componente
-    // buscando a coleção de views do usuário.
-  }
+  }, [])
 
   return {
     notices,

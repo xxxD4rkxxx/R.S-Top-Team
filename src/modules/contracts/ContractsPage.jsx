@@ -95,7 +95,7 @@ export default function ContractsPage() {
                   <input 
                     type="text"
                     placeholder="Buscar por aluno ou plano..."
-                    className="w-full bg-black/40 border border-white/10 rounded-xll pl-10 pr-4 py-2 text-sm text-app outline-none focus:ring-1 focus:ring-primary/50"
+                    className="w-full bg-black border border-white/10 rounded-xll pl-10 pr-4 py-2 text-sm text-app outline-none focus:ring-1 focus:ring-primary/50"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -116,7 +116,7 @@ export default function ContractsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-black/40 border-b border-white/5">
+                  <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-black border-b border-white/5">
                     <th className="px-6 py-4">Aluno / Plano</th>
                     <th className="px-6 py-4 text-center">Data Emissão</th>
                     <th className="px-6 py-4 text-center">Status</th>

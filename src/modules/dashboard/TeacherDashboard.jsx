@@ -248,20 +248,20 @@ export default function TeacherDashboard() {
                 <input
                   type="text"
                   placeholder="Título (ex: Raspagem de Meia Guarda)"
-                  className="w-full bg-black/40 border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none"
+                  className="w-full bg-black border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none"
                   value={announcement.title}
                   onChange={e => setAnnouncement(p => ({ ...p, title: e.target.value }))}
                 />
                 <textarea
                   placeholder="O que será ensinado?"
                   rows="2"
-                  className="w-full bg-black/40 border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none resize-none"
+                  className="w-full bg-black border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none resize-none"
                   value={announcement.content}
                   onChange={e => setAnnouncement(p => ({ ...p, content: e.target.value }))}
                 />
                 <div className="flex gap-2">
                   <select
-                    className="bg-black/40 border border-white/10 rounded-xll px-3 text-xs focus:border-emerald-500/50 transition-all outline-none"
+                    className="bg-black border border-white/10 rounded-xll px-3 text-xs focus:border-emerald-500/50 transition-all outline-none"
                     value={announcement.difficulty}
                     onChange={e => setAnnouncement(p => ({ ...p, difficulty: e.target.value }))}
                   >
@@ -332,7 +332,7 @@ export default function TeacherDashboard() {
             {todaySessions.map((sess, idx) => (
               <div key={idx} className="group relative flex flex-col p-5 rounded-xll bg-white/5 border border-white/5 hover:border-white/15 transition-all">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 rounded-xll bg-black/40 border border-white/5 flex flex-col items-center justify-center">
+                  <div className="w-12 h-12 rounded-xll bg-black border border-white/5 flex flex-col items-center justify-center">
                     <span className="text-xs font-black text-white">{sess.time?.split(':')[0]}</span>
                     <span className="text-[8px] font-bold text-gray-500 uppercase">hrs</span>
                   </div>
@@ -702,11 +702,11 @@ export default function TeacherDashboard() {
               <span className="text-xs font-bold text-white uppercase">{selectedSession?.time}</span>
             </div>
             <div className="flex gap-4">
-              <div className="flex-1 p-4 rounded-xll bg-black/40 border border-white/5 text-center">
+              <div className="flex-1 p-4 rounded-xll bg-black border border-white/5 text-center">
                 <p className="text-2xl font-black text-emerald-400 animate-value-reveal">{selectedSession?.presentes || 0}</p>
                 <p className="text-[9px] text-gray-600 uppercase font-bold">Presentes</p>
               </div>
-              <div className="flex-1 p-4 rounded-xll bg-black/40 border border-white/5 text-center">
+              <div className="flex-1 p-4 rounded-xll bg-black border border-white/5 text-center">
                 <p className="text-2xl font-black text-white animate-value-reveal">{selectedSession?.total || 0}</p>
                 <p className="text-[9px] text-gray-600 uppercase font-bold">Inscritos</p>
               </div>

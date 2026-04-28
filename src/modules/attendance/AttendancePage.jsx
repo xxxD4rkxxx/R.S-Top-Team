@@ -61,16 +61,16 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className={`flex flex-col gap-1.5 relative ${isOpen ? 'z-[110]' : 'z-[10]'}`} ref={ref}>
+    <div className={`flex flex-col gap-1.5 relative ${isOpen ? 'z-[500]' : 'z-[10]'}`} ref={ref}>
       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/80 text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20"
+        className="form-input bg-black h-[50px] opacity-100 text-sm px-6 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-[#080808] focus:ring-1 focus:ring-white/20"
       >
-        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="truncate font-bold">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={14} className={`text-gray-500 transition-transform duration-300 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       <AnimatePresence>
@@ -82,13 +82,13 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[999] overflow-hidden shadow-2xl py-2"
+              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0B] opacity-100 border border-white/10 rounded-2xl z-[600] overflow-hidden shadow-2xl py-2"
             >
               {options.map(([v, l]) => (
                 <button
                   key={v}
                   onClick={() => { onChange(v); setIsOpen(false) }}
-                  className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-black' : 'text-gray-400 font-medium'}`}
+                  className={`w-full text-left px-6 py-4 text-[11px] font-black uppercase tracking-wider transition-colors hover:bg-white/5 border-b border-white/[0.02] last:border-0 ${value === v ? 'text-primary bg-primary/5' : 'text-gray-400'}`}
                 >
                   {l}
                 </button>
@@ -108,7 +108,7 @@ export default function AttendancePage() {
   const navigate = useNavigate()
 
   const [showModal, setShowModal] = useState(false)
-  const [sessionModality, setSessionModality] = useState(currentModality)
+  const [sessionModality, setSessionModality] = useState('')
   const [sessionDate, setSessionDate] = useState(formatInputDate(new Date()))
   const [sessionTime, setSessionTime] = useState('20:00')
   const [sessionProfessor, setSessionProfessor] = useState('')
@@ -143,6 +143,34 @@ export default function AttendancePage() {
   const [unmarkedAlert, setUnmarkedAlert] = useState(false)
   const [visibleHistoryCount, setVisibleHistoryCount] = useState(8)
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false)
+
+  // 🔥 Auto-seleção de modalidade única (UX para Professores)
+  useEffect(() => {
+    if (loadingModalities || availableModalities.length === 0) return
+
+    // Se já houver uma modalidade selecionada, verifica se ela ainda é válida para este usuário
+    if (sessionModality) {
+      const isValid = availableModalities.some(m => 
+        m.name.toLowerCase() === sessionModality.toLowerCase() ||
+        m.id.toLowerCase() === sessionModality.toLowerCase()
+      )
+      if (!isValid) setSessionModality('')
+      return
+    }
+
+    // Se houver apenas uma modalidade disponível, seleciona automaticamente
+    if (availableModalities.length === 1) {
+      const single = availableModalities[0]
+      setSessionModality(single.name)
+      
+      const turmas = single.turmas?.filter(t => t.status === 'ativo') || []
+      if (turmas.length > 0) {
+        const time = ensureTimeFormat(turmas[0].horario || turmas[0].horarioInicio)
+        setSessionTime(time)
+        syncProfessors(single.name, time)
+      }
+    }
+  }, [availableModalities, loadingModalities, sessionModality])
 
   // ── States dos Filtros de Histórico ──────────────────────────────────────────
   const [historySortBy, setHistorySortBy] = useState('recente')
@@ -190,8 +218,15 @@ export default function AttendancePage() {
   }, [userData?.name, sessionProfessor])
 
   useEffect(() => {
-    setSessionModality(currentModality)
-  }, [currentModality])
+    if (!currentModality) return
+    const isValid = availableModalities.some(m => 
+      m.name.toLowerCase() === currentModality.toLowerCase() ||
+      m.id.toLowerCase() === currentModality.toLowerCase()
+    )
+    if (isValid) {
+      setSessionModality(currentModality)
+    }
+  }, [currentModality, availableModalities])
 
   async function fetchRecentSessions() {
     if (!user?.uid) return
@@ -354,16 +389,36 @@ export default function AttendancePage() {
     if (!activeSession) return []
     
     let list = students.filter(student => {
+      // Função de normalização robusta
+      const normalizeStr = (str) => String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+
+      // Regra 0: Ocultar o próprio professor logado e qualquer um com papel de equipe
+      const isSelf = student.id === user?.uid || 
+                     (student.email && user?.email && student.email.toLowerCase() === user.email.toLowerCase()) || 
+                     (user?.email && student.id === normalizeStr(user.email));
+      
+      const roles = student.papeis || student.roles || {};
+      const isStaff = roles.professor || roles.gestor || roles.admin || roles.equipe || roles.colaborador;
+
+      if (isSelf || isStaff) return false;
+
       // Regra 1: Deve ter a modalidade da sessão
-      const hasModality = (student.modalities || [student.modality] || []).includes(activeSession.modality)
+      const studentMods = (student.modalities || [student.modality] || [])
+        .filter(Boolean)
+        .map(m => normalizeStr(m));
+      
+      const sessionModNorm = normalizeStr(activeSession.modality);
+      const hasModality = studentMods.includes(sessionModNorm);
+      
       if (!hasModality) return false
 
       // Regra 2: Se a sessão está vinculada a uma turma específica, filtra por ela (SSoT)
       if (activeSession.turmaId) {
-        return (student.turmas || []).includes(activeSession.turmaId)
+        const studentTurmas = (student.turmas || []).map(t => String(t).toLowerCase());
+        return studentTurmas.includes(activeSession.turmaId.toLowerCase());
       }
 
-      // Fallback: Se não houver ID de turma na sessão, mostra todos da modalidade (legado)
+      // Fallback: Se não houver ID de turma na sessão, mostra todos da modalidade
       return true
     })
 
@@ -711,7 +766,7 @@ export default function AttendancePage() {
                         type="date"
                         value={sessionDate}
                         onChange={e => setSessionDate(e.target.value)}
-                        className="w-full bg-black/40 border border-white/5 rounded-xl py-3 pl-12 pr-4 text-xs text-white font-bold focus:border-primary/40 outline-none transition-all"
+                        className="w-full bg-black border border-white/5 rounded-xl py-3 pl-12 pr-4 text-xs text-white font-bold focus:border-primary/40 outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -724,7 +779,7 @@ export default function AttendancePage() {
                         type="time"
                         value={sessionTime}
                         onChange={e => setSessionTime(e.target.value)}
-                        className="w-full bg-black/40 border border-white/5 rounded-xl py-3 pl-12 pr-4 text-xs text-white font-bold focus:border-primary/40 outline-none transition-all"
+                        className="w-full bg-black border border-white/5 rounded-xl py-3 pl-12 pr-4 text-xs text-white font-bold focus:border-primary/40 outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -739,7 +794,7 @@ export default function AttendancePage() {
                         value={sessionProfessor}
                         onChange={(e) => { setSessionProfessor(e.target.value); if (!showProfessorDropdown) setShowProfessorDropdown(true); }}
                         onFocus={() => setShowProfessorDropdown(true)}
-                        className="w-full bg-black/40 border border-white/5 rounded-xl py-3 pl-12 pr-10 text-xs text-white font-bold outline-none focus:border-primary/40 transition-all hover:bg-black/60"
+                        className="w-full bg-black border border-white/5 rounded-xl py-3 pl-12 pr-10 text-xs text-white font-bold outline-none focus:border-primary/40 transition-all hover:bg-black/60"
                       />
                       <ChevronDown size={14} className={`absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 transition-transform duration-300 pointer-events-none ${showProfessorDropdown ? "rotate-180" : ""}`} />
 
@@ -796,9 +851,9 @@ export default function AttendancePage() {
                   )}
                   <button
                     onClick={handleStartSession}
-                    disabled={isSavingSession}
-                    className={`btn-primary rounded-xl px-10 py-3 font-black uppercase text-[10px] tracking-[0.2em] shadow-xl transition-all disabled:opacity-50
-                      ${isSavingSession ? 'opacity-70' : 'bg-rose-600 shadow-rose-600/20 hover:scale-[1.02] active:scale-[0.98]'}`}
+                    disabled={isSavingSession || !sessionModality}
+                    className={`btn-primary rounded-xl px-10 py-3 font-black uppercase text-[10px] tracking-[0.2em] shadow-xl transition-all disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed
+                      ${!sessionModality ? 'bg-gray-800 text-gray-500' : 'bg-rose-600 shadow-rose-600/20 hover:scale-[1.02] active:scale-[0.98]'}`}
                   >
                     {isSavingSession ? 'INICIANDO...' : 'ABRIR LISTA DE PRESENÇA'}
                   </button>
@@ -1086,7 +1141,9 @@ export default function AttendancePage() {
                 </button>
                 <button
                   onClick={handleStartSession}
-                  className="col-span-8 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl shadow-rose-600/30 active:scale-95 transition-all"
+                  disabled={isSavingSession || !sessionModality}
+                  className={`col-span-8 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all active:scale-95 disabled:opacity-30 disabled:grayscale
+                    ${!sessionModality ? 'bg-gray-800 text-gray-500' : 'bg-rose-600 text-white shadow-rose-600/30'}`}
                 >
                   {isSavingSession ? 'Iniciando...' : 'Iniciar Chamada'}
                 </button>

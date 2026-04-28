@@ -80,7 +80,7 @@ export function StudentsProvider({ children }) {
         id: item.id,
         name: rawName,
         initials: data.initials || buildInitials(rawName),
-        belt: (tech.faixa_atual || data.belt || data.faixa || 'white').toLowerCase(),
+        belt: (tech.faixa_atual || data.belt || data.faixa || 'none').toLowerCase(),
         modality: data.modality || modalities[0] || 'Jiu Jitsu',
         modalities,
         modalityPrimary: modalities[0] || data.modality || 'Jiu Jitsu',

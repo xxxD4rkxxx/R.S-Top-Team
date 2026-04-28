@@ -71,7 +71,7 @@ export default function PinVerificationModal({ onConfirm, onClose, title = "Segu
                             setPin(val); 
                             setError(false);
                         }}
-                        className={`w-full bg-black/40 border ${error ? 'border-red-500/50' : 'border-white/10'} rounded-2xl py-4 text-center text-3xl font-mono tracking-[0.5em] text-white focus:outline-none focus:border-white/30 transition-all`}
+                        className={`w-full bg-black border ${error ? 'border-red-500/50' : 'border-white/10'} rounded-2xl py-4 text-center text-3xl font-mono tracking-[0.5em] text-white focus:outline-none focus:border-white/30 transition-all`}
                         placeholder="••••••"
                         style={{ WebkitTextSecurity: 'disc' }} // Mantém as "bolinhas" visualmente se preferir ocultar
                         autoFocus

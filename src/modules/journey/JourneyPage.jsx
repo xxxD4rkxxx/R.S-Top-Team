@@ -41,7 +41,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="form-input bg-black/40 text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+        className="form-input bg-black text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
       >
         <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
         <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
@@ -161,7 +161,7 @@ export default function JourneyPage() {
         )}
 
         {/* Tab Navigation (SaaS Premium Style) */}
-        <div className="flex gap-1 p-1 bg-black/40 border border-white/5 rounded-2xl w-fit">
+        <div className="flex gap-1 p-1 bg-black border border-white/5 rounded-2xl w-fit">
           {[
             { id: 'gestao', label: 'Gestão de Alunos', icon: Users },
             { id: 'historico', label: 'Histórico Técnico', icon: History, disabled: !selectedStudent && activeTab !== 'historico' },

@@ -245,11 +245,11 @@ export default function ReportsPage() {
             <div className="space-y-6 pt-1">
               <div>
                 <div className="flex justify-between text-xs font-black uppercase mb-2"><span className="text-gray-400">Receita Total</span><span className="text-emerald-400 font-black">{R$(d.totalReceita)}</span></div>
-                <div className="h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(d.totalReceita / d.maxBar) * 100}%` }} /></div>
+                <div className="h-2.5 bg-black rounded-full overflow-hidden border border-white/5"><div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(d.totalReceita / d.maxBar) * 100}%` }} /></div>
               </div>
               <div>
                 <div className="flex justify-between text-xs font-black uppercase mb-2"><span className="text-gray-400">Despesa Total</span><span className="text-rose-400 font-black">{R$(d.totalDespesa)}</span></div>
-                <div className="h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/5"><div className="h-full bg-rose-500 transition-all duration-1000" style={{ width: `${(d.totalDespesa / d.maxBar) * 100}%` }} /></div>
+                <div className="h-2.5 bg-black rounded-full overflow-hidden border border-white/5"><div className="h-full bg-rose-500 transition-all duration-1000" style={{ width: `${(d.totalDespesa / d.maxBar) * 100}%` }} /></div>
               </div>
             </div>
           </Section>

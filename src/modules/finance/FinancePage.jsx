@@ -81,7 +81,7 @@ function ModalNovaDespesa({ onClose, onSave, loading }) {
               required
               type="text"
               placeholder="Ex: Aluguel do mês de Maio"
-              className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all placeholder-gray-600"
+              className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all placeholder-gray-600"
               value={form.description}
               onChange={e => set('description', e.target.value)}
             />
@@ -93,7 +93,7 @@ function ModalNovaDespesa({ onClose, onSave, loading }) {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Categoria</label>
               <div className="relative">
                 <select
-                  className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all pr-8"
+                  className="w-full appearance-none bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all pr-8"
                   value={form.category}
                   onChange={e => set('category', e.target.value)}
                 >
@@ -106,7 +106,7 @@ function ModalNovaDespesa({ onClose, onSave, loading }) {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status Inicial</label>
               <div className="relative">
                 <select
-                  className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all pr-8"
+                  className="w-full appearance-none bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all pr-8"
                   value={form.status}
                   onChange={e => set('status', e.target.value)}
                 >
@@ -128,7 +128,7 @@ function ModalNovaDespesa({ onClose, onSave, loading }) {
                 step="0.01"
                 min="0"
                 placeholder="0,00"
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all placeholder-gray-600 font-mono"
+                className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all placeholder-gray-600 font-mono"
                 value={form.amount}
                 onChange={e => set('amount', e.target.value)}
               />
@@ -138,7 +138,7 @@ function ModalNovaDespesa({ onClose, onSave, loading }) {
               <input
                 required
                 type="date"
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all [color-scheme:dark]"
+                className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-all [color-scheme:dark]"
                 value={form.dueDate}
                 onChange={e => set('dueDate', e.target.value)}
               />
@@ -255,15 +255,15 @@ function TabDespesas({ expenses, loadingExpenses, addExpense, updateExpense, del
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
               <input type="text" placeholder="Buscar despesa..."
-                className="bg-black/40 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-white/20 transition-all w-52"
+                className="bg-black border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-white/20 transition-all w-52"
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <select className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-400 focus:outline-none outline-none"
+            <select className="bg-black border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-400 focus:outline-none outline-none"
               value={catFilter} onChange={e => setCatFilter(e.target.value)}>
               <option value="all">Todas as categorias</option>
               {CATEGORIAS_DESPESA.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-400 focus:outline-none outline-none"
+            <select className="bg-black border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-400 focus:outline-none outline-none"
               value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="all">Todos os status</option>
               <option value="paid">Pagos</option>
@@ -281,7 +281,7 @@ function TabDespesas({ expenses, loadingExpenses, addExpense, updateExpense, del
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-black/40 border-b border-white/5 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                <tr className="bg-black border-b border-white/5 text-[10px] font-black text-gray-500 uppercase tracking-widest">
                   <th className="px-5 py-4">Descrição / Categoria</th>
                   <th className="px-5 py-4 text-center hidden sm:table-cell">Vencimento</th>
                   <th className="px-5 py-4 text-right">Valor</th>
@@ -462,7 +462,7 @@ function TabRelatorios({ bills, expenses, students }) {
                       <span className="text-gray-300">{cat}</span>
                       <span className="text-gray-400 font-mono">{formatBRL(val)} <span className="text-gray-600 text-[10px]">({pct.toFixed(0)}%)</span></span>
                     </div>
-                    <div className="h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+                    <div className="h-1.5 bg-black rounded-full overflow-hidden border border-white/5">
                       <div className="h-full bg-gradient-to-r from-purple-600/80 to-rose-500/80 rounded-full transition-all duration-700"
                         style={{ width: `${pct}%` }} />
                     </div>
@@ -555,7 +555,7 @@ export default function FinancePage() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex p-1 bg-black/40 rounded-2xl border border-white/5 w-fit">
+        <div className="flex p-1 bg-black rounded-2xl border border-white/5 w-fit">
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -582,13 +582,13 @@ export default function FinancePage() {
                   <div className="relative flex-1 md:min-w-[280px]">
                     <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                     <input type="text" placeholder="Buscar aluno ou cobrança..."
-                      className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:ring-1 focus:ring-primary/40 outline-none transition-all"
+                      className="w-full bg-black border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:ring-1 focus:ring-primary/40 outline-none transition-all"
                       value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                   </div>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                   <select
-                    className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-gray-400 outline-none"
+                    className="bg-black border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-gray-400 outline-none"
                     value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                     <option value="all">Todos os Status</option>
                     <option value="paid">Pagos</option>
@@ -601,7 +601,7 @@ export default function FinancePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-black/40 border-b border-white/5">
+                    <tr className="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-black border-b border-white/5">
                       <th className="px-6 py-4">Aluno / Referência</th>
                       <th className="px-6 py-4 text-center hidden sm:table-cell">Vencimento</th>
                       <th className="px-6 py-4 text-right">Valor</th>

@@ -32,26 +32,26 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className={`flex flex-col gap-1.5 relative w-full ${isOpen ? 'z-[110]' : 'z-[10]'}`} ref={ref}>
+    <div className={`flex flex-col gap-1.5 relative w-full ${isOpen ? 'z-[500]' : 'z-[10]'}`} ref={ref}>
       <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">{label}</label>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`form-input bg-[#0B0B0D] backdrop-blur-md input-raise text-sm py-3 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-black/90 focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
+        className={`form-input bg-black opacity-100 h-[54px] text-sm px-6 text-gray-300 font-medium text-left flex justify-between items-center w-full disabled:opacity-40 disabled:cursor-not-allowed border border-white/10 rounded-2xl transition-all hover:bg-[#080808] focus:ring-1 focus:ring-white/20 ${isOpen ? 'ring-1 ring-primary/50 border-primary/50' : ''}`}
       >
-        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
+        <span className="truncate font-bold">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={14} className={`text-gray-500 transition-transform duration-300 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[150] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0B] opacity-100 border border-white/10 rounded-2xl z-[600] overflow-hidden shadow-2xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(([v, l]) => (
             <button
               key={v}
               type="button"
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/10 font-black' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-6 py-4 text-[11px] font-black uppercase tracking-wider transition-colors hover:bg-white/5 border-b border-white/[0.02] last:border-0 ${value === v ? 'text-primary bg-primary/5' : 'text-gray-400'}`}
             >
               {l}
             </button>
@@ -202,15 +202,15 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   // 🔥 Auto-seleção de turmas para modalidades com apenas uma turma
   useEffect(() => {
     if (!modalities) return;
-    
+
     setForm(prev => {
       const currentTurmas = prev.turmas || [];
       const newTurmas = [...currentTurmas];
       let changed = false;
 
       prev.modality.forEach(modName => {
-        const mod = modalities.find(m => 
-          m.name.toLowerCase() === modName.toLowerCase() || 
+        const mod = modalities.find(m =>
+          m.name.toLowerCase() === modName.toLowerCase() ||
           m.id.toLowerCase() === modName.toLowerCase()
         );
         if (mod && mod.turmas && mod.turmas.length === 1) {
@@ -425,7 +425,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       required
                       value={form.name}
                       onChange={e => setForm({ ...form, name: e.target.value })}
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                      className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
                       placeholder="Ex: João Silva"
                     />
                   </div>
@@ -440,7 +440,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       required
                       value={form.phone}
                       onChange={e => setForm({ ...form, phone: formatPhoneUI(e.target.value) })}
-                      className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                      className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
                       placeholder="91 99999-9999"
                     />
                   </div>
@@ -458,7 +458,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                         required
                         value={form.email}
                         onChange={e => setForm({ ...form, email: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                        className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
                         placeholder="email@exemplo.com"
                       />
                     </div>
@@ -523,10 +523,10 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                 {/* --- SELEÇÃO DE TURMAS (Estilo Dropdown ModalityModal) --- */}
                 {(() => {
                   const relevantClasses = modalities
-                  .filter(m => 
-                    form.modality.some(modName => modName.toLowerCase() === m.name.toLowerCase()) || 
-                    form.modality.some(modName => modName.toLowerCase() === m.id.toLowerCase())
-                  )
+                    .filter(m =>
+                      form.modality.some(modName => modName.toLowerCase() === m.name.toLowerCase()) ||
+                      form.modality.some(modName => modName.toLowerCase() === m.id.toLowerCase())
+                    )
                     .flatMap(m => (m.turmas || []).map(t => ({
                       ...t,
                       modalityName: m.name,
@@ -534,14 +534,14 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                     })));
 
                   const hasRelevantClasses = (modalities || [])
-                    .some(m => form.modality.includes(m.name) && (m.turmas || []).length > 0);
+                    .some(m => form.modality.some(modName => modName.toLowerCase() === m.name.toLowerCase()) && (m.turmas || []).length > 0);
 
                   if (!hasRelevantClasses) return null;
 
                   const selectedCount = (form.turmas || []).length;
 
                   return (
-                    <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2" ref={dropdownRef}>
+                    <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 relative z-[100]" ref={dropdownRef}>
                       <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
                         <Users size={12} /> SELECIONAR TURMAS E HORÁRIOS
                       </label>
@@ -549,7 +549,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       <div className="relative">
                         <div
                           onClick={() => setShowTurmasDropdown(!showTurmasDropdown)}
-                          className={`w-full h-[54px] bg-[#0B0B0D] border text-sm text-gray-300 font-medium flex items-center justify-between cursor-pointer transition-all rounded-2xl px-6 py-4 hover:bg-black/90 ${showTurmasDropdown ? 'ring-1 ring-primary/50 border-primary/50' : 'border-white/10'}`}
+                          className={`w-full h-[54px] bg-black border text-sm text-gray-300 font-medium flex items-center justify-between cursor-pointer transition-all rounded-2xl px-6 py-4 hover:bg-[#080808] ${showTurmasDropdown ? 'ring-1 ring-primary/50 border-primary/50' : 'border-white/10'}`}
                         >
                           <div className="flex items-center gap-3 truncate">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${selectedCount > 0 ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-600'}`}>
@@ -570,7 +570,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                               initial={{ opacity: 0, y: 10, scale: 0.95 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                              className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0D] backdrop-blur-md border border-white/10 rounded-2xl z-[150] overflow-y-auto max-h-64 no-scrollbar shadow-2xl py-2"
+                              className="absolute top-[calc(100%+8px)] left-0 w-full bg-[#0B0B0B] opacity-100 border border-white/10 rounded-2xl z-[600] overflow-y-auto max-h-64 no-scrollbar shadow-2xl py-2"
                             >
                               {relevantClasses.length === 0 ? (
                                 <div className="px-6 py-8 text-center">
@@ -631,7 +631,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                   );
                 })()}
 
-                {activeModalities.some(m => form.modality.includes(m.name) && m.hasBelt !== false) && (
+                {activeModalities.some(m => form.modality.some(modName => modName.toLowerCase() === m.name.toLowerCase()) && m.hasBelt !== false) && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <CustomSelect
                       label="Faixa Atual"
@@ -704,7 +704,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                           type="text"
                           value={form.emergency}
                           onChange={e => setForm({ ...form, emergency: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                          className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
                           placeholder="Nome e Telefone"
                         />
                       </div>
@@ -716,7 +716,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                         <textarea
                           value={form.medical}
                           onChange={e => setForm({ ...form, medical: e.target.value })}
-                          className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium min-h-[100px] outline-none"
+                          className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium min-h-[100px] outline-none"
                           placeholder="Ex: Alergias, problemas no joelho..."
                         />
                       </div>
@@ -741,7 +741,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                         type="text"
                         value={form.planValue ? (Number(form.planValue) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}
                         onChange={e => setForm({ ...form, planValue: e.target.value.replace(/\D/g, '') })}
-                        className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white outline-none focus:border-emerald-500/30 transition-all"
+                        className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white outline-none focus:border-emerald-500/30 transition-all"
                         placeholder="R$ 0,00"
                       />
                     </div>
@@ -750,7 +750,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                   {!initialData && (
                     <div className="space-y-1.5">
                       <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Pagamento Inicial</label>
-                      <div className="flex gap-2 p-1 bg-black/40 border border-white/5 rounded-2xl">
+                      <div className="flex gap-2 p-1 bg-black border border-white/5 rounded-2xl">
                         <button
                           type="button"
                           onClick={() => setForm({ ...form, initialPaymentStatus: 'paid' })}

@@ -60,24 +60,24 @@ function CustomSelect({ label, value, onChange, options }) {
   const selectedOption = options.find(o => o[0] === value) || options[0]
 
   return (
-    <div className="flex flex-col gap-1.5 relative" ref={ref}>
+    <div className={`flex flex-col gap-1.5 relative ${isOpen ? 'z-[500]' : 'z-[10]'}`} ref={ref}>
       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="form-input bg-black/40 input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+        className="form-input bg-black h-[50px] text-sm px-6 text-gray-300 font-medium text-left flex justify-between items-center w-full border border-white/10 rounded-2xl transition-all hover:bg-[#080808] focus:ring-1 focus:ring-white/20"
       >
-        <span className="truncate">{selectedOption ? selectedOption[1] : '...'}</span>
-        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="truncate font-bold">{selectedOption ? selectedOption[1] : '...'}</span>
+        <ChevronDown size={14} className={`text-gray-500 transition-transform duration-300 shrink-0 ml-2 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2"
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0B0B0B] opacity-100 border border-white/10 rounded-2xl z-[600] overflow-hidden shadow-2xl py-2"
           style={{ animation: 'fadeSlideUp 0.15s ease-out forwards' }}>
           {options.map(([v, l]) => (
             <button
               key={v}
               onClick={() => { onChange(v); setIsOpen(false) }}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 ${value === v ? 'text-white bg-white/5 font-black' : 'text-gray-400 font-medium'}`}
+              className={`w-full text-left px-6 py-4 text-[11px] font-black uppercase tracking-wider transition-colors hover:bg-white/5 border-b border-white/[0.02] last:border-0 ${value === v ? 'text-primary bg-primary/5' : 'text-gray-400'}`}
             >
               {l}
             </button>
@@ -265,7 +265,7 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Descrição</label>
               <input required type="text" placeholder="Ex: Aluguel do galpão"
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 placeholder-gray-600"
+                className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 placeholder-gray-600"
                 value={form.description} onChange={e => set('description', e.target.value)} />
             </div>
 
@@ -274,7 +274,7 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Categoria</label>
                 <div className="relative">
                   <select value={form.category} onChange={e => set('category', e.target.value)}
-                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
+                    className="w-full appearance-none bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
                     {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
@@ -284,7 +284,7 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status</label>
                 <div className="relative">
                   <select value={form.status} onChange={e => set('status', e.target.value)}
-                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
+                    className="w-full appearance-none bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
                     <option value="pending">Pendente</option>
                     <option value="paid">Pago</option>
                   </select>
@@ -297,14 +297,14 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Valor</label>
                 <input required type="text" placeholder="R$ 0,00"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
+                  className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 font-mono placeholder-gray-600"
                   value={form.displayAmount || formatValueToBRL(form.amount.toString() || '')}
                   onChange={handleAmountChange} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento</label>
                 <input required type="date"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                  className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
                   value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
               </div>
             </div>
@@ -317,7 +317,7 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
                 </label>
                 <div className="relative">
                   <select value={form.paymentMethod} onChange={e => set('paymentMethod', e.target.value)}
-                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
+                    className="w-full appearance-none bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
                     <option value="Pix">Pix</option>
                     <option value="Cartão de Crédito">Cartão de Crédito</option>
                     <option value="Dinheiro">Dinheiro</option>
@@ -334,7 +334,7 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
                 </label>
                 <div className="relative">
                   <select value={form.costCenter} onChange={e => set('costCenter', e.target.value)}
-                    className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8 text-xs">
+                    className="w-full appearance-none bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8 text-xs">
                     <option value="Geral/Administrativo">Geral/Administrativo</option>
                     <optgroup label="Modalidades">
                       {modalities.map(m => (
@@ -353,7 +353,7 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
               </label>
               <div className="relative">
                 <select value={form.payeeId} onChange={e => set('payeeId', e.target.value)}
-                  className="w-full appearance-none bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
+                  className="w-full appearance-none bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none pr-8">
                   <option value="">Nenhum / Externo</option>
                   <optgroup label="Professores da Casa">
                     {professors.map(p => (
@@ -369,7 +369,7 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
             <div className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Recorrência Automática</label>
-                <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
+                <div className="flex bg-black p-1 rounded-xl border border-white/10">
                   {['Não', 'Sim'].map(opt => (
                     <button
                       key={opt}

@@ -211,7 +211,7 @@ export default function GraduationHistoryModal({ student, isOpen, onClose }) {
 
           {/* Formulário inline */}
           {showForm && (
-            <div className="px-6 py-4 bg-black/40 border-b border-white/10 space-y-3">
+            <div className="px-6 py-4 bg-black border-b border-white/10 space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--clr-primary)' }}>Nova Graduação</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>

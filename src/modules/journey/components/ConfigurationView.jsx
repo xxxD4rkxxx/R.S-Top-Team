@@ -118,7 +118,7 @@ export default function ConfigurationView() {
       
       {/* Sidebar: Modalidades e Categorias */}
       <div className="space-y-6">
-        <div className="bg-black/40 border border-white/5 rounded-3xl p-6 shadow-xl">
+        <div className="bg-black border border-white/5 rounded-3xl p-6 shadow-xl">
            <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 px-1">Modalidades</h3>
            <div className="space-y-2">
              {modalities.map(m => (
@@ -137,7 +137,7 @@ export default function ConfigurationView() {
            </div>
         </div>
 
-        <div className="bg-black/40 border border-white/5 rounded-3xl p-6 shadow-xl">
+        <div className="bg-black border border-white/5 rounded-3xl p-6 shadow-xl">
            <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 px-1">Categorias</h3>
            <div className="grid grid-cols-1 gap-2">
              {categories.map(c => (
@@ -159,7 +159,7 @@ export default function ConfigurationView() {
 
       {/* Painel Principal: Configuração de Faixas */}
       <div className="lg:col-span-3 space-y-6">
-        <div className="bg-black/40 border border-white/5 rounded-3xl p-8 shadow-xl min-h-[500px] flex flex-col">
+        <div className="bg-black border border-white/5 rounded-3xl p-8 shadow-xl min-h-[500px] flex flex-col">
            
            {/* Header do Painel */}
            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 pb-6 border-b border-white/5">

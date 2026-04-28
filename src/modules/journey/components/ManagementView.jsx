@@ -50,7 +50,7 @@ export default function ManagementView({
       </div>
 
       {/* Container de Tabela e Filtros */}
-      <div className="bg-black/40 backdrop-blur-md rounded-3xl p-5 md:p-6 border border-white/5 shadow-2xl">
+      <div className="bg-black backdrop-blur-md rounded-3xl p-5 md:p-6 border border-white/5 shadow-2xl">
         
         {/* Grade de Filtros Seletores */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -145,7 +145,7 @@ export default function ManagementView({
                             <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Ciclo</span>
                             <span className="text-[9px] font-black text-white">{s.graduation.progression}%</span>
                          </div>
-                         <div className="w-full h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
+                         <div className="w-full h-2.5 bg-black rounded-full overflow-hidden border border-white/5 p-0.5">
                             <div 
                               className="h-full bg-primary rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(235,16,51,0.3)]"
                               style={{ width: `${s.graduation.progression}%` }}
