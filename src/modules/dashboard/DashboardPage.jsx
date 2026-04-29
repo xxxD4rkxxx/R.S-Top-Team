@@ -118,7 +118,7 @@ export default function DashboardPage() {
   if (currentRole === 'aluno') {
     // Alunos precisam de seus dados para o cálculo de graduação no dashboard
     // Filtramos as cobranças APENAS do aluno logado, sem expor dos outros
-    const minhasCobrancas = bills.filter(b => b.studentId === user?.uid)
+    const minhasCobrancas = bills.filter(b => b.studentId === userData?.id)
     const temPendencia = minhasCobrancas.some(b => b.status === 'overdue' || b.status === 'pending')
     const temAtraso = minhasCobrancas.some(b => b.status === 'overdue')
     return <StudentDashboard user={userData} temPendencia={temPendencia} temAtraso={temAtraso} cobrancas={minhasCobrancas} />

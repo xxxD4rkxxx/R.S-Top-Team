@@ -62,7 +62,7 @@ function subscribeToFinance(type, userId, role, callback) {
 }
 
 export function useFinance() {
-  const { user, effectiveRole } = useAuth()
+  const { user, userData, effectiveRole } = useAuth()
   const [cobrancas, setCobrancas] = useState(_cachedCobrancas || [])
   const [carregandoCobrancas, setCarregandoCobrancas] = useState(_financeListeners.cobrancas.loading)
   const [despesas, setDespesas] = useState(_cachedDespesas || [])
@@ -75,14 +75,14 @@ export function useFinance() {
       return
     }
 
-    const unsubCob = subscribeToFinance('cobrancas', user.uid, effectiveRole, (data, loading) => {
+    const unsubCob = subscribeToFinance('cobrancas', userData?.id || user.uid, effectiveRole, (data, loading) => {
       setCobrancas(data)
       setCarregandoCobrancas(loading)
     })
 
     let unsubDesp = () => {}
     if (effectiveRole !== 'aluno' && effectiveRole !== 'professor') {
-      unsubDesp = subscribeToFinance('despesas', user.uid, effectiveRole, (data, loading) => {
+      unsubDesp = subscribeToFinance('despesas', userData?.id || user.uid, effectiveRole, (data, loading) => {
         setDespesas(data)
         setCarregandoDespesas(loading)
       })

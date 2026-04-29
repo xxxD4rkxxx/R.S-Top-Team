@@ -440,6 +440,12 @@ export default function AttendancePage() {
 
   // Helper to sync professors when modality/time changes
   const syncProfessors = (modName, timeStr) => {
+    // 👑 Prioridade Absoluta: O nome de quem está logado e fazendo a chamada
+    if (userData?.name) {
+      setSessionProfessor(userData.name)
+      return
+    }
+
     const mod = modalities.find(m => m.name === modName)
     if (mod && mod.turmas) {
       const time = ensureTimeFormat(timeStr)
@@ -454,7 +460,7 @@ export default function AttendancePage() {
       }
     }
     // Fallback se não achar turma ou professores
-    if (userData?.name && !sessionProfessor) {
+    if (userData?.name) {
       setSessionProfessor(userData.name)
     }
   }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collectionGroup, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { collectionGroup, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { SUB_COLLECTIONS } from '../firebase/collections'
 
@@ -12,46 +12,53 @@ export function useStudentAttendance(studentId) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!studentId) return
-
-    async function fetchAttendance() {
-      setLoading(true)
-      try {
-        const q = query(
-          collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
-          where('studentId', '==', studentId),
-          orderBy('date', 'desc'),
-          limit(100)
-        )
-        const snap = await getDocs(q)
-        const docs = snap.docs.map(d => {
-          const data = d.data()
-          
-          // Normalização da data: Suporta Firestore Timestamp ou String ISO
-          let parsedDate
-          if (data.date && typeof data.date.toDate === 'function') {
-            parsedDate = data.date.toDate()
-          } else if (typeof data.date === 'string') {
-            parsedDate = new Date(data.date + 'T12:00:00')
-          } else {
-            parsedDate = new Date()
-          }
-
-          return {
-            id: d.id,
-            ...data,
-            parsedDate
-          }
-        })
-        setAttendances(docs)
-      } catch (err) {
-        console.error('Erro ao buscar presenças do aluno:', err)
-      } finally {
-        setLoading(false)
-      }
+    if (!studentId) {
+      setLoading(false)
+      return
     }
 
-    fetchAttendance()
+    const q = query(
+      collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
+      where('studentId', '==', studentId),
+      limit(100)
+    )
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      let docs = snap.docs.map(d => {
+        const data = d.data()
+        
+        // Normalização da data: Suporta Firestore Timestamp ou String ISO
+        let parsedDate
+        if (data.date && typeof data.date.toDate === 'function') {
+          parsedDate = data.date.toDate()
+        } else if (typeof data.date === 'string') {
+          parsedDate = new Date(data.date + 'T12:00:00')
+        } else if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+          parsedDate = data.timestamp.toDate()
+        } else {
+          parsedDate = new Date()
+        }
+
+        return {
+          id: d.id,
+          ...data,
+          parsedDate,
+          // Garante uma string de data para ordenação se o campo 'date' estiver ausente
+          sortDate: data.date || (parsedDate.toISOString().split('T')[0])
+        }
+      })
+
+      // Ordenação manual para evitar necessidade de índice composto no Firestore
+      docs.sort((a, b) => b.sortDate.localeCompare(a.sortDate))
+      
+      setAttendances(docs)
+      setLoading(false)
+    }, (err) => {
+      console.error('Erro ao buscar presenças do aluno:', err)
+      setLoading(false)
+    })
+
+    return () => unsubscribe()
   }, [studentId])
 
   const stats = useMemo(() => {

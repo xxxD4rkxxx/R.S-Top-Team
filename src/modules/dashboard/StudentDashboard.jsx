@@ -59,8 +59,8 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
 
 
 export default function StudentDashboard({ user, cobrancas = [] }) {
-  const { total, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.uid)
-  const { notices, userViews = new Set(), loading: loadingNotices } = useNotices(user?.uid)
+  const { total, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.id)
+  const { notices, userViews = new Set(), loading: loadingNotices } = useNotices(user?.id)
   const { sessions, loading: loadingSessions } = useTodaySessions()
 
   // Filtro de cobranças pendentes
