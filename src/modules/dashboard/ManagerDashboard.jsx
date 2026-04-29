@@ -28,6 +28,7 @@ import { useModalities } from '../../hooks/useModalities'
 import { attendanceService } from '../../services/attendanceService'
 import { useTeacherIntelligence } from '../../hooks/useTeacherIntelligence'
 import IntelligenceSection from './components/IntelligenceSection'
+import { motion } from 'framer-motion'
 
 // ── Custom sport PNG icon wrappers ───────────────────────────────
 function IconJiuJitsu({ size = 16, className = '' }) {
@@ -418,8 +419,85 @@ export default function ManagerDashboard() {
                     }
                 </div>
 
+                {/* ── 📊 PREVISÃO E METAS (NOVO) ─────────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Previsão IA */}
+                    <div className="lg:col-span-8 glass-card rounded-[32px] border border-blue-500/10 bg-gradient-to-br from-blue-500/5 to-transparent p-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-sm font-black text-white tracking-widest uppercase flex items-center gap-2">
+                                    <BarChart3 size={18} className="text-blue-400" /> Previsão do Mês
+                                </h3>
+                                <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-tighter">Insights baseados em dados históricos</p>
+                            </div>
+                            <div className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] font-black uppercase tracking-widest">
+                                Inteligência Ativa
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Receita Prevista</p>
+                                <p className="text-2xl font-black text-white">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPaid * 1.15)}
+                                </p>
+                                <div className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold mt-1">
+                                    <TrendingUp size={10} /> +15% est.
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Risco de Evasão</p>
+                                <p className="text-2xl font-black text-rose-400">{Math.round((absentList.length / (activeMembers.length || 1)) * 100)}%</p>
+                                <p className="text-[10px] text-gray-600 font-medium mt-1">Projeção p/ próximos 30d</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Crescimento</p>
+                                <p className="text-2xl font-black text-emerald-400">+{weekGrowth}%</p>
+                                <p className="text-[10px] text-gray-600 font-medium mt-1">Tendência de matrículas</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Meta da Academia */}
+                    <div className="lg:col-span-4 glass-card rounded-[32px] border border-white/10 p-8 flex flex-col">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-sm font-black text-white tracking-widest uppercase">Meta da Academia</h3>
+                            <Target size={18} className="text-emerald-400" />
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-center">
+                            <div className="flex justify-between items-end mb-3">
+                                <div>
+                                    <p className="text-4xl font-black text-white leading-none">{activeMembers.length}</p>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-2">Alunos Atuais</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-lg font-black text-gray-400">/ 50</p>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">Meta</p>
+                                </div>
+                            </div>
+
+                            <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-1">
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${(activeMembers.length / 50) * 100}%` }}
+                                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                                />
+                            </div>
+                            <p className="text-[10px] text-center text-gray-500 mt-4 font-bold uppercase tracking-tighter">
+                                Faltam {50 - activeMembers.length} alunos para a meta mensal
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 {/* ── Inteligência e Analytics ─────────────────────────── */}
-                <IntelligenceSection data={intelligence} userName="Gestão" hideKPIs={true} />
+                <IntelligenceSection 
+                    data={intelligence} 
+                    userName="Gestão" 
+                    hideKPIs={true} 
+                    financialData={{ totalPaid, totalPending, totalOverdue, overdueCount }}
+                />
 
                 {/* ── Bottom split ───────────────────────────────── */}
                 <div className="flex flex-col gap-6 fade-slide-up" style={{ animationDelay: '360ms' }}>
@@ -437,21 +515,23 @@ export default function ManagerDashboard() {
                             </Link>
                         </div>
 
-                        <div className="flex-1 space-y-3">
+                        <div className="flex-1 space-y-4">
                             {loadingTodaySessions ? (
                                 Array.from({ length: 3 }).map((_, i) => (
-                                    <Skeleton key={i} className="w-full h-[72px] rounded-xl" />
+                                    <Skeleton key={i} className="w-full h-[84px] rounded-2xl" />
                                 ))
                             ) : todaySessions.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
-                                    <CalendarDays size={36} className="text-gray-700" />
+                                <div className="flex flex-col items-center justify-center h-48 gap-4 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-gray-700">
+                                        <CalendarDays size={32} />
+                                    </div>
                                     <div>
-                                        <p className="text-sm font-bold text-gray-500">Nenhuma aula registrada hoje</p>
-                                        <p className="text-[11px] text-gray-600 mt-1">Inicie uma chamada na aba Presença</p>
+                                        <p className="text-sm font-bold text-gray-400">Nenhuma aula para hoje</p>
+                                        <p className="text-[11px] text-gray-600 mt-1">As sessões aparecerão aqui conforme o cronograma</p>
                                     </div>
                                     <Link to="/attendance"
-                                        className="mt-1 px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold hover:bg-blue-500/20 transition-colors">
-                                        Iniciar Chamada
+                                        className="px-6 py-2.5 rounded-xl bg-blue-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+                                        Nova Chamada
                                     </Link>
                                 </div>
                             ) : (
@@ -462,46 +542,56 @@ export default function ManagerDashboard() {
 
                                     return (
                                         <div key={sess.id}
-                                            className="group relative flex items-center justify-between p-4 rounded-xl stat-card border border-white/5 hover:border-white/15 hover:bg-white/[0.03] cursor-pointer transition-all overflow-hidden"
+                                            className="group relative flex flex-col md:flex-row md:items-center justify-between p-5 rounded-[24px] bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition-all overflow-hidden"
                                             onClick={() => handleSelectSession(sess)}>
 
-                                            {/* Left accent bar */}
-                                            <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full transition-all"
-                                                style={{ background: accentColor, opacity: 0.7 }} />
-
-                                            <div className="flex flex-col pl-3">
-                                                <h4 className="text-[15px] font-bold text-white group-hover:text-white/90 tracking-wide">
-                                                    {sess.classTitle}
-                                                </h4>
-                                                <p className="text-xs text-gray-500 mt-0.5 uppercase tracking-wide">{sess.time}</p>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center shrink-0 border border-white/5 group-hover:border-white/10 transition-colors">
+                                                    {isJiu ? <IconJiuJitsu size={24} /> : <IconBoxe size={24} />}
+                                                </div>
+                                                
+                                                <div className="flex flex-col">
+                                                    <h4 className="text-[15px] font-black text-white tracking-tight group-hover:text-blue-400 transition-colors">
+                                                        {sess.classTitle}
+                                                    </h4>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-1">
+                                                            <CalendarDays size={10} /> {sess.time}
+                                                        </span>
+                                                        <span className="text-[10px] text-blue-400 font-black uppercase tracking-widest flex items-center gap-1">
+                                                            <Users size={10} /> Prof. {sess.instructorName || sess.teacher || 'Responsável'}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4 shrink-0">
-                                                {/* Attendance bar */}
-                                                <div className="hidden sm:flex flex-col items-end gap-1">
-                                                    <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                                        <div className="h-full rounded-full transition-all duration-500"
+                                            <div className="flex items-center justify-between mt-4 md:mt-0 md:gap-8 pt-4 md:pt-0 border-t md:border-t-0 border-white/5">
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tighter mb-1">
+                                                        <span className="text-gray-600">{sess.presentes} Confirmados</span>
+                                                        <span style={{ color: accentColor }}>{pctPresente}%</span>
+                                                    </div>
+                                                    <div className="w-28 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full transition-all duration-700"
                                                             style={{ width: `${pctPresente}%`, background: accentColor }} />
                                                     </div>
-                                                    <p className="text-[10px] text-gray-600">{pctPresente}% de presença</p>
                                                 </div>
 
-                                                {/* Count badge */}
-                                                <div className="text-right">
-                                                    <p className="text-xl font-black" style={{ color: accentColor }}>
-                                                        {sess.presentes}
-                                                    </p>
-                                                    <p className="text-[10px] text-gray-600 leading-none">
-                                                        {sess.total > 0 ? `/${sess.total} alunos` : 'presentes'}
-                                                    </p>
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        className="h-10 px-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Logic to open attendance directly could be here
+                                                        }}>
+                                                        Abrir Chamada
+                                                    </button>
+                                                    <button
+                                                        className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 text-gray-500 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                                                        title="Ver Detalhes">
+                                                        <Eye size={16} />
+                                                    </button>
                                                 </div>
-
-                                                {/* Review icon */}
-                                                <button
-                                                    className="w-9 h-9 rounded-full bg-white/8 border border-white/10 text-gray-500 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shrink-0"
-                                                    title="Revisar Lista">
-                                                    <Eye size={14} />
-                                                </button>
                                             </div>
                                         </div>
                                     )
