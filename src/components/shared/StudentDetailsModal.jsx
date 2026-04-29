@@ -104,8 +104,9 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
     isVisitor, createdAt, lastAttendanceAt, belt, stripes, ageCategory, gender
   } = student;
 
-  const bgClass = beltConfig[belt]?.bgClass || 'belt-white'
-  const textColor = beltConfig[belt]?.textColor || '#000'
+  const normalizedBelt = belt?.toLowerCase()?.trim() || 'white'
+  const bgClass = beltConfig[normalizedBelt]?.bgClass || 'belt-white'
+  const textColor = beltConfig[normalizedBelt]?.textColor || '#111111'
   const primaryMod = modality || modalities[0] || 'Não informada'
   
   function formatDate(d) {

@@ -212,10 +212,10 @@ export default function AttendancePage() {
   }, [staffMembers])
 
   useEffect(() => {
-    if (userData?.name && !sessionProfessor) {
-      setSessionProfessor(userData.name)
+    if (userData?.nome && !sessionProfessor) {
+      setSessionProfessor(userData.nome)
     }
-  }, [userData?.name, sessionProfessor])
+  }, [userData?.nome, sessionProfessor])
 
   useEffect(() => {
     if (!currentModality) return
@@ -262,10 +262,10 @@ export default function AttendancePage() {
         }
 
         // 🔍 Se ainda não achou nada, tenta pelo NOME (Professor - Dados muito antigos)
-        if (docs.length < 5 && userData?.name) {
+        if (docs.length < 5 && userData?.nome) {
           const qName = query(
             collection(db, COLLECTIONS.CHAMADAS),
-            where('professor', '==', userData.name),
+            where('professor', '==', userData.nome),
             limit(50)
           )
           const snapName = await getDocs(qName)
@@ -440,10 +440,17 @@ export default function AttendancePage() {
 
   // Helper to sync professors when modality/time changes
   const syncProfessors = (modName, timeStr) => {
-    // 👑 Prioridade Absoluta: O nome de quem está logado e fazendo a chamada
-    if (userData?.name) {
-      setSessionProfessor(userData.name)
+    // 👑 Prioridade Absoluta: Se o usuário logado for Staff, ele é o responsável padrão
+    // Isso evita que o nome dele seja trocado pelo professor da modalidade ao clicar em uma aula
+    const isStaff = effectiveRole === 'admin' || effectiveRole === 'gestor' || effectiveRole === 'professor'
+    if (isStaff && userData?.nome) {
+      setSessionProfessor(userData.nome)
       return
+    }
+
+    // Se o usuário já selecionou um professor manualmente, não sobrescreve
+    if (sessionProfessor && sessionProfessor !== 'Visitante' && !isStaff) {
+       return
     }
 
     const mod = modalities.find(m => m.name === modName)
@@ -459,9 +466,9 @@ export default function AttendancePage() {
         return
       }
     }
-    // Fallback se não achar turma ou professores
-    if (userData?.name) {
-      setSessionProfessor(userData.name)
+    // Fallback final
+    if (userData?.nome) {
+      setSessionProfessor(userData.nome)
     }
   }
 
@@ -499,8 +506,8 @@ export default function AttendancePage() {
         professor: sessionProfessor,
         [INSTRUTOR_ID]: user?.uid || 'system',
         instructorId: user?.uid || 'system',
-        [NOME_INSTRUTOR]: userData?.name || user?.displayName || 'Sistema',
-        instructorName: userData?.name || user?.displayName || 'Sistema',
+        [NOME_INSTRUTOR]: userData?.nome || user?.displayName || 'Sistema',
+        instructorName: userData?.nome || user?.displayName || 'Sistema',
         [CRIADO_EM]: new Date().toISOString()
       }
 
@@ -818,7 +825,7 @@ export default function AttendancePage() {
                                 <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Equipe</p>
                               </div>
                               <div className="max-h-[160px] overflow-y-auto py-1 custom-scrollbar">
-                                {[...(instructorsOnly.length > 0 ? instructorsOnly : [{ id: 'default', name: userData?.name || 'Prof. Robson' }])].map((s) => (
+                                {[...(instructorsOnly.length > 0 ? instructorsOnly : [{ id: 'default', name: userData?.nome || 'Prof. Robson' }])].map((s) => (
                                   <button
                                     key={s.id}
                                     type="button"

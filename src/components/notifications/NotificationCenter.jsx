@@ -62,7 +62,13 @@ export default function NotificationCenter() {
             markAsViewed(notice.id, user.uid)
         }
         setNoticesOpen(false)
-        navigate(`/events?noticeId=${notice.id}`)
+        
+        // Se já estiver na página de eventos, usa evento para evitar "recarregamento" de rota
+        if (window.location.pathname === '/events') {
+            window.dispatchEvent(new CustomEvent('academy:open-notice', { detail: notice.id }));
+        } else {
+            navigate(`/events?noticeId=${notice.id}`)
+        }
     }
 
     const getRelativeTime = (date) => {

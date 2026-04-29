@@ -69,14 +69,14 @@ function InlinePostForm({ onSave, onCancel, initialData, isInline, forceModal = 
             {...(shouldShowAsModal ? {
                 drag: "y",
                 dragConstraints: { top: 0, bottom: 0 },
-                dragElastic: 0.2,
+                dragElastic: 0.1,
                 onDragEnd: (e, info) => {
-                    if (info.offset.y > 100 || info.velocity.y > 500) onCancel();
+                    if (info.offset.y > 80 || info.velocity.y > 400) onCancel();
                 },
                 initial: { y: "100%" },
                 animate: { y: 0 },
                 exit: { y: "100%" },
-                transition: { type: 'spring', damping: 30, stiffness: 300 }
+                transition: { type: 'spring', damping: 25, stiffness: 350, mass: 0.5 }
             } : {
                 initial: { opacity: 0, y: -20, height: 0 },
                 animate: { opacity: 1, y: 0, height: 'auto' },
@@ -84,6 +84,7 @@ function InlinePostForm({ onSave, onCancel, initialData, isInline, forceModal = 
                 transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
             })}
             onClick={e => e.stopPropagation()}
+            style={{ willChange: 'transform', transform: 'translateZ(0)' }}
             className={shouldShowAsModal
                 ? "modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden bg-[#0A0A0A] rounded-t-[32px] sm:rounded-[32px] border border-white/10 shadow-2xl"
                 : "bg-[#090909] rounded-[32px] border border-white/10 shadow-2xl overflow-hidden mb-10 w-full flex flex-col"
@@ -114,7 +115,7 @@ function InlinePostForm({ onSave, onCancel, initialData, isInline, forceModal = 
                                 {initialData ? 'Editar Postagem' : 'Nova Postagem'}
                             </h2>
                             <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                                Estilo fórum • {shouldShowAsModal ? 'Visualização Mobile' : 'Visualização Desktop'}
+                                Estilo fórum
                             </p>
                         </div>
                     </div>
@@ -421,7 +422,8 @@ function InlinePostForm({ onSave, onCancel, initialData, isInline, forceModal = 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4"
+                className="fixed inset-0 backdrop-blur-md bg-black/20 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4"
+                style={{ willChange: 'opacity' }}
                 onClick={onCancel}
             >
                 {formContent}

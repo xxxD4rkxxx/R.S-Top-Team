@@ -52,22 +52,30 @@ export function useTeacherIntelligence() {
     const myStudents = useMemo(() => {
         if (!students || students.length === 0) return []
 
-        // Se for admin, mostramos tudo
-        if (isPowerUser) return students.filter(s => s.status?.toLowerCase() === 'ativo')
+        // 🛡️ Filtro Base: Apenas alunos ATIVOS (Remove Staff do Ranking e KPIs)
+        const baseStudents = students.filter(s => {
+            const isActive = s.status?.toLowerCase() === 'ativo'
+            const isStaff = s.roles?.admin || s.roles?.gestor || s.roles?.professor
+            const isStudent = s.roles?.aluno === true
+            return isActive && isStudent && !isStaff
+        })
+
+        // Se for admin, vê todos os alunos ativos
+        if (isPowerUser) return baseStudents
 
         const tMods = teacherModalities.map(m => m.toLowerCase().replace(/-/g, ' ').trim())
 
-        // Se o professor não tem modalidades vinculadas, mostramos todos os ativos (Fallback)
-        if (tMods.length === 0) return students.filter(s => s.status?.toLowerCase() === 'ativo')
+        // Se o professor não tem modalidades vinculadas, não vê alunos (Privacidade)
+        if (tMods.length === 0) return []
 
         // Caso padrão: filtra pela modalidade do professor com comparação flexível
-        return students.filter(s => {
-            if (s.status?.toLowerCase() !== 'ativo') return false
+        return baseStudents.filter(s => {
             const studentMods = (Array.isArray(s.modalities) ? s.modalities : [s.modality])
                 .filter(Boolean)
                 .map(m => m.toLowerCase().replace(/-/g, ' ').trim())
 
-            if (studentMods.length === 0) return true
+            // Alunos sem modalidade não aparecem para professores com escopo definido
+            if (studentMods.length === 0) return false
 
             return studentMods.some(m => tMods.includes(m))
         })
@@ -99,94 +107,113 @@ export function useTeacherIntelligence() {
                 const sevenDaysAgo = new Date(now)
                 sevenDaysAgo.setDate(now.getDate() - 7)
 
-                // 2. Buscar sessões (Filtragem por Modalidade do Professor com Fallback)
+                // 2. Buscar sessões usando campo 'date' (string YYYY-MM-DD) para evitar índices compostos
                 const sessionsRef = collection(db, COLLECTIONS.CHAMADAS)
                 const teacherModalities = userData?.modalities || []
-                console.log("[Intelligence] Modalidades do Professor:", teacherModalities);
+                console.log("[Intelligence] Modalidades do Professor:", teacherModalities)
+
+                // Formato de data compatível com campo 'date' string no Firestore
+                const toYMD = (d) => d.toLocaleDateString('en-CA') // YYYY-MM-DD
+                const sixtyDaysAgoStr = toYMD(sixtyDaysAgo)
+                const thirtyDaysAgoStr = toYMD(thirtyDaysAgo)
+                const MODALIDADE = FIELDS.MODALIDADE || 'modalidade'
+                const INSTRUTOR_ID = FIELDS.INSTRUTOR_ID || 'instrutorId'
 
                 let sessions = []
                 try {
                     let qSess
-                    const CRIADO_EM = FIELDS.CRIADO_EM || 'criadoEm'
-                    const MODALIDADE = FIELDS.MODALIDADE || 'modalidade'
-                    const INSTRUTOR_ID = FIELDS.INSTRUTOR_ID || 'instrutorId'
-
                     if (isPowerUser) {
-                        qSess = query(sessionsRef, where(CRIADO_EM, '>=', Timestamp.fromDate(sixtyDaysAgo)))
+                        // Admin/Gestor: busca todas as sessões dos últimos 60 dias pelo campo 'date' (string, sem índice composto)
+                        qSess = query(sessionsRef, where('date', '>=', sixtyDaysAgoStr))
                     } else if (teacherModalities.length > 0) {
-                        qSess = query(
-                            sessionsRef,
-                            where(MODALIDADE, 'in', teacherModalities),
-                            where(CRIADO_EM, '>=', Timestamp.fromDate(sixtyDaysAgo))
-                        )
+                        // Professor com modalidades: filtra por modalidade e data em memória
+                        qSess = query(sessionsRef, where(MODALIDADE, 'in', teacherModalities))
                     } else {
-                        qSess = query(
-                            sessionsRef,
-                            where(INSTRUTOR_ID, '==', userData?.uid || ''),
-                            where(CRIADO_EM, '>=', Timestamp.fromDate(sixtyDaysAgo))
-                        )
+                        // Fallback: filtra pelo ID do instrutor
+                        qSess = query(sessionsRef, where(INSTRUTOR_ID, '==', userData?.id || userData?.uid || ''))
                     }
 
                     const sessionsSnap = await getDocs(qSess)
-                    sessions = sessionsSnap.docs.map(d => ({
-                        id: d.id,
-                        createdAt: safeDate(d.data()[CRIADO_EM] || d.data().createdAt || d.data().date),
-                        ...d.data()
-                    }))
-
-                    // Fallback Crítico
-                    if (sessions.length === 0 && !isPowerUser) {
-                        console.warn("[Intelligence] Nenhuma sessão encontrada por modalidade. Tentando fallback por instructorId...");
-                        const qFallback = query(
-                            sessionsRef,
-                            where(INSTRUTOR_ID, '==', userData?.uid || ''),
-                            where(CRIADO_EM, '>=', Timestamp.fromDate(sixtyDaysAgo))
-                        )
-                        const fallbackSnap = await getDocs(qFallback)
-                        sessions = fallbackSnap.docs.map(d => ({
+                    sessions = sessionsSnap.docs
+                        .map(d => ({
                             id: d.id,
-                            createdAt: safeDate(d.data()[CRIADO_EM] || d.data().createdAt || d.data().date),
+                            createdAt: safeDate(d.data().date || d.data()[FIELDS.CRIADO_EM] || d.data().createdAt),
                             ...d.data()
                         }))
+                        // Filtro de data em memória (sem índice composto)
+                        .filter(s => (s.date || '') >= sixtyDaysAgoStr)
+
+                    // Fallback Crítico: se não encontrou nada por modalidade, tenta pelo instructorId
+                    if (sessions.length === 0 && !isPowerUser) {
+                        console.warn("[Intelligence] Fallback por instructorId...")
+                        const qFallback = query(sessionsRef, where(INSTRUTOR_ID, '==', userData?.id || userData?.uid || ''))
+                        const fallbackSnap = await getDocs(qFallback)
+                        sessions = fallbackSnap.docs
+                            .map(d => ({
+                                id: d.id,
+                                createdAt: safeDate(d.data().date || d.data()[FIELDS.CRIADO_EM] || d.data().createdAt),
+                                ...d.data()
+                            }))
+                            .filter(s => (s.date || '') >= sixtyDaysAgoStr)
                     }
                 } catch (err) {
-                    console.error("[Intelligence] Erro ao buscar sessões:", err);
+                    console.error("[Intelligence] Erro ao buscar sessões:", err)
                 }
 
                 console.log("[Intelligence] Sessões encontradas:", sessions.length);
                 sessions.sort((a, b) => b.createdAt - a.createdAt)
 
-                // 3. Buscar TODAS as presenças do período (BATCH QUERY via collectionGroup)
+                // 3. Buscar TODAS as presenças do período (Filtro ultra-robusto)
                 let allAttendances = []
                 try {
+                    const logsRef = collection(db, COLLECTIONS.PRESENCAS_LOG)
+                    
+                    // Busca simplificada apenas por data para máxima compatibilidade
                     const attQuery = query(
-                        collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
-                        where(FIELDS.STATUS || 'status', '==', 'present')
+                        logsRef,
+                        where('date', '>=', sixtyDaysAgoStr)
                     )
 
                     const attSnap = await getDocs(attQuery)
                     const sessionIdsSet = new Set(sessions.map(s => s.id))
-
+                    
                     allAttendances = attSnap.docs
                         .map(d => {
                             const data = d.data()
-                            const sId = d.ref.parent?.parent?.id // d.ref.parent é a coleção 'presencas', o parent dela é o doc da sessão
-                            return { ...data, sessionId: sId, date: safeDate(data.date || data.createdAt) }
+                            const idParts = d.id.split('_')
+                            const extractedSessionId = idParts.length > 1 ? idParts[idParts.length - 1] : data.sessionId
+                            
+                            return { 
+                                ...data, 
+                                sessionId: data.sessionId || extractedSessionId, 
+                                status: (data.status || data[FIELDS.STATUS] || 'present').toLowerCase(),
+                                date: safeDate(data.date || data.data || data.timestamp || data.createdAt) 
+                            }
                         })
-                        .filter(a => sessionIdsSet.has(a.sessionId))
+                        // Filtro em memória: Apenas logs vinculados às sessões deste professor
+                        .filter(a => isPowerUser || sessionIdsSet.has(a.sessionId))
+                    
+                    console.log(`[Intelligence] Logs processados: ${allAttendances.length}`)
                 } catch (err) {
-                    console.error("[Intelligence] Erro no collectionGroup attendances:", err);
-                    // Se falhar o collectionGroup (provavelmente falta de índice), o dashboard não morre, apenas mostra 0 presenças
+                    console.error("[Intelligence] Erro ao buscar logs:", err);
                 }
 
                 // 4. Processar Estatísticas dos Alunos (Ranking e Churn)
                 const studentStats = myStudents.map(student => {
-                    const studentAtts = allAttendances.filter(a => a.studentId === student.id)
+                    const studentLogs = allAttendances.filter(a => a.studentId === student.id)
+                    const studentAtts = studentLogs.filter(l => l.status === 'present' || l.status === 'presente')
+                    const studentJustified = studentLogs.filter(l => l.status === 'justified' || l.status === 'justificada' || l.status === 'justificado')
+
+                    // FÓRMULA: Presenças / (Total de Aulas - Justificadas)
+                    const totalSessions = sessions.length
+                    const denominator = Math.max(1, totalSessions - studentJustified.length)
+                    const attendanceRate = Math.round((studentAtts.length / denominator) * 100)
+
                     const sparkline = Array.from({ length: 7 }, (_, i) => {
                         const d = new Date(now)
                         d.setDate(now.getDate() - (6 - i))
-                        const dStr = d.toLocaleDateString()
-                        const hasAtt = studentAtts.some(a => a.date.toLocaleDateString() === dStr && a.status === 'present')
+                        const dYMD = toYMD(d)
+                        const hasAtt = studentAtts.some(a => toYMD(a.date) === dYMD)
                         return { value: hasAtt ? 1 : 0 }
                     })
 
@@ -199,7 +226,10 @@ export function useTeacherIntelligence() {
                         photo: student.photo,
                         phone: student.phone,
                         belt: student.belt || 'Branca',
-                        attendanceRate: sessions.length > 0 ? Math.round((studentAtts.length / sessions.length) * 100) : 0,
+                        attendanceRate,
+                        presencas: studentAtts.length,
+                        faltas: totalSessions - studentAtts.length - studentJustified.length,
+                        justificadas: studentJustified.length,
                         lastAttendance: student.lastAttendanceAt,
                         daysAbsent,
                         sparkline
@@ -231,9 +261,9 @@ export function useTeacherIntelligence() {
                 const absentCritical = absentCriticalList.length
                 const sessions30d = sessions.filter(s => s.createdAt >= thirtyDaysAgo).length
                 
-                const todayStr = now.toLocaleDateString()
-                const todaySessions = sessions.filter(s => s.createdAt.toLocaleDateString() === todayStr)
-                const todayAttendances = allAttendances.filter(a => a.date.toLocaleDateString() === todayStr && a.status === 'present').length
+                const todayYMD = toYMD(now)
+                const sessionsToday = sessions.filter(s => (s.date || toYMD(s.createdAt)) === todayYMD)
+                const todayAttendances = sessionsToday.reduce((acc, s) => acc + (Number(s.presencasCount) || 0), 0)
 
 
                 // ── 3. Preparar Skeletons (Igual ao Gestor) ───────────────────
@@ -246,61 +276,44 @@ export function useTeacherIntelligence() {
                         return Array.from({ length: 7 }, (_, i) => {
                             const d = new Date(dNow)
                             d.setDate(dNow.getDate() - (6 - i))
-                            return { name: DAYS_ABR[d.getDay()], presencas: 0, faltas: 0, novos: 0, inativos: 0, visitantes: 0, dateStr: d.toLocaleDateString() }
+                            const dateStr = toYMD(d)
+                            const daySessions = sessions.filter(s => (s.date || toYMD(s.createdAt)) === dateStr)
+                            return { 
+                                name: DAYS_ABR[d.getDay()], 
+                                presencas: daySessions.reduce((acc, s) => acc + (Number(s.presencasCount) || 0), 0),
+                                faltas: daySessions.reduce((acc, s) => acc + (Number(s.faltasCount) || 0), 0),
+                                novos: 0, inativos: 0, visitantes: 0, dateStr: dateStr 
+                            }
                         })
                     } else if (period === 'mes') {
                         const daysInMonth = new Date(dNow.getFullYear(), dNow.getMonth() + 1, 0).getDate()
                         return Array.from({ length: daysInMonth }, (_, i) => {
                             const d = new Date(dNow.getFullYear(), dNow.getMonth(), i + 1)
+                            const dateStr = toYMD(d)
+                            const daySessions = sessions.filter(s => (s.date || toYMD(s.createdAt)) === dateStr)
                             return {
                                 name: String(i + 1).padStart(2, '0'),
-                                presencas: 0, faltas: 0, novos: 0, inativos: 0, visitantes: 0, dateStr: d.toLocaleDateString()
+                                presencas: daySessions.reduce((acc, s) => acc + (Number(s.presencasCount) || 0), 0),
+                                faltas: daySessions.reduce((acc, s) => acc + (Number(s.faltasCount) || 0), 0),
+                                novos: 0, inativos: 0, visitantes: 0, dateStr: dateStr
                             }
                         })
                     } else {
-                        return MNTHS_ABR.map((name, i) => ({
-                            name, presencas: 0, faltas: 0, novos: 0, inativos: 0, visitantes: 0, month: i
-                        }))
+                        return MNTHS_ABR.map((name, i) => {
+                            const monthSessions = sessions.filter(s => s.createdAt.getMonth() === i && s.createdAt.getFullYear() === dNow.getFullYear())
+                            return { 
+                                name,
+                                presencas: monthSessions.reduce((acc, s) => acc + (Number(s.presencasCount) || 0), 0),
+                                faltas: monthSessions.reduce((acc, s) => acc + (Number(s.faltasCount) || 0), 0),
+                                novos: 0, inativos: 0, visitantes: 0, month: i 
+                            }
+                        })
                     }
                 }
 
                 const weekData = buildSkeleton('semana')
                 const monthData = buildSkeleton('mes')
                 const yearData = buildSkeleton('ano')
-
-                // ── 4. Preencher Presenças e Faltas (Attendances) ──────────────
-                let linkedCount = 0;
-                allAttendances.forEach(att => {
-                    const aDate = att.date
-                    if (!aDate) return
-                    const aDateStr = aDate.toLocaleDateString()
-                    const aMonth = aDate.getMonth()
-
-                    const isPresent = att.status === 'present'
-                    const isAbsent = att.status === 'absent'
-
-                    // Semana
-                    const weekEntry = weekData.find(d => d.dateStr === aDateStr)
-                    if (weekEntry) {
-                        if (isPresent) { weekEntry.presencas++; linkedCount++; }
-                        if (isAbsent) { weekEntry.faltas++; linkedCount++; }
-                    }
-
-                    // Mês
-                    const monthEntry = monthData.find(d => d.dateStr === aDateStr)
-                    if (monthEntry) {
-                        if (isPresent) monthEntry.presencas++
-                        if (isAbsent) monthEntry.faltas++
-                    }
-
-                    // Ano (Acumulado Mensal)
-                    const yearEntry = yearData[aMonth]
-                    if (yearEntry) {
-                        if (isPresent) yearEntry.presencas++
-                        if (isAbsent) yearEntry.faltas++
-                    }
-                })
-                console.log(`[Intelligence] Registros mapeados para o gráfico: ${linkedCount}`);
 
                 // ── 4. Preencher Dados de Fluxo (Membros) ──────────────────────
                 myStudents.forEach(s => {

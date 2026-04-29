@@ -100,8 +100,11 @@ export function useFinance() {
   // ==========================================
   // CÁLCULOS E KPIs (RECEITAS)
   // ==========================================
-  const cobrancasVencidas = cobrancas.filter(b => b.status === 'overdue')
-  const cobrancasPendentes = cobrancas.filter(b => b.status === 'pending')
+  const todayStr = new Date().toISOString().split('T')[0]
+  const cobrancasVencidas = cobrancas.filter(b => 
+    b.status === 'overdue' || (b.status === 'pending' && b.dueDate < todayStr)
+  )
+  const cobrancasPendentes = cobrancas.filter(b => b.status === 'pending' && b.dueDate >= todayStr)
   const cobrancasPagas = cobrancas.filter(b => b.status === 'paid')
 
   const totalVencido = cobrancasVencidas.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)

@@ -85,7 +85,7 @@ service cloud.firestore {
 
     // ── Gestão Financeira ─────────────────────────────────────────────────────
     match /faturamento/{id} { 
-      allow read: if isStaff() || (isAuth() && resource.data.studentId == request.auth.uid);
+      allow read: if isStaff() || (isAuth() && (resource.data.studentId == request.auth.uid || resource.data.studentId == request.auth.token.email.lower()));
       allow write: if isStaff(); 
     }
     
@@ -96,7 +96,7 @@ service cloud.firestore {
     
     // CONTRATOS
     match /contratos/{id} { 
-      allow read: if isStaff() || (isAuth() && resource.data.studentId == request.auth.uid);
+      allow read: if isStaff() || (isAuth() && (resource.data.studentId == request.auth.uid || resource.data.studentId == request.auth.token.email.lower()));
       allow write: if isStaff(); 
     }
     match /planos/{id}      { allow read, write: if isStaff(); }
@@ -105,6 +105,8 @@ service cloud.firestore {
     match /eventos/{id} {
       allow read: if isAuth();
       allow write: if isStaff();
+      // Permitir que qualquer usuário autenticado incremente o contador de visualizações
+      allow update: if isAuth() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']);
     }
 
     // ── Visitantes e Leads ────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collectionGroup, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore'
+import { collection, collectionGroup, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore'
 import { db } from '../firebase/config'
-import { SUB_COLLECTIONS } from '../firebase/collections'
+import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
 
 /**
  * Hook de Inteligência de Atividade do Aluno
@@ -17,48 +17,96 @@ export function useStudentAttendance(studentId) {
       return
     }
 
-    const q = query(
-      collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
+    // 1. Query na Coleção Raiz (Mais rápida e não requer índice composto)
+    const qRoot = query(
+      collection(db, COLLECTIONS.PRESENCAS_LOG),
       where('studentId', '==', studentId),
-      limit(100)
+      limit(50)
     )
 
-    const unsubscribe = onSnapshot(q, (snap) => {
-      let docs = snap.docs.map(d => {
+    // 2. Query em Coleção Group (Para dados legados)
+    const qGroup = query(
+      collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
+      where('studentId', '==', studentId),
+      limit(50)
+    )
+
+    const processDocs = (snap) => {
+      return snap.docs.map(d => {
         const data = d.data()
+        const dateValue = data.data || data.date
         
-        // Normalização da data: Suporta Firestore Timestamp ou String ISO
         let parsedDate
-        if (data.date && typeof data.date.toDate === 'function') {
-          parsedDate = data.date.toDate()
-        } else if (typeof data.date === 'string') {
-          parsedDate = new Date(data.date + 'T12:00:00')
+        if (dateValue && typeof dateValue.toDate === 'function') {
+          parsedDate = dateValue.toDate()
+        } else if (typeof dateValue === 'string') {
+          if (dateValue.includes('/') && dateValue.split('/')[0].length === 2) {
+            const [d, m, y] = dateValue.split('/')
+            parsedDate = new Date(`${y}-${m}-${d}T12:00:00`)
+          } else {
+            parsedDate = new Date(dateValue + 'T12:00:00')
+          }
         } else if (data.timestamp && typeof data.timestamp.toDate === 'function') {
           parsedDate = data.timestamp.toDate()
         } else {
           parsedDate = new Date()
         }
 
+        if (isNaN(parsedDate.getTime())) parsedDate = new Date()
+
         return {
           id: d.id,
           ...data,
           parsedDate,
-          // Garante uma string de data para ordenação se o campo 'date' estiver ausente
-          sortDate: data.date || (parsedDate.toISOString().split('T')[0])
+          sortDate: typeof dateValue === 'string' && dateValue.includes('/') && dateValue.split('/')[0].length === 2 
+            ? dateValue.split('/').reverse().join('-') 
+            : (dateValue || parsedDate.toISOString().split('T')[0])
+        }
+      })
+    }
+
+    let rootData = []
+    let groupData = []
+
+    const updateState = () => {
+      const combined = [...rootData, ...groupData]
+      // Remover duplicatas por sessionId ou timestamp aproximado
+      const unique = []
+      const seen = new Set()
+      
+      combined.forEach(item => {
+        const key = item.sessionId || `${item.studentId}_${item.sortDate}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          unique.push(item)
         }
       })
 
-      // Ordenação manual para evitar necessidade de índice composto no Firestore
-      docs.sort((a, b) => b.sortDate.localeCompare(a.sortDate))
-      
-      setAttendances(docs)
+      unique.sort((a, b) => b.sortDate.localeCompare(a.sortDate))
+      setAttendances(unique)
       setLoading(false)
+    }
+
+    const unsubRoot = onSnapshot(qRoot, (snap) => {
+      rootData = processDocs(snap)
+      updateState()
     }, (err) => {
-      console.error('Erro ao buscar presenças do aluno:', err)
-      setLoading(false)
+      console.warn('⚠️ [Root Query] Falhou ou vazia:', err)
+      updateState()
     })
 
-    return () => unsubscribe()
+    const unsubGroup = onSnapshot(qGroup, (snap) => {
+      groupData = processDocs(snap)
+      updateState()
+    }, (err) => {
+      console.warn('⚠️ [Group Query] Falhou (provavelmente falta de índice):', err)
+      updateState()
+    })
+
+    return () => {
+      unsubRoot()
+      unsubGroup()
+    }
   }, [studentId])
 
   const stats = useMemo(() => {

@@ -85,9 +85,24 @@ export const attendanceService = {
               ultima_visita: serverTimestamp(),
               total_visitas: increment(1),
               [FIELDS.STATUS]: 'Ativo',
-              [`${JORNADA}.${AULAS}`]: increment(1),
+              [JORNADA]: {
+                [AULAS]: increment(1)
+              },
               [FIELDS.ATUALIZADO_EM]: serverTimestamp()
             }, { merge: true })
+
+            // 🔥 Registro em Coleção Raiz (Double-Write) para facilitar KPIs e Histórico sem erros de índice
+            const logRef = doc(collection(db, COLLECTIONS.PRESENCAS_LOG), `${student.id}_${activeSession.id}`)
+            batch.set(logRef, {
+              studentId: student.id,
+              studentName: student.name,
+              status: student.status,
+              modalidade: activeSession.modality,
+              data: activeSession.date,
+              date: activeSession.date, // Legado
+              timestamp: serverTimestamp(),
+              sessionId: activeSession.id
+            })
           }
         }
       })
@@ -174,6 +189,51 @@ export const attendanceService = {
       return true
     } catch (error) {
       console.error('Erro ao deletar sessão:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 🔥 SINCRONIZAÇÃO DE EMERGÊNCIA
+   * Copia dados das subcoleções para a coleção raiz para resolver problemas de índice.
+   */
+  async syncAttendanceHistory() {
+    try {
+      console.log('🔄 Iniciando sincronização global de presenças...')
+      const chamadasSnap = await getDocs(collection(db, COLLECTIONS.CHAMADAS))
+      const batch = writeBatch(db)
+      let count = 0
+
+      for (const chamadaDoc of chamadasSnap.docs) {
+        const presencasSnap = await getDocs(collection(db, COLLECTIONS.CHAMADAS, chamadaDoc.id, SUB_COLLECTIONS.PRESENCAS))
+        
+        presencasSnap.forEach(pDoc => {
+          const pData = pDoc.data()
+          // Usamos um ID determinístico para evitar duplicatas: studentId + sessionId
+          const logRef = doc(collection(db, COLLECTIONS.PRESENCAS_LOG), `${pDoc.id}_${chamadaDoc.id}`)
+          
+          batch.set(logRef, {
+            studentId: pDoc.id,
+            studentName: pData.studentName || pData.nome || 'Aluno',
+            status: pData.status || 'present',
+            modalidade: pData.modalidade || chamadaDoc.data().modalidade || 'Geral',
+            data: pData.data || pData.date || chamadaDoc.data().date,
+            date: pData.data || pData.date || chamadaDoc.data().date,
+            timestamp: pData.timestamp || chamadaDoc.data().criadoEm || serverTimestamp(),
+            sessionId: chamadaDoc.id,
+            isSynced: true
+          })
+          count++
+        })
+      }
+
+      if (count > 0) {
+        await batch.commit()
+        console.log(`✅ Sincronização concluída: ${count} registros processados.`)
+      }
+      return count
+    } catch (error) {
+      console.error('❌ [syncAttendanceHistory] Erro:', error)
       throw error
     }
   }

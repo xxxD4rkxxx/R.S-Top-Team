@@ -9,6 +9,7 @@ import { useStudentAttendance } from '../../hooks/useStudentAttendance'
 import { useNotices } from '../../hooks/useNotices'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
 import { beltConfig as defaultBelts } from '../../data/beltConfig'
+import { attendanceService } from '../../services/attendanceService'
 import PageHeader from '../../components/shared/PageHeader'
 import MobileHeader from '../../components/navigation/MobileHeader'
 
@@ -59,9 +60,29 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
 
 
 export default function StudentDashboard({ user, cobrancas = [] }) {
-  const { total, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.id)
-  const { notices, userViews = new Set(), loading: loadingNotices } = useNotices(user?.id)
+  const { total: hookTotal, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.id)
+
+  // Sincronizar com dados do documento do usuário (Source of Truth)
+  const total = user?.total_visitas || hookTotal || 0
+  const { notices, userViews = new Set(), loading: loadingNotices, markAsViewed } = useNotices(user?.id)
   const { sessions, loading: loadingSessions } = useTodaySessions()
+  const [syncing, setSyncing] = useState(false)
+
+  const handleSync = async () => {
+    if (!window.confirm('Deseja sincronizar o histórico global de presenças? Isso pode levar alguns segundos.')) return
+    
+    setSyncing(true)
+    try {
+      const count = await attendanceService.syncAttendanceHistory()
+      alert(`✅ Sucesso! ${count} registros de presença foram sincronizados.`)
+      window.location.reload()
+    } catch (error) {
+      console.error('Erro ao sincronizar:', error)
+      alert('Erro ao sincronizar histórico. Verifique o console.')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   // Filtro de cobranças pendentes
   const pendingBills = useMemo(() => 
@@ -69,13 +90,16 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
   [cobrancas])
 
   // Configuração da Faixa Atual
-  const beltInfo = defaultBelts[user?.belt || 'white'] || defaultBelts.white
+  const beltInfo = defaultBelts[user?.belt?.toLowerCase()] || defaultBelts.white
+  const beltColor = user?.belt?.toLowerCase() || ''
+  const isWhiteBelt = beltColor === 'white' || beltColor === 'branca'
   
   // Cálculo de Progresso Técnico Real
   const { technicalProgress, monthsInBelt } = useMemo(() => {
-    const lastPromoDate = user?.tech_journey?.last_promotion_date?.toDate?.() || 
-                         user?.createdAt?.toDate?.() || 
-                         (user?.createdAt ? new Date(user.createdAt) : new Date())
+    const jornada = user?.jornada_tecnica || {}
+    const lastPromoDate = jornada.data_ultima_graduacao?.toDate?.() || 
+                         user?.criadoEm?.toDate?.() || 
+                         (user?.criadoEm ? new Date(user.criadoEm) : new Date())
     
     const diffTime = Math.abs(new Date() - lastPromoDate)
     const months = Math.max(Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.44)), 0)
@@ -86,8 +110,8 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     return { technicalProgress: progress, monthsInBelt: months }
   }, [user, beltInfo])
 
-  const history = user?.tech_journey?.history || [
-    { belt: 'white', date: user?.createdAt?.toDate?.() || new Date(), reason: 'Início na Academy' }
+  const history = user?.jornada_tecnica?.historico || [
+    { belt: 'white', date: user?.criadoEm?.toDate?.() || new Date(), reason: 'Início na Academy' }
   ]
 
   // Filtro de Avisos Ativos (que não expiraram ou foram finalizados)
@@ -125,13 +149,22 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     ]
   }, [total, monthly, weekly, streak, loadingAttendance])
 
+  const handleNoticeClick = (notice) => {
+    // Marcar como visto se não for o autor e se ainda não foi lido
+    if (user?.id && notice.authorId !== user.id && !userViews.has(notice.id)) {
+      markAsViewed(notice.id, user.id);
+    }
+    // Navegar para a página de eventos/avisos com o ID expandido
+    window.location.href = `/events?noticeId=${notice.id}`;
+  };
+
   return (
     <>
       {/* Sistema de Cabeçalhos Padronizados (Desktop & Mobile) */}
       <MobileHeader 
         title={`Olá, ${(user?.nome || user?.name || 'Aluno').split(' ')[0]}`} 
         profileIconClass={beltInfo.bgClass || 'bg-primary/20'}
-        profileTextClass="text-white"
+        profileTextClass={isWhiteBelt ? "text-[#111]" : "text-white"}
       />
       
       <PageHeader 
@@ -140,7 +173,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
             {user?.photo ? (
               <img src={user.photo} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className={`font-black text-sm uppercase ${user?.belt === 'white' ? 'text-black' : 'text-white'}`}>
+              <span className={`font-black text-sm uppercase ${isWhiteBelt ? 'text-[#111]' : 'text-white'}`}>
                 {user?.initials || (user?.nome || user?.name)?.[0]}
               </span>
             )}
@@ -172,6 +205,27 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
                 <div>
                   <h4 className="text-sm font-black text-white uppercase tracking-tight">Pendência Financeira</h4>
                   <p className="text-[10px] font-bold text-rose-300">Existem faturas aguardando pagamento. Verifique com a recepção.</p>
+                  {(user?.roles?.admin || user?.papeis?.admin) && (
+                    <button
+                      onClick={handleSync}
+                      disabled={syncing}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all mt-2 ${
+                        syncing ? 'bg-white/5 text-gray-500 cursor-not-allowed' : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20'
+                      }`}
+                    >
+                      {syncing ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                          Sincronizando...
+                        </>
+                      ) : (
+                        <>
+                          <Activity size={14} />
+                          Sincronizar Histórico
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
               <button className="px-4 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:brightness-110 active:scale-95 transition-all">
@@ -239,6 +293,28 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
                   <div className="p-2 rounded-xl bg-white/5 border border-white/10"><History size={20} className="text-primary" /></div>
                   <h3 className="text-xl font-black text-white uppercase tracking-widest">Atividades Recentes</h3>
                 </div>
+                
+                {(user?.roles?.admin || user?.papeis?.admin) && (
+                  <button
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                      syncing ? 'bg-white/5 text-gray-500 cursor-not-allowed' : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20'
+                    }`}
+                  >
+                    {syncing ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        Sincronizando...
+                      </>
+                    ) : (
+                      <>
+                        <Activity size={14} />
+                        Sincronizar
+                      </>
+                    )}
+                  </button>
+                )}
              </div>
 
              <div className="space-y-4">
@@ -294,7 +370,8 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
                   return (
                     <div 
                       key={idx} 
-                      className={`relative p-5 rounded-2xl bg-white/5 border transition-all group ${isRead ? 'border-white/5 opacity-70' : 'border-primary/20 bg-primary/5'}`}
+                      onClick={() => handleNoticeClick(notice)}
+                      className={`relative p-5 rounded-2xl bg-white/5 border transition-all group cursor-pointer ${isRead ? 'border-white/5 opacity-70' : 'border-primary/20 bg-primary/5 hover:border-primary/40'}`}
                     >
                       {!isRead && (
                         <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--clr-primary-rgb),0.6)] animate-pulse" />
@@ -311,7 +388,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
                         {notice.title}
                       </h4>
                       <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter leading-tight line-clamp-2">
-                        {notice.content}
+                        {notice.content || notice.description?.replace(/<[^>]*>?/gm, ' ')}
                       </p>
                     </div>
                   )

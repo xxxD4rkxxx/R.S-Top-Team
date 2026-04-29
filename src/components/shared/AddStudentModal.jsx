@@ -129,7 +129,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           belt: initialData.belt || 'none',
           stripes: initialData.stripes || 0,
           modality: normalizedModalities.length > 0 ? normalizedModalities : ['Jiu Jitsu'],
-          type: initialData.roles?.equipe ? 'equipe' : (initialData.roles?.visitante ? 'visitante' : 'aluno'),
+          type: initialData.isPromoting ? 'aluno' : (initialData.roles?.equipe ? 'equipe' : (initialData.roles?.visitante ? 'visitante' : 'aluno')),
           ageCategory: initialData.ageCategory || 'Adulto',
           gender: initialData.gender || 'Masculino',
           parentName: initialData.parentName || '',

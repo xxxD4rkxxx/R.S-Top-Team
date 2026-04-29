@@ -34,7 +34,7 @@ function ChartTooltip({ active, payload, label }) {
 /**
  * IntelligenceSection v4.0 - PREMIUM TEACHER DASHBOARD
  */
-export default function IntelligenceSection({ data }) {
+export default function IntelligenceSection({ data, hideKPIs = false }) {
     const [period, setPeriod] = useState('semana')
     const [fluxPeriod, setFluxPeriod] = useState('mes')
     const [showComparison, setShowComparison] = useState(true)
@@ -135,55 +135,57 @@ export default function IntelligenceSection({ data }) {
     }
 
     return (
-        <div className="space-y-6 pb-20 fade-slide-up">
+        <div className="space-y-6 fade-slide-up">
 
             {/* ── KPIs (PADRONIZAÇÃO GESTOR) ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-5">
-                <KPICard
-                    title="Alunos Ativos"
-                    value={stats.totalStudents}
-                    desc="Total sob sua gestão"
-                    icon={Users}
-                    iconColor="text-white"
-                />
-                <KPICard
-                    title="Freq. Média"
-                    value={`${stats.avgAttendance30d}%`}
-                    desc="Presença últimos 30d"
-                    icon={TrendingUp}
-                    iconColor="text-emerald-400"
-                    badge={{ label: stats.trend > 0 ? `+${stats.trend}%` : `${stats.trend}%`, bg: 'bg-emerald-500/10', color: 'text-emerald-500' }}
-                />
-                <KPICard
-                    title="Novos (30d)"
-                    value={stats.newStudents30d}
-                    desc="Crescimento da turma"
-                    icon={Star}
-                    iconColor="text-blue-400"
-                />
-                <KPICard
-                    title="Ausentes +10D"
-                    value={stats.absentCritical}
-                    desc="Risco de evasão"
-                    icon={Eye}
-                    iconColor="text-rose-400"
-                    badge={{ label: 'Alerta', bg: 'bg-rose-500/10', color: 'text-rose-500' }}
-                />
-                <KPICard
-                    title="Aulas (30d)"
-                    value={stats.sessions30d}
-                    desc="Volume de treino"
-                    icon={Award}
-                    iconColor="text-amber-400"
-                />
-                <KPICard
-                    title="Presenças Hoje"
-                    value={stats.todayAttendances}
-                    desc="Check-ins realizados"
-                    icon={Zap}
-                    iconColor="text-yellow-400"
-                />
-            </div>
+            {!hideKPIs && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-5">
+                    <KPICard
+                        title="Alunos Ativos"
+                        value={stats.totalStudents}
+                        desc="Total sob sua gestão"
+                        icon={Users}
+                        iconColor="text-white"
+                    />
+                    <KPICard
+                        title="Freq. Média"
+                        value={`${stats.avgAttendance30d}%`}
+                        desc="Presença últimos 30d"
+                        icon={TrendingUp}
+                        iconColor="text-emerald-400"
+                        badge={{ label: stats.trend > 0 ? `+${stats.trend}%` : `${stats.trend}%`, bg: 'bg-emerald-500/10', color: 'text-emerald-500' }}
+                    />
+                    <KPICard
+                        title="Novos (30d)"
+                        value={stats.newStudents30d}
+                        desc="Crescimento da turma"
+                        icon={Star}
+                        iconColor="text-blue-400"
+                    />
+                    <KPICard
+                        title="Ausentes +10D"
+                        value={stats.absentCritical}
+                        desc="Risco de evasão"
+                        icon={Eye}
+                        iconColor="text-rose-400"
+                        badge={{ label: 'Alerta', bg: 'bg-rose-500/10', color: 'text-rose-500' }}
+                    />
+                    <KPICard
+                        title="Aulas (30d)"
+                        value={stats.sessions30d}
+                        desc="Volume de treino"
+                        icon={Award}
+                        iconColor="text-amber-400"
+                    />
+                    <KPICard
+                        title="Presenças Hoje"
+                        value={stats.todayAttendances}
+                        desc="Check-ins realizados"
+                        icon={Zap}
+                        iconColor="text-yellow-400"
+                    />
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -343,16 +345,16 @@ export default function IntelligenceSection({ data }) {
 
                     {/* Ranking de Presença */}
                     <div className="glass-card rounded-[32px] border border-white/10 p-6">
-                        <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <Award className="text-amber-500" size={20} />
                                 <h3 className="text-sm font-black text-white tracking-widest uppercase">Ranking de Presença</h3>
                             </div>
-                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Top 10 Performance</span>
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Top 5 Performance</span>
                         </div>
 
                         <div className="space-y-4">
-                            {allStudentsStats.slice(0, 10).map((student, idx) => {
+                            {allStudentsStats.slice(0, 5).map((student, idx) => {
                                 const beltColor = getBeltColor(student.belt)
 
                                 return (
@@ -445,16 +447,6 @@ export default function IntelligenceSection({ data }) {
                         </div>
                     </div>
 
-                    {/* IA Insight Dinâmico */}
-                    <div className="bg-gradient-to-br from-[#DC143C]/10 to-transparent rounded-[32px] border border-white/5 p-6 relative overflow-hidden">
-                        <Zap size={32} className="absolute -right-2 -top-2 text-white/5" />
-                        <h4 className="text-[10px] font-black text-white tracking-widest mb-3 flex items-center gap-2">
-                            <Star size={12} fill="currentColor" /> Insight IA
-                        </h4>
-                        <p className="text-[11px] text-gray-400 font-medium leading-relaxed italic">
-                            "{insight || "Mantenha a constância nos treinos para garantir o máximo desempenho técnico e físico da turma."}"
-                        </p>
-                    </div>
 
                     {/* Alertas de Retenção (Ação Rápida) */}
                     <div className="glass-card rounded-[32px] border border-[#DC143C]/20 overflow-hidden bg-gradient-to-b from-[#DC143C]/5 to-transparent p-6">
@@ -497,41 +489,6 @@ export default function IntelligenceSection({ data }) {
                                         >
                                             <MessageCircle size={14} />
                                         </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                    {/* Próximas Graduações (Recompensa) */}
-                    <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden bg-[#0a0a0a]/40 p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-[10px] uppercase tracking-widest text-gray-400 font-black flex items-center gap-2">
-                                <Award size={14} className="text-amber-500" /> Próximas Graduações
-                            </h3>
-                            <span className="text-[9px] font-black text-amber-500 uppercase">Monitoramento</span>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            {graduations.length === 0 ? (
-                                <p className="text-[11px] text-gray-600 text-center py-4">Nenhum aluno próximo da graduação.</p>
-                            ) : (
-                                graduations.map((s, i) => (
-                                    <div key={i} className="flex items-center justify-between group">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-[10px] font-black text-gray-400 group-hover:text-amber-500 transition-colors shrink-0`}>
-                                                {s.name?.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <p className="text-[11px] font-black text-white leading-none mb-1 truncate max-w-[120px]">{s.name}</p>
-                                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
-                                                    {s.cfg?.label || 'Iniciante'} • {s.totalAttendances || 0} aulas
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                            <span className="text-[9px] font-black text-amber-500 uppercase">Apto</span>
-                                        </div>
                                     </div>
                                 ))
                             )}

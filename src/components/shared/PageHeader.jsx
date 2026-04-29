@@ -82,18 +82,34 @@ export default function PageHeader({ icon: Icon, title, subtitle, onRefresh, loa
             <div className="w-px h-8 bg-white/10" />
 
             {/* Profile Group */}
-            <div className="flex items-center gap-4 cursor-pointer" onClick={() => (window.location.href = '/profile')}>
+            <div className="flex items-center gap-4 cursor-pointer group" onClick={() => (window.location.href = '/profile')}>
               <div className="flex flex-col items-end overflow-hidden max-w-[150px]">
-                <span className="text-sm font-bold text-app leading-none truncate w-full text-right">{userData?.name || 'Anon'}</span>
+                <span className="text-sm font-bold text-app leading-none truncate w-full text-right group-hover:text-primary transition-colors">{userData?.name || 'Anon'}</span>
                 <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${role.color}`}>
                   {role.label}
                 </span>
               </div>
 
-              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0 transition-transform active:scale-90 shadow-lg shadow-primary/10">
-                <span className="text-sm font-black text-white" style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyCenter: 'center', justifyContent: 'center' }}>
-                  {(userData?.name || 'A').charAt(0).toUpperCase()}
-                </span>
+              {/* Profile Icon with Belt Logic */}
+              <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center overflow-hidden shrink-0 transition-all active:scale-90 shadow-lg shadow-primary/10 group-hover:border-primary/30">
+                {userData?.photoURL ? (
+                  <img src={userData.photoURL} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span 
+                    className={`text-sm font-black w-full h-full flex items-center justify-center ${
+                      (userData?.belt?.toLowerCase() === 'white' || userData?.belt?.toLowerCase() === 'branca')
+                        ? 'bg-gradient-to-br from-white to-gray-200 text-[#111]' 
+                        : 'text-white'
+                    }`}
+                    style={
+                      !(userData?.belt?.toLowerCase() === 'white' || userData?.belt?.toLowerCase() === 'branca')
+                        ? { background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }
+                        : {}
+                    }
+                  >
+                    {(userData?.name || 'A').charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
             </div>
           </>

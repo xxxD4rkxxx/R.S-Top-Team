@@ -31,7 +31,9 @@ import {
   Link as LinkIcon,
   Eraser,
   Type,
-  ChevronDown
+  ChevronDown,
+  User,
+  FileText
 } from 'lucide-react'
 import { useNotices } from '../../hooks/useNotices'
 import { useApp } from '../../context/AppContext'
@@ -83,16 +85,76 @@ export default function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const notifiedIds = useRef(new Set())
 
-  // Captura o noticeId da URL para auto-expandir
+  // 1. Captura e Expande IMEDIATAMENTE quando o ID aparece na URL
   useEffect(() => {
     const id = searchParams.get('noticeId')
-    if (id) {
+    if (id && !loading && notices.length > 0) {
+      setSearchTerm('')
+      setActiveTab('todos')
       setExpandedId(id)
-      // Limpa o parâmetro da URL após expandir (opcional, mas evita reabrir no refresh se o usuário fechar)
-      // searchParams.delete('noticeId')
-      // setSearchParams(searchParams, { replace: true })
     }
-  }, [searchParams])
+  }, [searchParams, loading, notices.length])
+
+  // 2. Lógica de Scroll Robusta (Roda quando o expandedId muda e vem da URL)
+  useEffect(() => {
+    const idFromUrl = searchParams.get('noticeId')
+    if (expandedId && expandedId === idFromUrl) {
+      let attempts = 0
+      const maxAttempts = 30 // 3 segundos de tentativas
+      
+      const performScroll = () => {
+        const element = document.getElementById(`notice-${expandedId}`)
+        const container = document.querySelector('.main-content') || window
+
+        if (element) {
+          // Tenta centralizar o item
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          
+          // Limpa o parâmetro da URL após o sucesso para não rolar de novo se o usuário fechar e abrir outro
+          const newParams = new URLSearchParams(searchParams)
+          newParams.delete('noticeId')
+          setSearchParams(newParams, { replace: true })
+        } else if (attempts < maxAttempts) {
+          attempts++
+          setTimeout(performScroll, 100)
+        }
+      }
+
+      // Pequeno delay inicial para o AnimatePresence/Layout do Framer Motion
+      const initialTimer = setTimeout(performScroll, 200)
+      return () => clearTimeout(initialTimer)
+    }
+  }, [expandedId, searchParams])
+
+  // 3. Listener para Evento Customizado (Evita navegação quando já está na página)
+  useEffect(() => {
+    const handleOpenNotice = (e) => {
+      const id = e.detail
+      if (id) {
+        setSearchTerm('')
+        setActiveTab('todos')
+        setExpandedId(id)
+
+        // Scroll com retentativa
+        let attempts = 0
+        const performScroll = () => {
+          const element = document.getElementById(`notice-${id}`)
+          if (element) {
+            setTimeout(() => {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }, 100)
+          } else if (attempts < 20) {
+            attempts++
+            setTimeout(performScroll, 100)
+          }
+        }
+        performScroll()
+      }
+    }
+
+    window.addEventListener('academy:open-notice', handleOpenNotice)
+    return () => window.removeEventListener('academy:open-notice', handleOpenNotice)
+  }, [])
 
   // Helper para nome curto (ex: João Gustavo)
   const formatDisplayName = (fullName) => {
@@ -163,8 +225,8 @@ export default function EventsPage() {
       notices.forEach(notice => {
         if (!notice.id) return
 
-        // Only process events with a start date
-        if (notice.types?.includes('evento') && notice.startDate) {
+        // Processa tanto eventos quanto avisos que tenham data definida
+        if ((notice.types?.includes('evento') || notice.types?.includes('aviso')) && notice.startDate) {
           try {
             const eventDate = new Date(`${notice.startDate}T${notice.startTime || '00:00'}`)
             const diffMinutes = (eventDate - now) / (1000 * 60)
@@ -377,7 +439,7 @@ export default function EventsPage() {
                 onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
                 className={`h-11 px-4 md:px-6 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 border shadow-lg active:scale-95 shrink-0 ${showForm && !editingNotice
                   ? 'bg-white/5 border-white/10 text-white'
-                  : 'bg-primary border-primary/20 text-black shadow-primary/20'
+                  : 'bg-primary border-primary/20 text-white shadow-primary/20'
                   }`}
               >
                 {showForm && !editingNotice ? <X size={18} /> : <Plus size={18} />}
@@ -447,6 +509,7 @@ export default function EventsPage() {
               return (
                 <motion.div
                   key={notice.id}
+                  id={`notice-${notice.id}`}
                   layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -617,7 +680,7 @@ export default function EventsPage() {
           {expandedId && (
             <div className="fixed inset-0 z-[9999] flex flex-col justify-end p-0 m-0 overflow-hidden">
               {(() => {
-                const notice = filteredNotices.find(n => n.id === expandedId);
+                const notice = notices.find(n => n.id === expandedId);
                 if (!notice) return null;
 
                 return (
@@ -627,49 +690,100 @@ export default function EventsPage() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       onClick={() => setExpandedId(null)}
-                      className="absolute inset-0 bg-black/95 backdrop-blur-md"
+                      className="absolute inset-0 backdrop-blur-md bg-black/20"
+                      style={{ willChange: 'opacity' }}
                     />
                     <motion.div
+                      drag="y"
+                      dragConstraints={{ top: 0, bottom: 0 }}
+                      dragElastic={0.1}
+                      onDragEnd={(e, info) => {
+                        if (info.offset.y > 80 || info.velocity.y > 400) setExpandedId(null);
+                      }}
                       initial={{ y: '100%' }}
                       animate={{ y: 0 }}
                       exit={{ y: '100%' }}
-                      transition={{ type: 'spring', damping: 32, stiffness: 280, mass: 0.8 }}
-                      className="relative bg-[#0A0A0B] rounded-t-[42px] h-full flex flex-col w-full shadow-[0_-20px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+                      transition={{ type: 'spring', damping: 25, stiffness: 350, mass: 0.5 }}
+                      className="relative bg-[#0A0A0B] rounded-t-[42px] h-[95vh] flex flex-col w-full shadow-[0_-20px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+                      style={{ willChange: 'transform', transform: 'translateZ(0)' }}
                     >
+                      {/* Mobile Drag Handle */}
+                      <div className="flex justify-center pt-4 pb-2 shrink-0">
+                        <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+                      </div>
+
                       <div className="flex flex-col h-full overflow-hidden">
-                        {/* HEADER COMPACTO ESTILO ABA ALUNO */}
-                        <div className="px-8 py-7 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#0A0A0B]/95 backdrop-blur-md z-30 shrink-0">
+                        {/* HEADER ESTILO NOVA POSTAGEM */}
+                        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className="w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+                              style={{
+                                backgroundColor: 'color-mix(in srgb, var(--clr-primary) 15%, transparent)',
+                                borderColor: 'color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                              }}
+                            >
+                              {notice.types?.includes('evento') ? (
+                                <Calendar size={22} className="text-primary" strokeWidth={2.5} style={{ color: 'var(--clr-primary)' }} />
+                              ) : (
+                                <BellRing size={22} className="text-primary" strokeWidth={2.5} style={{ color: 'var(--clr-primary)' }} />
+                              )}
+                            </div>
+                            <div>
+                              <h2 className="text-[16px] font-black text-white uppercase tracking-tight leading-none">
+                                {notice.types?.includes('evento') ? 'Detalhes do Evento' : 'Detalhes do Aviso'}
+                              </h2>
+                              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                                Mural de Avisos
+                              </p>
+                            </div>
+                          </div>
                           <button
                             onClick={() => setExpandedId(null)}
-                            className="flex items-center gap-2 text-primary text-[11px] font-black uppercase tracking-[0.3em] active:scale-90 transition-all font-sans"
+                            className="p-3 bg-white/5 border border-white/5 rounded-xl text-gray-400 hover:text-white transition-all active:scale-95"
                           >
-                            <ChevronLeft size={20} strokeWidth={3} />
-                            Voltar
+                            <X size={20} />
                           </button>
-                          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
-                            Visualizar
-                          </span>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar no-scrollbar">
-                          <div className="mb-12">
-                            <div className="flex items-center gap-3 mb-6 p-3 bg-white/[0.03] border border-white/5 rounded-2xl w-fit">
+                        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar no-scrollbar">
+                          {/* 1. Header Card (Data | Autor) */}
+                          <div className="flex items-center p-4 bg-white/[0.03] border border-white/5 rounded-2xl mb-6">
+                            <div className="flex-1 flex items-center gap-3 justify-center">
                               <Calendar className="w-4 h-4 text-primary" />
-                              <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">
+                              <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">
                                 {new Date(notice.startDate).toLocaleDateString('pt-BR')} {notice.startTime && `às ${notice.startTime}`}
                               </span>
                             </div>
-                            <h3 className="text-4xl font-black text-white uppercase tracking-tight leading-[1.1]">
-                              {notice.title}
-                            </h3>
-                            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.3em] mt-5">Autor: {formatDisplayName(notice.authorName)}</p>
+                            <div className="w-[1px] h-4 bg-white/10 mx-2" />
+                            <div className="flex-1 flex items-center gap-3 justify-center">
+                              <User className="w-4 h-4 text-primary" />
+                              <span className="text-[10px] font-black text-white/60 uppercase tracking-widest truncate max-w-[120px]">
+                                <span className="opacity-50">Autor:</span> <span className="text-white">{formatDisplayName(notice.authorName)}</span>
+                              </span>
+                            </div>
                           </div>
 
-                          <div className="prose prose-invert max-w-none text-gray-300 text-lg leading-relaxed mb-16">
-                            <div
-                              className="[&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-6"
-                              dangerouslySetInnerHTML={{ __html: notice.description }}
-                            />
+                          {/* 2. Título Box */}
+                          <div className="p-6 bg-white/[0.03] border border-white/5 rounded-[32px] mb-6">
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mb-3 block">TÍTULO</span>
+                            <h3 className="text-3xl font-black text-white uppercase tracking-tight leading-[1.1]">
+                              {notice.title}
+                            </h3>
+                          </div>
+
+                          {/* 3. Descrição Box */}
+                          <div className="p-6 bg-white/[0.03] border border-white/5 rounded-[32px] flex flex-col gap-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <FileText className="w-4 h-4 text-primary" />
+                              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">DESCRIÇÃO</span>
+                            </div>
+                            <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl prose prose-invert max-w-none text-gray-300 text-[15px] leading-relaxed">
+                              <div
+                                className="[&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-0"
+                                dangerouslySetInnerHTML={{ __html: notice.description }}
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

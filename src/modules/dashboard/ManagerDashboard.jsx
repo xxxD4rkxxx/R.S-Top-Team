@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react'
 import {
     Users, UserPlus, CalendarDays, UserX,
     TrendingUp, TrendingDown, AlertCircle,
-    Award, Activity, Bell, PlayCircle,
+    Award, Activity, Bell, PlayCircle, Wallet,
     DollarSign, Percent, Phone, X, ChevronRight,
     BarChart3, Zap, Eye, RefreshCw, ShieldCheck
 } from 'lucide-react'
@@ -24,7 +24,10 @@ import MobileHeader from '../../components/navigation/MobileHeader'
 import PageHeader from '../../components/shared/PageHeader'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
 import { useFinance } from '../../hooks/useFinance'
+import { useModalities } from '../../hooks/useModalities'
 import { attendanceService } from '../../services/attendanceService'
+import { useTeacherIntelligence } from '../../hooks/useTeacherIntelligence'
+import IntelligenceSection from './components/IntelligenceSection'
 
 // ── Custom sport PNG icon wrappers ───────────────────────────────
 function IconJiuJitsu({ size = 16, className = '' }) {
@@ -212,6 +215,8 @@ export default function ManagerDashboard() {
     const { sessions: todaySessions, loading: loadingTodaySessions } = useTodaySessions()
     const { users: staffMembers, loading: loadingStaff } = useSystemUsers()
     const { totalPaid, totalPending, totalOverdue, overdueCount } = useFinance()
+    const { modalities: masterModalities, loading: loadingModalities } = useModalities()
+    const intelligence = useTeacherIntelligence()
 
     const [showComparison, setShowComparison] = useState(false)
     const [selectedSession, setSelectedSession] = useState(null)
@@ -242,7 +247,10 @@ export default function ManagerDashboard() {
 
     // Derived (student-based) - Memoized to prevent hang on re-render
     const enrolledMembers = useMemo(() => safeStudents.filter(s => !s?.isVisitor), [safeStudents])
-    const activeMembers = useMemo(() => enrolledMembers.filter(s => !s.status || s.status === 'active'), [enrolledMembers])
+    const activeMembers = useMemo(() => enrolledMembers.filter(s => {
+        const status = String(s.status || '').toLowerCase()
+        return !status || status === 'active' || status === 'ativo'
+    }), [enrolledMembers])
     const newMembers30Days = useMemo(() => enrolledMembers.filter(s => s.createdAt && daysBetween(parseDate(s.createdAt)) <= 30), [enrolledMembers])
 
     const presentCount = stats?.todayPresences || 0
@@ -261,75 +269,113 @@ export default function ManagerDashboard() {
 
     // Today's sessions come directly from Firestore via useTodaySessions (real-time)
 
-    const KPIData = useMemo(() => [
-        {
-            title: 'Alunos Ativos', value: isLoadingStudents ? '...' : String(activeMembers.length),
-            desc: 'Total de matriculados', icon: Users, color: 'text-white', iconColor: 'text-gray-400'
-        },
-        {
-            title: 'Novos Alunos', value: isLoadingStudents ? '...' : String(newMembers30Days.length),
-            desc: 'Últimos 30 dias', icon: UserPlus, color: 'text-emerald-400', iconColor: 'text-gray-400',
-            badge: newMembers30Days.length > 0 ? { label: 'Novo', bg: 'bg-emerald-500/20', color: 'text-emerald-400' } : null
-        },
-        {
-            title: 'Presença Hoje', value: initialLoading && !presentCount ? '...' : String(presentCount),
-            desc: 'Check-ins registrados', icon: CalendarDays, color: 'text-white', iconColor: 'text-gray-400'
-        },
-        {
-            title: 'Ausentes +10D', value: initialLoading && !absentList.length ? '...' : String(absentList.length),
-            desc: 'Clique p/ ver lista', icon: UserX, color: absentList.length > 0 ? 'text-yellow-400' : 'text-gray-400', iconColor: 'text-gray-400',
-            onClick: () => setShowAbsents(true),
-            badge: absentList.filter(s => s.isCritical).length > 0
-                ? { label: `${absentList.filter(s => s.isCritical).length} críticos`, bg: 'bg-red-500/20', color: 'text-red-400' } : null
-        },
-        {
-            title: 'Receita do Mês', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPaid),
-            desc: 'Faturamento consolidado', icon: DollarSign, color: 'text-emerald-400', iconColor: 'text-gray-400'
-        },
-        {
-            title: 'Taxa de Retenção', value: initialLoading && !retentionRate ? '...' : `${retentionRate}%`,
-            desc: `${absentList.filter(s => s.isCritical).length} evasões críticas`,
-            icon: TrendingUp, color: retentionRate >= 80 ? 'text-emerald-400' : 'text-red-400', iconColor: 'text-gray-400',
-            badge: {
-                label: `${weekGrowth >= 0 ? '+' : ''}${weekGrowth}% vs ant.`,
-                bg: weekGrowth >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20',
-                color: weekGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'
+    const KPIData = useMemo(() => {
+        const baseKPIs = [
+            {
+                title: 'Alunos Ativos', value: isLoadingStudents ? '...' : String(activeMembers.length),
+                desc: 'Total de matriculados', icon: Users, color: 'text-white', iconColor: 'text-gray-400'
+            },
+            {
+                title: 'Novos Alunos', value: isLoadingStudents ? '...' : String(newMembers30Days.length),
+                desc: 'Últimos 30 dias', icon: UserPlus, color: 'text-emerald-400', iconColor: 'text-gray-400',
+                badge: newMembers30Days.length > 0 ? { label: 'Novo', bg: 'bg-emerald-500/20', color: 'text-emerald-400' } : null
+            },
+            {
+                title: 'Presença Hoje', value: initialLoading && !presentCount ? '...' : String(presentCount),
+                desc: 'Check-ins registrados', icon: CalendarDays, color: 'text-white', iconColor: 'text-gray-400'
+            },
+            {
+                title: 'Ausentes +10D', value: initialLoading && !absentList.length ? '...' : String(absentList.length),
+                desc: 'Clique p/ ver lista', icon: UserX, color: absentList.length > 0 ? 'text-yellow-400' : 'text-gray-400', iconColor: 'text-gray-400',
+                onClick: () => setShowAbsents(true),
+                badge: absentList.filter(s => s.isCritical).length > 0
+                    ? { label: `${absentList.filter(s => s.isCritical).length} críticos`, bg: 'bg-red-500/20', color: 'text-red-400' } : null
+            },
+            {
+                title: 'Receita do Mês', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPaid),
+                desc: 'Faturamento consolidado', icon: DollarSign, color: 'text-emerald-400', iconColor: 'text-gray-400'
+            },
+            {
+                title: 'Taxa de Retenção', value: initialLoading && !retentionRate ? '...' : `${retentionRate}%`,
+                desc: `${absentList.filter(s => s.isCritical).length} evasões críticas`,
+                icon: TrendingUp, color: retentionRate >= 80 ? 'text-emerald-400' : 'text-red-400', iconColor: 'text-gray-400',
+                badge: {
+                    label: `${weekGrowth >= 0 ? '+' : ''}${weekGrowth}% vs ant.`,
+                    bg: weekGrowth >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20',
+                    color: weekGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'
+                }
+            },
+            {
+                title: 'Pgtos Atrasados', value: String(overdueCount),
+                desc: 'Total de boletos vencidos', icon: AlertCircle, color: 'text-rose-400', iconColor: 'text-gray-400'
+            },
+            {
+                title: 'Inadimplência', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue),
+                desc: 'Total em atraso', icon: Wallet, color: 'text-rose-400', iconColor: 'text-gray-400'
+            },
+            {
+                title: 'Grad. Próximas', value: initialLoading && !graduations.length ? '...' : String(graduations.length),
+                desc: 'Aptos a graduar', icon: Award, color: 'text-white', iconColor: 'text-[#DC143C]'
+            },
+            {
+                title: 'Professores', value: loadingStaff ? '...' : String(staffMembers.filter(s => {
+                    const roles = s.papeis || s.roles || {};
+                    const roleStr = String(s.role || '').toLowerCase();
+                    return roles.professor || roles.gestor || roles.admin ||
+                        ['professor', 'gestor', 'admin'].includes(roleStr);
+                }).length),
+                desc: 'Equipe técnica ativa', icon: ShieldCheck, color: 'text-emerald-400', iconColor: 'text-emerald-400'
+            },
+            {
+                title: 'Visitantes', value: isLoadingStudents ? '...' : String(safeStudents.filter(s => s.isVisitor).length),
+                desc: 'Participações externas', icon: Users, color: 'text-blue-400', iconColor: 'text-blue-400'
             }
-        },
-        {
-            title: 'Pgtos Atrasados', value: String(overdueCount),
-            desc: 'Boletos vencidos hoje', icon: AlertCircle, color: 'text-rose-400', iconColor: 'text-gray-400'
-        },
-        {
-            title: 'Inadimplência', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue),
-            desc: 'Total em atraso', icon: Percent, color: 'text-rose-400', iconColor: 'text-gray-400'
-        },
-        {
-            title: 'Grad. Próximas', value: initialLoading && !graduations.length ? '...' : String(graduations.length),
-            desc: 'Aptos a graduar', icon: Award, color: 'text-white', iconColor: 'text-[#DC143C]'
-        },
-        {
-            title: 'Professores', value: loadingStaff ? '...' : String(staffMembers.filter(s => {
-                const roles = s.papeis || s.roles || {};
-                const roleStr = String(s.role || '').toLowerCase();
-                return roles.professor || roles.gestor || roles.admin ||
-                    ['professor', 'gestor', 'admin'].includes(roleStr);
-            }).length),
-            desc: 'Equipe técnica ativa', icon: ShieldCheck, color: 'text-emerald-400', iconColor: 'text-emerald-400'
-        },
-        {
-            title: 'Visitantes', value: isLoadingStudents ? '...' : String(safeStudents.filter(s => s.isVisitor).length),
-            desc: 'Participações externas', icon: Users, color: 'text-blue-400', iconColor: 'text-blue-400'
-        },
-        {
-            title: 'Jiu Jitsu', value: isLoadingStudents ? '...' : String(activeMembers.filter(s => s.modality?.includes('Jiu')).length),
-            desc: 'Alunos matriculados', icon: IconJiuJitsu, color: 'text-[#DC143C]', iconColor: 'text-[#DC143C]'
-        },
-        {
-            title: 'Boxe', value: isLoadingStudents ? '...' : String(activeMembers.filter(s => s.modality?.includes('Boxe') || s.modality?.includes('box')).length),
-            desc: 'Alunos matriculados', icon: IconBoxe, color: 'text-yellow-400', iconColor: 'text-yellow-400'
-        },
-    ], [isLoadingStudents, activeMembers, newMembers30Days, initialLoading, presentCount, absentList, retentionRate, weekGrowth, graduations, loadingStaff, staffMembers, safeStudents])
+        ]
+
+        // Adicionar modalidades dinâmicas baseadas no banco de dados
+        if (!loadingModalities && masterModalities.length > 0) {
+            const modalityKPIs = masterModalities.map(mod => {
+                const modName = mod.name || mod.id
+                // Contar alunos ativos que possuem esta modalidade
+                const count = activeMembers.filter(s => {
+                    const studentMods = (Array.isArray(s.modalities) ? s.modalities : [s.modality]).map(m => String(m || '').toLowerCase())
+                    const masterName = String(modName || '').toLowerCase()
+                    return studentMods.some(m => m.includes(masterName) || masterName.includes(m))
+                }).length
+
+                let Icon = Activity
+                let color = 'text-white'
+
+                const modLower = modName.toLowerCase()
+                if (modLower.includes('jiu')) {
+                    Icon = IconJiuJitsu
+                    color = 'text-[#DC143C]'
+                } else if (modLower.includes('box')) {
+                    Icon = IconBoxe
+                    color = 'text-yellow-400'
+                } else if (modLower.includes('muay')) {
+                    color = 'text-emerald-400'
+                } else if (modLower.includes('jud')) {
+                    color = 'text-blue-400'
+                } else if (modLower.includes('kar')) {
+                    color = 'text-amber-400'
+                }
+
+                return {
+                    title: modName,
+                    value: String(count),
+                    desc: 'Alunos matriculados',
+                    icon: Icon,
+                    color: color,
+                    iconColor: color
+                }
+            })
+
+            return [...baseKPIs, ...modalityKPIs]
+        }
+
+        return baseKPIs
+    }, [isLoadingStudents, loadingModalities, masterModalities, activeMembers, newMembers30Days, initialLoading, presentCount, absentList, retentionRate, weekGrowth, graduations, loadingStaff, staffMembers, safeStudents, totalPaid, totalOverdue, overdueCount])
 
     return (
         <>
@@ -359,6 +405,7 @@ export default function ManagerDashboard() {
 
             <div className="flex-1 px-4 md:px-6 pt-6 pb-0 w-full space-y-6 fade-slide-up">
 
+
                 {/* ── KPIs ───────────────────────────────────────── */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
                     {(isLoadingStudents || initialLoading)
@@ -371,87 +418,15 @@ export default function ManagerDashboard() {
                     }
                 </div>
 
-                {/* ── Main chart ─────────────────────────────────── */}
-                <div className="glass-card rounded-2xl p-6 border border-white/10 relative overflow-hidden fade-slide-up" style={{ animationDelay: '280ms' }}>
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                        <div>
-                            <h2 className="text-lg font-black text-white uppercase tracking-wide">
-                                Tendências de Atividade
-                            </h2>
-                            <p className="text-xs text-gray-500 mt-1">
-                                Frequência real do Firestore
-                                {weekGrowth !== 0 && (
-                                    <span className={`ml-2 font-bold ${weekGrowth > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        {weekGrowth > 0 ? <TrendingUp size={11} className="inline mr-0.5" /> : <TrendingDown size={11} className="inline mr-0.5" />}
-                                        {weekGrowth > 0 ? '+' : ''}{weekGrowth}% vs período anterior
-                                    </span>
-                                )}
-                            </p>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            {/* Toggle: Presença+Faltas */}
-                            <button onClick={() => setShowComparison(p => !p)}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${showComparison ? 'bg-[#DC143C]/20 border-[#DC143C]/30 text-[#DC143C]' : 'border-white/10 text-gray-500 hover:text-white'}`}>
-                                Pres. vs Faltas
-                            </button>
-
-                            {/* Period buttons */}
-                            <div className="flex items-center gap-1 bg-black rounded-xl p-1 border border-white/5">
-                                {['Semana', 'Mês', 'Ano'].map(v => (
-                                    <button key={v} onClick={() => setPeriod(v)}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === v ? 'bg-[#DC143C] text-white shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>
-                                        {v}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-[260px] w-full">
-                        {(initialLoading && (!stats?.chartData || stats.chartData.length === 0)) ? (
-                            <div className="h-full flex items-center justify-center">
-                                <Skeleton className="w-full h-full" />
-                            </div>
-                        ) : (
-                            <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-                                <AreaChart data={stats?.chartData?.length > 0 ? stats.chartData : fallbackChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="gradPresencas" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#DC143C" stopOpacity={0.4} />
-                                            <stop offset="95%" stopColor="#DC143C" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="gradFaltas" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 11, fontWeight: 600 }} dy={8} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} />
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
-                                    <RechartsTooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                                    {showComparison && (
-                                        <Area type="monotone" dataKey="faltas" name="Faltas"
-                                            stroke="#f97316" strokeWidth={2} strokeDasharray="5 5"
-                                            fillOpacity={1} fill="url(#gradFaltas)"
-                                            activeDot={{ r: 5, fill: '#f97316', stroke: '#111', strokeWidth: 2 }} />
-                                    )}
-                                    <Area type="monotone" dataKey="presencas" name="Presenças"
-                                        stroke="#DC143C" strokeWidth={3}
-                                        fillOpacity={1} fill="url(#gradPresencas)"
-                                        activeDot={{ r: 7, fill: '#DC143C', stroke: '#111', strokeWidth: 2 }} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        )}
-                    </div>
-                </div>
+                {/* ── Inteligência e Analytics ─────────────────────────── */}
+                <IntelligenceSection data={intelligence} userName="Gestão" hideKPIs={true} />
 
                 {/* ── Bottom split ───────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 fade-slide-up" style={{ animationDelay: '360ms' }}>
+                <div className="flex flex-col gap-6 fade-slide-up" style={{ animationDelay: '360ms' }}>
 
                     {/* ── Aulas de Hoje — dados reais via onSnapshot ── */}
-                    <div className="glass-card rounded-2xl border border-white/10 overflow-hidden flex flex-col min-h-[360px]">
-                        <div className="p-6 border-b border-white/5 bg-[#0a0a0a]/50 flex justify-between items-center">
+                    <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden flex flex-col min-h-[360px] p-6">
+                        <div className="flex justify-between items-center mb-6">
                             <div className="flex items-center gap-3">
                                 <h3 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">
                                     <CalendarDays size={16} className="text-blue-400" /> Aulas de Hoje
@@ -462,7 +437,7 @@ export default function ManagerDashboard() {
                             </Link>
                         </div>
 
-                        <div className="flex-1 p-5 space-y-3">
+                        <div className="flex-1 space-y-3">
                             {loadingTodaySessions ? (
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <Skeleton key={i} className="w-full h-[72px] rounded-xl" />
@@ -535,81 +510,6 @@ export default function ManagerDashboard() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-5">
-                        {/* Próximas Graduações */}
-                        <div className="glass-card rounded-2xl border border-white/10 overflow-hidden flex flex-col flex-1">
-                            <div className="p-6 border-b border-white/5 bg-[#0a0a0a]/50 flex justify-between items-center">
-                                <h3 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">
-                                    <Award size={16} className="text-[#DC143C]" /> Próximas Graduações
-                                </h3>
-                                <span className="text-[10px] font-bold">
-                                    <span className="text-[#DC143C]">Aptos:</span> {graduations.length}
-                                </span>
-                            </div>
-                            <div className="flex-1 p-5 space-y-3">
-                                {isLoadingStudents ? (
-                                    Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-full h-16 rounded-xl" />)
-                                ) : graduations.length === 0 ? (
-                                    <p className="text-sm text-gray-500 text-center py-4">Nenhum aluno apto no momento.</p>
-                                ) : (
-                                    graduations.map((s, i) => (
-                                        <div key={i} className="group flex items-center justify-between p-4 rounded-xl stat-card hover:bg-[#DC143C]/5 border border-white/5 hover:border-[#DC143C]/30 cursor-pointer transition-all relative overflow-hidden">
-                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#DC143C] opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <div className="flex items-center gap-3 pl-2">
-                                                <div className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center font-bold text-gray-400 group-hover:text-[#DC143C] transition-colors shrink-0">
-                                                    {s.name?.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white group-hover:text-[#DC143C] transition-colors">{s.name}</p>
-                                                    <p className="text-[10px] text-gray-500 mt-0.5 uppercase tracking-wide">{s.cfg?.label} • {s.stripes || 0}º Grau</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <span className="text-[10px] font-black text-[#DC143C] bg-[#DC143C]/10 px-2 py-1 rounded-full">Promo Ready</span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Alertas */}
-                        <div className="glass-card rounded-2xl border border-[#DC143C]/20 overflow-hidden bg-gradient-to-b from-[#DC143C]/5 to-transparent">
-                            <div className="p-4 border-b border-white/5">
-                                <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold flex items-center gap-2">
-                                    <AlertCircle size={12} className="text-[#DC143C]" /> Alertas de Retenção
-                                </h3>
-                            </div>
-                            <div className="p-4 space-y-3">
-                                {absentList.length === 0 ? (
-                                    <p className="text-sm text-gray-500 text-center py-2">Nenhum alerta prioritário.</p>
-                                ) : (
-                                    absentList.slice(0, 3).map((s, i) => (
-                                        <div key={i} className="flex gap-3 items-center">
-                                            <AlertCircle size={14} className={s.isCritical ? 'text-[#DC143C] shrink-0' : 'text-yellow-400 shrink-0'} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className={`text-xs font-bold ${s.isCritical ? 'text-[#DC143C]' : 'text-yellow-400'}`}>
-                                                    {s.isCritical ? 'Risco de Evasão' : 'Atenção Necessária'}
-                                                </p>
-                                                <p className="text-sm text-gray-400 truncate">{s.name} — {s.daysAbsent ?? '?'}d sem treino</p>
-                                            </div>
-                                            {s.phone && (
-                                                <a href={`https://wa.me/${s.telefone_completo || ('55' + (s.phone || '').replace(/\D/g, ''))}`} target="_blank" rel="noreferrer"
-                                                    className="text-emerald-400 hover:text-emerald-300 shrink-0">
-                                                    <Phone size={14} />
-                                                </a>
-                                            )}
-                                        </div>
-                                    ))
-                                )}
-                                {absentList.length > 3 && (
-                                    <button onClick={() => setShowAbsents(true)} className="text-[11px] text-[#DC143C] hover:underline mt-1">
-                                        Ver todos os {absentList.length} ausentes →
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 {/* ── Histórico de Chamada ─────────────────────────────── */}

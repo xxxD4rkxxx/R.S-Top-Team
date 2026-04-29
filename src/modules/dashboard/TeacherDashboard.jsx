@@ -36,7 +36,7 @@ function Card({ children, className = '', title, subtitle, icon: Icon, action })
       className={`glass-card rounded-[32px] border border-white/5 overflow-hidden flex flex-col bg-[#080808]/40 backdrop-blur-md shadow-2xl ${className}`}
     >
       {(title || subtitle || Icon) && (
-        <div className="px-6 py-5 flex justify-between items-center">
+        <div className="px-6 pt-6 flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5">
               {Icon && <Icon size={18} strokeWidth={2} className="text-primary" />}
@@ -49,7 +49,7 @@ function Card({ children, className = '', title, subtitle, icon: Icon, action })
           {action}
         </div>
       )}
-      <div className="flex-1 px-6 pb-6 pt-2">
+      <div className="flex-1 px-6 pb-6">
         {children}
       </div>
     </motion.div>

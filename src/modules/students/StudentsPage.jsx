@@ -263,8 +263,21 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   }, [students, userData?.academyConfig?.inativacao_visitante, changeStudentStatus]);
 
   const modalities = useMemo(() => {
-    const raw = students.flatMap(s => s.modalities || [s.modality]).filter(Boolean)
-    const normalized = Array.from(new Set(raw.map(m => m.toLowerCase() === 'jiu-jitsu' ? 'Jiu Jitsu' : m)))
+    const raw = students.flatMap(s => {
+      const mods = s[FIELDS.MODALIDADES] || s.modalities || []
+      const single = s[FIELDS.MODALIDADE] || s.modality
+      return [...(Array.isArray(mods) ? mods : [mods]), single]
+    }).filter(Boolean)
+    
+    const normalized = Array.from(new Set(raw.map(m => {
+      if (typeof m !== 'string') return m
+      const t = m.trim()
+      const lower = t.toLowerCase()
+      if (lower === 'jiu-jitsu' || lower === 'jiu jitsu' || lower === 'jiujitsu') return 'Jiu Jitsu'
+      if (lower === 'boxe') return 'Boxe'
+      if (lower === 'muay thai' || lower === 'muay-thai') return 'Muay Thai'
+      return t
+    })))
     return ['todas', ...normalized]
   }, [students])
 
@@ -276,9 +289,26 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
       return s.roles?.aluno === true || s.roles?.visitante === true
     })
 
-    // 🛡️ SEGURANÇA: Ocultar Administradores de quem não é Admin
-    if (!isAdmin) {
-      list = list.filter(s => !s.roles?.admin)
+    // 🔒 SEGURANÇA E ESCOPO: Se for professor, vê apenas alunos da sua turma/modalidade
+    if (!isAdmin && !isGestor && userData?.modalities && userData.modalities.length > 0) {
+      const teacherMods = userData.modalities.map(m => m.toLowerCase().replace(/-/g, ' ').trim())
+      
+      list = list.filter(s => {
+        const studentMods = (Array.isArray(s.modalities) ? s.modalities : [s.modality])
+          .filter(Boolean)
+          .map(m => m.toLowerCase().replace(/-/g, ' ').trim())
+        
+        if (studentMods.length === 0) return false
+        return studentMods.some(m => teacherMods.includes(m))
+      })
+    }
+
+    // 🛡️ SEGURANÇA: Ocultar Staff (Admins, Gestores, Professores) da listagem de Alunos
+    if (!isAdmin && !isGestor) {
+      list = list.filter(s => {
+        const isStaff = s.roles?.admin || s.roles?.gestor || s.roles?.professor
+        return !isStaff
+      })
     }
 
     if (searchTerm) {
@@ -371,18 +401,24 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   }
 
   function renderAvatar(student) {
-    const belt = student.belt?.toLowerCase() || 'none'
+    // Normalização robusta da faixa para busca no config
+    const rawBelt = (student.belt || '').toLowerCase().trim()
+    const belt = rawBelt === 'sem faixa' || rawBelt === 'branca' ? (rawBelt === 'branca' ? 'white' : 'none') : rawBelt
     const config = beltConfig[belt] || beltConfig.none
+    
     const bgClass = config.bgClass || 'belt-none'
-    const textColor = config.textColor === '#111111' ? 'text-[#111111]' : 'text-white'
-    const initials = student.initials || (student.nome || student.name)?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
+    const textColor = config.textColor || '#FFFFFF'
+    const initials = student.initials || (student.nome || student.name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
     return (
       <div className="flex items-center justify-center p-0.5 group-hover:border-primary/30 transition-colors shrink-0 relative">
         {student.photo ? (
           <img src={student.photo} alt={student.nome || student.name} className="w-11 h-11 rounded-full object-cover ring-1 ring-white/10 shadow-lg" />
         ) : (
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass} ${textColor} shadow-inner relative overflow-hidden transition-all duration-300`}>
+          <div 
+            className={`w-11 h-11 rounded-full flex items-center justify-center text-xs font-black ring-1 ring-white/10 ${bgClass} shadow-inner relative overflow-hidden transition-all duration-300`}
+            style={{ color: textColor }}
+          >
             <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-white/10 opacity-40" />
             <span className="relative z-10 drop-shadow-md">{initials}</span>
           </div>
@@ -582,16 +618,22 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                       <td className="py-4 px-5 text-center">
                         <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
                           {(() => {
-                            const raw = student[FIELDS.MODALIDADES] || student.modalities || [student[FIELDS.MODALIDADE] || student.modality]
+                            const val = student[FIELDS.MODALIDADES] || student.modalities || []
+                            const single = student[FIELDS.MODALIDADE] || student.modality
+                            const raw = [...(Array.isArray(val) ? val : [val]), single].filter(Boolean)
+                            
                             const mods = Array.from(new Set(
-                              raw.filter(Boolean)
-                                .map(m => {
-                                  if (typeof m !== 'string') return m
-                                  const t = m.trim()
-                                  if (t.toLowerCase() === 'jiu-jitsu' || t.toLowerCase() === 'jiu jitsu') return 'Jiu Jitsu'
-                                  return t
-                                })
+                              raw.map(m => {
+                                if (typeof m !== 'string') return m
+                                const t = m.trim()
+                                const lower = t.toLowerCase()
+                                if (lower === 'jiu-jitsu' || lower === 'jiu jitsu' || lower === 'jiujitsu') return 'Jiu Jitsu'
+                                if (lower === 'boxe') return 'Boxe'
+                                if (lower === 'muay thai' || lower === 'muay-thai') return 'Muay Thai'
+                                return t
+                              })
                             ));
+                            
                             return mods.map((m, i) => (
                               <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase font-bold whitespace-nowrap">
                                 {m}
@@ -645,9 +687,11 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                             onClick={(e) => {
                               e.stopPropagation();
                               const rect = e.currentTarget.getBoundingClientRect();
-                              const openUp = window.innerHeight - rect.bottom < 400;
+                              const isVisitor = student.roles?.visitante;
+                              const menuHeight = isVisitor ? 220 : 410;
+                              const openUp = window.innerHeight - rect.bottom < menuHeight;
                               setMenuPosition({
-                                top: openUp ? (rect.top + window.scrollY) - 410 : (rect.top + window.scrollY) + rect.height + 4,
+                                top: openUp ? (rect.top + window.scrollY) - menuHeight : (rect.top + window.scrollY) + rect.height + 4,
                                 left: (rect.left + window.scrollX) - 160 + rect.width,
                                 originY: openUp ? 1 : 0
                               });
@@ -793,8 +837,18 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
               } else if (actionType === 'cards') {
                 setPaymentDrawerStudent(student);
               } else if (actionType === 'edit' || actionType === 'delete' || actionType === 'convert') {
-                setPinModalAction({ type: actionType, student })
-                setShowPinModal(true)
+                // 🛡️ Visitantes não exigem PIN para ações (UX agilidade para leads)
+                if (student.roles?.visitante) {
+                  if (actionType === 'delete') {
+                    setDeleteDialogStudent(student);
+                  } else {
+                    setEditData(actionType === 'convert' ? { ...student, isPromoting: true } : student);
+                    setShowModal(true);
+                  }
+                } else {
+                  setPinModalAction({ type: actionType, student })
+                  setShowPinModal(true)
+                }
               } else if (actionType === 'inactive' || actionType === 'suspend' || actionType === 'archive') {
                 const actionMap = { inactive: 'inativar', suspend: 'suspender', archive: 'arquivar' }
                 setStatusDialogStudent({ student, action: actionMap[actionType] })
@@ -852,30 +906,34 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
               Converter em Aluno
             </button>
           )}
-          <button onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
-              <Copy size={14} className="text-purple-400" />
-            </div>
-            Duplicar
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onAction('attendance', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-              <CalendarDays size={14} className="text-blue-400" />
-            </div>
-            Histórico de Presença
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-              <GraduationCap size={14} className="text-emerald-400" />
-            </div>
-            Histórico de Graduações
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onAction('cards', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
-              <CreditCard size={14} className="text-indigo-400" />
-            </div>
-            Cartões / Financeiro
-          </button>
+          {!student.roles?.visitante && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+                  <Copy size={14} className="text-purple-400" />
+                </div>
+                Duplicar
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onAction('attendance', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                  <CalendarDays size={14} className="text-blue-400" />
+                </div>
+                Histórico de Presença
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                  <GraduationCap size={14} className="text-emerald-400" />
+                </div>
+                Histórico de Graduações
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onAction('cards', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
+                  <CreditCard size={14} className="text-indigo-400" />
+                </div>
+                Cartões / Financeiro
+              </button>
+            </>
+          )}
 
           <div className="h-px bg-white/5 my-1" />
 
@@ -885,18 +943,23 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
             </div>
             Inativar
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-all group font-medium">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-              <UserMinus size={14} className="text-primary" />
-            </div>
-            Suspender
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onAction('archive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-500 hover:bg-blue-500/10 transition-all group font-medium">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-              <Archive size={14} className="text-blue-500" />
-            </div>
-            Arquivar
-          </button>
+
+          {!student.roles?.visitante && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-all group font-medium">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <UserMinus size={14} className="text-primary" />
+                </div>
+                Suspender
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onAction('archive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-500 hover:bg-blue-500/10 transition-all group font-medium">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                  <Archive size={14} className="text-blue-500" />
+                </div>
+                Arquivar
+              </button>
+            </>
+          )}
           <button onClick={(e) => { e.stopPropagation(); onAction('delete', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-all group font-medium">
             <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">
               <Trash2 size={14} className="text-red-500" />
@@ -972,44 +1035,48 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
                 </button>
               )}
 
-              <button
-                onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                  <Copy size={20} className="text-purple-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-black text-white">Duplicar</p>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Copiar informações</p>
-                </div>
-              </button>
+              {!student.roles?.visitante && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAction('duplicate', student) }}
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                      <Copy size={20} className="text-purple-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-black text-white">Duplicar</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Copiar informações</p>
+                    </div>
+                  </button>
 
-              <button
-                onClick={(e) => { e.stopPropagation(); onAction('attendance', student) }}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                  <CalendarDays size={20} className="text-blue-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-black text-white">Presença</p>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Ver histórico completo</p>
-                </div>
-              </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAction('attendance', student) }}
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                      <CalendarDays size={20} className="text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-black text-white">Presença</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Ver histórico completo</p>
+                    </div>
+                  </button>
 
-              <button
-                onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                  <GraduationCap size={20} className="text-emerald-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-black text-white">Graduações</p>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Histórico de faixas</p>
-                </div>
-              </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }}
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                      <GraduationCap size={20} className="text-emerald-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-black text-white">Graduações</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1">Histórico de faixas</p>
+                    </div>
+                  </button>
+                </>
+              )}
 
               <div className="grid grid-cols-2 gap-3 mt-1">
                 <button
@@ -1022,29 +1089,33 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
                   <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Inativar</p>
                 </button>
 
-                <button
-                  onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }}
-                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-primary/5 border border-primary/10 active:scale-95 text-center transition-colors hover:bg-primary/10"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <UserMinus size={16} className="text-primary" />
-                  </div>
-                  <p className="text-[11px] font-black text-primary uppercase tracking-widest">Suspender</p>
-                </button>
+                {!student.roles?.visitante && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }}
+                      className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-primary/5 border border-primary/10 active:scale-95 text-center transition-colors hover:bg-primary/10"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <UserMinus size={16} className="text-primary" />
+                      </div>
+                      <p className="text-[11px] font-black text-primary uppercase tracking-widest">Suspender</p>
+                    </button>
 
-                <button
-                  onClick={(e) => { e.stopPropagation(); onAction('archive', student) }}
-                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-blue-500/5 border border-blue-500/10 active:scale-95 text-center transition-colors hover:bg-blue-500/10"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <Archive size={16} className="text-blue-500" />
-                  </div>
-                  <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest">Arquivar</p>
-                </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('archive', student) }}
+                      className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-blue-500/5 border border-blue-500/10 active:scale-95 text-center transition-colors hover:bg-blue-500/10"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <Archive size={16} className="text-blue-500" />
+                      </div>
+                      <p className="text-[11px] font-black text-blue-500 uppercase tracking-widest">Arquivar</p>
+                    </button>
+                  </>
+                )}
 
                 <button
                   onClick={(e) => { e.stopPropagation(); onAction('delete', student) }}
-                  className="w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-red-500/5 border border-red-500/10 active:scale-95 text-center transition-colors hover:bg-red-500/10"
+                  className={`w-full flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-red-500/5 border border-red-500/10 active:scale-95 text-center transition-colors hover:bg-red-500/10 ${student.roles?.visitante ? 'col-span-1' : ''}`}
                 >
                   <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
                     <Trash2 size={16} className="text-red-500" />

@@ -40,12 +40,15 @@ const ExpensesPage = lazy(() => import('./modules/finance/ExpensesPage'))  // De
 const ReportsPage = lazy(() => import('./modules/finance/ReportsPage'))   // Relatórios Financeiros
 // ─── ScrollToTop Helper ───────────────────────────────────────────────────────
 function ScrollToTop() {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   useEffect(() => {
+    // Se estivermos tentando ir para uma notificação específica, não reseta o scroll para o topo
+    if (search.includes('noticeId=')) return
+
     const content = document.querySelector('.main-content')
     if (content) content.scrollTo(0, 0)
     else window.scrollTo(0, 0)
-  }, [pathname])
+  }, [pathname, search])
   return null
 }
 

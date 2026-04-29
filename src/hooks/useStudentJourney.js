@@ -3,12 +3,15 @@ import { useStudents } from './useStudents'
 import { db } from '../firebase/config'
 import { collection, getDocs } from 'firebase/firestore'
 import { beltConfig as defaultBelts } from '../data/beltConfig'
+import { useAuth } from '../context/AuthContext'
 
 /**
  * Hook de Inteligência da Jornada Técnica (SaaS Premium)
  * Gerencia o cálculo dinâmico de progressão, métricas e histórico baseado em regras de negócio.
  */
 export function useStudentJourney() {
+  const { userData, effectiveRole } = useAuth()
+  const isPowerUser = effectiveRole === 'admin' || effectiveRole === 'gestor'
   const { students, loading: studentsLoading } = useStudents()
   const [configs, setConfigs] = useState({})
   const [configsLoading, setConfigsLoading] = useState(true)
@@ -44,8 +47,27 @@ export function useStudentJourney() {
     thirtyDaysAgo.setDate(now.getDate() - 30)
 
     const processed = students.reduce((acc, student) => {
-      // Filtragem Logística: Ignora visitantes e inativos
-      if (student.isVisitor || student.status === 'Inativo') return acc
+      // 🔒 Segurança e Escopo: Se for professor, vê apenas alunos da sua turma/modalidade
+      if (!isPowerUser && userData?.modalities && userData.modalities.length > 0) {
+        const studentMods = (Array.isArray(student.modalities) ? student.modalities : [student.modality])
+          .filter(Boolean)
+          .map(m => m.toLowerCase().replace(/-/g, ' ').trim())
+        
+        const teacherMods = userData.modalities.map(m => m.toLowerCase().replace(/-/g, ' ').trim())
+        
+        const isMyStudent = studentMods.some(m => teacherMods.includes(m))
+        if (!isMyStudent) return acc
+      }
+
+      // 🛡️ Filtro Base: Apenas Alunos (Remove Staff da contagem de Graduados/Jornada)
+      const isStaff = student.roles?.admin || student.roles?.gestor || student.roles?.professor
+      const isStudent = student.roles?.aluno === true
+      if (isStaff || !isStudent) return acc
+
+      // Filtragem Logística: Ignora visitantes e inativos (case-insensitive)
+      const studentStatus = (student.status || '').toLowerCase()
+      const isVisitor = student.isVisitor || student.roles?.visitante === true
+      if (isVisitor || studentStatus === 'inativo' || studentStatus === 'arquivado') return acc
 
       // Cálculo de Datas (Última Promoção)
       const lastPromoDate = student.tech_journey?.last_promotion_date?.toDate?.() || 
@@ -103,7 +125,9 @@ export function useStudentJourney() {
       }
 
       acc._all.push(entry)
-      if (student.belt && student.belt !== 'none') acc._graduatedCount++
+      const b = (student.belt || '').toLowerCase().trim()
+      const isGraduated = b && b !== 'none' && b !== 'sem faixa'
+      if (isGraduated) acc._graduatedCount++
       if (wasRecent) acc._recentCount++
       if (progression >= 90) acc._upcomingCount++
       
