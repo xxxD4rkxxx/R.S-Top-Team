@@ -5,7 +5,7 @@ import {
     TrendingUp, TrendingDown, AlertCircle,
     Award, Activity, Bell, PlayCircle, Wallet,
     DollarSign, Percent, Phone, X, ChevronRight,
-    BarChart3, Zap, Eye, RefreshCw, ShieldCheck
+    BarChart3, Zap, Eye, RefreshCw, ShieldCheck, Target
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
