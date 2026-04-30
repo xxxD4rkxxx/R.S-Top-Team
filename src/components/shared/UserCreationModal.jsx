@@ -79,6 +79,13 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
   const { modalities: dbModalities } = useModalities()
   const [showTurmasDropdown, setShowTurmasDropdown] = useState(false);
   const dropdownRef = React.useRef(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Estado inicial do formulário
   const [formData, setFormData] = useState({
@@ -359,10 +366,27 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
 
   /** Alterna uma permissão individual */
   const handleTogglePermission = (key) => {
-    setFormData(prev => ({
-      ...prev,
-      permissions: { ...prev.permissions, [key]: !prev.permissions[key] }
-    }))
+    setFormData(prev => {
+      const isCurrentlyOn = prev.permissions[key];
+      const isTurningOff = isCurrentlyOn;
+      
+      let newPermissions = { ...prev.permissions, [key]: !isCurrentlyOn };
+
+      // Regras de dependência (desligamento automático)
+      if (key === 'viewStudents' && isTurningOff) {
+         newPermissions.editStudents = false;
+         newPermissions.deleteStudents = false;
+      }
+      if (key === 'viewFinance' && isTurningOff) {
+         newPermissions.managePayments = false;
+         newPermissions.manageExpenses = false;
+      }
+
+      return {
+        ...prev,
+        permissions: newPermissions
+      };
+    });
   }
 
   // Mapa de permissões padrão por cargo para preenchimento automático
@@ -599,7 +623,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           {/* MODAL / DRAWER */}
           <motion.div
             onClick={e => e.stopPropagation()}
-            drag="y"
+            drag={isMobile ? "y" : false}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
             onDragEnd={(e, info) => {
@@ -768,57 +792,30 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
 
                 {/* MODALIDADES PARA PROFESSOR */}
                 {formData.roles.includes('professor') && (
-                  <div className="space-y-4">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedCategories(p => ({ ...p, modalities: !p.modalities }))}
-                      className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/10 transition-all"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                          <GraduationCap size={16} />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[10px] font-black uppercase text-white tracking-widest leading-none">Modalidades de Ensino</p>
-                          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1 tracking-tight">
-                            {formData.modalities?.length > 0
-                              ? `Responsável por: ${formData.modalities.join(', ')}`
-                              : 'Nenhuma modalidade vinculada'}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronDown size={14} className={`text-gray-600 transition-transform ${expandedCategories.modalities ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    <AnimatePresence>
-                      {expandedCategories.modalities && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden bg-black border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-2"
+                  <div className="space-y-3">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 flex items-center gap-2">
+                        <GraduationCap size={12} /> Modalidades de Ensino
+                    </label>
+                    <div className="bg-black border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-2">
+                      {dbModalities.map(mod => (
+                        <button
+                          key={mod.id}
+                          type="button"
+                          onClick={() => {
+                            const isSelected = formData.modalities?.includes(mod.name)
+                            setFormData(prev => ({
+                              ...prev,
+                              modalities: isSelected
+                                ? prev.modalities.filter(m => m !== mod.name)
+                                : [...(prev.modalities || []), mod.name]
+                            }))
+                          }}
+                          className={`p-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${formData.modalities?.includes(mod.name) ? 'bg-primary border-primary text-white shadow-lg shadow-primary/10' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'}`}
                         >
-                          {dbModalities.map(mod => (
-                            <button
-                              key={mod.id}
-                              type="button"
-                              onClick={() => {
-                                const isSelected = formData.modalities?.includes(mod.name)
-                                setFormData(prev => ({
-                                  ...prev,
-                                  modalities: isSelected
-                                    ? prev.modalities.filter(m => m !== mod.name)
-                                    : [...(prev.modalities || []), mod.name]
-                                }))
-                              }}
-                              className={`p-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${formData.modalities?.includes(mod.name) ? 'bg-primary border-primary text-white shadow-lg shadow-primary/10' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'}`}
-                            >
-                              {mod.name}
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                          {mod.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -1034,21 +1031,24 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                         <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
                           {[
                             { k: 'viewStudents', l: 'Visualizar Alunos', d: 'Ver lista e perfis.' },
-                            { k: 'editStudents', l: 'Cadastrar/Editar', d: 'Criar e alterar dados.' },
+                            { k: 'editStudents', l: 'Cadastrar/Editar', d: 'Criar e alterar dados.', dep: 'viewStudents' },
                             { k: 'manageClasses', l: 'Gerenciar Chamadas', d: 'Iniciar aulas e treinos.' },
                             { k: 'manageEvents', l: 'Gerenciar Eventos', d: 'Eventos e graduações.' },
-                            { k: 'deleteStudents', l: 'Excluir Registros', d: 'Deletar alunos do sistema.', r: true },
-                          ].map(p => (
-                            <div key={p.k} className="flex items-center justify-between">
-                              <div className="flex-1 pr-6">
-                                <p className={`text-[11px] font-bold uppercase tracking-tight ${p.r ? 'text-red-400' : 'text-gray-200'}`}>{p.l}</p>
-                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                            { k: 'deleteStudents', l: 'Excluir Registros', d: 'Deletar alunos do sistema.', r: true, dep: 'viewStudents' },
+                          ].map(p => {
+                            const isGhost = p.dep && !formData.permissions[p.dep];
+                            return (
+                              <div key={p.k} className={`flex items-center justify-between ${isGhost ? 'opacity-30 grayscale' : ''}`}>
+                                <div className="flex-1 pr-6">
+                                  <p className={`text-[11px] font-bold uppercase tracking-tight ${p.r ? 'text-red-400' : 'text-gray-200'}`}>{p.l}</p>
+                                  <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                </div>
+                                <button type="button" disabled={isGhost} onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] && !isGhost ? (p.r ? 'bg-red-500' : 'bg-primary') : 'bg-gray-800'} ${isGhost ? 'cursor-not-allowed' : ''}`}>
+                                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] && !isGhost ? 'translate-x-4' : ''}`} />
+                                </button>
                               </div>
-                              <button type="button" onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? (p.r ? 'bg-red-500' : 'bg-primary') : 'bg-gray-800'}`}>
-                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
-                              </button>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -1066,19 +1066,22 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                         <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
                           {[
                             { k: 'viewFinance', l: 'Ver Relatórios', d: 'Acesso a lucros e KPIs.' },
-                            { k: 'managePayments', l: 'Processar Pagamentos', d: 'Lançar mensalidades.' },
-                            { k: 'manageExpenses', l: 'Gerenciar Despesas', d: 'Lançar contas a pagar.' },
-                          ].map(p => (
-                            <div key={p.k} className="flex items-center justify-between">
-                              <div className="flex-1 pr-6">
-                                <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
-                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                            { k: 'managePayments', l: 'Processar Pagamentos', d: 'Lançar mensalidades.', dep: 'viewFinance' },
+                            { k: 'manageExpenses', l: 'Gerenciar Despesas', d: 'Lançar contas a pagar.', dep: 'viewFinance' },
+                          ].map(p => {
+                            const isGhost = p.dep && !formData.permissions[p.dep];
+                            return (
+                              <div key={p.k} className={`flex items-center justify-between ${isGhost ? 'opacity-30 grayscale' : ''}`}>
+                                <div className="flex-1 pr-6">
+                                  <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
+                                  <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                </div>
+                                <button type="button" disabled={isGhost} onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] && !isGhost ? 'bg-primary' : 'bg-gray-800'} ${isGhost ? 'cursor-not-allowed' : ''}`}>
+                                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] && !isGhost ? 'translate-x-4' : ''}`} />
+                                </button>
                               </div>
-                              <button type="button" onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-primary' : 'bg-gray-800'}`}>
-                                <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
-                              </button>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </div>

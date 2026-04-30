@@ -157,17 +157,17 @@ function AppContent() {
                   <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<ProtectedRoute><AnimatedPage><DashboardPage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/inicio" element={<ProtectedRoute><AnimatedPage><DashboardPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/chamadas" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><AttendancePage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/alunos" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><StudentsPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/equipe" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><CollaboratorsPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/eventos" element={<ProtectedRoute><AnimatedPage><EventsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/chamadas" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="manageClasses"><AnimatedPage><AttendancePage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/alunos" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewStudents"><AnimatedPage><StudentsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/equipe" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="manageUsers"><AnimatedPage><CollaboratorsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/eventos" element={<ProtectedRoute requiredPermission="manageEvents"><AnimatedPage><EventsPage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/perfil" element={<ProtectedRoute><AnimatedPage><ProfilePage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/chamadas/revisao/:sessionId" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReviewAttendancePage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/contratos" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ContractsPage /></AnimatedPage></ProtectedRoute>} />
 
-                    <Route path="/financeiro" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/despesas" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/relatorios" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReportsPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/financeiro" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewFinance"><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/despesas" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewFinance"><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/relatorios" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewFinance"><AnimatedPage><ReportsPage /></AnimatedPage></ProtectedRoute>} />
                     
                     {/* Redirecionamentos de Rotas Legadas */}
                     <Route path="/billing" element={<Navigate to="/financeiro" replace />} />
@@ -185,7 +185,7 @@ function AppContent() {
 
                     <Route path="/visitantes" element={<ProtectedRoute><AnimatedPage><StudentsPage defaultTypeFilter="visitante" /></AnimatedPage></ProtectedRoute>} />
 
-                    <Route path="/modalidades" element={<ProtectedRoute><AnimatedPage><ModalitiesPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/modalidades" element={<ProtectedRoute requiredPermission="manageSystem"><AnimatedPage><ModalitiesPage /></AnimatedPage></ProtectedRoute>} />
 
                     <Route path="/planos" element={<ProtectedRoute><AnimatedPage><ModuleUnderDevelopment
                       icon={Banknote} title="Planos"

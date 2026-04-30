@@ -1,4 +1,4 @@
-// ManagerDashboard.jsx
+﻿// ManagerDashboard.jsx
 import React, { useState, useMemo } from 'react'
 import {
     Users, UserPlus, CalendarDays, UserX,
@@ -28,8 +28,9 @@ import { useModalities } from '../../hooks/useModalities'
 import { attendanceService } from '../../services/attendanceService'
 import { useTeacherIntelligence } from '../../hooks/useTeacherIntelligence'
 import IntelligenceSection from './components/IntelligenceSection'
+import { motion } from 'framer-motion'
 
-// ── Custom sport PNG icon wrappers ───────────────────────────────
+// ÔöÇÔöÇ Custom sport PNG icon wrappers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function IconJiuJitsu({ size = 16, className = '' }) {
     const style = { width: size, height: size, filter: 'invert(1)', objectFit: 'contain' }
     return <img src="/icon-jiujitsu.png" alt="jiu jitsu" style={style} className={className} />
@@ -40,7 +41,7 @@ function IconBoxe({ size = 16, className = '' }) {
     return <img src="/icon-boxe.png" alt="boxe" style={style} className={className} />
 }
 
-// ── Skeleton Loader ─────────────────────────────────────────
+// ÔöÇÔöÇ Skeleton Loader ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function Skeleton({ className = '' }) {
     return <div className={`animate-pulse bg-white/5 rounded-2xl ${className}`} />
 }
@@ -57,7 +58,7 @@ function KPISkeleton() {
     )
 }
 
-// ── Chart Tooltip ─────────────────────────────────────────────
+// ÔöÇÔöÇ Chart Tooltip ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function ChartTooltip({ active, payload, label }) {
     if (!active || !payload?.length) return null
     return (
@@ -76,7 +77,7 @@ function ChartTooltip({ active, payload, label }) {
     )
 }
 
-// ── Session Drawer ─────────────────────────────────────────────
+// ÔöÇÔöÇ Session Drawer ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function SessionDrawer({ session, isOpen, onClose, students }) {
     if (!session) return null
     const attList = session.attendances || []
@@ -90,7 +91,7 @@ function SessionDrawer({ session, isOpen, onClose, students }) {
         : (session.ausentes ?? absentIds.length)
 
     return (
-        <SlideOver isOpen={isOpen} onClose={onClose} title={session.classTitle || session.title || 'Sessão'} subtitle={`${session.date} — ${session.time || ''}`} width="max-w-md">
+        <SlideOver isOpen={isOpen} onClose={onClose} title={session.classTitle || session.title || 'Sess├úo'} subtitle={`${session.date} ÔÇö ${session.time || ''}`} width="max-w-md">
             <div className="p-5 space-y-5">
                 {/* Summary KPIs */}
                 <div className="grid grid-cols-2 gap-3">
@@ -116,7 +117,7 @@ function SessionDrawer({ session, isOpen, onClose, students }) {
                 {/* Presentes */}
                 {!session.loadingDetails && presentIds.length > 0 && (
                     <div>
-                        <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">✅ Presentes ({presentIds.length})</h3>
+                        <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">Ô£à Presentes ({presentIds.length})</h3>
                         <div className="space-y-2">
                             {presentIds.map(id => {
                                 const s = findStudent(id)
@@ -136,7 +137,7 @@ function SessionDrawer({ session, isOpen, onClose, students }) {
                 {/* Ausentes */}
                 {!session.loadingDetails && absentIds.length > 0 && (
                     <div>
-                        <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">❌ Ausentes ({absentIds.length})</h3>
+                        <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">ÔØî Ausentes ({absentIds.length})</h3>
                         <div className="space-y-2">
                             {absentIds.map(id => {
                                 const s = findStudent(id)
@@ -152,20 +153,20 @@ function SessionDrawer({ session, isOpen, onClose, students }) {
                 )}
 
                 {!session.loadingDetails && attList.length === 0 && (
-                    <p className="text-center text-gray-600 text-sm py-8">Nenhum registro de presença nesta sessão.</p>
+                    <p className="text-center text-gray-600 text-sm py-8">Nenhum registro de presen├ºa nesta sess├úo.</p>
                 )}
             </div>
         </SlideOver>
     )
 }
 
-// ── Absent Students Drawer ─────────────────────────────────────
+// ÔöÇÔöÇ Absent Students Drawer ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function AbsentDrawer({ students, isOpen, onClose }) {
     return (
         <SlideOver isOpen={isOpen} onClose={onClose} title="Alunos Ausentes" subtitle={`${students.length} alunos sem treinar`} width="max-w-md">
             <div className="p-5 space-y-3">
                 {students.length === 0 ? (
-                    <p className="text-center text-gray-600 py-10">Nenhum aluno ausente. 🎉</p>
+                    <p className="text-center text-gray-600 py-10">Nenhum aluno ausente. ­ƒÄë</p>
                 ) : students.map(s => {
                     const daysLabel = s.daysAbsent !== null ? `${s.daysAbsent}d` : 'Nunca treinou'
                     return (
@@ -194,8 +195,8 @@ function AbsentDrawer({ students, isOpen, onClose }) {
     )
 }
 
-// ── Fallback chart (últimos 7 dias, zeros) ──────────────────────
-const DAYS_LABEL = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+// ÔöÇÔöÇ Fallback chart (├║ltimos 7 dias, zeros) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+const DAYS_LABEL = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S├íb']
 function buildFallbackChart() {
     const today = new Date()
     return Array.from({ length: 7 }, (_, i) => {
@@ -206,7 +207,7 @@ function buildFallbackChart() {
 }
 const fallbackChartData = buildFallbackChart()
 
-// ── Main Component ─────────────────────────────────────────────
+// ÔöÇÔöÇ Main Component ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 export default function ManagerDashboard() {
     const { students, isLoading: isLoadingStudents } = useStudents()
     const [period, setPeriod] = useState('Semana')
@@ -222,7 +223,7 @@ export default function ManagerDashboard() {
     const [selectedSession, setSelectedSession] = useState(null)
     const [showAbsents, setShowAbsents] = useState(false)
 
-    // Efeito para carregar detalhes da sessão selecionada
+    // Efeito para carregar detalhes da sess├úo selecionada
     const handleSelectSession = async (sess) => {
         setSelectedSession({ ...sess, loadingDetails: true })
         try {
@@ -237,7 +238,7 @@ export default function ManagerDashboard() {
                 loadingDetails: false
             }))
         } catch (err) {
-            console.error("Erro ao carregar detalhes da sessão:", err)
+            console.error("Erro ao carregar detalhes da sess├úo:", err)
             setSelectedSession(prev => ({ ...prev, loadingDetails: false }))
         }
     }
@@ -258,7 +259,7 @@ export default function ManagerDashboard() {
     const weekGrowth = stats?.weekGrowth ?? 0
     const absentList = stats?.absentStudents || []
 
-    // Próximas Graduações (based on attendances)
+    // Pr├│ximas Gradua├º├Áes (based on attendances)
     const graduations = useMemo(() =>
         enrolledMembers.filter(s => (s.totalAttendances || 0) >= 50
             || (s.monthlyAttendances || 0) >= 12).slice(0, 4).map(s => {
@@ -277,11 +278,11 @@ export default function ManagerDashboard() {
             },
             {
                 title: 'Novos Alunos', value: isLoadingStudents ? '...' : String(newMembers30Days.length),
-                desc: 'Últimos 30 dias', icon: UserPlus, color: 'text-emerald-400', iconColor: 'text-gray-400',
+                desc: '├Ültimos 30 dias', icon: UserPlus, color: 'text-emerald-400', iconColor: 'text-gray-400',
                 badge: newMembers30Days.length > 0 ? { label: 'Novo', bg: 'bg-emerald-500/20', color: 'text-emerald-400' } : null
             },
             {
-                title: 'Presença Hoje', value: initialLoading && !presentCount ? '...' : String(presentCount),
+                title: 'Presen├ºa Hoje', value: initialLoading && !presentCount ? '...' : String(presentCount),
                 desc: 'Check-ins registrados', icon: CalendarDays, color: 'text-white', iconColor: 'text-gray-400'
             },
             {
@@ -289,15 +290,15 @@ export default function ManagerDashboard() {
                 desc: 'Clique p/ ver lista', icon: UserX, color: absentList.length > 0 ? 'text-yellow-400' : 'text-gray-400', iconColor: 'text-gray-400',
                 onClick: () => setShowAbsents(true),
                 badge: absentList.filter(s => s.isCritical).length > 0
-                    ? { label: `${absentList.filter(s => s.isCritical).length} críticos`, bg: 'bg-red-500/20', color: 'text-red-400' } : null
+                    ? { label: `${absentList.filter(s => s.isCritical).length} cr├¡ticos`, bg: 'bg-red-500/20', color: 'text-red-400' } : null
             },
             {
-                title: 'Receita do Mês', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPaid),
+                title: 'Receita do M├¬s', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPaid),
                 desc: 'Faturamento consolidado', icon: DollarSign, color: 'text-emerald-400', iconColor: 'text-gray-400'
             },
             {
-                title: 'Taxa de Retenção', value: initialLoading && !retentionRate ? '...' : `${retentionRate}%`,
-                desc: `${absentList.filter(s => s.isCritical).length} evasões críticas`,
+                title: 'Taxa de Reten├º├úo', value: initialLoading && !retentionRate ? '...' : `${retentionRate}%`,
+                desc: `${absentList.filter(s => s.isCritical).length} evas├Áes cr├¡ticas`,
                 icon: TrendingUp, color: retentionRate >= 80 ? 'text-emerald-400' : 'text-red-400', iconColor: 'text-gray-400',
                 badge: {
                     label: `${weekGrowth >= 0 ? '+' : ''}${weekGrowth}% vs ant.`,
@@ -310,30 +311,29 @@ export default function ManagerDashboard() {
                 desc: 'Total de boletos vencidos', icon: AlertCircle, color: 'text-rose-400', iconColor: 'text-gray-400'
             },
             {
-                title: 'Inadimplência', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue),
+                title: 'Inadimpl├¬ncia', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue),
                 desc: 'Total em atraso', icon: Wallet, color: 'text-rose-400', iconColor: 'text-gray-400'
             },
             {
-                title: 'Grad. Próximas', value: initialLoading && !graduations.length ? '...' : String(graduations.length),
+                title: 'Grad. Pr├│ximas', value: initialLoading && !graduations.length ? '...' : String(graduations.length),
                 desc: 'Aptos a graduar', icon: Award, color: 'text-white', iconColor: 'text-[#DC143C]'
             },
             {
                 title: 'Professores', value: loadingStaff ? '...' : String(staffMembers.filter(s => {
                     const roles = s.papeis || s.roles || {};
                     const roleStr = String(s.role || '').toLowerCase();
-                    const isProfessorOrGestor = roles.professor || roles.gestor || ['professor', 'gestor'].includes(roleStr);
-                    const isAdmin = roles.admin || roleStr === 'admin';
-                    return isProfessorOrGestor && !isAdmin;
+                    return roles.professor || roles.gestor || roles.admin ||
+                        ['professor', 'gestor', 'admin'].includes(roleStr);
                 }).length),
-                desc: 'Equipe técnica ativa', icon: ShieldCheck, color: 'text-emerald-400', iconColor: 'text-emerald-400'
+                desc: 'Equipe t├®cnica ativa', icon: ShieldCheck, color: 'text-emerald-400', iconColor: 'text-emerald-400'
             },
             {
                 title: 'Visitantes', value: isLoadingStudents ? '...' : String(safeStudents.filter(s => s.isVisitor).length),
-                desc: 'Participações externas', icon: Users, color: 'text-blue-400', iconColor: 'text-blue-400'
+                desc: 'Participa├º├Áes externas', icon: Users, color: 'text-blue-400', iconColor: 'text-blue-400'
             }
         ]
 
-        // Adicionar modalidades dinâmicas baseadas no banco de dados
+        // Adicionar modalidades din├ómicas baseadas no banco de dados
         if (!loadingModalities && masterModalities.length > 0) {
             const modalityKPIs = masterModalities.map(mod => {
                 const modName = mod.name || mod.id
@@ -383,8 +383,8 @@ export default function ManagerDashboard() {
             {/* Header */}
             <PageHeader
                 icon={Activity}
-                title="DASHBOARD ACADÊMICO"
-                subtitle="GESTÃO DE PERFORMANCE E PRESENÇA"
+                title="DASHBOARD ACAD├èMICO"
+                subtitle="GEST├âO DE PERFORMANCE E PRESEN├çA"
                 onRefresh={refresh}
                 loading={loadingStats}
             />
@@ -407,7 +407,7 @@ export default function ManagerDashboard() {
             <div className="flex-1 px-4 md:px-6 pt-6 pb-0 w-full space-y-6 fade-slide-up">
 
 
-                {/* ── KPIs ───────────────────────────────────────── */}
+                {/* ÔöÇÔöÇ KPIs ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
                     {(isLoadingStudents || initialLoading)
                         ? Array.from({ length: 12 }).map((_, i) => <KPISkeleton key={i} />)
@@ -419,13 +419,90 @@ export default function ManagerDashboard() {
                     }
                 </div>
 
-                {/* ── Inteligência e Analytics ─────────────────────────── */}
-                <IntelligenceSection data={intelligence} userName="Gestão" hideKPIs={true} />
+                {/* ÔöÇÔöÇ ­ƒôè PREVIS├âO E METAS (NOVO) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Previs├úo IA */}
+                    <div className="lg:col-span-8 glass-card rounded-[32px] border border-blue-500/10 bg-gradient-to-br from-blue-500/5 to-transparent p-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-sm font-black text-white tracking-widest uppercase flex items-center gap-2">
+                                    <BarChart3 size={18} className="text-blue-400" /> Previs├úo do M├¬s
+                                </h3>
+                                <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-tighter">Insights baseados em dados hist├│ricos</p>
+                            </div>
+                            <div className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] font-black uppercase tracking-widest">
+                                Intelig├¬ncia Ativa
+                            </div>
+                        </div>
 
-                {/* ── Bottom split ───────────────────────────────── */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Receita Prevista</p>
+                                <p className="text-2xl font-black text-white">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPaid * 1.15)}
+                                </p>
+                                <div className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold mt-1">
+                                    <TrendingUp size={10} /> +15% est.
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Risco de Evas├úo</p>
+                                <p className="text-2xl font-black text-rose-400">{Math.round((absentList.length / (activeMembers.length || 1)) * 100)}%</p>
+                                <p className="text-[10px] text-gray-600 font-medium mt-1">Proje├º├úo p/ pr├│ximos 30d</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Crescimento</p>
+                                <p className="text-2xl font-black text-emerald-400">+{weekGrowth}%</p>
+                                <p className="text-[10px] text-gray-600 font-medium mt-1">Tend├¬ncia de matr├¡culas</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Meta da Academia */}
+                    <div className="lg:col-span-4 glass-card rounded-[32px] border border-white/10 p-8 flex flex-col">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-sm font-black text-white tracking-widest uppercase">Meta da Academia</h3>
+                            <Target size={18} className="text-emerald-400" />
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-center">
+                            <div className="flex justify-between items-end mb-3">
+                                <div>
+                                    <p className="text-4xl font-black text-white leading-none">{activeMembers.length}</p>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-2">Alunos Atuais</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-lg font-black text-gray-400">/ 50</p>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">Meta</p>
+                                </div>
+                            </div>
+
+                            <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-1">
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${(activeMembers.length / 50) * 100}%` }}
+                                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                                />
+                            </div>
+                            <p className="text-[10px] text-center text-gray-500 mt-4 font-bold uppercase tracking-tighter">
+                                Faltam {50 - activeMembers.length} alunos para a meta mensal
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ÔöÇÔöÇ Intelig├¬ncia e Analytics ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
+                <IntelligenceSection 
+                    data={intelligence} 
+                    userName="Gest├úo" 
+                    hideKPIs={true} 
+                    financialData={{ totalPaid, totalPending, totalOverdue, overdueCount }}
+                />
+
+                {/* ÔöÇÔöÇ Bottom split ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
                 <div className="flex flex-col gap-6 fade-slide-up" style={{ animationDelay: '360ms' }}>
 
-                    {/* ── Aulas de Hoje — dados reais via onSnapshot ── */}
+                    {/* ÔöÇÔöÇ Aulas de Hoje ÔÇö dados reais via onSnapshot ÔöÇÔöÇ */}
                     <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden flex flex-col min-h-[360px] p-6">
                         <div className="flex justify-between items-center mb-6">
                             <div className="flex items-center gap-3">
@@ -438,21 +515,23 @@ export default function ManagerDashboard() {
                             </Link>
                         </div>
 
-                        <div className="flex-1 space-y-3">
+                        <div className="flex-1 space-y-4">
                             {loadingTodaySessions ? (
                                 Array.from({ length: 3 }).map((_, i) => (
-                                    <Skeleton key={i} className="w-full h-[72px] rounded-xl" />
+                                    <Skeleton key={i} className="w-full h-[84px] rounded-2xl" />
                                 ))
                             ) : todaySessions.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
-                                    <CalendarDays size={36} className="text-gray-700" />
+                                <div className="flex flex-col items-center justify-center h-48 gap-4 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-gray-700">
+                                        <CalendarDays size={32} />
+                                    </div>
                                     <div>
-                                        <p className="text-sm font-bold text-gray-500">Nenhuma aula registrada hoje</p>
-                                        <p className="text-[11px] text-gray-600 mt-1">Inicie uma chamada na aba Presença</p>
+                                        <p className="text-sm font-bold text-gray-400">Nenhuma aula para hoje</p>
+                                        <p className="text-[11px] text-gray-600 mt-1">As sess├Áes aparecer├úo aqui conforme o cronograma</p>
                                     </div>
                                     <Link to="/attendance"
-                                        className="mt-1 px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold hover:bg-blue-500/20 transition-colors">
-                                        Iniciar Chamada
+                                        className="px-6 py-2.5 rounded-xl bg-blue-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+                                        Nova Chamada
                                     </Link>
                                 </div>
                             ) : (
@@ -463,46 +542,56 @@ export default function ManagerDashboard() {
 
                                     return (
                                         <div key={sess.id}
-                                            className="group relative flex items-center justify-between p-4 rounded-xl stat-card border border-white/5 hover:border-white/15 hover:bg-white/[0.03] cursor-pointer transition-all overflow-hidden"
+                                            className="group relative flex flex-col md:flex-row md:items-center justify-between p-5 rounded-[24px] bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition-all overflow-hidden"
                                             onClick={() => handleSelectSession(sess)}>
 
-                                            {/* Left accent bar */}
-                                            <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full transition-all"
-                                                style={{ background: accentColor, opacity: 0.7 }} />
-
-                                            <div className="flex flex-col pl-3">
-                                                <h4 className="text-[15px] font-bold text-white group-hover:text-white/90 tracking-wide">
-                                                    {sess.classTitle}
-                                                </h4>
-                                                <p className="text-xs text-gray-500 mt-0.5 uppercase tracking-wide">{sess.time}</p>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center shrink-0 border border-white/5 group-hover:border-white/10 transition-colors">
+                                                    {isJiu ? <IconJiuJitsu size={24} /> : <IconBoxe size={24} />}
+                                                </div>
+                                                
+                                                <div className="flex flex-col">
+                                                    <h4 className="text-[15px] font-black text-white tracking-tight group-hover:text-blue-400 transition-colors">
+                                                        {sess.classTitle}
+                                                    </h4>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-1">
+                                                            <CalendarDays size={10} /> {sess.time}
+                                                        </span>
+                                                        <span className="text-[10px] text-blue-400 font-black uppercase tracking-widest flex items-center gap-1">
+                                                            <Users size={10} /> Prof. {sess.instructorName || sess.teacher || 'Respons├ível'}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4 shrink-0">
-                                                {/* Attendance bar */}
-                                                <div className="hidden sm:flex flex-col items-end gap-1">
-                                                    <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                                        <div className="h-full rounded-full transition-all duration-500"
+                                            <div className="flex items-center justify-between mt-4 md:mt-0 md:gap-8 pt-4 md:pt-0 border-t md:border-t-0 border-white/5">
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tighter mb-1">
+                                                        <span className="text-gray-600">{sess.presentes} Confirmados</span>
+                                                        <span style={{ color: accentColor }}>{pctPresente}%</span>
+                                                    </div>
+                                                    <div className="w-28 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full transition-all duration-700"
                                                             style={{ width: `${pctPresente}%`, background: accentColor }} />
                                                     </div>
-                                                    <p className="text-[10px] text-gray-600">{pctPresente}% de presença</p>
                                                 </div>
 
-                                                {/* Count badge */}
-                                                <div className="text-right">
-                                                    <p className="text-xl font-black" style={{ color: accentColor }}>
-                                                        {sess.presentes}
-                                                    </p>
-                                                    <p className="text-[10px] text-gray-600 leading-none">
-                                                        {sess.total > 0 ? `/${sess.total} alunos` : 'presentes'}
-                                                    </p>
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        className="h-10 px-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Logic to open attendance directly could be here
+                                                        }}>
+                                                        Abrir Chamada
+                                                    </button>
+                                                    <button
+                                                        className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 text-gray-500 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                                                        title="Ver Detalhes">
+                                                        <Eye size={16} />
+                                                    </button>
                                                 </div>
-
-                                                {/* Review icon */}
-                                                <button
-                                                    className="w-9 h-9 rounded-full bg-white/8 border border-white/10 text-gray-500 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shrink-0"
-                                                    title="Revisar Lista">
-                                                    <Eye size={14} />
-                                                </button>
                                             </div>
                                         </div>
                                     )
@@ -513,11 +602,11 @@ export default function ManagerDashboard() {
 
                 </div>
 
-                {/* ── Histórico de Chamada ─────────────────────────────── */}
+                {/* ÔöÇÔöÇ Hist├│rico de Chamada ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
                 {(stats?.sessions || []).length > 0 && (
                     <div className="glass-card rounded-2xl p-6 border border-white/10 fade-slide-up" style={{ animationDelay: '440ms' }}>
                         <h3 className="text-sm font-bold uppercase tracking-widest text-white mb-4 flex items-center gap-2">
-                            <BarChart3 size={16} className="text-gray-500" /> Histórico de Chamada
+                            <BarChart3 size={16} className="text-gray-500" /> Hist├│rico de Chamada
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {(stats.sessions).slice(0, 6).map((s, i) => (
@@ -527,7 +616,7 @@ export default function ManagerDashboard() {
                                         <p className="text-sm font-bold text-white group-hover:text-[#DC143C] transition-colors">{s.classTitle || s.title || 'Aula'}</p>
                                         <Eye size={12} className="text-gray-600 group-hover:text-white transition-colors" />
                                     </div>
-                                    <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">{s.date} {s.time && `• ${s.time}`}</p>
+                                    <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">{s.date} {s.time && `ÔÇó ${s.time}`}</p>
                                     <div className="flex items-center gap-3">
                                         <span className="text-emerald-400 font-black text-lg">{s.presencasCount}</span>
                                         <span className="text-[10px] text-gray-600">presentes</span>
@@ -545,7 +634,7 @@ export default function ManagerDashboard() {
                 )}
             </div>
 
-            {/* ── Drawers ─────────────────────────────────────── */}
+            {/* ÔöÇÔöÇ Drawers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
             <SessionDrawer
                 session={selectedSession}
                 isOpen={!!selectedSession}

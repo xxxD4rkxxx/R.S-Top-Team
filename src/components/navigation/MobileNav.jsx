@@ -32,20 +32,20 @@ import {
 // Itens principais da barra inferior (Excluindo o botão central)
 const mainNavItems = [
   { to: '/', icon: Home, label: 'Início' },
-  { to: '/students', icon: Users, label: 'Alunos' },
-  { to: '/events', icon: BellRing, label: 'Avisos' },
+  { to: '/alunos', icon: Users, label: 'Alunos' },
+  { to: '/eventos', icon: BellRing, label: 'Avisos' },
 ]
 
 // Itens do menu "Mais" (Drawer lateral/inferior)
 const drawerItems = [
-  { to: '/billing', icon: Banknote, label: 'Cobrança', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de mensalidades' },
-  { to: '/expenses', icon: ArrowDownRight, label: 'Despesas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Saídas e custos' },
-  { to: '/reports', icon: PieChart, label: 'Relatórios', roles: ['admin', 'gestor', 'professor'], subtitle: 'Análise financeira' },
-  { to: '/modalities', icon: Layers, label: 'Turmas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Modalidades e horários' },
-  { to: '/experimental', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'], subtitle: 'Aulas experimentais' },
-  // { to: '/contracts', icon: FileText, label: 'Contratos', roles: ['admin', 'gestor'], subtitle: 'Documentos e termos' },
-  { to: '/collaborators', icon: ShieldCheck, label: 'Equipe', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de professores' },
-  { to: '/profile', icon: Settings, label: 'Perfil', roles: ['admin', 'gestor', 'professor', 'aluno'], subtitle: 'Minha conta' },
+  { to: '/financeiro', icon: Banknote, label: 'Cobrança', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de mensalidades', reqPerm: 'viewFinance' },
+  { to: '/despesas', icon: ArrowDownRight, label: 'Despesas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Saídas e custos', reqPerm: 'viewFinance' },
+  { to: '/relatorios', icon: PieChart, label: 'Relatórios', roles: ['admin', 'gestor', 'professor'], subtitle: 'Análise financeira', reqPerm: 'viewFinance' },
+  { to: '/modalidades', icon: Layers, label: 'Turmas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Modalidades e horários', reqPerm: 'manageSystem' },
+  { to: '/visitantes', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'], subtitle: 'Aulas experimentais' },
+  // { to: '/contratos', icon: FileText, label: 'Contratos', roles: ['admin', 'gestor'], subtitle: 'Documentos e termos' },
+  { to: '/equipe', icon: ShieldCheck, label: 'Equipe', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de professores', reqPerm: 'manageUsers' },
+  { to: '/perfil', icon: Settings, label: 'Perfil', roles: ['admin', 'gestor', 'professor', 'aluno'], subtitle: 'Minha conta' },
 ]
 
 // Configuração de animação de mola para suavidade premium
@@ -74,7 +74,15 @@ export default function MobileNav() {
   }
 
   const { isMobileNavHidden, isNavLocked } = useApp()
-  const { effectiveRole } = useAuth()
+  const { userData, effectiveRole } = useAuth()
+
+  const isActuallyAdmin = userData?.role === 'admin' || userData?.roles?.admin || effectiveRole === 'admin'
+  const hasPerm = (key) => {
+    if (!key) return true;
+    if (isActuallyAdmin) return true;
+    if (!userData?.permissions) return true;
+    return !!userData.permissions[key];
+  }
 
   // Definição dinâmica dos itens da barra principal baseada no cargo
   const isStudent = effectiveRole === 'aluno'
@@ -82,20 +90,20 @@ export default function MobileNav() {
   const mainTabs = isStudent 
     ? [
         { to: '/', icon: Home, label: 'Início' },
-        { to: '/events', icon: BellRing, label: 'Avisos' },
-        { to: '/profile', icon: Settings, label: 'Perfil' }
+        { to: '/eventos', icon: BellRing, label: 'Avisos' },
+        { to: '/perfil', icon: Settings, label: 'Perfil' }
       ]
     : [
         { to: '/', icon: Home, label: 'Início' },
-        { to: '/students', icon: Users, label: 'Alunos' },
-        { type: 'fab', to: '/attendance', icon: CheckCircle2, label: 'Chamada' },
-        { to: '/events', icon: BellRing, label: 'Avisos' },
+        { to: '/alunos', icon: Users, label: 'Alunos', reqPerm: 'viewStudents' },
+        { type: 'fab', to: '/chamadas', icon: CheckCircle2, label: 'Chamada', reqPerm: 'manageClasses' },
+        { to: '/eventos', icon: BellRing, label: 'Avisos', reqPerm: 'manageEvents' },
         { type: 'drawer', icon: MoreHorizontal, label: 'Mais' }
-      ]
+      ].filter(t => !t.reqPerm || hasPerm(t.reqPerm))
 
   // Filtra os itens da gaveta baseado no cargo do usuário
   const filteredDrawerItems = drawerItems.filter(item => 
-    !item.roles || item.roles.includes(effectiveRole)
+    (!item.roles || item.roles.includes(effectiveRole)) && hasPerm(item.reqPerm)
   )
 
   return (
@@ -111,7 +119,7 @@ export default function MobileNav() {
             className="fixed bottom-0 left-0 right-0 z-[120] px-6 pb-6 select-none"
           >
             {/* Estrutura da Barra com Efeito de Vidro */}
-            <div className="relative h-[68px] bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[32px] flex items-center px-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
+            <div className="relative h-[68px] backdrop-blur-xl border border-white/10 rounded-[32px] flex items-center px-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group" style={{ background: 'color-mix(in srgb, var(--clr-surface) 60%, transparent)' }}>
 
               {/* Indicador de Aba Ativa (Linha colorida superior) */}
               <div className="absolute inset-0 pointer-events-none flex items-center px-4">
@@ -145,24 +153,27 @@ export default function MobileNav() {
             if (tab.type === 'fab') {
               return (
                 <div key={idx} className="relative w-16 h-16 flex items-center justify-center -mt-10">
-                  <div className="absolute inset-0 rounded-full blur-2xl transition-all duration-700" style={{ backgroundColor: isTabActive('/attendance') ? 'color-mix(in srgb, var(--clr-primary) 30%, transparent)' : 'rgba(255,255,255,0.05)' }} />
+                  <div className="absolute inset-0 rounded-full blur-2xl transition-all duration-700" style={{ backgroundColor: isTabActive('/chamadas') ? 'color-mix(in srgb, var(--clr-primary) 30%, transparent)' : 'rgba(255,255,255,0.05)' }} />
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => {
                       if (!isNavLocked) navigate('/chamadas')
                     }}
-                    className="relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 border-[6px] border-[#08080B]"
+                    className="relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500"
                     style={{ 
-                      backgroundColor: isTabActive('/attendance') ? 'var(--clr-primary)' : '#121212',
-                      color: isTabActive('/attendance') ? 'white' : '#6B7280',
-                      boxShadow: isTabActive('/attendance') ? '0 10px 20px color-mix(in srgb, var(--clr-primary) 30%, transparent)' : 'none' 
+                      backgroundColor: isTabActive('/chamadas') ? 'var(--clr-primary)' : 'var(--clr-surface)',
+                      color: isTabActive('/chamadas') ? 'white' : 'var(--clr-text-muted)',
+                      borderWidth: '6px',
+                      borderStyle: 'solid',
+                      borderColor: 'var(--clr-bg)',
+                      boxShadow: isTabActive('/chamadas') ? '0 10px 20px color-mix(in srgb, var(--clr-primary) 30%, transparent)' : 'none' 
                     }}
                   >
                     <CheckCircle2 size={26} strokeWidth={2.5} />
                   </motion.button>
                   <p 
                     className="absolute -bottom-5 text-[9px] font-black uppercase tracking-[0.15em] transition-colors duration-500"
-                    style={{ color: isTabActive('/attendance') ? 'var(--clr-primary)' : '#6B7280' }}
+                    style={{ color: isTabActive('/attendance') ? 'var(--clr-primary)' : 'var(--clr-text-muted)' }}
                   >
                     Chamada
                   </p>
@@ -180,10 +191,10 @@ export default function MobileNav() {
                   }}
                   className="flex-1 flex flex-col items-center justify-center gap-1.5 h-full transition-all active:scale-95 no-tap-highlight"
                 >
-                  <div className="transition-all duration-300" style={{ color: isDrawerOpen ? 'var(--clr-primary)' : '#6B7280', opacity: isDrawerOpen ? 1 : 0.6, transform: isDrawerOpen ? 'scale(1.1)' : 'scale(1)' }}>
+                  <div className="transition-all duration-300" style={{ color: isDrawerOpen ? 'var(--clr-primary)' : 'var(--clr-text-muted)', opacity: isDrawerOpen ? 1 : 0.6, transform: isDrawerOpen ? 'scale(1.1)' : 'scale(1)' }}>
                     {isDrawerOpen ? <X size={22} strokeWidth={2.5} /> : <MoreHorizontal size={22} strokeWidth={2} />}
                   </div>
-                  <p className="text-[9px] font-black uppercase tracking-widest transition-colors duration-300" style={{ color: isDrawerOpen ? 'var(--clr-primary)' : '#4B5563' }}>
+                  <p className="text-[9px] font-black uppercase tracking-widest transition-colors duration-300" style={{ color: isDrawerOpen ? 'var(--clr-primary)' : 'var(--clr-text-muted)' }}>
                     Mais
                   </p>
                 </button>
@@ -225,7 +236,8 @@ export default function MobileNav() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-[#0A0A0A] border-t border-white/10 rounded-t-[32px] z-[80] overflow-hidden flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+              className="fixed bottom-0 left-0 right-0 max-h-[85vh] border-t border-white/10 rounded-t-[32px] z-[80] overflow-hidden flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+              style={{ background: 'var(--clr-surface)' }}
             >
               {/* Alça visual de arraste (apenas estética) */}
               <div className="flex justify-center mt-3">
@@ -236,11 +248,11 @@ export default function MobileNav() {
               <div className="p-6 flex items-center justify-between">
                 <div className="flex flex-col">
                   <span className="text-white font-black text-xl uppercase tracking-tighter">Explorar</span>
-                  <span className="text-gray-600 text-[10px] font-black uppercase tracking-[0.2em]">RS Top Team Academy</span>
+                  <span className="text-gray-600 text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--clr-text-muted)' }}>RS Top Team Academy</span>
                 </div>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
-                  className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-gray-400"
+                  className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--clr-text-muted)' }}
                 >
                   <X size={20} />
                 </button>
@@ -265,20 +277,20 @@ export default function MobileNav() {
                     `}
                     style={{ 
                       borderColor: location.pathname === to ? 'color-mix(in srgb, var(--clr-primary) 30%, transparent)' : 'transparent',
-                      color: location.pathname === to ? 'var(--clr-primary)' : '#9CA3AF'
+                      color: location.pathname === to ? 'var(--clr-primary)' : 'var(--clr-text-muted)'
                     }}
                   >
                     <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center transition-all bg-[#151515] group-active:scale-90"
-                      style={{ color: location.pathname === to ? 'var(--clr-primary)' : '#4B5563' }}
+                      className="w-12 h-12 rounded-xl flex items-center justify-center transition-all group-active:scale-90"
+                      style={{ color: location.pathname === to ? 'var(--clr-primary)' : 'var(--clr-text-muted)', background: 'var(--clr-surface-2)' }}
                     >
                       <Icon size={22} strokeWidth={2.5} />
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-black uppercase tracking-widest">{label}</span>
-                      <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest opacity-60">{subtitle || 'Acessar módulo'}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest opacity-60" style={{ color: 'var(--clr-text-muted)' }}>{subtitle || 'Acessar módulo'}</span>
                     </div>
-                    <ChevronRight size={18} className="absolute right-4 text-gray-700 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" />
+                    <ChevronRight size={18} className="absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" style={{ color: 'var(--clr-text-muted)' }} />
                   </NavLink>
                 ))}
               </div>
@@ -305,7 +317,7 @@ function NavItem({ to, icon: Icon, label, active, locked }) {
       <div 
         className="transition-all duration-300"
         style={{ 
-          color: active ? 'var(--clr-primary)' : '#6B7280',
+          color: active ? 'var(--clr-primary)' : 'var(--clr-text-muted)',
           opacity: active ? 1 : 0.6,
           transform: active ? 'scale(1.1)' : 'scale(1)'
         }}
@@ -314,7 +326,7 @@ function NavItem({ to, icon: Icon, label, active, locked }) {
       </div>
       <p 
         className="text-[9px] font-black uppercase tracking-widest transition-colors duration-300"
-        style={{ color: active ? 'var(--clr-primary)' : '#4B5563' }}
+        style={{ color: active ? 'var(--clr-primary)' : 'var(--clr-text-muted)' }}
       >
         {label}
       </p>

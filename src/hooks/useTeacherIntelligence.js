@@ -125,11 +125,8 @@ export function useTeacherIntelligence() {
                     if (isPowerUser) {
                         // Admin/Gestor: busca todas as sessões dos últimos 60 dias pelo campo 'date' (string, sem índice composto)
                         qSess = query(sessionsRef, where('date', '>=', sixtyDaysAgoStr))
-                    } else if (teacherModalities.length > 0) {
-                        // Professor com modalidades: filtra por modalidade e data em memória
-                        qSess = query(sessionsRef, where(MODALIDADE, 'in', teacherModalities))
                     } else {
-                        // Fallback: filtra pelo ID do instrutor
+                        // Professor comum SÓ vê as chamadas onde ELE é o instrutor
                         qSess = query(sessionsRef, where(INSTRUTOR_ID, '==', userData?.id || userData?.uid || ''))
                     }
 
@@ -143,10 +140,10 @@ export function useTeacherIntelligence() {
                         // Filtro de data em memória (sem índice composto)
                         .filter(s => (s.date || '') >= sixtyDaysAgoStr)
 
-                    // Fallback Crítico: se não encontrou nada por modalidade, tenta pelo instructorId
+                    // Fallback Crítico: se não encontrou nada pelo instrutorId principal, tenta com instructorId (inglês)
                     if (sessions.length === 0 && !isPowerUser) {
                         console.warn("[Intelligence] Fallback por instructorId...")
-                        const qFallback = query(sessionsRef, where(INSTRUTOR_ID, '==', userData?.id || userData?.uid || ''))
+                        const qFallback = query(sessionsRef, where('instructorId', '==', userData?.id || userData?.uid || ''))
                         const fallbackSnap = await getDocs(qFallback)
                         sessions = fallbackSnap.docs
                             .map(d => ({
@@ -167,7 +164,7 @@ export function useTeacherIntelligence() {
                 let allAttendances = []
                 try {
                     const logsRef = collection(db, COLLECTIONS.PRESENCAS_LOG)
-                    
+
                     // Busca simplificada apenas por data para máxima compatibilidade
                     const attQuery = query(
                         logsRef,
@@ -176,38 +173,47 @@ export function useTeacherIntelligence() {
 
                     const attSnap = await getDocs(attQuery)
                     const sessionIdsSet = new Set(sessions.map(s => s.id))
-                    
+
                     allAttendances = attSnap.docs
                         .map(d => {
                             const data = d.data()
                             const idParts = d.id.split('_')
                             const extractedSessionId = idParts.length > 1 ? idParts[idParts.length - 1] : data.sessionId
-                            
-                            return { 
-                                ...data, 
-                                sessionId: data.sessionId || extractedSessionId, 
+
+                            return {
+                                ...data,
+                                sessionId: data.sessionId || extractedSessionId,
                                 status: (data.status || data[FIELDS.STATUS] || 'present').toLowerCase(),
-                                date: safeDate(data.date || data.data || data.timestamp || data.createdAt) 
+                                date: safeDate(data.date || data.data || data.timestamp || data.createdAt)
                             }
                         })
                         // Filtro em memória: Apenas logs vinculados às sessões deste professor
                         .filter(a => isPowerUser || sessionIdsSet.has(a.sessionId))
-                    
+
                     console.log(`[Intelligence] Logs processados: ${allAttendances.length}`)
                 } catch (err) {
                     console.error("[Intelligence] Erro ao buscar logs:", err);
                 }
 
                 // 4. Processar Estatísticas dos Alunos (Ranking e Churn)
-                const studentStats = myStudents.map(student => {
+                const validStudentStats = []
+
+                myStudents.forEach(student => {
                     const studentLogs = allAttendances.filter(a => a.studentId === student.id)
+                    
+                    // IMPORTANTE: Se o professor não é admin/gestor, e o aluno NUNCA participou
+                    // de uma aula deste professor, ele não deve aparecer no dashboard do professor
+                    if (!isPowerUser && studentLogs.length === 0) {
+                        return
+                    }
+
                     const studentAtts = studentLogs.filter(l => l.status === 'present' || l.status === 'presente')
                     const studentJustified = studentLogs.filter(l => l.status === 'justified' || l.status === 'justificada' || l.status === 'justificado')
 
                     // FÓRMULA: Presenças / (Total de Aulas - Justificadas)
                     const totalSessions = sessions.length
                     const denominator = Math.max(1, totalSessions - studentJustified.length)
-                    const attendanceRate = Math.round((studentAtts.length / denominator) * 100)
+                    const attendanceRate = denominator > 0 ? Math.round((studentAtts.length / denominator) * 100) : 0
 
                     const sparkline = Array.from({ length: 7 }, (_, i) => {
                         const d = new Date(now)
@@ -220,7 +226,7 @@ export function useTeacherIntelligence() {
                     const lastAttDate = safeDate(student.lastAttendanceAt, null)
                     const daysAbsent = lastAttDate ? Math.floor((now - lastAttDate) / (1000 * 60 * 60 * 24)) : 99
 
-                    return {
+                    validStudentStats.push({
                         id: student.id,
                         name: formatName(student.name),
                         photo: student.photo,
@@ -233,13 +239,16 @@ export function useTeacherIntelligence() {
                         lastAttendance: student.lastAttendanceAt,
                         daysAbsent,
                         sparkline
-                    }
+                    })
                 })
 
-                const avgFreq = studentStats.length > 0 ? studentStats.reduce((acc, s) => acc + s.attendanceRate, 0) / studentStats.length : 0
-                
+                const avgFreq = validStudentStats.length > 0 ? validStudentStats.reduce((acc, s) => acc + s.attendanceRate, 0) / validStudentStats.length : 0
+
                 // 4.1 Graduações Próximas (Lógica 1:1 com Gestor)
-                const graduationList = myStudents
+                const validStudentIds = new Set(validStudentStats.map(s => s.id))
+                const validStudentsData = myStudents.filter(s => isPowerUser || validStudentIds.has(s.id))
+
+                const graduationList = validStudentsData
                     .filter(s => (s.totalAttendances || 0) >= 40 || (s.monthlyAttendances || 0) >= 10)
                     .map(s => ({
                         ...s,
@@ -249,18 +258,18 @@ export function useTeacherIntelligence() {
                     .slice(0, 5)
 
                 // 4.2 KPIs Extras (Resto dos KPIs solicitados)
-                const newStudents30d = myStudents.filter(s => {
+                const newStudents30d = validStudentsData.filter(s => {
                     const cDate = safeDate(s.createdAt)
                     return cDate >= thirtyDaysAgo
                 }).length
 
-                const absentCriticalList = studentStats
+                const absentCriticalList = validStudentStats
                     .filter(s => s.daysAbsent > 10)
                     .sort((a, b) => b.daysAbsent - a.daysAbsent)
 
                 const absentCritical = absentCriticalList.length
                 const sessions30d = sessions.filter(s => s.createdAt >= thirtyDaysAgo).length
-                
+
                 const todayYMD = toYMD(now)
                 const sessionsToday = sessions.filter(s => (s.date || toYMD(s.createdAt)) === todayYMD)
                 const todayAttendances = sessionsToday.reduce((acc, s) => acc + (Number(s.presencasCount) || 0), 0)
@@ -278,11 +287,11 @@ export function useTeacherIntelligence() {
                             d.setDate(dNow.getDate() - (6 - i))
                             const dateStr = toYMD(d)
                             const daySessions = sessions.filter(s => (s.date || toYMD(s.createdAt)) === dateStr)
-                            return { 
-                                name: DAYS_ABR[d.getDay()], 
+                            return {
+                                name: DAYS_ABR[d.getDay()],
                                 presencas: daySessions.reduce((acc, s) => acc + (Number(s.presencasCount) || 0), 0),
                                 faltas: daySessions.reduce((acc, s) => acc + (Number(s.faltasCount) || 0), 0),
-                                novos: 0, inativos: 0, visitantes: 0, dateStr: dateStr 
+                                novos: 0, inativos: 0, visitantes: 0, dateStr: dateStr
                             }
                         })
                     } else if (period === 'mes') {
@@ -301,11 +310,11 @@ export function useTeacherIntelligence() {
                     } else {
                         return MNTHS_ABR.map((name, i) => {
                             const monthSessions = sessions.filter(s => s.createdAt.getMonth() === i && s.createdAt.getFullYear() === dNow.getFullYear())
-                            return { 
+                            return {
                                 name,
                                 presencas: monthSessions.reduce((acc, s) => acc + (Number(s.presencasCount) || 0), 0),
                                 faltas: monthSessions.reduce((acc, s) => acc + (Number(s.faltasCount) || 0), 0),
-                                novos: 0, inativos: 0, visitantes: 0, month: i 
+                                novos: 0, inativos: 0, visitantes: 0, month: i
                             }
                         })
                     }
@@ -316,7 +325,7 @@ export function useTeacherIntelligence() {
                 const yearData = buildSkeleton('ano')
 
                 // ── 4. Preencher Dados de Fluxo (Membros) ──────────────────────
-                myStudents.forEach(s => {
+                validStudentsData.forEach(s => {
                     const created = safeDate(s.createdAt)
                     const cDay = created.getDate()
                     const cMonth = created.getMonth()
@@ -349,7 +358,7 @@ export function useTeacherIntelligence() {
                 })
 
                 // Ordenar por presença (Maior para menor)
-                const sortedStats = studentStats.sort((a, b) => b.attendanceRate - a.attendanceRate)
+                const sortedStats = validStudentStats.sort((a, b) => b.attendanceRate - a.attendanceRate)
 
                 setIntelligenceData({
                     graduations: graduationList,
@@ -366,7 +375,7 @@ export function useTeacherIntelligence() {
                         ano: yearData.map(d => ({ name: d.name, novos: d.novos, inativos: d.inativos, visitantes: d.visitantes }))
                     },
                     stats: {
-                        totalStudents: myStudents.length,
+                        totalStudents: validStudentsData.length,
                         avgAttendance30d: Math.round(avgFreq),
                         newStudents30d,
                         absentCritical,

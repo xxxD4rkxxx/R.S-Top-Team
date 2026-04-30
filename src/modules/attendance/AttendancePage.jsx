@@ -138,6 +138,28 @@ export default function AttendancePage() {
     const myModalities = userData?.modalities || []
     return modalities.filter(m => myModalities.includes(m.name))
   }, [modalities, loadingModalities, isAdminView, userData, isPowerUser])
+
+  const getAvailableTurmas = (mod) => {
+    const turmas = mod.turmas?.filter(t => t.status === 'ativo') || []
+    if (isPowerUser && isAdminView) return turmas
+    
+    // Para professores, filtra apenas as turmas em que eles dão aula (case-insensitive e includes)
+    return turmas.filter(t => {
+      const myName = (userData?.nome || userData?.name || '').toLowerCase().trim()
+      const myId = user?.uid
+
+      if (t.professors && Array.isArray(t.professors) && t.professors.length > 0) {
+         return t.professors.some(p => {
+           const pName = (p.nome || p.name || '').toLowerCase().trim()
+           return p.id === myId || (myName && pName.includes(myName)) || (pName && myName.includes(pName))
+         })
+      }
+      
+      const tProfName = (t.professor || '').toLowerCase()
+      return t.professorId === myId || (myName && tProfName.includes(myName)) || (tProfName && myName.includes(tProfName))
+    })
+  }
+
   const [showMobileConfig, setShowMobileConfig] = useState(false)
   const [showProfessorDropdown, setShowProfessorDropdown] = useState(false)
   const [unmarkedAlert, setUnmarkedAlert] = useState(false)
@@ -163,7 +185,7 @@ export default function AttendancePage() {
       const single = availableModalities[0]
       setSessionModality(single.name)
       
-      const turmas = single.turmas?.filter(t => t.status === 'ativo') || []
+      const turmas = getAvailableTurmas(single)
       if (turmas.length > 0) {
         const time = ensureTimeFormat(turmas[0].horario || turmas[0].horarioInicio)
         setSessionTime(time)
@@ -633,7 +655,7 @@ export default function AttendancePage() {
                 <div className="flex flex-wrap justify-center gap-[25px] mb-8 w-full">
                   {loadingModalities ? [1, 2, 3].map(i => <div key={i} className="h-56 bg-white/5 animate-pulse rounded-[32px] flex-1 min-w-[320px] max-w-[450px]" />) :
                     availableModalities.filter(m => m.status === 'ativo').map(mod => {
-                      const turmas = mod.turmas?.filter(t => t.status === 'ativo') || []
+                      const turmas = getAvailableTurmas(mod)
                       const isJiu = mod.name?.toLowerCase().includes('jiu')
                       const isSelection = sessionModality === mod.name
 
@@ -714,7 +736,7 @@ export default function AttendancePage() {
 
                 {loadingModalities ? [1, 2, 3].map(i => <div key={i} className="h-48 bg-white/5 rounded-[32px] animate-pulse" />) :
                   availableModalities.filter(m => m.status === 'ativo').map(mod => {
-                    const turmas = mod.turmas?.filter(t => t.status === 'ativo') || []
+                    const turmas = getAvailableTurmas(mod)
                     const isJiu = mod.name?.toLowerCase().includes('jiu')
 
                     return (

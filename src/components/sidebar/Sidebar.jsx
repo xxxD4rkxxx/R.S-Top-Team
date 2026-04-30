@@ -21,29 +21,22 @@ const navGroups = [
     ]
   },
   {
-    title: 'Opracional',
+    title: 'Operacional',
     items: [
-      { to: '/alunos', icon: Contact, label: 'Alunos', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/equipe', icon: Users, label: 'Equipe & Professores', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/chamadas', icon: CheckCircle2, label: 'Chamada', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/eventos', icon: BellRing, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'] },
+      { to: '/alunos', icon: Contact, label: 'Alunos', roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewStudents' },
+      { to: '/equipe', icon: Users, label: 'Equipe & Professores', roles: ['admin', 'gestor', 'professor'], reqPerm: 'manageUsers' },
+      { to: '/chamadas', icon: CheckCircle2, label: 'Chamada', roles: ['admin', 'gestor', 'professor'], reqPerm: 'manageClasses' },
+      { to: '/eventos', icon: BellRing, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'], reqPerm: 'manageEvents' },
       { to: '/visitantes', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
-      { to: '/modalidades', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/modalidades', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'], reqPerm: 'manageSystem' },
     ]
   },
-  // {
-  //   title: 'Acordos e Planos',
-  //   items: [
-  //     { to: '/planos', icon: Gem, label: 'Planos', roles: ['admin', 'gestor'] },
-  //     { to: '/contratos', icon: FileDigit, label: 'Gestão de Contratos', roles: ['admin', 'gestor'] },
-  //   ]
-  // },
   {
     title: 'Inteligência Financeira',
     items: [
-      { to: '/financeiro',  icon: PiggyBank,      label: 'Cobrança',               roles: ['admin', 'gestor', 'professor'] },
-      { to: '/despesas', icon: ArrowDownRight,  label: 'Despesas',               roles: ['admin', 'gestor', 'professor'] },
-      { to: '/relatorios',  icon: PieChart,        label: 'Relatórios Financeiros', roles: ['admin', 'gestor', 'professor'] },
+      { to: '/financeiro',  icon: PiggyBank,      label: 'Cobrança',               roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewFinance' },
+      { to: '/despesas', icon: ArrowDownRight,  label: 'Despesas',               roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewFinance' },
+      { to: '/relatorios',  icon: PieChart,        label: 'Relatórios Financeiros', roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewFinance' },
     ]
   },
   {
@@ -63,11 +56,11 @@ const NavTooltip = ({ content, visible }) => (
         animate={{ opacity: 1, x: 0, scale: 1 }}
         exit={{ opacity: 0, x: -10, scale: 0.9 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#121212] border border-white/10 rounded-2xl shadow-2xl z-[100] pointer-events-none whitespace-nowrap"
-        style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
+        className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 border border-white/10 rounded-2xl shadow-2xl z-[100] pointer-events-none whitespace-nowrap"
+        style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.5)', background: 'var(--clr-surface)' }}
       >
-        <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-[#121212] border-l border-b border-white/10 rotate-45" />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-white">{content}</span>
+        <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 border-l border-b border-white/10 rotate-45" style={{ background: 'var(--clr-surface)' }} />
+        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--clr-text)' }}>{content}</span>
       </motion.div>
     )}
   </AnimatePresence>
@@ -85,11 +78,18 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
   const effectivelyCollapsed = collapsed && !isMobile
 
-  // Filtra itens de navegação baseados no nível de acesso atual
-  const isActuallyAdmin = userData?.role === 'admin'
+  // Filtra itens de navegação baseados no nível de acesso atual e permissões
+  const isActuallyAdmin = userData?.role === 'admin' || userData?.roles?.admin || effectiveRole === 'admin'
+  const hasPerm = (key) => {
+    if (!key) return true;
+    if (isActuallyAdmin) return true;
+    if (!userData?.permissions) return true;
+    return !!userData.permissions[key];
+  }
+
   const filteredNavGroups = navGroups.map(group => ({
     ...group,
-    items: group.items.filter(item => item.roles.includes(effectiveRole))
+    items: group.items.filter(item => item.roles.includes(effectiveRole) && hasPerm(item.reqPerm))
   })).filter(group => group.items.length > 0)
 
   // Opções para troca rápida de visualização (apenas admins)
@@ -122,14 +122,15 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
           x: mobileOpen ? 0 : (isMobile ? '-100%' : 0)
         }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="sidebar no-scrollbar flex flex-col bg-black relative z-40 backdrop-blur-xl"
-        style={{ borderRight: '1px solid rgba(255, 255, 255, 0.05)' }}
+        className="sidebar no-scrollbar flex flex-col relative z-40 backdrop-blur-xl"
+        style={{ borderRight: '1px solid rgba(255, 255, 255, 0.05)', background: 'var(--clr-sidebar)' }}
       >
         {/* Logotipo da Academia */}
         <Link
           to="/"
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center h-24 border-b border-white/5 bg-black/20 ${effectivelyCollapsed ? 'px-[14px]' : 'px-[24px]'} relative overflow-hidden flex-nowrap shrink-0`}
+          className={`flex items-center h-24 border-b border-white/5 ${effectivelyCollapsed ? 'px-[14px]' : 'px-[24px]'} relative overflow-hidden flex-nowrap shrink-0`}
+          style={{ background: 'color-mix(in srgb, var(--clr-sidebar) 80%, transparent)' }}
         >
           <div className={`${effectivelyCollapsed ? 'w-10 h-10' : 'w-12 h-12'} flex-shrink-0 relative flex items-center justify-center transition-all duration-500`}>
             <img
@@ -172,7 +173,8 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                   marginBottom: effectivelyCollapsed ? 0 : 8,
                 }}
                 transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="text-[9px] font-black uppercase tracking-[0.25em] px-5 whitespace-nowrap overflow-hidden text-gray-500"
+                className="text-[9px] font-black uppercase tracking-[0.25em] px-5 whitespace-nowrap overflow-hidden"
+                style={{ color: 'var(--clr-text-muted)' }}
               >
                 {group.title}
               </motion.p>
@@ -186,7 +188,8 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                         e.preventDefault()
                         return
                       }
-                      setMobileOpen(false)
+                      // Delay para o usuário ver o estado ativo antes de fechar
+                      setTimeout(() => setMobileOpen(false), 180)
                     }}
                     onMouseEnter={() => setHoveredItem(to)}
                     onMouseLeave={() => setHoveredItem(null)}
@@ -198,16 +201,29 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                         : 'px-4 py-2.5 rounded-2xl w-full mx-auto'
                       }
                       ${isActive
-                        ? 'active bg-primary/10 text-primary'
-                        : 'text-gray-500 hover:bg-white/5 hover:text-white'
+                        ? 'active'
+                        : 'hover:bg-white/5'
                       }
                     `}
                     style={{
-                      maxWidth: effectivelyCollapsed ? '44px' : '235px'
+                      maxWidth: effectivelyCollapsed ? '44px' : '235px',
                     }}
                   >
                     {({ isActive }) => (
-                      <>
+                      <div
+                        className="flex items-center w-full h-full"
+                        style={{
+                          background: isActive
+                            ? 'color-mix(in srgb, var(--clr-primary) 12%, transparent)'
+                            : undefined,
+                          color: isActive
+                            ? 'var(--clr-primary)'
+                            : 'var(--clr-text-muted)',
+                          borderRadius: 'inherit',
+                          padding: effectivelyCollapsed ? 0 : undefined,
+                          justifyContent: effectivelyCollapsed ? 'center' : undefined,
+                        }}
+                      >
                         {/* Active Indicator Pill */}
                         <AnimatePresence>
                           {isActive && effectivelyCollapsed && (
@@ -216,7 +232,8 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                               initial={{ opacity: 0, x: -5, height: 0 }}
                               animate={{ opacity: 1, x: 0, height: 20 }}
                               exit={{ opacity: 0, x: -5, height: 0 }}
-                              className="absolute left-[-12px] w-[3px] bg-primary rounded-full shadow-[0_0_15px_rgba(254,110,0,0.8)] z-20"
+                              className="absolute left-[-12px] w-[3px] rounded-full z-20"
+                              style={{ backgroundColor: 'var(--clr-primary)', boxShadow: '0 0 15px color-mix(in srgb, var(--clr-primary) 80%, transparent)' }}
                             />
                           )}
                         </AnimatePresence>
@@ -225,7 +242,8 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                           <Icon
                             size={20}
                             strokeWidth={isActive ? 2.2 : 1.5}
-                            className={`nav-icon transition-all duration-300 ${isActive ? 'text-primary' : ''} group-hover:scale-110`}
+                            className="nav-icon transition-all duration-300 group-hover:scale-110"
+                            style={{ color: isActive ? 'var(--clr-primary)' : undefined }}
                           />
                         </div>
 
@@ -241,7 +259,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                         >
                           {label}
                         </motion.span>
-                      </>
+                      </div>
                     )}
                   </NavLink>
 
@@ -258,7 +276,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
         </nav>
 
         {/* Footer Panel */}
-        <div className="p-3 border-t border-white/5 bg-black/20 flex flex-col gap-2 shrink-0">
+        <div className="p-3 border-t border-white/5 flex flex-col gap-2 shrink-0" style={{ background: 'color-mix(in srgb, var(--clr-sidebar) 80%, transparent)' }}>
           {isActuallyAdmin && (
             <div className="relative">
               <button
@@ -266,7 +284,11 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                   if (isNavLocked) return
                   setShowSimMenu(!showSimMenu)
                 }}
-                className={`flex items-center rounded-2xl transition-all h-11 px-[20px] w-full flex-nowrap ${simulatedRole ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-white/5'}`}
+                className="flex items-center rounded-2xl transition-all h-11 px-[20px] w-full flex-nowrap hover:bg-white/5"
+                style={{
+                  background: simulatedRole ? 'color-mix(in srgb, var(--clr-primary) 12%, transparent)' : undefined,
+                  color: simulatedRole ? 'var(--clr-primary)' : 'var(--clr-text-muted)',
+                }}
               >
                 <div className="w-7 flex-shrink-0 flex justify-center items-center">
                   <ShieldCheck size={19} strokeWidth={2} />
@@ -320,7 +342,8 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
             onClick={() => isMobile ? setMobileOpen(false) : setCollapsed(v => !v)}
             onMouseEnter={() => setHoveredItem('collapse-btn')}
             onMouseLeave={() => setHoveredItem(null)}
-            className={`nav-item flex items-center text-gray-500 hover:bg-white/5 hover:text-white transition-all w-full relative ${effectivelyCollapsed ? 'h-[44px] w-[44px] justify-center p-0 rounded-2xl mx-auto' : 'h-11 px-5 rounded-2xl'}`}
+            className={`nav-item flex items-center hover:bg-white/5 transition-all w-full relative ${effectivelyCollapsed ? 'h-[44px] w-[44px] justify-center p-0 rounded-2xl mx-auto' : 'h-11 px-5 rounded-2xl'}`}
+            style={{ color: 'var(--clr-text-muted)' }}
           >
             <div className={`${effectivelyCollapsed ? 'w-auto' : 'w-7'} flex-shrink-0 flex justify-center items-center transition-all duration-300`}>
               {collapsed && !isMobile ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}

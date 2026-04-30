@@ -187,8 +187,24 @@ export default function TeacherDashboard() {
 
   // ── Render Helpers ──────────────────────────────────────────
 
+  const hasNoTurmas = !isPowerUser && (!userData?.modalities || userData.modalities.length === 0) && (!userData?.turmas || userData.turmas.length === 0)
+
   const renderDashboard = () => (
     <div className="space-y-6 fade-slide-up">
+      {hasNoTurmas && (
+        <div className="p-4 rounded-xll bg-orange-500/10 border border-orange-500/20 flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest">Sem Turmas Vinculadas</h3>
+            <p className="text-xs text-gray-400 mt-1">
+              Você ainda não foi alocado a nenhuma turma ou modalidade. Seus alunos e histórico não aparecerão até que a gestão atualize o seu perfil.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Resumo Integrado Premium (Inspirado nas imagens de referência) */}
       <IntelligenceSection data={intelligence} userName={userData?.name || 'Professor'} />
 

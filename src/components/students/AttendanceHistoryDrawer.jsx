@@ -61,9 +61,9 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
     if (!student?.id) return
     setLoading(true)
     try {
-      // All attendance records for this student (from sessions -> attendances)
+      // All attendance records for this student (using flat log collection to avoid missing indexes)
       const q = query(
-        collectionGroup(db, SUB_COLLECTIONS.PRESENCAS),
+        fsCollection(db, COLLECTIONS.PRESENCAS_LOG),
         where('studentId', '==', student.id)
       )
       const snap = await getDocs(q)
@@ -396,7 +396,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                             cellStyle = 'bg-white/10 text-gray-400 border-none cursor-help'
                           } else if (isToday) {
                             // Subtle today marker
-                            cellStyle = 'bg-white/20 text-white font-black border border-white/20'
+                            cellStyle = 'bg-white/5 text-white font-black border-2 border-primary/60'
                           }
 
                           return (

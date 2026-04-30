@@ -139,19 +139,33 @@ export default function ReportsPage() {
   const [activePieIndex, setActivePieIndex] = useState(-1)
 
   const d = useMemo(() => {
-    const receitaRealizada = bills.filter(b => b.status === 'paid').reduce((s, b) => s + (Number(b.amount) || 0), 0)
-    const receitaPendente = bills.filter(b => b.status === 'pending').reduce((s, b) => s + (Number(b.amount) || 0), 0)
-    const receitaVencida = bills.filter(b => b.status === 'overdue').reduce((s, b) => s + (Number(b.amount) || 0), 0)
-    const despesasPagas = expenses.filter(e => e.status === 'paid').reduce((s, e) => s + (Number(e.amount) || 0), 0)
-    const despesasPendentes = expenses.filter(e => e.status === 'pending').reduce((s, e) => s + (Number(e.amount) || 0), 0)
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
+    // Filtro para garantir que pegamos apenas o que pertence ao mês/ano atual
+    const isThisMonth = (item) => {
+      if (!item.dueDate) return false
+      const d = new Date(item.dueDate + 'T00:00:00') // Adicionado T00:00:00 para evitar problemas de timezone
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+    }
+
+    const monthBills = bills.filter(isThisMonth)
+    const monthExpenses = expenses.filter(isThisMonth)
+
+    const receitaRealizada = monthBills.filter(b => b.status === 'paid').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    const receitaPendente = monthBills.filter(b => b.status === 'pending').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    const receitaVencida = monthBills.filter(b => b.status === 'overdue').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    const despesasPagas = monthExpenses.filter(e => e.status === 'paid').reduce((s, e) => s + (Number(e.amount) || 0), 0)
+    const despesasPendentes = monthExpenses.filter(e => e.status === 'pending').reduce((s, e) => s + (Number(e.amount) || 0), 0)
     const lucroLiquido = receitaRealizada - despesasPagas
     const alunosAtivos = students.filter(s => s.status === 'Ativo')
-    const inadimplentes = new Set(bills.filter(b => b.status === 'overdue').map(b => b.studentId)).size
+    const inadimplentes = new Set(monthBills.filter(b => b.status === 'overdue').map(b => b.studentId)).size
     const totalReceita = receitaRealizada + receitaPendente + receitaVencida
     const totalDespesa = despesasPagas + despesasPendentes
     const maxBar = Math.max(totalReceita, totalDespesa, 1)
 
-    const porCategoria = expenses.reduce((acc, e) => {
+    const porCategoria = monthExpenses.reduce((acc, e) => {
       const cat = e.category || 'Outros'
       acc[cat] = (acc[cat] || 0) + (Number(e.amount) || 0)
       return acc
@@ -177,18 +191,14 @@ export default function ReportsPage() {
   const healthMetrics = useMemo(() => {
     const { totalReceita, totalDespesa, receitaRealizada, despesasPagas, margemLucro, alunosAtivos } = d
 
-    // Liquidez: Capacidade de pagar o que deve
     const liq = totalDespesa > 0 ? totalReceita / totalDespesa : 1.5
     let sLiq = 'SAUDÁVEL'; if (liq < 1.1) sLiq = 'AVISO'; if (liq < 1.0) sLiq = 'CRÍTICO';
 
-    // Capital de Giro: Dinheiro livre agora
     const cap = receitaRealizada - despesasPagas
     let sCap = 'ESTÁVEL'; if (cap > 5000) sCap = 'ALTO'; if (cap < 0) sCap = 'CRÍTICO';
 
-    // Margem: Eficiência
     let sMar = 'NORMAL'; if (margemLucro > 25) sMar = 'ALTO'; if (margemLucro < 10) sMar = 'BAIXO';
 
-    // ROI Simples: Retorno sobre o que foi gasto
     const roi = despesasPagas > 0 ? ((receitaRealizada - despesasPagas) / despesasPagas) * 100 : null
     let sRoi = 'ESTÁVEL';
     if (roi !== null) {
@@ -198,7 +208,6 @@ export default function ReportsPage() {
       sRoi = 'AVISO';
     }
 
-    // LTV: Estimativa
     const ticketMedioRaw = alunosAtivos > 0 ? receitaRealizada / alunosAtivos : 0
     const ltv = ticketMedioRaw * 6
     let sLtv = 'ESTÁVEL'; if (ltv > 1500) sLtv = 'ALTO';
@@ -212,26 +221,65 @@ export default function ReportsPage() {
     ]
   }, [d])
 
+  const history = useMemo(() => {
+    const months = []
+    const now = new Date()
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const m = d.getMonth()
+      const y = d.getFullYear()
+      const label = d.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '')
+      
+      const filterMonth = (item) => {
+        if (!item.dueDate) return false
+        const itemDate = new Date(item.dueDate + 'T00:00:00')
+        return itemDate.getMonth() === m && itemDate.getFullYear() === y
+      }
+      
+      const b = bills.filter(filterMonth)
+      const e = expenses.filter(filterMonth)
+      
+      const rev = b.filter(x => x.status === 'paid').reduce((s, x) => s + (Number(x.amount) || 0), 0)
+      const exp = e.filter(x => x.status === 'paid').reduce((s, x) => s + (Number(x.amount) || 0), 0)
+      
+      months.push({ label, rev, exp })
+    }
+    
+    // Cálculo de crescimento médio
+    let totalGrowth = 0
+    let count = 0
+    for (let i = 1; i < months.length; i++) {
+      if (months[i-1].rev > 0) {
+        totalGrowth += (months[i].rev - months[i-1].rev) / months[i-1].rev
+        count++
+      }
+    }
+    const avgGrowth = count > 0 ? (totalGrowth / count) * 100 : 0
+    
+    return { months, avgGrowth }
+  }, [bills, expenses])
+
   return (
     <>
       <MobileHeader title="Relatórios" />
       <PageHeader icon={BarChart3} title="RELATÓRIOS FINANCEIROS" subtitle="DADOS CONSOLIDADOS · GESTÃO TÉCNICA" />
-
-      <div className="px-4 md:px-8 py-6 pb-32 fade-slide-up space-y-6 w-full">
-
+ 
+      <div className="px-4 md:px-8 py-6 pb-32 fade-slide-up space-y-8 w-full">
+ 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-          <KPICard title="Receita Pago" value={R$(d.receitaRealizada)} description="Total recebido" icon={ArrowUpCircle} valueColor="text-emerald-400" />
-          <KPICard title="Despesas Pagas" value={R$(d.despesasPagas)} description="Saídas confirmadas" icon={ArrowDownCircle} valueColor="text-rose-400" />
+          <KPICard title="Receita do Mês" value={R$(d.receitaRealizada)} description="Total recebido" icon={ArrowUpCircle} valueColor="text-emerald-400" />
+          <KPICard title="Despesas do Mês" value={R$(d.despesasPagas)} description="Saídas confirmadas" icon={ArrowDownCircle} valueColor="text-rose-400" />
           <KPICard title="Lucro Líquido" value={R$(d.lucroLiquido)} description="Receita − Despesas" icon={Wallet} valueColor={d.lucroLiquido >= 0 ? 'text-emerald-400' : 'text-rose-400'} status={d.lucroLiquido >= 0 ? 'Positivo' : 'Negativo'} />
           <KPICard title="Ticket Médio" value={R$(d.receitaRealizada / (d.alunosAtivos || 1))} description={`${d.alunosAtivos} ativos`} icon={Target} valueColor="text-blue-400" />
         </div>
-
+ 
         <div className="glass-card p-8 space-y-6 relative border border-white/5">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5">
             {healthMetrics.map((card, idx) => <HealthCard key={idx} {...card} />)}
           </div>
         </div>
-
+ 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Section title="Eficiência" icon={TrendingUp} color="text-purple-400">
             <div className="space-y-1">
@@ -240,7 +288,7 @@ export default function ReportsPage() {
               <Row label="Alunos Ativos" value={d.alunosAtivos} vc="text-blue-400" note="Total na base" />
             </div>
           </Section>
-
+ 
           <Section title="Fluxo de Caixa" icon={BarChart3} color="text-blue-400">
             <div className="space-y-6 pt-1">
               <div>
@@ -253,8 +301,7 @@ export default function ReportsPage() {
               </div>
             </div>
           </Section>
-
-          {/* GRÁFICO DE PIZZA (PIE) — COMPLETO E SEM FURO */}
+ 
           <Section title="Despesas por Categoria" icon={PieChartIcon} color="text-pink-400">
             <div className="flex flex-col h-full gap-4">
               <div className="flex-1 min-h-[160px] relative mt-2 shrink-0">
@@ -276,23 +323,14 @@ export default function ReportsPage() {
                       onMouseEnter={(_, index) => setActivePieIndex(index)}
                       onMouseLeave={() => setActivePieIndex(-1)}
                       labelLine={false}
-                      isAnimationActive={false} // Desativa a animação de entrada que causa o "pulo"
+                      isAnimationActive={false}
                       label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
                         const RADIAN = Math.PI / 180;
                         const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
                         const x = cx + radius * Math.cos(-midAngle * RADIAN);
                         const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
                         return (
-                          <text
-                            x={x}
-                            y={y}
-                            fill="white"
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            className="text-[12px] font-bold pointer-events-none"
-                            style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}
-                          >
+                          <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-[12px] font-bold pointer-events-none" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>
                             {`${(percent * 100).toFixed(0)}%`}
                           </text>
                         );
@@ -302,31 +340,25 @@ export default function ReportsPage() {
                         <Cell key={`cell-${index}`} fill={`#${PIE_COLORS[index % PIE_COLORS.length]}`} />
                       ))}
                     </Pie>
-                    <ReTooltip
-                      animationDuration={0}
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const item = payload[0];
-                          const percent = (item.value / d.totalDespesa) * 100;
-                          return (
-                            <div className="bg-[#0A0A0B] border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-xl">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-[#B794F4] mb-1">
-                                {item.name}
-                              </p>
-                              <div className="flex items-baseline gap-2">
-                                <span className="text-sm font-black text-white">{percent.toFixed(1)}%</span>
-                                <span className="text-[10px] text-gray-500 font-bold">{R$(item.value)}</span>
-                              </div>
+                    <ReTooltip animationDuration={0} content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const item = payload[0];
+                        const percent = (item.value / d.totalDespesa) * 100;
+                        return (
+                          <div className="bg-[#0A0A0B] border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-xl">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#B794F4] mb-1">{item.name}</p>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-sm font-black text-white">{percent.toFixed(1)}%</span>
+                              <span className="text-[10px] text-gray-500 font-bold">{R$(item.value)}</span>
                             </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-
               <div className="h-[100px] overflow-y-auto scrollbar-hidden space-y-2 px-1">
                 {d.categoriasRanked.map((item, index) => {
                   const percent = (item.val / d.totalDespesa) * 100;
@@ -347,15 +379,79 @@ export default function ReportsPage() {
             </div>
           </Section>
         </div>
-
-        <Section title="Demonstrativo Analítico" icon={AlertCircle} color="text-amber-400">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-white/5 -mx-8 -my-8 mt-4 bg-black/20">
-            <div className="p-8"><p className="text-[10px] font-black text-gray-500 uppercase mb-4">Entradas</p><Row label="Recebido" value={R$(d.receitaRealizada)} vc="text-emerald-400" /><Row label="Futuro" value={R$(d.totalReceita - d.receitaRealizada)} vc="text-amber-400" /></div>
-            <div className="p-8"><p className="text-[10px] font-black text-gray-500 uppercase mb-4">Saídas</p><Row label="Pago" value={R$(d.despesasPagas)} vc="text-rose-400" /><Row label="A Pagar" value={R$(d.totalDespesa - d.despesasPagas)} vc="text-amber-400" /></div>
-            <div className="p-8"><p className="text-[10px] font-black text-gray-500 uppercase mb-4">Resultado</p><Row label="Saldo" value={R$(d.lucroLiquido)} vc={d.lucroLiquido >= 0 ? 'text-emerald-400' : 'text-rose-400'} /><Row label="Margem" value={d.margemLucro !== null ? `${d.margemLucro.toFixed(1)}%` : '--'} vc="text-purple-400" /></div>
+ 
+        {/* NOVOS GRÁFICOS HISTÓRICOS (Últimos 6 Meses) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Fluxo de Caixa (6 Meses) */}
+          <div className="glass-card p-8 border border-white/5 bg-white/[0.01]">
+            <h3 className="text-base font-black text-white uppercase tracking-widest mb-8">Fluxo de Caixa (Últimos 6 Meses)</h3>
+            <div className="space-y-6">
+              {history.months.map((m, idx) => {
+                const max = Math.max(...history.months.map(x => Math.max(x.rev, x.exp)), 1)
+                const balance = m.rev - m.exp
+                return (
+                  <div key={idx} className="flex items-center gap-3 group">
+                    <div className="w-20 shrink-0">
+                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">{m.label}</span>
+                    </div>
+                    <div className="w-16 shrink-0 text-left">
+                      <p className="text-[11px] font-black text-emerald-400">{R$(m.rev)}</p>
+                      <p className="text-[11px] font-black text-rose-400">{R$(m.exp)}</p>
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(m.rev/max)*100}%` }} />
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-rose-500 rounded-full" style={{ width: `${(m.exp/max)*100}%` }} />
+                      </div>
+                    </div>
+                    <div className="w-16 shrink-0 text-right">
+                      <span className={`text-[11px] font-black ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{R$(balance)}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </Section>
-        <div className="text-center py-6 opacity-30 text-[9px] font-black uppercase tracking-[0.4em] text-white">Consolidado Dashboard v5.0</div>
+ 
+          {/* Tendência de Receita (6 Meses) */}
+          <div className="glass-card p-8 border border-white/5 bg-white/[0.01]">
+            <div className="flex justify-between items-start mb-8">
+              <h3 className="text-base font-black text-white uppercase tracking-widest">Tendência de Receita (Últimos 6 Meses)</h3>
+              <div className="text-right">
+                <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1">Crescimento Médio</p>
+                <p className={`text-2xl font-black ${history.avgGrowth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {history.avgGrowth.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+            <div className="space-y-6">
+              {history.months.map((m, idx) => {
+                const max = Math.max(...history.months.map(x => x.rev), 1)
+                return (
+                  <div key={idx} className="flex items-center gap-3">
+                    <div className="w-20 shrink-0">
+                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">{m.label}</span>
+                    </div>
+                    <div className="w-16 shrink-0 text-left">
+                      <p className="text-[11px] font-black text-white">{R$(m.rev)}</p>
+                    </div>
+                    <div className="flex-1">
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(m.rev/max)*100}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+ 
+        </div>
+ 
+        <div className="py-6" />
       </div>
       <style>{`
         @keyframes fadeSlideUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
