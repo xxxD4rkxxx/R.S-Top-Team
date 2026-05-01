@@ -61,7 +61,7 @@ const SECTIONS = [
 // ════════════════════════════════════════════════════════════════
 //  PAINEL: MINHA CONTA
 // ════════════════════════════════════════════════════════════════
-function SectionConta({ user, activeRole, onUpdateProfile }) {
+function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
   const [editingField, setEditingField] = useState(null)
   const [fieldValue, setFieldValue] = useState('')
   const [saving, setSaving] = useState(false)
@@ -106,15 +106,91 @@ function SectionConta({ user, activeRole, onUpdateProfile }) {
             </div>
 
             <div className="flex flex-wrap gap-2 justify-end">
-              {Object.entries(user?.roles || {}).filter(([_, active]) => active).map(([rKey]) => {
-                const rCfg = roleConfig[rKey] || roleConfig.aluno
-                return (
-                  <div key={rKey} className={`px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border transition-all hover:scale-105 ${rCfg.bg}`}>
-                    <rCfg.icon size={12} className={rCfg.color} />
-                    <span className={rCfg.color}>{rCfg.label}</span>
-                  </div>
-                )
-              })}
+              {/* TAGS DE CARGO (ROLES) */}
+              {(() => {
+                const rolesSet = new Set()
+                
+                // 1. Coleta do objeto roles (plural/SSoT)
+                if (user?.roles) {
+                  Object.entries(user.roles).forEach(([k, active]) => {
+                    if (active) rolesSet.add(k.toLowerCase())
+                  })
+                }
+
+                // 2. Coleta do campo role (singular/Legado)
+                if (user?.role) {
+                  rolesSet.add(user.role.toLowerCase())
+                }
+
+                // 3. Fallback: Se não houver nenhum cargo identificado, assume Aluno
+                if (rolesSet.size === 0) {
+                  rolesSet.add('aluno')
+                }
+
+                // 4. Ordenação por importância: Admin/Dono > Gestor > Professor > Aluno
+                const priority = { admin: 0, dono: 0, desenvolvedor: 0, gestor: 1, professor: 2, aluno: 3 }
+                const roles = Array.from(rolesSet).sort((a, b) => (priority[a] ?? 99) - (priority[b] ?? 99))
+
+                return roles.map(rKey => {
+                  const rCfg = roleConfig[rKey] || roleConfig.aluno
+                  return (
+                    <div key={rKey} className={`px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border transition-all hover:scale-105 ${rCfg.bg}`}>
+                      <rCfg.icon size={12} className={rCfg.color} />
+                      <span className={rCfg.color}>{rCfg.label}</span>
+                    </div>
+                  )
+                })
+              })()}
+
+              {/* TAG DE STATUS */}
+              {user?.status && (
+                <div className={`px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border transition-all ${
+                  user.status === 'ativo' ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-red-500/10 border-red-500/25 text-red-400'
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${user.status === 'ativo' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+                  <span className="uppercase">{user.status}</span>
+                </div>
+              )}
+
+              {/* TAG DE FAIXA (Se aplicável) */}
+              {user?.belt && user.belt !== 'none' && (
+                <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-300">
+                  <Award size={12} className="text-white/40" />
+                  <span className="uppercase">{beltConfig[user.belt]?.label || user.belt}</span>
+                </div>
+              )}
+
+              {/* TAGS DE MODALIDADE */}
+              {(user?.modalities || (user?.modality ? [user.modality] : [])).map(m => (
+                <div key={m} className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-primary/20 bg-primary/5 text-primary-light">
+                  <Dumbbell size={12} className="opacity-50" />
+                  <span className="uppercase">{m}</span>
+                </div>
+              ))}
+
+              {/* TAG DE CATEGORIA (Adulto/Kids) */}
+              {user?.ageCategory && (
+                <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-400">
+                  <Users size={12} className="opacity-50" />
+                  <span className="uppercase">{user.ageCategory}</span>
+                </div>
+              )}
+
+              {/* TAG DE GÊNERO */}
+              {user?.gender && (
+                <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-400">
+                  <User size={12} className="opacity-50" />
+                  <span className="uppercase">{user.gender}</span>
+                </div>
+              )}
+
+              {/* TAG DE TOTAL DE AULAS */}
+              {user?.total_visitas !== undefined && (
+                <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-400">
+                  <Activity size={12} className="text-primary opacity-70" />
+                  <span>{user.total_visitas || 0} AULAS</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -123,7 +199,7 @@ function SectionConta({ user, activeRole, onUpdateProfile }) {
             <span className="px-3 py-1.5 rounded-2xl text-[11px] font-bold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
               📅 Desde {
                 (() => {
-                  const raw = user?.startDate || user?.createdAt
+                  const raw = user?.startDate || user?.criadoEm || user?.createdAt || user?.dataRegistro || user?.registrationDate || authUser?.metadata?.creationTime
                   if (!raw) return '—'
                   try {
                     // Função auxiliar para converter qualquer formato de data do Firebase/JS
@@ -1444,11 +1520,23 @@ function SectionSobre() {
           { label: 'Framework', value: 'React 19 + Vite' },
           { label: 'Banco de dados', value: 'Firebase Firestore' },
           { label: 'Hospedagem', value: 'Firebase Hosting' },
-          { label: 'Desenvolvido por', value: '@mad.exe' },
+          { label: 'Desenvolvido por', value: '@mad.exe', link: 'https://www.instagram.com/mad.exe/' },
         ].map(row => (
           <div key={row.label} className="flex items-center justify-between px-5 py-3">
             <span className="text-gray-500 text-sm">{row.label}</span>
-            <span className="text-white text-sm font-semibold">{row.value}</span>
+            {row.link ? (
+              <a 
+                href={row.link} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-sm font-semibold hover:underline"
+                style={{ color: 'var(--clr-primary)' }}
+              >
+                {row.value}
+              </a>
+            ) : (
+              <span className="text-white text-sm font-semibold">{row.value}</span>
+            )}
           </div>
         ))}
       </div>
@@ -1558,7 +1646,7 @@ export default function ProfilePage() {
 
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
   const navigate = useNavigate()
-  const { userData, logout, effectiveRole } = useAuth()
+  const { user: authUser, userData, logout, effectiveRole } = useAuth()
   const { setIsMobileNavHidden } = useApp()
   const { users, loading: usersLoading, updateProfile, uploadAvatar, uploadBanner, createNewUser, changePassword, deleteUser, runDeepMigration } = useSystemUsers()
   const { logs, loading: logsLoading } = useSystemLogs('all', 100)
@@ -1575,7 +1663,7 @@ export default function ProfilePage() {
   const role = roleConfig[effectiveRole] || roleConfig.aluno
 
   const panels = {
-    conta: <SectionConta user={userData} activeRole={effectiveRole} onUpdateProfile={handleUpdateProfile} />,
+    conta: <SectionConta user={userData} authUser={authUser} activeRole={effectiveRole} onUpdateProfile={handleUpdateProfile} />,
     seguranca: <SectionSeguranca user={userData} onChangePassword={changePassword} activityLogs={logs} />,
     notificacoes: <SectionNotificacoes user={userData} onUpdateProfile={handleUpdateProfile} />,
     aparencia: <SectionAparencia />,
@@ -1677,7 +1765,7 @@ export default function ProfilePage() {
         </nav>
 
         <div className="h-px mx-3 mb-3" style={{ background: 'rgba(255,255,255,0.05)' }} />
-        <button className="nav-item w-full text-left" onClick={() => logout()} style={{ color: 'var(--clr-primary)' }}>
+        <button className="nav-item w-full text-left" onClick={async () => { await logout(); navigate('/login'); }} style={{ color: 'var(--clr-primary)' }}>
           <LogOut size={18} strokeWidth={1.9} /> <span className="text-[13px]">Sair</span>
         </button>
       </aside>
@@ -1754,7 +1842,7 @@ export default function ProfilePage() {
 
                 {/* Sair */}
                 <button
-                  onClick={() => logout()}
+                  onClick={async () => { await logout(); navigate('/login'); }}
                   className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/5 text-gray-400 font-bold text-sm hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all active:scale-[0.98] mt-4 mb-20 group"
                 >
                   <LogOut size={16} className="group-hover:text-red-400" />

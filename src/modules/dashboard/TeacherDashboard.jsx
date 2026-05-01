@@ -25,6 +25,7 @@ import { beltConfig } from '../../data/beltConfig'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTeacherIntelligence } from '../../hooks/useTeacherIntelligence'
 import IntelligenceSection from './components/IntelligenceSection'
+import QuickStartGuide from './components/QuickStartGuide'
 
 // ── Shared Components ─────────────────────────────────────────
 

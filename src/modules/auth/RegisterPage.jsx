@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../../firebase/config'
+import { COLLECTIONS, FIELDS } from '../../firebase/collections'
 import AmbientBackground from '../../components/shared/AmbientBackground'
 
 /** 🔐 INTERNAL IDENTITY HELPER */
@@ -64,20 +65,19 @@ export default function RegisterPage() {
       const since = now.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
       const finalPin = isGestorPhase ? pin : password
 
-      // SSoT: Grava na coleção unificada 'users' usando o email sanitizado como ID
-      await setDoc(doc(db, 'users', internalEmail), {
-        uid: user.uid,
-        id: internalEmail,
-        email: emailLower,
-        authEmail: internalEmail,
-        name: trimmedName,
-        roles: { [role]: true },
-        status: 'Ativo',
+      // SSoT: Grava na coleção unificada 'usuarios' usando o email sanitizado como ID
+      await setDoc(doc(db, COLLECTIONS.USUARIOS, internalEmail), {
+        [FIELDS.ID]: internalEmail,
+        [FIELDS.EMAIL]: emailLower,
+        authEmail: internalEmail, // Campo auxiliar para o login por PIN
+        [FIELDS.NOME]: trimmedName,
+        [FIELDS.PAPEIS]: { [role]: true },
+        [FIELDS.STATUS]: 'Ativo',
         since,
-        pin: finalPin,
+        [FIELDS.PIN]: finalPin,
         adminPin: role === 'admin' ? finalPin : null,
-        createdAt: serverTimestamp(),
-        permissions: {
+        [FIELDS.CRIADO_EM]: serverTimestamp(),
+        [FIELDS.PERMISSOES]: {
           viewFinance: true,
           manageFinance: role === 'admin',
           manageUsers: role === 'admin',

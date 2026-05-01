@@ -142,19 +142,19 @@ export default function AttendancePage() {
   const getAvailableTurmas = (mod) => {
     const turmas = mod.turmas?.filter(t => t.status === 'ativo') || []
     if (isPowerUser && isAdminView) return turmas
-    
+
     // Para professores, filtra apenas as turmas em que eles dão aula (case-insensitive e includes)
     return turmas.filter(t => {
       const myName = (userData?.nome || userData?.name || '').toLowerCase().trim()
       const myId = user?.uid
 
       if (t.professors && Array.isArray(t.professors) && t.professors.length > 0) {
-         return t.professors.some(p => {
-           const pName = (p.nome || p.name || '').toLowerCase().trim()
-           return p.id === myId || (myName && pName.includes(myName)) || (pName && myName.includes(pName))
-         })
+        return t.professors.some(p => {
+          const pName = (p.nome || p.name || '').toLowerCase().trim()
+          return p.id === myId || (myName && pName.includes(myName)) || (pName && myName.includes(pName))
+        })
       }
-      
+
       const tProfName = (t.professor || '').toLowerCase()
       return t.professorId === myId || (myName && tProfName.includes(myName)) || (tProfName && myName.includes(tProfName))
     })
@@ -172,7 +172,7 @@ export default function AttendancePage() {
 
     // Se já houver uma modalidade selecionada, verifica se ela ainda é válida para este usuário
     if (sessionModality) {
-      const isValid = availableModalities.some(m => 
+      const isValid = availableModalities.some(m =>
         m.name.toLowerCase() === sessionModality.toLowerCase() ||
         m.id.toLowerCase() === sessionModality.toLowerCase()
       )
@@ -184,7 +184,7 @@ export default function AttendancePage() {
     if (availableModalities.length === 1) {
       const single = availableModalities[0]
       setSessionModality(single.name)
-      
+
       const turmas = getAvailableTurmas(single)
       if (turmas.length > 0) {
         const time = ensureTimeFormat(turmas[0].horario || turmas[0].horarioInicio)
@@ -241,7 +241,7 @@ export default function AttendancePage() {
 
   useEffect(() => {
     if (!currentModality) return
-    const isValid = availableModalities.some(m => 
+    const isValid = availableModalities.some(m =>
       m.name.toLowerCase() === currentModality.toLowerCase() ||
       m.id.toLowerCase() === currentModality.toLowerCase()
     )
@@ -409,16 +409,16 @@ export default function AttendancePage() {
   // Lógica de filtragem de alunos para a chamada (Sincronizada com Turmas)
   const activeList = useMemo(() => {
     if (!activeSession) return []
-    
+
     let list = students.filter(student => {
       // Função de normalização robusta
       const normalizeStr = (str) => String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
 
       // Regra 0: Ocultar o próprio professor logado e qualquer um com papel de equipe
-      const isSelf = student.id === user?.uid || 
-                     (student.email && user?.email && student.email.toLowerCase() === user.email.toLowerCase()) || 
-                     (user?.email && student.id === normalizeStr(user.email));
-      
+      const isSelf = student.id === user?.uid ||
+        (student.email && user?.email && student.email.toLowerCase() === user.email.toLowerCase()) ||
+        (user?.email && student.id === normalizeStr(user.email));
+
       const roles = student.papeis || student.roles || {};
       const isStaff = roles.professor || roles.gestor || roles.admin || roles.equipe || roles.colaborador;
 
@@ -428,10 +428,10 @@ export default function AttendancePage() {
       const studentMods = (student.modalities || [student.modality] || [])
         .filter(Boolean)
         .map(m => normalizeStr(m));
-      
+
       const sessionModNorm = normalizeStr(activeSession.modality);
       const hasModality = studentMods.includes(sessionModNorm);
-      
+
       if (!hasModality) return false
 
       // Regra 2: Se a sessão está vinculada a uma turma específica, filtra por ela (SSoT)
@@ -472,7 +472,7 @@ export default function AttendancePage() {
 
     // Se o usuário já selecionou um professor manualmente, não sobrescreve
     if (sessionProfessor && sessionProfessor !== 'Visitante' && !isStaff) {
-       return
+      return
     }
 
     const mod = modalities.find(m => m.name === modName)
@@ -581,7 +581,7 @@ export default function AttendancePage() {
       // Limpa estado local antes de ir para a revisão
       setActiveSession(null)
       setSessionAttendance({})
-      
+
       // Pequeno delay para garantir que o Firestore propagou (UX)
       setTimeout(() => {
         navigate(`/chamadas/revisao/${savedSessionId}`)
@@ -626,7 +626,7 @@ export default function AttendancePage() {
           ) : (
             <button
               onClick={() => setShowModal(true)}
-              className="p-2.5 rounded-xl bg-primary text-black active:scale-90 transition-transform shadow-lg shadow-primary/20"
+              className="p-2.5 rounded-xl bg-primary text-white active:scale-90 transition-transform shadow-lg shadow-primary/20"
             >
               <Plus size={20} strokeWidth={3} />
             </button>
@@ -1074,122 +1074,177 @@ export default function AttendancePage() {
         )}
       </main>
 
-      {/* MOBILE BOTTOM SHEET FOR CONFIG */}
-      <AnimatePresence>
-        {showMobileConfig && (
-          <>
+      {/* CONFIGURATION DRAWER MOBILE */}
+      {showMobileConfig && createPortal(
+        <AnimatePresence mode="wait">
+          <div className="fixed inset-0 z-[2000]">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMobileConfig(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000]"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm"
             />
             <motion.div
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.5 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 100) setShowMobileConfig(false)
+              }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-x-0 bottom-0 z-[1001] bg-surface-app border-t rounded-t-[32px] p-6 pb-12 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
-              style={{ borderColor: 'var(--clr-card-border)' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350, mass: 0.5 }}
+              className="fixed inset-x-0 bottom-0 bg-[#0A0A0A] rounded-t-[32px] sm:rounded-[32px] border border-white/10 shadow-2xl flex flex-col h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden"
             >
-              <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-8" />
-
-              <div className="mb-8">
-                <p className="text-[10px] font-black text-primary tracking-[0.2em] uppercase mb-1">EDITAR SESSÃO</p>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tight">{sessionModality}</h3>
+              {/* Mobile Drag Handle */}
+              <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+                <div className="w-12 h-1.5 bg-white/10 rounded-full" />
               </div>
 
-              <div className="space-y-6 mb-10">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-muted uppercase ml-1">Professor Responsável</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
-                    <input
-                      list="professores-mobile"
-                      value={sessionProfessor}
-                      onChange={(e) => setSessionProfessor(e.target.value)}
-                      className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white font-bold outline-none focus:border-primary/30"
-                      placeholder="Nome do Professor"
-                    />
-                    <datalist id="professores-mobile">
-                      {instructorsOnly.map(s => <option key={s.id} value={s.name} />)}
-                    </datalist>
+              {/* HEADER */}
+              <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-rose-600/10 flex items-center justify-center shrink-0">
+                    <ClipboardCheck className="text-rose-600" size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">Configurar Aula</h2>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">Defina os detalhes da sessão</p>
                   </div>
                 </div>
+                <button 
+                  onClick={() => setShowMobileConfig(false)} 
+                  className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-                {/* Seletor de Horários (Botões Vermelhos) */}
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-muted uppercase ml-1">Horário da Aula</label>
-                  <div className="flex flex-wrap gap-2.5">
-                    {(availableModalities.find(m => m.name === sessionModality)?.turmas || [])
-                      .filter(t => t.status === 'ativo')
-                      .map(t => {
-                        const tTime = ensureTimeFormat(t.horario || t.horarioInicio)
-                        const isSelected = sessionTime === tTime
-                        return (
-                          <button
-                            key={t.id}
-                            onClick={() => setSessionTime(tTime)}
-                            className={`px-5 py-3 rounded-xl text-[10px] font-black transition-all border
-                              ${isSelected
-                                ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/30 scale-105 active:scale-95'
-                                : 'bg-white/5 border-white/5 text-gray-400 active:scale-95 hover:bg-white/10'}`}
-                          >
-                            {t.horario || t.horarioInicio}
-                          </button>
-                        )
-                      })}
-                    {/* Fallback Input for Custom Time */}
-                    <div className="relative flex-1 min-w-[120px]">
-                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={14} />
+              {/* FORM BODY */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar scroll-smooth">
+                <div className="space-y-6 mb-10">
+                  {/* Professor Selector */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted uppercase ml-1">Professor Responsável</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                       <input
-                        type="time"
-                        value={sessionTime}
-                        onChange={(e) => setSessionTime(e.target.value)}
-                        className="w-full h-full bg-white/10 border border-white/10 rounded-xl py-3 pl-10 pr-3 text-[10px] text-white font-black outline-none focus:border-primary/30"
+                        list="professores-mobile"
+                        value={sessionProfessor}
+                        onChange={(e) => setSessionProfessor(e.target.value)}
+                        className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white font-bold outline-none focus:border-primary/30"
+                        placeholder="Nome do Professor"
+                      />
+                      <datalist id="professores-mobile">
+                        {(staffMembers || []).filter(u => u.roles?.professor || u.roles?.admin).map(s => <option key={s.id} value={s.name || s.displayName} />)}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-muted uppercase ml-1">Modalidade da Aula</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableModalities.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            setSessionModality(m.name);
+                            const turmas = m.turmas?.filter(t => t.status === 'ativo') || [];
+                            if (turmas.length > 0) {
+                              const firstTime = ensureTimeFormat(turmas[0].horario || turmas[0].horarioInicio);
+                              setSessionTime(firstTime);
+                              syncProfessors(m.name, firstTime);
+                            }
+                          }}
+                          className={`flex items-center justify-center px-4 py-4 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-all
+                            ${sessionModality === m.name 
+                              ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/20 scale-[1.02]' 
+                              : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10 hover:border-white/10'}`}
+                        >
+                          {m.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-muted uppercase ml-1">Horário Previsto</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(availableModalities.find(m => m.name === sessionModality)?.turmas || [])
+                        .filter(t => t.status === 'ativo')
+                        .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''))
+                        .map((t, idx) => {
+                          const tTime = ensureTimeFormat(t.horario || t.horarioInicio)
+                          const isSelected = ensureTimeFormat(sessionTime) === tTime
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => setSessionTime(tTime)}
+                              className={`px-5 py-3 rounded-xl text-[10px] font-black transition-all border
+                                ${isSelected
+                                  ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/30 scale-105 active:scale-95'
+                                  : 'bg-white/5 border-white/5 text-gray-400 active:scale-95 hover:bg-white/10'}`}
+                            >
+                              {t.horario || t.horarioInicio}
+                            </button>
+                          )
+                        })}
+                      {/* Fallback Input for Custom Time */}
+                      <div className="relative flex-1 min-w-[120px]">
+                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={14} />
+                        <input
+                          type="time"
+                          value={sessionTime}
+                          onChange={(e) => setSessionTime(e.target.value)}
+                          className="w-full h-full bg-white/10 border border-white/10 rounded-xl py-3 pl-10 pr-3 text-[10px] text-white font-black outline-none focus:border-primary/30"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted uppercase ml-1">Data da Aula</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
+                      <input
+                        type="date"
+                        value={sessionDate}
+                        onChange={(e) => setSessionDate(e.target.value)}
+                        className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white font-bold outline-none focus:border-primary/30"
                       />
                     </div>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-muted uppercase ml-1">Data da Aula</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
-                    <input
-                      type="date"
-                      value={sessionDate}
-                      onChange={(e) => setSessionDate(e.target.value)}
-                      className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white font-bold outline-none focus:border-primary/30"
-                    />
-                  </div>
-                </div>
               </div>
 
-              <div className="grid grid-cols-12 gap-3">
+              {/* FOOTER ACTIONS */}
+              <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
                 <button
                   onClick={() => setShowMobileConfig(false)}
-                  className="col-span-4 py-4 bg-white/5 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] border border-white/5 active:scale-95 transition-all outline-none"
+                  className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
                 >
                   Sair
                 </button>
                 <button
                   onClick={handleStartSession}
                   disabled={isSavingSession || !sessionModality}
-                  className={`col-span-8 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all active:scale-95 disabled:opacity-30 disabled:grayscale
+                  className={`flex-[2] py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all active:scale-95 disabled:opacity-30 disabled:grayscale
                     ${!sessionModality ? 'bg-gray-800 text-gray-500' : 'bg-rose-600 text-white shadow-rose-600/30'}`}
                 >
                   {isSavingSession ? 'Iniciando...' : 'Iniciar Chamada'}
                 </button>
               </div>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          </div>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {showModal && (
         <AddStudentModal
+          isOpen={true}
           onClose={() => setShowModal(false)}
           onAdd={async (data, mod, opts) => {
             await addStudent(data, mod, opts)
@@ -1200,3 +1255,4 @@ export default function AttendancePage() {
     </>
   )
 }
+

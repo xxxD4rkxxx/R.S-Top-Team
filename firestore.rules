@@ -50,7 +50,7 @@ service cloud.firestore {
     // ── Perfil de Usuário ─────────────────────────────────────────────────────
     match /usuarios/{userId} {
       allow get: if true;
-      allow list: if isAuth();
+      allow list: if isAuth() || request.query.limit <= 1;
 
       match /privacy/secrets {
         allow read: if isAuth() && (isStaff() || request.auth.token.email.lower() == userId.lower());

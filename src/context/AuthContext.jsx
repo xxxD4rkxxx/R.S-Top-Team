@@ -65,6 +65,11 @@ export function AuthProvider({ children }) {
     return localStorage.getItem('rs_simulated_role') || null
   })
 
+  // 🚀 MODO SETUP: Controle de Bootstrap Inicial
+  const [hasAdmin, setHasAdmin] = useState(true) // Default true para evitar flash de setup
+  const [hasGestor, setHasGestor] = useState(true)
+  const [isSetupMode, setIsSetupMode] = useState(false)
+
   const inactivityTimerRef = useRef(null)
   const sessionPinHashRef = useRef(null)
 
@@ -144,11 +149,15 @@ export function AuthProvider({ children }) {
     } catch (e) { return false }
   }
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
     setUser(null); setUserData(null); setSimulatedRole(null)
     sessionPinHashRef.current = null
-    return signOut(auth)
+    try {
+      await signOut(auth)
+    } catch (err) {
+      console.warn('[AuthContext] Erro ao fazer signOut:', err)
+    }
   }, [])
 
   useEffect(() => {
@@ -522,11 +531,47 @@ export function AuthProvider({ children }) {
     }
   }, [logout])
 
+  // 🔎 Verificação de Bootstrap (Executa uma vez no início)
+  useEffect(() => {
+    const checkBootstrap = async () => {
+      try {
+        const qAdmin = query(collection(db, USERS_COLLECTION), where('papeis.admin', '==', true), limit(1))
+        const qGestor = query(collection(db, USERS_COLLECTION), where('papeis.gestor', '==', true), limit(1))
+        
+        const [snapAdmin, snapGestor] = await Promise.all([
+          getDocs(qAdmin),
+          getDocs(qGestor)
+        ])
+
+        const existsAdmin = !snapAdmin.empty
+        const existsGestor = !snapGestor.empty
+
+        setHasAdmin(existsAdmin)
+        setHasGestor(existsGestor)
+        setIsSetupMode(!existsAdmin || !existsGestor)
+
+        if (!existsAdmin || !existsGestor) {
+          console.log(`[AuthContext] 🛠️ Modo Setup Ativo: Admin(${existsAdmin}), Gestor(${existsGestor})`)
+        }
+      } catch (err) {
+        // Se houver erro de permissão, provavelmente o sistema já tem regras ativas e não está em modo setup inicial.
+        if (err.code === 'permission-denied' || err.message?.includes('permissions')) {
+          console.warn('[AuthContext] Verificação de bootstrap limitada por regras de segurança. Assumindo modo produção.')
+          setIsSetupMode(false)
+        } else {
+          console.error('[AuthContext] Erro ao verificar bootstrap:', err)
+        }
+      }
+    }
+    checkBootstrap()
+  }, [])
+
   const sendResetEmail = async (email) => sendPasswordResetEmail(auth, email)
 
   const value = {
     user, userData, loading, login, loginAdmin, logout, verifyPIN, effectiveRole,
-    simulatedRole, setSimulatedRole, sendResetEmail
+    simulatedRole, setSimulatedRole, sendResetEmail,
+    isSetupMode, hasAdmin, hasGestor
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

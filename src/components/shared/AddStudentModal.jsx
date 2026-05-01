@@ -345,13 +345,21 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
       onClick={onClose}
     >
       <motion.div
+        drag={window.innerWidth < 640 ? "y" : false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.5 }}
+        onDragEnd={(_, info) => {
+          if (info.offset.y > 100) onClose()
+        }}
         layout
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        initial={{ y: "100%", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: "100%", opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 350, mass: 0.5 }}
         onClick={e => e.stopPropagation()}
-        className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] sm:min-h-[500px] overflow-hidden"
+        className="fixed z-[1001] bg-[#0A0A0A] border border-white/10 shadow-2xl flex flex-col overflow-hidden
+                   inset-x-0 bottom-0 h-[95vh] rounded-t-[32px]
+                   sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-2xl sm:w-full sm:h-auto sm:max-h-[90vh] sm:rounded-[32px]"
       >
         {/* Mobile Drag Handle */}
         <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
@@ -359,21 +367,32 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
         </div>
 
         {/* CABEÇALHO */}
-        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
-              {initialData?.isPromoting ? 'Promover para Aluno' :
-                initialData ? (form.type === 'visitante' ? 'Perfil Visitante' : 'Perfil Aluno') :
-                  (form.type === 'visitante' ? 'Novo Visitante' : 'Novo Aluno')}
-            </h2>
+        <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+              <GraduationCap className="text-primary" size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+                {initialData?.isPromoting ? 'Promover Aluno' :
+                  initialData ? (form.type === 'visitante' ? 'Perfil Visitante' : 'Perfil Aluno') :
+                    (form.type === 'visitante' ? 'Novo Visitante' : 'Novo Aluno')}
+              </h2>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                {initialData ? 'Edição de cadastro' : 'Cadastro de novo membro'}
+              </p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-all">
-            <X size={24} />
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+          >
+            <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-black/20">
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-24 space-y-7 custom-scrollbar no-scrollbar scroll-smooth">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar scroll-smooth">
             {errorMsg && (
               <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-[10px] uppercase font-black text-center tracking-widest animate-pulse">
                 {errorMsg}
@@ -791,23 +810,17 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 hover:text-gray-300 transition-all"
+              className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-[2] py-4 rounded-2xl bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className={`flex-[2] py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all active:scale-95 disabled:opacity-30 disabled:grayscale
+                ${saving ? 'bg-gray-800 text-gray-500' : 'bg-rose-600 text-white shadow-rose-600/30'}`}
             >
-              {saving ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Save size={16} />
-                  <span className="text-white">{initialData ? 'Salvar Alterações' : 'Confirmar Cadastro'}</span>
-                </>
-              )}
+              {saving ? 'Salvando...' : (initialData ? 'Salvar Alterações' : 'Cadastrar Membro')}
             </button>
           </div>
         </form>

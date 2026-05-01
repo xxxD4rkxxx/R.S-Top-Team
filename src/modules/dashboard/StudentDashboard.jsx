@@ -2,8 +2,11 @@ import React, { useState, useMemo } from 'react'
 import { 
   Trophy, Medal, Target, Calendar, Clock, TrendingUp, 
   ChevronRight, Star, Zap, Bell, AlertCircle, History,
-  Activity, Sparkles, Check, LayoutDashboard
+  Activity, Sparkles, Check, LayoutDashboard, DollarSign, 
+  Wallet, ArrowUpRight, ShieldCheck
 } from 'lucide-react'
+import { useModalities } from '../../hooks/useModalities'
+import QuickStartGuide from './components/QuickStartGuide'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStudentAttendance } from '../../hooks/useStudentAttendance'
 import { useNotices } from '../../hooks/useNotices'
@@ -58,6 +61,68 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
   </motion.div>
 )
 
+const PaymentStatCard = ({ info, delay = 0 }) => {
+  const { amount, status, changeType } = info;
+  
+  const statusConfig = {
+    pago: { icon: Check, color: '#10b981', label: 'Pago', desc: 'Próxima cobrança' },
+    pendente: { icon: Clock, color: '#f59e0b', label: 'Pendente', desc: 'Fatura atual' },
+    vencido: { icon: AlertCircle, color: '#f43f5e', label: 'Atrasado', desc: 'Fatura atual' }
+  };
+
+  const current = statusConfig[status] || statusConfig.pago;
+  const Icon = current.icon;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className={`relative overflow-hidden glass-card p-5 bg-white/[0.03] border border-white/5 rounded-[32px] group cursor-default h-full min-h-[140px] flex flex-col`}
+    >
+      <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-[40px] opacity-10 transition-opacity group-hover:opacity-20 pointer-events-none`} style={{ background: current.color }} />
+
+      <div className="relative z-10 flex flex-col h-full uppercase">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-white/5 border border-white/10 transition-transform group-hover:scale-110 duration-500 shrink-0" style={{ color: current.color }}>
+              <Icon size={18} />
+            </div>
+            <span className="text-[10px] font-black tracking-[0.15em] text-gray-500 leading-tight break-words overflow-hidden">
+              {current.label}
+            </span>
+          </div>
+          
+          {changeType !== 'none' && (
+            <div className="flex items-center gap-0.5 text-[8px] font-black tracking-tighter px-1.5 py-0.5 rounded-full bg-white/5 shadow-lg shadow-black/50">
+               <ArrowUpRight size={8} className={changeType === 'increase' ? 'text-rose-400' : 'text-emerald-400 transform rotate-90'} />
+               <span className={changeType === 'increase' ? 'text-rose-400' : 'text-emerald-400'}>
+                 {changeType === 'increase' ? 'REAJUSTE' : 'REDUÇÃO'}
+               </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center py-2">
+          <h3 className="text-4xl font-black text-white tracking-tighter leading-none">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(amount)}
+          </h3>
+        </div>
+
+        {status === 'pago' ? (
+          <p className="text-[9px] font-bold text-gray-600 tracking-[0.1em] leading-tight opacity-70">
+            {current.desc}
+          </p>
+        ) : (
+          <button className="mt-auto w-full py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[9px] font-black tracking-[0.15em] transition-colors cursor-pointer active:scale-95 flex items-center justify-center gap-2">
+            <Wallet size={10} /> Pagar Mensalidade
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
 
 export default function StudentDashboard({ user, cobrancas = [] }) {
   const { total: hookTotal, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.id)
@@ -66,6 +131,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
   const total = user?.total_visitas || hookTotal || 0
   const { notices, userViews = new Set(), loading: loadingNotices, markAsViewed } = useNotices(user?.id)
   const { sessions, loading: loadingSessions } = useTodaySessions()
+  const { modalities, loading: loadingModalities } = useModalities()
   const [syncing, setSyncing] = useState(false)
 
   const handleSync = async () => {
@@ -149,6 +215,50 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     ]
   }, [total, monthly, weekly, streak, loadingAttendance])
 
+  // Cálculo do Próximo Pagamento Estimado e Status Financeiro
+  const nextPaymentInfo = useMemo(() => {
+    if (loadingModalities || !user) return { amount: 0, lastAmount: 0, changed: false, changeType: 'none', status: 'pago' };
+
+    let currentEstimated = 0;
+    const cat = (user.ageCategory || 'Adulto').toLowerCase();
+    const modsAluno = Array.isArray(user.modalities) ? user.modalities : [user.modality].filter(Boolean);
+
+    modsAluno.forEach(modName => {
+      const modConfig = modalities.find(m => m.name === modName || m.id === modName);
+      if (modConfig && modConfig.pricing && modConfig.pricing[cat]) {
+        const rule = modConfig.pricing[cat];
+        if (rule.enabled) {
+          currentEstimated += Number(rule.price) || 0;
+        }
+      }
+    });
+
+    // Fallback para valor manual se configurado
+    if (user.billingMode === 'manual' && user.manualPlanValue) {
+      currentEstimated = Number(user.manualPlanValue);
+    } else if (currentEstimated === 0 && user.planValue) {
+      currentEstimated = Number(user.planValue);
+    }
+
+    // Comparar com a última fatura paga para ver se houve aumento ou redução
+    const lastPaidBill = cobrancas.find(b => b.status === 'paid');
+    const lastAmount = lastPaidBill ? Number(lastPaidBill.amount) : currentEstimated;
+    
+    let changeType = 'none';
+    if (currentEstimated > lastAmount) changeType = 'increase';
+    if (currentEstimated < lastAmount && lastAmount > 0) changeType = 'decrease';
+
+    // Determinar Status do Pagamento
+    const hasOverdue = cobrancas.some(b => b.status === 'overdue' || (b.status === 'pending' && b.dueDate < new Date().toISOString().split('T')[0]));
+    const hasPending = cobrancas.some(b => b.status === 'pending' && b.dueDate >= new Date().toISOString().split('T')[0]);
+    
+    let status = 'pago';
+    if (hasOverdue) status = 'vencido';
+    else if (hasPending) status = 'pendente';
+
+    return { amount: currentEstimated, lastAmount, changed: changeType !== 'none', changeType, status };
+  }, [user, modalities, loadingModalities, cobrancas]);
+
   const handleNoticeClick = (notice) => {
     // Marcar como visto se não for o autor e se ainda não foi lido
     if (user?.id && notice.authorId !== user.id && !userViews.has(notice.id)) {
@@ -187,8 +297,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
 
       <div className="flex-1 px-4 md:px-6 py-6 pb-32 space-y-6 w-full fade-slide-up">
         
-
-      {/* Alerta Financeiro */}
+        {/* Alerta Financeiro */}
       <AnimatePresence>
         {pendingBills.length > 0 && (
           <motion.div
@@ -242,7 +351,8 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
         <div className="lg:col-span-8 space-y-8">
           
           {/* Grid de Estatísticas Consolidado */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <PaymentStatCard info={nextPaymentInfo} delay={0.05} />
             <StatCard 
               title="Tempo de Faixa" 
               value={`${monthsInBelt}m`} 
@@ -284,6 +394,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
               delay={0.5}
             />
           </div>
+
 
 
           {/* Atividades Recentes */}

@@ -28,6 +28,7 @@ import { useModalities } from '../../hooks/useModalities'
 import { attendanceService } from '../../services/attendanceService'
 import { useTeacherIntelligence } from '../../hooks/useTeacherIntelligence'
 import IntelligenceSection from './components/IntelligenceSection'
+import QuickStartGuide from './components/QuickStartGuide'
 
 // ── Custom sport PNG icon wrappers ───────────────────────────────
 function IconJiuJitsu({ size = 16, className = '' }) {
@@ -405,7 +406,7 @@ export default function ManagerDashboard() {
             />
 
             <div className="flex-1 px-4 md:px-6 pt-6 pb-0 w-full space-y-6 fade-slide-up">
-
+                
 
                 {/* ── KPIs ───────────────────────────────────────── */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
@@ -417,6 +418,36 @@ export default function ManagerDashboard() {
                             </div>
                         ))
                     }
+                </div>
+
+                {/* ── AÇÕES RÁPIDAS (MOBILE - abaixo dos KPIs) ── */}
+                <div className="block lg:hidden">
+                    <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden p-4">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Zap size={14} className="text-yellow-400" />
+                            <h3 className="text-[10px] uppercase tracking-widest text-white font-black">Ações Rápidas</h3>
+                        </div>
+                        <div className="flex flex-row justify-center gap-2 mx-1 overflow-x-auto pb-2">
+                            <Link to="/students" className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 shrink-0 min-w-[80px] hover:bg-white/10 transition-all group">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/5">
+                                    <Users size={18} />
+                                </div>
+                                <span className="text-[10px] font-bold text-white">Alunos</span>
+                            </Link>
+                            <Link to="/staff" className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 shrink-0 min-w-[80px] hover:bg-white/10 transition-all group">
+                                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shadow-lg shadow-purple-500/5">
+                                    <ShieldCheck size={18} />
+                                </div>
+                                <span className="text-[10px] font-bold text-white">Professores</span>
+                            </Link>
+                            <Link to="/reports" className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 shrink-0 min-w-[80px] hover:bg-white/10 transition-all group">
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/5">
+                                    <BarChart3 size={18} />
+                                </div>
+                                <span className="text-[10px] font-bold text-white">Relatórios</span>
+                            </Link>
+                        </div>
+                    </div>
                 </div>
 
                 {/* ── Inteligência e Analytics ─────────────────────────── */}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import {
-    Award, Users, TrendingUp, Zap, Star, Eye, AlertCircle, MessageCircle, ChevronRight, ShieldCheck, BarChart3
+    Award, Users, TrendingUp, Zap, Star, Eye, AlertCircle, MessageCircle, ChevronRight, ShieldCheck, BarChart3, Activity
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -135,6 +135,38 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
         window.open(`https://wa.me/${student.telefone_completo || ('55' + (student.phone || '').replace(/\D/g, ''))}?text=${encodeURIComponent(text)}`, '_blank')
     }
 
+    const quickActionsBlock = (
+        <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden p-4">
+            <div className="flex items-center gap-2 mb-4">
+                <Zap size={14} className="text-yellow-400" />
+                <h3 className="text-[10px] uppercase tracking-widest text-white font-black">Ações Rápidas</h3>
+            </div>
+
+            <div className="flex flex-row justify-center gap-2 mx-1 overflow-x-auto pb-2">
+                <Link to="/students" className="flex flex-col items-center justify-center gap-3 py-4 px-2 rounded-[24px] hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group text-center shrink-0 min-w-[90px] bg-[#151515]">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/5 group-hover:scale-110 transition-transform">
+                        <Users size={20} />
+                    </div>
+                    <p className="text-[10px] font-black text-white group-hover:text-emerald-400 transition-colors uppercase tracking-widest">Alunos</p>
+                </Link>
+
+                <Link to="/staff" className="flex flex-col items-center justify-center gap-3 py-4 px-2 rounded-[24px] hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group text-center shrink-0 min-w-[90px] bg-[#151515]">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/5 group-hover:scale-110 transition-transform">
+                        <ShieldCheck size={20} />
+                    </div>
+                    <p className="text-[10px] font-black text-white group-hover:text-purple-400 transition-colors uppercase tracking-widest">Professores</p>
+                </Link>
+
+                <Link to="/reports" className="flex flex-col items-center justify-center gap-3 py-4 px-2 rounded-[24px] hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group text-center shrink-0 min-w-[90px] bg-[#151515]">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/5 group-hover:scale-110 transition-transform">
+                        <BarChart3 size={20} />
+                    </div>
+                    <p className="text-[10px] font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-widest">Relatórios</p>
+                </Link>
+            </div>
+        </div>
+    )
+
     return (
         <div className="space-y-6 fade-slide-up">
 
@@ -185,6 +217,13 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                         icon={Zap}
                         iconColor="text-yellow-400"
                     />
+                </div>
+            )}
+
+            {/* ── AÇÕES RÁPIDAS (MOBILE - abaixo dos KPIs) ── */}
+            {!hideKPIs && (
+                <div className="block lg:hidden">
+                    {quickActionsBlock}
                 </div>
             )}
 
@@ -449,53 +488,55 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                     </div>
 
 
-                    {/* Ações Rápidas */}
-                    <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden p-6">
-                        <div className="flex items-center mb-6">
-                            <h3 className="text-[12px] uppercase tracking-widest text-white font-black flex items-center gap-2">
-                                <Zap size={16} className="text-yellow-400" /> Ações Rápidas
-                            </h3>
-                        </div>
+                    {/* Ações Rápidas - Apenas Desktop (Escondido no mobile) */}
+                    <div className="hidden lg:block">
+                        <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden p-6">
+                            <div className="flex items-center mb-6">
+                                <h3 className="text-[12px] uppercase tracking-widest text-white font-black flex items-center gap-2">
+                                    <Zap size={16} className="text-yellow-400" /> Ações Rápidas
+                                </h3>
+                            </div>
 
-                        <div className="space-y-3">
-                            <Link to="/students" className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/5">
-                                        <Users size={18} />
+                            <div className="space-y-3">
+                                <Link to="/students" className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/5">
+                                            <Users size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">Alunos</p>
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Gerencie seus alunos</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">Alunos</p>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Gerencie seus alunos</p>
-                                    </div>
-                                </div>
-                                <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
-                            </Link>
+                                    <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
+                                </Link>
 
-                            <Link to="/staff" className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/5">
-                                        <ShieldCheck size={18} />
+                                <Link to="/staff" className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/5">
+                                            <ShieldCheck size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">Professores</p>
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Gerencie sua equipe</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">Professores</p>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Gerencie sua equipe</p>
-                                    </div>
-                                </div>
-                                <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
-                            </Link>
+                                    <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
+                                </Link>
 
-                            <Link to="/reports" className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/5">
-                                        <BarChart3 size={18} />
+                                <Link to="/reports" className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/5">
+                                            <BarChart3 size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">Relatórios</p>
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Visualize resultados</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">Relatórios</p>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Visualize resultados</p>
-                                    </div>
-                                </div>
-                                <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
-                            </Link>
+                                    <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>

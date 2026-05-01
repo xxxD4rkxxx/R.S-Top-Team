@@ -200,30 +200,27 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                         ? 'w-[44px] h-[44px] justify-center p-0 rounded-2xl mx-auto'
                         : 'px-4 py-2.5 rounded-2xl w-full mx-auto'
                       }
-                      ${isActive
-                        ? 'active'
-                        : 'hover:bg-white/5'
-                      }
+                      ${isActive ? 'active' : 'hover:bg-white/5'}
                     `}
-                    style={{
+                    style={({ isActive }) => ({
                       maxWidth: effectivelyCollapsed ? '44px' : '235px',
-                    }}
+                      background: isActive
+                        ? 'color-mix(in srgb, var(--clr-primary) 12%, transparent)'
+                        : undefined,
+                      color: isActive
+                        ? 'var(--clr-primary)'
+                        : 'var(--clr-text-muted)',
+                    })}
                   >
                     {({ isActive }) => (
                       <div
                         className="flex items-center w-full h-full"
                         style={{
-                          background: isActive
-                            ? 'color-mix(in srgb, var(--clr-primary) 12%, transparent)'
-                            : undefined,
-                          color: isActive
-                            ? 'var(--clr-primary)'
-                            : 'var(--clr-text-muted)',
                           borderRadius: 'inherit',
-                          padding: effectivelyCollapsed ? 0 : undefined,
                           justifyContent: effectivelyCollapsed ? 'center' : undefined,
                         }}
                       >
+                        {/* Active Indicator Pill */}
                         {/* Active Indicator Pill */}
                         <AnimatePresence>
                           {isActive && effectivelyCollapsed && (

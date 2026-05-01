@@ -30,6 +30,7 @@ const EventsPage = lazy(() => import('./modules/events/EventsPage'))
 const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'))
 const ReviewAttendancePage = lazy(() => import('./modules/attendance/ReviewAttendancePage'))
 const LoginPage = lazy(() => import('./modules/auth/LoginPage'))
+const RegisterPage = lazy(() => import('./modules/auth/RegisterPage'))
 const ResetPasswordPage = lazy(() => import('./modules/auth/ResetPasswordPage'))
 const ContractsPage = lazy(() => import('./modules/contracts/ContractsPage'))
 const ModuleUnderDevelopment = lazy(() => import('./components/shared/ModuleUnderDevelopment'))
@@ -68,7 +69,7 @@ function AnimatedPage({ children }) {
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
       transition={{ duration: isMobileDevice ? 0.2 : 0.35, ease: [0.4, 0, 0.2, 1] }}
       style={{ willChange: 'opacity, transform' }}
-      className="flex-1 w-full flex flex-col origin-top"
+      className="flex-1 w-full flex flex-col origin-top max-md:pb-[140px]"
     >
       {children}
     </motion.div>
@@ -104,7 +105,8 @@ function AppContent() {
 
   const { user, userData, isSetupMode, loading: authLoading } = useAuth()
 
-  const isAuthPage = ['/login', '/registro'].includes(location.pathname)
+  // 1. PÁGINAS PÚBLICAS: Telas de autenticação que não requerem login.
+  const isAuthPage = ['/login', '/configuracao-inicial'].includes(location.pathname)
 
   // 0. CARREGAMENTO: Enquanto verifica auth/setup, evitamos tela preta e redirects precipitados.
   if (authLoading) {
@@ -119,14 +121,14 @@ function AppContent() {
   }
 
   // 3. ROTAS PÚBLICAS (AUTENTICAÇÃO)
-  const isPublicAuthPage = isAuthPage || location.pathname === '/reset-password'
+  const isPublicAuthPage = isAuthPage || location.pathname === '/recuperar-senha'
 
   if (isPublicAuthPage) {
     return (
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/registro" element={<LoginPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/configuracao-inicial" element={<RegisterPage />} />
+        <Route path="/recuperar-senha" element={<ResetPasswordPage />} />
       </Routes>
     )
   }
@@ -200,9 +202,6 @@ function AppContent() {
               {!isMobile && <SiteFooter />}
             </div>
           </div>
-
-          {/* Espaçador para permitir scroll acima da barra de navegação flutuante no mobile */}
-          {isMobile && <div className="h-32 w-full shrink-0" />}
         </div>
 
         {/* Componente de Navegação Inferior para dispositivos móveis */}
