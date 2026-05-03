@@ -84,6 +84,9 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
     if (!key) return true;
     if (isActuallyAdmin) return true;
     if (!userData?.permissions) return true;
+    if (key === 'viewFinance') {
+      return !!userData.permissions.viewFinance || !!userData.permissions.viewOnlyFinance;
+    }
     return !!userData.permissions[key];
   }
 
@@ -103,8 +106,8 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
   return (
     <>
       <AnimatePresence>
-        {/* Overlay do menu mobile (escurecimento do fundo) */}
-        {mobileOpen && (
+        {/* Overlay do menu mobile (escurecimento do fundo) - DESATIVADO EM MOBILE */}
+        {mobileOpen && !isMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -119,7 +122,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
         initial={false}
         animate={{
           width: effectivelyCollapsed ? 68 : 265,
-          x: mobileOpen ? 0 : (isMobile ? '-100%' : 0)
+          x: isMobile ? '-100%' : (mobileOpen ? 0 : 0)
         }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="sidebar no-scrollbar flex flex-col relative z-40 backdrop-blur-xl"
@@ -336,7 +339,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
           )}
 
           <button
-            onClick={() => isMobile ? setMobileOpen(false) : setCollapsed(v => !v)}
+            onClick={() => setCollapsed(v => !v)}
             onMouseEnter={() => setHoveredItem('collapse-btn')}
             onMouseLeave={() => setHoveredItem(null)}
             className={`nav-item flex items-center hover:bg-white/5 transition-all w-full relative ${effectivelyCollapsed ? 'h-[44px] w-[44px] justify-center p-0 rounded-2xl mx-auto' : 'h-11 px-5 rounded-2xl'}`}
@@ -355,7 +358,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="text-xs font-bold uppercase tracking-wider whitespace-nowrap overflow-hidden"
             >
-              {isMobile ? 'Fechar Menu' : 'Recolher'}
+              {collapsed ? "Expandir" : "Recolher"}
             </motion.span>
 
             {effectivelyCollapsed && (
