@@ -347,19 +347,43 @@ export function useStudents() {
       const visitorSubRef = collection(doc(db, targetCollection, docId), 'visitantes')
       await addDoc(visitorSubRef, { data: serverTimestamp(), tipo: 'entrada', observacao: 'Cadastro inicial' })
 
-      // Faturamento Inicial
-      if (newStudent.initialPaymentStatus && payload.planValue > 0) {
-        try {
-          await addDoc(collection(db, COLLECTIONS.FATURAMENTO), {
-            studentId: docId,
-            studentName: payload.name,
-            amount: Number(payload.planValue),
-            status: newStudent.initialPaymentStatus,
-            dueDate: new Date().toISOString().split('T')[0],
-            referenceMonth: `${new Date().toLocaleString('pt-BR', { month: 'long' })} / ${new Date().getFullYear()}`,
-            createdAt: serverTimestamp()
-          })
-        } catch (err) { }
+      // ========================================================================
+      // FATURAMENTO INICIAL OBRIGATÓRIO: SEMPRE PAGO
+      // ========================================================================
+      // Garantir que todo novo aluno já nasça com uma cobrança PAGA
+      // Evita que o gestor precise criar via "Nova Cobrança"
+      try {
+        // ========================================================================
+        // CÁLCULO DA DATA DE VENCIMENTO: 30 dias após a adesão
+        // ========================================================================
+        // Exemplo: Se entrou no dia 04 de maio, o vencimento será 04 de junho
+        // O JavaScript ajusta automaticamente meses com menos dias (ex: 31 Jan + 30 = 02 Mar)
+        const now = new Date()
+        
+        // Adicionar 30 dias à data atual
+        const dueDate = new Date(now)
+        dueDate.setDate(dueDate.getDate() + 30)
+        
+        // Formatar para YYYY-MM-DD
+        const dueDateStr = dueDate.toISOString().split('T')[0]
+        
+        // Mês de referência (mês do vencimento)
+        const referenceMonth = `${dueDate.toLocaleString('pt-BR', { month: 'long' })} / ${dueDate.getFullYear()}`
+        
+        await addDoc(collection(db, COLLECTIONS.FATURAMENTO), {
+          studentId: docId,
+          studentName: payload.name,
+          amount: Number(payload.planValue) || 0,
+          status: 'paid', // SEMPRE PAGO para novos alunos
+          dueDate: dueDateStr,
+          referenceMonth: referenceMonth,
+          paidAt: serverTimestamp(), // Marcar como pago no momento da criação
+          createdAt: serverTimestamp()
+        })
+        
+        console.log(`✅ Faturamento inicial PAGO criado para ${payload.name} - Vencimento: ${dueDateStr}`)
+      } catch (err) {
+        console.error('❌ Erro ao criar faturamento inicial:', err)
       }
     }
   }, [])

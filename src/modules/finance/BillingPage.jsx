@@ -480,6 +480,7 @@ export default function BillingPage() {
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
+  const [sortOrder, setSortOrder] = useState('recente')
 
   const handleBatchBilling = async (mesRef, dataVencimento) => {
     setSaving(true)
@@ -536,11 +537,25 @@ export default function BillingPage() {
 
   const hasFilters = searchTerm || statusFilter !== 'todos'
 
-  const filtered = useMemo(() => bills.filter(b => {
-    const byName = b.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
-    const byStatus = statusFilter === 'todos' || b.status === statusFilter
-    return byName && byStatus
-  }), [bills, searchTerm, statusFilter])
+  const filtered = useMemo(() => {
+    const result = bills.filter(b => {
+      const byName = b.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
+      const byStatus = statusFilter === 'todos' || b.status === statusFilter
+      return byName && byStatus
+    })
+
+    // Ordenação
+    result.sort((a, b) => {
+      if (sortOrder === 'recente') {
+        return (b.dueDate || '').localeCompare(a.dueDate || '')
+      } else if (sortOrder === 'antigo') {
+        return (a.dueDate || '').localeCompare(b.dueDate || '')
+      }
+      return 0
+    })
+
+    return result
+  }, [bills, searchTerm, statusFilter, sortOrder])
 
   function renderAvatar(student) {
     if (!student) return (
@@ -685,9 +700,12 @@ export default function BillingPage() {
             />
             <CustomSelect
               label="Ordenar por"
-              value="recente"
-              onChange={() => { }}
-              options={[['recente', 'Mais Recente']]}
+              value={sortOrder}
+              onChange={setSortOrder}
+              options={[
+                ['recente', 'Mais Recente'],
+                ['antigo', 'Mais Antigo'],
+              ]}
             />
             <div className="col-span-2 flex items-end">
               <p className="text-[11px] text-gray-600 font-bold ml-1">

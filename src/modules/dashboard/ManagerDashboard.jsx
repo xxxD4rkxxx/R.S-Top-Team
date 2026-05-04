@@ -311,8 +311,8 @@ export default function ManagerDashboard() {
                 desc: 'Total de boletos vencidos', icon: AlertCircle, color: 'text-rose-400', iconColor: 'text-gray-400'
             },
             {
-                title: 'Inadimplência', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue),
-                desc: 'Total em atraso', icon: Wallet, color: 'text-rose-400', iconColor: 'text-gray-400'
+                title: 'pendentes', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue),
+                desc: 'Total em pendentes', icon: Wallet, color: 'text-rose-400', iconColor: 'text-gray-400'
             },
             {
                 title: 'Grad. Próximas', value: initialLoading && !graduations.length ? '...' : String(graduations.length),

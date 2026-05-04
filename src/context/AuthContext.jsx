@@ -233,7 +233,7 @@ export function AuthProvider({ children }) {
         if (legacySnap.exists()) {
           targetDoc = legacySnap
         } else {
-          const q = query(collection(db, 'users'), where('email', '==', email), limit(1))
+            const q = query(collection(db, 'usuarios'), where('email', '==', email), limit(1))
           const qSnap = await getDocs(q)
           if (!qSnap.empty) targetDoc = qSnap.docs[0]
         }
@@ -349,7 +349,7 @@ export function AuthProvider({ children }) {
           if (legacySnap.exists()) {
             snap = legacySnap;
           } else {
-            const q = query(collection(db, 'users'), where('email', '==', email), limit(1))
+          const q = query(collection(db, 'usuarios'), where('email', '==', email), limit(1))
             const qSnap = await getDocs(q)
             if (!qSnap.empty) snap = qSnap.docs[0]
           }
