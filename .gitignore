@@ -6,16 +6,21 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+build-log.txt
+build_log*.txt
 
-node_modules
-dist
-dist-ssr
-*.local
+# Dependency directories
+node_modules/
 
-# Editor directories and files
+# Build outputs
+dist/
+dist-ssr/
+dist_malformed/
+
+# Editor and OS files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,7 +28,13 @@ dist-ssr
 *.sln
 *.sw?
 
-# Credenciais e ficheiros sensíveis — NUNCA commitar estes ficheiros
+# AI & Agentic files
+.agents/
+.gemini/
+.codex/
+scratch/
+
+# Firebase & Security - NUNCA commitar estes ficheiros
 # A chave de service account dá acesso admin total ao Firebase
 firebase-key.json
 *.key.json
@@ -31,3 +42,15 @@ service-account*.json
 .env
 .env.local
 .env.*.local
+storage.rules.bak
+
+# Workspace "lixo" e arquivos temporários
+users.json
+Novo Documento de Texto.html
+filePathFixed.js
+seed-highlights.js
+src/hooks/*_backup.js
+src/hooks/*_fixed.js
+src/hooks/*_old*.js
+*_work.js
+*_copy.js

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   ClipboardCheck, Search, Check, X, Plus, Clock, Calendar,
   User, History, Trophy, Eye, Info, AlertTriangle, Clock3, ChevronDown, ChevronUp,
-  Edit3, ChevronRight, RefreshCcw, LayoutGrid, List, UserPlus, FileText
+  Edit3, ChevronRight, RefreshCcw, LayoutGrid, List, UserPlus
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
@@ -166,7 +166,6 @@ export default function AttendancePage() {
   const [unmarkedAlert, setUnmarkedAlert] = useState(false)
   const [visibleHistoryCount, setVisibleHistoryCount] = useState(8)
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false)
-  const [showObservationDropdown, setShowObservationDropdown] = useState(false)
   const [showVisitorModal, setShowVisitorModal] = useState(false)
   const [showObsModal, setShowObsModal] = useState(false)
   const [visitorName, setVisitorName] = useState('')
@@ -584,7 +583,6 @@ export default function AttendancePage() {
       setToastMessage(`Visitante ${visitorName} cadastrado!`)
       setVisitorName('')
       setShowVisitorModal(false)
-      setShowObservationDropdown(false)
       
       if (activeSession) {
         setSessionAttendance(prev => ({
@@ -605,7 +603,6 @@ export default function AttendancePage() {
     setToastMessage('Observação registrada: ' + obsText.substring(0, 30) + '...')
     setObsText('')
     setShowObsModal(false)
-    setShowObservationDropdown(false)
   }
 
   async function handleDiscardSession() {
@@ -930,50 +927,13 @@ export default function AttendancePage() {
                 </div>
 
                 <div className="hidden md:flex justify-center gap-3 pt-1">
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowObservationDropdown(!showObservationDropdown)}
-                      className="flex items-center gap-2.5 bg-white/5 border border-white/5 text-gray-400 rounded-xl px-6 py-3 font-black uppercase text-[10px] tracking-widest hover:bg-white/10 hover:text-white transition-all"
-                    >
-                      <FileText size={16} />
-                      OBSERVAÇÃO
-                    </button>
-                    <AnimatePresence>
-                      {showObservationDropdown && (
-                        <>
-                          <div className="fixed inset-0 z-[998]" onClick={() => setShowObservationDropdown(false)} />
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            className="absolute bottom-full mb-2 left-0 w-48 bg-[#0B0B0B] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[600]"
-                          >
-                            <button
-                              onClick={() => { setShowVisitorModal(true); setShowObservationDropdown(false); }}
-                              className="w-full text-left px-4 py-3 text-[11px] font-bold text-gray-300 hover:bg-white/5 border-b border-white/5 transition-colors"
-                            >
-                              Visitante
-                            </button>
-                            <button
-                              onClick={() => { setShowObsModal(true); setShowObservationDropdown(false); }}
-                              className="w-full text-left px-4 py-3 text-[11px] font-bold text-gray-300 hover:bg-white/5 transition-colors"
-                            >
-                              Obs
-                            </button>
-                          </motion.div>
-                        </>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                  {isAdminView && (
-                    <button
-                      onClick={() => setShowModal(true)}
-                      className="flex items-center gap-2.5 bg-white/5 border border-white/5 text-gray-500 rounded-xl px-8 py-3 font-black uppercase text-[10px] tracking-widest hover:bg-white/10 hover:text-white transition-all"
-                    >
-                      <Plus size={16} />
-                      Novo Aluno
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setShowVisitorModal(true)}
+                    className="flex items-center gap-2 bg-white/5 border border-white/5 text-white rounded-xl px-6 py-3 font-bold uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all shadow-lg shadow-black/20"
+                  >
+                    <UserPlus size={16} className="text-primary" />
+                    VISITANTES
+                  </button>
                   <button
                     onClick={handleStartSession}
                     disabled={isSavingSession || !sessionModality}
@@ -1118,11 +1078,11 @@ export default function AttendancePage() {
                 <div><div className="text-4xl font-black text-white tracking-tighter">{stats.present}/{stats.total}</div><p className="text-[9px] font-black uppercase text-gray-500">PRESENTES</p></div>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setShowObservationDropdown(true)}
-                    className="flex items-center gap-2 bg-white/5 border border-white/5 text-gray-400 rounded-xl px-5 py-3 font-black uppercase text-[10px] tracking-widest hover:bg-white/10 hover:text-white transition-all"
+                    onClick={() => setShowVisitorModal(true)}
+                    className="flex items-center gap-2 bg-white/5 border border-white/5 text-white rounded-xl px-5 py-3 font-bold uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all shadow-lg shadow-black/20"
                   >
-                    <FileText size={16} />
-                    OBS
+                    <UserPlus size={16} className="text-primary" />
+                    VISITANTES
                   </button>
                   <button onClick={handleFinalizeSession} className="btn-primary py-3 px-8 rounded-xl font-black uppercase text-xs tracking-widest transition-all hover:scale-105">Finalizar</button>
                 </div>
@@ -1136,11 +1096,11 @@ export default function AttendancePage() {
                 <button onClick={handleFinalizeSession} className="btn-primary py-3 px-8 rounded-xl font-black uppercase text-xs tracking-widest transition-all hover:scale-105">Finalizar</button>
               </div>
               <button
-                onClick={() => setShowObservationDropdown(true)}
-                className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/5 text-gray-400 rounded-xl py-3 font-semibold uppercase text-[10px] tracking-widest hover:bg-white/10 hover:text-white transition-all"
+                onClick={() => setShowVisitorModal(true)}
+                className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/5 text-white rounded-xl py-3 font-bold uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all shadow-lg shadow-black/20"
               >
-                <FileText size={16} />
-                OBSERVAÇÃO
+                <UserPlus size={16} className="text-primary" />
+                VISITANTES
               </button>
             </div>
           </div>
@@ -1336,21 +1296,30 @@ export default function AttendancePage() {
               </div>
 
               {/* FOOTER ACTIONS */}
-              <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
+              <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex flex-col gap-3 shrink-0">
                 <button
-                  onClick={() => setShowMobileConfig(false)}
-                  className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
+                  onClick={() => setShowVisitorModal(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/5 text-white rounded-xl py-4 font-bold uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all shadow-lg shadow-black/20"
                 >
-                  Sair
+                  <UserPlus size={16} className="text-primary" />
+                  VISITANTES
                 </button>
-                <button
-                  onClick={handleStartSession}
-                  disabled={isSavingSession || !sessionModality}
-                  className={`flex-[2] py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all active:scale-95 disabled:opacity-30 disabled:grayscale
-                    ${!sessionModality ? 'bg-gray-800 text-gray-500' : 'bg-rose-600 text-white shadow-rose-600/30'}`}
-                >
-                  {isSavingSession ? 'Iniciando...' : 'Iniciar Chamada'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowMobileConfig(false)}
+                    className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all"
+                  >
+                    Sair
+                  </button>
+                  <button
+                    onClick={handleStartSession}
+                    disabled={isSavingSession || !sessionModality}
+                    className={`flex-[2] py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all active:scale-95 disabled:opacity-30 disabled:grayscale
+                      ${!sessionModality ? 'bg-gray-800 text-gray-500' : 'bg-rose-600 text-white shadow-rose-600/30'}`}
+                  >
+                    {isSavingSession ? 'Iniciando...' : 'Iniciar Chamada'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -1358,46 +1327,7 @@ export default function AttendancePage() {
         document.body
       )}
 
-      {/* Mobile OBS Dropdown */}
-      {showObservationDropdown && createPortal(
-        <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowObservationDropdown(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-[#0B0B0B] border border-white/10 rounded-2xl p-6 space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white uppercase">OPÇÕES</h3>
-                <button onClick={() => setShowObservationDropdown(false)} className="text-gray-500 hover:text-white">
-                  <X size={20} />
-                </button>
-              </div>
-              <button
-                onClick={() => { setShowVisitorModal(true); setShowObservationDropdown(false); }}
-                className="w-full py-4 bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold uppercase rounded-xl"
-              >
-                + Visitante
-              </button>
-              <button
-                onClick={() => { setShowObsModal(true); setShowObservationDropdown(false); }}
-                className="w-full py-4 bg-white/5 border border-white/10 text-gray-300 text-[11px] font-semibold uppercase rounded-xl"
-              >
-                + Observação
-              </button>
-            </motion.div>
-          </motion.div>
-        </AnimatePresence>,
-        document.body
-      )}
+
 
       {showModal && (
         <AddStudentModal
@@ -1438,25 +1368,25 @@ export default function AttendancePage() {
                   placeholder="Nome do visitante"
                   value={visitorName}
                   onChange={(e) => setVisitorName(e.target.value)}
-                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white font-bold"
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white font-medium"
                   autoFocus
                 />
                 <input
                   type="text"
                   value={sessionModality}
                   readOnly
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-500 font-bold"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-500 font-medium"
                 />
                 <input
                   type="text"
                   value={sessionProfessor || userData?.nome || 'Sistema'}
                   readOnly
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-500 font-bold"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-500 font-medium"
                 />
               </div>
               <button
                 onClick={handleAddVisitor}
-                className="w-full py-3 bg-primary text-black font-black uppercase rounded-xl"
+                className="w-full py-3 bg-primary text-white font-bold uppercase rounded-xl shadow-lg shadow-primary/20"
               >
                 Cadastrar e Presente
               </button>
@@ -1466,46 +1396,7 @@ export default function AttendancePage() {
         document.body
       )}
 
-      {showObsModal && createPortal(
-        <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowObsModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-[#0B0B0B] border border-white/10 rounded-2xl p-6 space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white uppercase">OBSERVAÇÃO DA AULA</h3>
-                <button onClick={() => setShowObsModal(false)} className="text-gray-500 hover:text-white">
-                  <X size={20} />
-                </button>
-              </div>
-              <textarea
-                placeholder="Ex: Aula teórica, Treino ringan, Avaliação..."
-                value={obsText}
-                onChange={(e) => setObsText(e.target.value)}
-                className="w-full h-32 bg-black border border-white/10 rounded-xl px-4 py-3 text-white font-bold resize-none"
-                autoFocus
-              />
-              <button
-                onClick={handleSaveObs}
-                className="w-full py-3 bg-primary text-black font-semibold uppercase rounded-xl"
-              >
-                Salvar Observação
-              </button>
-            </motion.div>
-          </motion.div>
-        </AnimatePresence>,
-        document.body
-      )}
+      {/* MODAL DE OBSERVAÇÃO REMOVIDO POR SOLICITAÇÃO DO USUÁRIO EM FAVOR DE VISITANTES */}
     </>
   )
 }

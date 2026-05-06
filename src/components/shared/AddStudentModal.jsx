@@ -98,8 +98,8 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
     gender: 'Masculino',
     parentName: '',
     parentPhone: '',
-    planValue: '',
-    initialPaymentStatus: 'pending',
+    initialPaymentStatus: 'paid',
+    planValue: 'R$ 0,00',
     turmas: []
   })
 
@@ -134,8 +134,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           gender: initialData.gender || 'Masculino',
           parentName: initialData.parentName || '',
           parentPhone: initialData.parentPhone || '',
-          planValue: initialData.planValue || '',
-          initialPaymentStatus: 'pending',
+          initialPaymentStatus: 'paid',
         })
       } else {
         // Se não houver modalidade inicial (ex: filtro 'todas'), começa vazio para evitar seleções fantasmas
@@ -147,8 +146,8 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           belt: 'none', stripes: 0, modality: startMod, type: initialType,
           ageCategory: 'Adulto', gender: 'Masculino',
           parentName: '', parentPhone: '',
-          planValue: '',
-          initialPaymentStatus: 'pending',
+          initialPaymentStatus: 'paid',
+          planValue: 'R$ 0,00',
           turmas: []
         })
       }
@@ -399,31 +398,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
               </div>
             )}
 
-            {/* SELEÇÃO DE TIPO (Como era antes, oculto para visitantes) */}
-            {!initialData && initialType !== 'visitante' && (
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
-                  Tipo de Perfil
-                  <div className="h-px flex-1 bg-white/5" />
-                </h3>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, type: 'aluno' })}
-                    className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'aluno' ? 'bg-primary border-primary text-white' : 'bg-white/5 border-white/10 text-gray-500'}`}
-                  >
-                    Aluno
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, type: 'visitante' })}
-                    className={`flex-1 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${form.type === 'visitante' ? 'bg-primary border-primary text-white' : 'bg-white/5 border-white/10 text-gray-500'}`}
-                  >
-                    Visitante
-                  </button>
-                </div>
-              </div>
-            )}
+
 
             {/* Dados Básicos */}
             <div className="space-y-4">
@@ -495,6 +470,31 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       value={form.ageCategory}
                       onChange={v => setForm({ ...form, ageCategory: v })}
                       options={[['Adulto', 'Adulto'], ['Juvenil', 'Juvenil'], ['Kids', 'Kids']]}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Valor Mensalidade</label>
+                      <div className="relative">
+                        <Landmark size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary/50" />
+                        <input
+                          type="text"
+                          value={form.planValue}
+                          onChange={e => {
+                            let val = e.target.value.replace(/\D/g, '');
+                            val = (Number(val) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            setForm({ ...form, planValue: val });
+                          }}
+                          className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
+                        />
+                      </div>
+                    </div>
+                    <CustomSelect
+                      label="Pagamento Inicial"
+                      value={form.initialPaymentStatus}
+                      onChange={v => setForm({ ...form, initialPaymentStatus: v })}
+                      options={[['paid', 'Pago'], ['pending', 'Pendente']]}
                     />
                   </div>
                 </>
@@ -745,51 +745,6 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
               </>
             )}
 
-            {form.type === 'aluno' && (effectiveRole === 'admin' || effectiveRole === 'gestor') && (
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                  <Landmark size={14} />
-                  Contrato e Financeiro
-                  <div className="h-px flex-1 bg-emerald-500/10" />
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Valor Mensalidade</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={form.planValue ? (Number(form.planValue) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}
-                        onChange={e => setForm({ ...form, planValue: e.target.value.replace(/\D/g, '') })}
-                        className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white outline-none focus:border-emerald-500/30 transition-all"
-                        placeholder="R$ 0,00"
-                      />
-                    </div>
-                  </div>
-
-                  {!initialData && (
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Pagamento Inicial</label>
-                      <div className="flex gap-2 p-1 bg-black border border-white/5 rounded-2xl">
-                        <button
-                          type="button"
-                          onClick={() => setForm({ ...form, initialPaymentStatus: 'paid' })}
-                          className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${form.initialPaymentStatus === 'paid' ? 'bg-emerald-500 text-black' : 'text-gray-600'}`}
-                        >
-                          Pago
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setForm({ ...form, initialPaymentStatus: 'pending' })}
-                          className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${form.initialPaymentStatus === 'pending' ? 'bg-primary text-white' : 'text-gray-600'}`}
-                        >
-                          Pendente
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Banner Visitante */}
             {form.type === 'visitante' && (

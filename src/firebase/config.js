@@ -47,7 +47,7 @@ try {
         tabManager: persistentSingleTabManager(),
         cacheSizeBytes: CACHE_SIZE_UNLIMITED
       })
-    })
+    }, 'default')
     console.log('🔥 [Firebase/Config] Firestore inicializado com Persistent Cache (Single-Tab para estabilidade).')
   }
 } catch (error) {

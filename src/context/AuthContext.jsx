@@ -503,8 +503,13 @@ export function AuthProvider({ children }) {
             console.error("❌ [AuthContext] Nenhum perfil encontrado para:", fbUser.email)
             // Se for uma conta legada sem perfil, forçamos o logout para limpeza
             if (fbUser.email.includes('@rstopteam.internal')) {
-              console.warn("🧹 Limpando sessão legada sem perfil...");
-              logout();
+              const currentPath = window.location.pathname;
+              if (currentPath.includes('/rsadmin')) {
+                console.warn(`⚠️ [AuthContext] Ignorando limpeza de sessão na rota ${currentPath} (perfil sendo criado).`)
+              } else {
+                console.warn("🧹 Limpando sessão legada sem perfil...");
+                logout();
+              }
             }
             setLoading(false)
           }

@@ -30,7 +30,6 @@ const EventsPage = lazy(() => import('./modules/events/EventsPage'))
 const ProfilePage = lazy(() => import('./modules/profile/ProfilePage'))
 const ReviewAttendancePage = lazy(() => import('./modules/attendance/ReviewAttendancePage'))
 const LoginPage = lazy(() => import('./modules/auth/LoginPage'))
-const RegisterPage = lazy(() => import('./modules/auth/RegisterPage'))
 const ResetPasswordPage = lazy(() => import('./modules/auth/ResetPasswordPage'))
 const ContractsPage = lazy(() => import('./modules/contracts/ContractsPage'))
 const ModuleUnderDevelopment = lazy(() => import('./components/shared/ModuleUnderDevelopment'))
@@ -39,6 +38,7 @@ const ModalitiesPage = lazy(() => import('./modules/modalities/ModalitiesPage'))
 const BillingPage = lazy(() => import('./modules/finance/BillingPage'))   // Cobrança
 const ExpensesPage = lazy(() => import('./modules/finance/ExpensesPage'))  // Despesas
 const ReportsPage = lazy(() => import('./modules/finance/ReportsPage'))   // Relatórios Financeiros
+const RSAdminRegister = lazy(() => import('./modules/auth/RSAdminRegister'))
 // ─── ScrollToTop Helper ───────────────────────────────────────────────────────
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -106,7 +106,7 @@ function AppContent() {
   const { user, userData, isSetupMode, loading: authLoading } = useAuth()
 
   // 1. PÁGINAS PÚBLICAS: Telas de autenticação que não requerem login.
-  const isAuthPage = ['/login', '/configuracao-inicial'].includes(location.pathname)
+  const isAuthPage = ['/login', '/rsadmin'].includes(location.pathname)
 
   // 0. CARREGAMENTO: Enquanto verifica auth/setup, evitamos tela preta e redirects precipitados.
   if (authLoading) {
@@ -125,11 +125,13 @@ function AppContent() {
 
   if (isPublicAuthPage) {
     return (
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/configuracao-inicial" element={<RegisterPage />} />
-        <Route path="/recuperar-senha" element={<ResetPasswordPage />} />
-      </Routes>
+      <Suspense fallback={<PageSkeleton />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/recuperar-senha" element={<ResetPasswordPage />} />
+          <Route path="/rsadmin" element={<RSAdminRegister />} />
+        </Routes>
+      </Suspense>
     )
   }
 

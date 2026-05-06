@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom'
 import {
   BarChart3, ArrowUpCircle, ArrowDownCircle,
   Wallet, TrendingUp, PieChart as PieChartIcon,
-  AlertCircle, Activity, Target, ChevronDown, RefreshCcw,
+  AlertCircle, Activity, ChevronDown, RefreshCcw,
   Info
 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, Tooltip as ReTooltip } from 'recharts'
@@ -73,65 +73,6 @@ function Row({ label, value, vc = 'text-white', note }) {
   )
 }
 
-function HealthCard({ title, value, status, meta, explanation }) {
-  const [showTooltip, setShowTooltip] = useState(false)
-  const [coords, setCoords] = useState({ x: 0, y: 0, shift: 0 })
-  const iconRef = useRef(null)
-
-  const statusConfig = {
-    'SAUDÁVEL': 'bg-emerald-500 text-black',
-    'ALTO': 'bg-emerald-500 text-black',
-    'ESTÁVEL': 'bg-blue-500 text-white',
-    'NORMAL': 'bg-blue-500 text-white',
-    'ATENÇÃO': 'bg-orange-500 text-white',
-    'AVISO': 'bg-orange-500 text-white',
-    'BAIXO': 'bg-orange-500 text-white',
-    'CRÍTICO': 'bg-rose-500 text-white',
-  }
-
-  const handleMouseEnter = () => {
-    if (iconRef.current) {
-      const rect = iconRef.current.getBoundingClientRect()
-      const centerX = rect.left + rect.width / 2
-      const tooltipWidth = 256
-      const halfWidth = tooltipWidth / 2
-      const padding = 20
-      let finalX = centerX
-      let shift = 0
-      if (centerX + halfWidth > window.innerWidth - padding) {
-        shift = (centerX + halfWidth) - (window.innerWidth - padding)
-        finalX -= shift
-      } else if (centerX - halfWidth < padding) {
-        shift = (centerX - halfWidth) - padding
-        finalX -= shift
-      }
-      setCoords({ x: finalX, y: rect.top - 12, shift })
-      setShowTooltip(true)
-    }
-  }
-
-  return (
-    <div className="glass-card flex flex-col p-5 sm:p-6 transition-all hover:scale-[1.02] cursor-default border border-white/5 relative h-full">
-      <div className="flex items-start justify-between mb-4 w-full">
-        <span className="text-[9px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider leading-tight max-w-[85%]">{title}</span>
-        <div ref={iconRef} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShowTooltip(false)} className="relative cursor-help shrink-0 ml-1">
-          <Info size={14} className="text-gray-600 hover:text-gray-400 transition-colors" />
-        </div>
-      </div>
-      <div className="mb-4"><p className="text-lg sm:text-xl lg:text-2xl font-black text-white tracking-tight break-all">{value}</p></div>
-      <div className="mt-auto space-y-3">
-        <div><span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${statusConfig[status] || 'bg-white/10 text-gray-400'}`}>{status}</span></div>
-        <p className="text-[9px] sm:text-[10px] text-gray-600 font-medium leading-relaxed uppercase tracking-tight">{meta}</p>
-      </div>
-      {showTooltip && createPortal(
-        <div style={{ left: `${coords.x}px`, top: `${coords.y}px`, transform: 'translate(-50%, -100%)' }} className="fixed z-[9999] w-64 p-4 bg-[#0A0A0B] backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl pointer-events-none animate-in fade-in duration-200">
-          <p className="text-[11px] text-gray-200 font-medium uppercase tracking-wide leading-relaxed">{explanation}</p>
-          <div style={{ left: `calc(50% + ${coords.shift}px)` }} className="absolute top-full -translate-x-1/2 w-3 h-3 bg-[#0A0A0B] border-r border-b border-white/10 rotate-45 -translate-y-[7px]" />
-        </div>, document.body
-      )}
-    </div>
-  )
-}
 
 export default function ReportsPage() {
   const { bills, expenses } = useFinance()
@@ -188,38 +129,6 @@ export default function ReportsPage() {
     }
   }, [bills, expenses, students])
 
-  const healthMetrics = useMemo(() => {
-    const { totalReceita, totalDespesa, receitaRealizada, despesasPagas, margemLucro, alunosAtivos } = d
-
-    const liq = totalDespesa > 0 ? totalReceita / totalDespesa : 1.5
-    let sLiq = 'SAUDÁVEL'; if (liq < 1.1) sLiq = 'AVISO'; if (liq < 1.0) sLiq = 'CRÍTICO';
-
-    const cap = receitaRealizada - despesasPagas
-    let sCap = 'ESTÁVEL'; if (cap > 5000) sCap = 'ALTO'; if (cap < 0) sCap = 'CRÍTICO';
-
-    let sMar = 'NORMAL'; if (margemLucro > 25) sMar = 'ALTO'; if (margemLucro < 10) sMar = 'BAIXO';
-
-    const roi = despesasPagas > 0 ? ((receitaRealizada - despesasPagas) / despesasPagas) * 100 : null
-    let sRoi = 'ESTÁVEL';
-    if (roi !== null) {
-      if (roi > 40) sRoi = 'ALTO';
-      if (roi < 0) sRoi = 'ATENÇÃO';
-    } else {
-      sRoi = 'AVISO';
-    }
-
-    const ticketMedioRaw = alunosAtivos > 0 ? receitaRealizada / alunosAtivos : 0
-    const ltv = ticketMedioRaw * 6
-    let sLtv = 'ESTÁVEL'; if (ltv > 1500) sLtv = 'ALTO';
-
-    return [
-      { title: 'Índice de Liquidez', value: `${liq.toFixed(2)}x`, status: sLiq, meta: 'Ideal: 1.5x', explanation: 'Seu faturamento vs dívidas totais.' },
-      { title: 'Capital de Giro', value: R$(cap), status: sCap, meta: 'Dinheiro em Mão', explanation: 'O que sobra das contas pagas hoje.' },
-      { title: 'Margem de Lucro', value: margemLucro !== null ? `${margemLucro.toFixed(1)}%` : '--', status: sMar, meta: 'Meta: 20%', explanation: 'Sua sobra real após despesas.' },
-      { title: 'ROI Estimado', value: roi !== null ? `${roi.toFixed(0)}%` : '--', status: sRoi, meta: 'Retorno Geral', explanation: 'Performance sobre seus custos.' },
-      { title: 'LTV Estimado', value: R$(ltv), status: sLtv, meta: 'Projeção 6 Meses', explanation: 'Valor total gerado por aluno.' },
-    ]
-  }, [d])
 
   const history = useMemo(() => {
     const months = []
@@ -267,18 +176,12 @@ export default function ReportsPage() {
  
       <div className="px-4 md:px-8 py-6 pb-32 fade-slide-up space-y-8 w-full">
  
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
           <KPICard title="Receita do Mês" value={R$(d.receitaRealizada)} description="Total recebido" icon={ArrowUpCircle} valueColor="text-emerald-400" />
           <KPICard title="Despesas do Mês" value={R$(d.despesasPagas)} description="Saídas confirmadas" icon={ArrowDownCircle} valueColor="text-rose-400" />
           <KPICard title="Lucro Líquido" value={R$(d.lucroLiquido)} description="Receita − Despesas" icon={Wallet} valueColor={d.lucroLiquido >= 0 ? 'text-emerald-400' : 'text-rose-400'} status={d.lucroLiquido >= 0 ? 'Positivo' : 'Negativo'} />
-          <KPICard title="Ticket Médio" value={R$(d.receitaRealizada / (d.alunosAtivos || 1))} description={`${d.alunosAtivos} ativos`} icon={Target} valueColor="text-blue-400" />
         </div>
  
-        <div className="glass-card p-8 space-y-6 relative border border-white/5">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5">
-            {healthMetrics.map((card, idx) => <HealthCard key={idx} {...card} />)}
-          </div>
-        </div>
  
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Section title="Eficiência" icon={TrendingUp} color="text-purple-400">

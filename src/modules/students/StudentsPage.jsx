@@ -352,10 +352,16 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
         }
       } else {
         // MODO CRIAÇÃO: Verifica duplicidade antes de adicionar
-        const isDuplicate = students.some(s =>
-          (data.email && s.email?.toLowerCase() === data.email.toLowerCase()) ||
-          ((s.nome || s.name)?.toLowerCase() === (data.nome || data.name)?.toLowerCase())
-        );
+        const isDuplicate = students.some(s => {
+          const emailMatch = data.email && s.email?.toLowerCase() === data.email.toLowerCase();
+          const nameMatch = (s.nome || s.name || s.nomeCompleto)?.toLowerCase() === (data.nome || data.name || data.nomeCompleto)?.toLowerCase();
+          
+          // Se tiver e-mail, ele é o identificador principal e único.
+          if (data.email) return emailMatch;
+          
+          // Se NÃO tiver e-mail, o nome passa a ser o critério de duplicidade (para evitar lixo no banco).
+          return nameMatch;
+        });
 
         if (isDuplicate) {
           alert('🛑 ATENÇÃO: Já existe um aluno cadastrado com este nome ou e-mail.');

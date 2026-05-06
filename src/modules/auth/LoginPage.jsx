@@ -3,7 +3,7 @@
 // Implementa detecção de cliques no logo para alternar entre os modos de acesso.
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LogIn, Lock, Mail, Eye, EyeOff, HelpCircle, ShieldCheck } from 'lucide-react'
+import { LogIn, Lock, Mail, Eye, EyeOff, HelpCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import AmbientBackground from '../../components/shared/AmbientBackground'
 
@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [isAdminMode, setIsAdminMode] = useState(false)
 
 
-  const { login, loginAdmin, sendResetEmail, checkUserExists, isSetupMode } = useAuth()
+  const { login, loginAdmin, sendResetEmail, checkUserExists } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from?.pathname || '/'
@@ -262,20 +262,6 @@ export default function LoginPage() {
             </form>
             
             {/* Setup Mode Action */}
-            {isSetupMode && (
-              <div className="mt-8 pt-6 border-t border-white/5 animate-bounce-in">
-                <p className="text-[10px] text-primary/60 uppercase tracking-[0.2em] font-bold text-center mb-4">
-                  Sistema não configurado
-                </p>
-                <button
-                  onClick={() => navigate('/configuracao-inicial')}
-                  className="w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black text-[12px] uppercase tracking-widest transition-all active:scale-[0.98] bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"
-                >
-                  <ShieldCheck size={16} />
-                  Configurar Portal do Gestor
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
