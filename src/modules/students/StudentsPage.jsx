@@ -5,9 +5,9 @@ import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Users, User, Plus, FileDown, FileUp, Search, Clock,
-  UserCheck, UserX, UserMinus, Archive, MoreVertical,
+  UserCheck, UserX, UserMinus, Archive, ArchiveRestore, MoreVertical,
   Edit2, Copy, CalendarDays, GraduationCap, CreditCard, Trash2,
-  FileText, RefreshCcw, ChevronDown, Award, Target, Smartphone, Eye
+  FileText, RefreshCw, ChevronDown, Award, Target, Smartphone, Eye
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
