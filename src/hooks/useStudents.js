@@ -354,10 +354,9 @@ export function useStudents() {
       // Evita que o gestor precise criar via "Nova Cobrança"
       try {
         // ========================================================================
-        // CÁLCULO DA DATA DE VENCIMENTO: 30 dias após a adesão
+        // CÁLCULO DA DATA DE VENCIMENTO: Exatamente 30 dias após o cadastro
         // ========================================================================
-        // Exemplo: Se entrou no dia 04 de maio, o vencimento será 04 de junho
-        // O JavaScript ajusta automaticamente meses com menos dias (ex: 31 Jan + 30 = 02 Mar)
+        // Exemplo: Entrou dia 06/05 (Pago), vence dia 06/06 (fica Pendente)
         const now = new Date()
         
         // Adicionar 30 dias à data atual
@@ -367,7 +366,7 @@ export function useStudents() {
         // Formatar para YYYY-MM-DD
         const dueDateStr = dueDate.toISOString().split('T')[0]
         
-        // Mês de referência (mês do vencimento)
+        // Mês de referência = mês do VENCIMENTO (ex: se vence em 06/06, referência é Junho/2026)
         const referenceMonth = `${dueDate.toLocaleString('pt-BR', { month: 'long' })} / ${dueDate.getFullYear()}`
         
         await addDoc(collection(db, COLLECTIONS.FATURAMENTO), {

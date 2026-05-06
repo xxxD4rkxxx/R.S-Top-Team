@@ -49,7 +49,7 @@ function extractSafeProfile(data) {
     name: data.nome || data.name || '',
     email: data.email || '',
     ...Object.keys(data).reduce((acc, key) => {
-      if (!['pin', 'password', 'nome', 'name', 'email'].includes(key)) {
+      if (!['password', 'nome', 'name', 'email'].includes(key)) {
         acc[key] = data[key];
       }
       return acc;

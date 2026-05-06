@@ -120,7 +120,7 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col items-center">
               <span className="text-[12px] text-gray-500 uppercase tracking-[0.3em] font-medium leading-none mb-1">Rs</span>
-              <h1 className="text-5xl font-display font-bold tracking-tighter animate-text-reveal">
+              <h1 className="text-5xl font-sans font-black tracking-tighter animate-text-reveal">
                 TOP TEAM
               </h1>
             </div>

@@ -30,6 +30,9 @@ import { useTeacherIntelligence } from '../../hooks/useTeacherIntelligence'
 import IntelligenceSection from './components/IntelligenceSection'
 import QuickStartGuide from './components/QuickStartGuide'
 
+const R$ = (v) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+
 // ── Custom sport PNG icon wrappers ───────────────────────────────
 function IconJiuJitsu({ size = 16, className = '' }) {
     const style = { width: size, height: size, filter: 'invert(1)', objectFit: 'contain' }
@@ -185,7 +188,7 @@ function AbsentDrawer({ students, isOpen, onClose }) {
                                         className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 justify-end mt-1">
                                         <Phone size={10} /> Telefone
                                     </a>
-                                )}
+                                 )}
                             </div>
                         </div>
                     )
@@ -215,7 +218,7 @@ export default function ManagerDashboard() {
     const { events } = useEvents()
     const { sessions: todaySessions, loading: loadingTodaySessions } = useTodaySessions()
     const { users: staffMembers, loading: loadingStaff } = useSystemUsers()
-    const { totalPaid, totalPending, totalOverdue, overdueCount } = useFinance()
+    const { totalPaid, totalPending, totalOverdue, overdueCount, bills, expenses } = useFinance()
     const { modalities: masterModalities, loading: loadingModalities } = useModalities()
     const intelligence = useTeacherIntelligence()
 
@@ -378,6 +381,34 @@ export default function ManagerDashboard() {
 
         return baseKPIs
     }, [isLoadingStudents, loadingModalities, masterModalities, activeMembers, newMembers30Days, initialLoading, presentCount, absentList, retentionRate, weekGrowth, graduations, loadingStaff, staffMembers, safeStudents, totalPaid, totalOverdue, overdueCount])
+
+    const history = useMemo(() => {
+        const months = []
+        const now = new Date()
+        
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+            const m = d.getMonth()
+            const y = d.getFullYear()
+            const label = d.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '')
+            
+            const filterMonth = (item) => {
+                if (!item.dueDate) return false
+                const itemDate = new Date(item.dueDate + 'T00:00:00')
+                return itemDate.getMonth() === m && itemDate.getFullYear() === y
+            }
+            
+            const b = bills.filter(filterMonth)
+            const e = expenses.filter(filterMonth)
+            
+            const rev = b.filter(x => x.status === 'paid').reduce((s, x) => s + (Number(x.amount) || 0), 0)
+            const exp = e.filter(x => x.status === 'paid').reduce((s, x) => s + (Number(x.amount) || 0), 0)
+            
+            months.push({ label, rev, exp })
+        }
+        
+        return { months }
+    }, [bills, expenses])
 
     return (
         <>
@@ -574,6 +605,40 @@ export default function ManagerDashboard() {
                         </div>
                     </div>
                 )}
+
+                {/* Fluxo de Caixa (Últimos 6 Meses) */}
+                <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden p-6">
+                    <h3 className="text-base font-black text-white uppercase tracking-widest mb-8">Fluxo de Caixa (Últimos 6 Meses)</h3>
+                    <div className="space-y-6">
+                        {history.months.map((m, idx) => {
+                            const max = Math.max(...history.months.map(x => Math.max(x.rev, x.exp)), 1)
+                            const balance = m.rev - m.exp
+                            return (
+                                <div key={idx} className="flex items-center gap-3 group">
+                                    <div className="w-20 shrink-0">
+                                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{m.label}</span>
+                                    </div>
+                                    <div className="w-16 shrink-0 text-left">
+                                        <p className="text-[11px] font-black text-emerald-400">{R$(m.rev)}</p>
+                                        <p className="text-[11px] font-black text-rose-400">{R$(m.exp)}</p>
+                                    </div>
+                                    <div className="flex-1 space-y-1.5">
+                                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(m.rev/max)*100}%` }} />
+                                        </div>
+                                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-rose-500 rounded-full" style={{ width: `${(m.exp/max)*100}%` }} />
+                                        </div>
+                                    </div>
+                                    <div className="w-16 shrink-0 text-right">
+                                        <span className={`text-[11px] font-black ${balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{R$(balance)}</span>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+
             </div>
 
             {/* ── Drawers ─────────────────────────────────────── */}

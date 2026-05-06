@@ -180,7 +180,7 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
               {user?.gender && (
                 <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-400">
                   <User size={12} className="opacity-50" />
-                  <span className="uppercase">{user.gender}</span>
+                  <span className="uppercase">{user.gender === 'Masculino' ? 'MASC' : user.gender === 'Feminino' ? 'FEM' : user.gender}</span>
                 </div>
               )}
 
@@ -228,6 +228,7 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
           { key: 'name', label: 'Nome', val: user?.name || 'Anon' },
           { key: 'email', label: 'E-mail', val: user?.email || '—' },
           { key: 'phone', label: 'Telefone', val: user?.phone || '—' },
+          { key: 'pin', label: 'PIN de Acesso', val: user?.pin || '—' },
         ].map(f => (
           <div key={f.key}>
             {editingField === f.key ? (
@@ -247,7 +248,7 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
                   <button onClick={saveField} disabled={saving} className="btn-primary px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5">
                     <Save size={12} /> {saving ? '...' : 'Salvar'}
                   </button>
-                  <button onClick={cancelEdit} className="px-3 py-1.5 rounded-md text-xs text-gray-500 hover:text-app hover:bg-white/5 transition-colors border border-white/5">
+                  <button onClick={cancelEdit} className="px-3 py-1.5 rounded-md text-xs text-gray-600 hover:text-app hover:bg-white/5 transition-colors border border-white/5">
                     <X size={12} />
                   </button>
                 </div>
@@ -256,11 +257,13 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
               <div className="flex items-center justify-between px-5 py-4 group">
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-0.5">{f.label}</p>
-                  <p className="text-app text-sm font-medium">{f.val}</p>
+                  <p className={`text-sm font-medium ${f.key === 'pin' ? 'font-mono tracking-[0.3em] text-emerald-400 font-black' : 'text-app'}`}>{f.val}</p>
                 </div>
-                <button onClick={() => startEdit(f.key, f.val)} className="px-3 py-1 rounded-md text-xs text-gray-600 hover:text-app hover:bg-white/5 transition-colors border border-white/5">
-                  <Edit2 size={18} strokeWidth={1.9} />
-                </button>
+                {f.key !== 'pin' && (
+                  <button onClick={() => startEdit(f.key, f.val)} className="px-3 py-1 rounded-md text-xs text-gray-600 hover:text-app hover:bg-white/5 transition-colors border border-white/5">
+                    <Edit2 size={18} strokeWidth={1.9} />
+                  </button>
+                )}
               </div>
             )}
           </div>

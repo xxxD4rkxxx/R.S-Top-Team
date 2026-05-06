@@ -9,67 +9,8 @@ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
 
 
-const AssiduityCard = ({ student }) => {
-
-  const { status, lastAttendance, monthlyCount, isLoading } = useAttendanceAlerts(student.id, student.createdAt)
-
-  if (isLoading) return (
-    <div className="space-y-3">
-      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Status de Assiduidade</h3>
-      <div className="animate-pulse bg-white/5 h-24 rounded-2xl border border-white/10" />
-    </div>
-  )
-
-  const statusConfig = {
-    active: { label: 'Ativo', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-    warning:  { label: 'Em Alerta',         color: 'text-amber-500',  bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-    critical: { label: 'Risco de Abandono', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-    error:    { label: 'Erro',              color: 'text-gray-400',   bg: 'bg-gray-400/10',    border: 'border-gray-400/20' }
-  }
-
-  const current = statusConfig[status] || statusConfig.active
-  // Meta de 12 aulas por mês (3x por semana)
-  const progress = Math.min((monthlyCount / 12) * 100, 100)
-
-  return (
-    <div className="space-y-3">
-      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Status de Assiduidade</h3>
-      <div className={`p-4 rounded-2xl border ${current.border} ${current.bg} space-y-4 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.01]`}>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${status === 'active' ? 'bg-emerald-500' : status === 'warning' ? 'bg-amber-500' : 'bg-red-600'}`} />
-            <span className={`text-sm font-black uppercase tracking-wider ${current.color}`}>{current.label}</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-400">
-            <Calendar size={12} />
-            <span className="text-[10px] font-medium">Última aula: {lastAttendance ? (typeof lastAttendance.toDate === 'function' ? lastAttendance.toDate().toLocaleDateString('pt-BR') : new Date(lastAttendance).toLocaleDateString('pt-BR')) : 'Nunca'}</span>
-          </div>
-        </div>
-
-        <div className="space-y-2.5">
-          <div className="flex justify-between text-[11px] font-bold">
-            <span className="text-gray-400 uppercase tracking-wider">Frequência Mensal</span>
-            <span className="text-white bg-white/10 px-2 py-0.5 rounded-md">{monthlyCount} / 12 aulas</span>
-          </div>
-          <div className="h-2.5 bg-black rounded-full overflow-hidden border border-white/5 relative">
-            <div 
-              className={`h-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(0,0,0,0.5)] ${status === 'active' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : status === 'warning' ? 'bg-gradient-to-r from-yellow-700 to-yellow-500' : 'bg-gradient-to-r from-rose-900 to-rose-600'}`} 
-              style={{ width: `${progress}%` }} 
-            />
-          </div>
-          {status !== 'active' && (
-            <div className="flex items-center gap-2 pt-1">
-              <AlertTriangle size={12} className={current.color} />
-              <p className={`text-[10px] font-medium ${current.color}`}>
-                {status === 'warning' ? 'Aluno sem presença há mais de 2 semanas.' : 'Aluno sem presença há mais de 30 dias. Recomenda-se contato.'}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
+// Status de Assiduidade removido conforme solicitado
+  
 
 
 
@@ -174,7 +115,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
                   {ageCategory?.toUpperCase() || 'ADULTO'}
                 </span>
                 <span className="text-[9px] font-black px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-gray-500 uppercase tracking-[0.1em]">
-                  {gender === 'Masculino' ? 'MASC' : 'FEM'}
+                  {gender === 'Masculino' ? 'MASC' : gender === 'Feminino' ? 'FEM' : (gender || 'NÃO INFORMADO')}
                 </span>
                 <span className={`text-[9px] font-black px-3 py-1.5 rounded-xl border uppercase tracking-[0.1em] ${bgClass}`} style={{ color: textColor }}>
                   {beltConfig[belt]?.label?.toUpperCase() || belt?.toUpperCase() || 'SEM FAIXA'} {stripes ? `· ${stripes} GRAUS` : ''}
@@ -321,12 +262,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
             </div>
           )}
 
-          {/* Assiduity Status */}
-          {!isVisitor && (
-            <div className="space-y-4">
-              <AssiduityCard student={student} />
-            </div>
-          )}
+          {/* PIN removido de Assiduidade - agora no menu de perfil */}
 
           {/* Atividade */}
           <div className="space-y-4">

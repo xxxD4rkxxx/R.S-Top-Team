@@ -381,7 +381,12 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
 
   async function handleStatusChange({ reason, returnDate }) {
     const { student, action } = statusDialogStudent
-    const newStatus = action === 'inativar' ? 'inativo' : action === 'arquivar' ? 'arquivado' : 'suspenso'
+    const newStatus = 
+      action === 'inativar' ? 'inativo' : 
+      action === 'arquivar' ? 'arquivado' : 
+      action === 'reativar' ? 'ativo' : 
+      action === 'remover arquivado' ? 'ativo' : 
+      'suspenso'
     await changeStudentStatus(student.id, newStatus, { reason, returnDate })
     setStatusDialogStudent(null)
   }
@@ -858,6 +863,12 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
               } else if (actionType === 'inactive' || actionType === 'suspend' || actionType === 'archive') {
                 const actionMap = { inactive: 'inativar', suspend: 'suspender', archive: 'arquivar' }
                 setStatusDialogStudent({ student, action: actionMap[actionType] })
+              } else if (actionType === 'active') {
+                // Reativar: tanto para inativo quanto suspenso
+                setStatusDialogStudent({ student, action: 'reativar' })
+              } else if (actionType === 'unarchive') {
+                // Remover arquivado
+                setStatusDialogStudent({ student, action: 'remover arquivado' })
               }
               setShowMenu(null)
             }}
@@ -943,15 +954,15 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
 
           <div className="h-px bg-white/5 my-1" />
 
-          <button onClick={(e) => { e.stopPropagation(); onAction('inactive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-500/10 hover:text-gray-300 transition-all group font-medium">
-            <div className="w-8 h-8 rounded-lg bg-gray-500/10 flex items-center justify-center group-hover:bg-gray-500/20 transition-colors">
-              <UserX size={14} className="text-gray-400" />
-            </div>
-            Inativar
-          </button>
-
-          {!student.roles?.visitante && (
+          {/* BOTÕES CONDICIONAIS POR STATUS */}
+          {student.status === 'ativo' && !student.roles?.visitante && (
             <>
+              <button onClick={(e) => { e.stopPropagation(); onAction('inactive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-500/10 hover:text-gray-300 transition-all group font-medium">
+                <div className="w-8 h-8 rounded-lg bg-gray-500/10 flex items-center justify-center group-hover:bg-gray-500/20 transition-colors">
+                  <UserX size={14} className="text-gray-400" />
+                </div>
+                Inativar
+              </button>
               <button onClick={(e) => { e.stopPropagation(); onAction('suspend', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-all group font-medium">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                   <UserMinus size={14} className="text-primary" />
@@ -965,6 +976,24 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
                 Arquivar
               </button>
             </>
+          )}
+
+          {(student.status === 'inativo' || student.status === 'suspenso') && (
+            <button onClick={(e) => { e.stopPropagation(); onAction('active', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-emerald-400 hover:bg-emerald-500/10 transition-all group font-medium">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                <CheckCircle2 size={14} className="text-emerald-400" />
+              </div>
+              Reativar
+            </button>
+          )}
+
+          {student.status === 'arquivado' && (
+            <button onClick={(e) => { e.stopPropagation(); onAction('unarchive', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-400 hover:bg-blue-500/10 transition-all group font-medium">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                <ArchiveRestore size={14} className="text-blue-400" />
+              </div>
+              Remover Arquivado
+            </button>
           )}
           <button onClick={(e) => { e.stopPropagation(); onAction('delete', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-all group font-medium">
             <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">

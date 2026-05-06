@@ -67,7 +67,7 @@ export const kpiCard = {
   hover:   `hover:border-primary/50 hover:bg-primary/[0.04] hover:shadow-lg hover:shadow-primary/10`,
   active:  `border-primary/60 bg-primary/[0.06] shadow-md shadow-primary/15`,
   icon:    `w-10 h-10 rounded-lg flex items-center justify-center`,
-  value:   `font-['Bebas_Neue'] text-4xl leading-none text-white mt-2`,
+  value:   `font-sans text-4xl leading-none text-white mt-2 font-black`,
   label:   `text-xs uppercase tracking-wider text-gray-400 font-semibold`,
   desc:    `text-xs text-gray-500 mt-1`,
 };
@@ -117,7 +117,7 @@ export const modal = {
   backdrop: `fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm`,
   container: `relative w-full max-w-2xl bg-[#0D0D0D] border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden`,
   header:   `flex items-center justify-between px-6 py-4 border-b border-white/10`,
-  title:    `font-['Bebas_Neue'] text-2xl tracking-wide text-white`,
+  title:    `font-sans text-2xl tracking-wide text-white font-black`,
   body:     `px-6 py-5 overflow-y-auto`,
   footer:   `px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3`,
   close:    `p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors`,

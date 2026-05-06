@@ -2,15 +2,15 @@
   SISTEMA DE DESIGN - RS TOP TEAM
   -------------------------------
   TIPOGRAFIA:
-  - Principal: Inter (Pesos 400 e 900)
-  - Identidade: Bebas Neue (Apenas para o nome da academia "RS TOP TEAM")
+  - Principal: Inter (Pesos 400/500 e 900)
+  - Apenas Inter será usada em todo o sistema
 
   RAIO DE BORDA:
   - Containers/Cards principais: 16px (rounded-xll)
   - Botões/Inputs/Elementos interativos: 12px (rounded-xl)
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;900&family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;900&display=swap');
 @import "tailwindcss";
 
 /* ── Tailwind theme extension: mapeamos 'primary' e 'primary-dark' para CSS vars ── */
@@ -48,7 +48,6 @@
   --color-surface-3: var(--clr-surface-3);
 
   --font-sans: 'Inter', system-ui, sans-serif;
-  --font-display: 'Bebas Neue', cursive;
   --sidebar-width: 240px;
   --sidebar-collapsed: 68px;
 }

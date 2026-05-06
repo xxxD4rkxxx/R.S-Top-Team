@@ -86,6 +86,7 @@ export function StudentsProvider({ children }) {
         modalityPrimary: modalities[0] || data.modality || 'Jiu Jitsu',
         stripes: Number.isFinite(tech.graus_atuais) ? tech.graus_atuais : (Number.isFinite(data.stripes) ? data.stripes : 0),
         pin: data.pin || '',
+        gender: data.gender || '',
         status: data.status ?? 'Ativo',
         isVisitor: isVisitorForce || Boolean(data.isVisitor) || Boolean(data.roles?.visitante),
         photo: photo,

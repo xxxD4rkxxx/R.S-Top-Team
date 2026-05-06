@@ -472,31 +472,6 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                       options={[['Adulto', 'Adulto'], ['Juvenil', 'Juvenil'], ['Kids', 'Kids']]}
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Valor Mensalidade</label>
-                      <div className="relative">
-                        <Landmark size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary/50" />
-                        <input
-                          type="text"
-                          value={form.planValue}
-                          onChange={e => {
-                            let val = e.target.value.replace(/\D/g, '');
-                            val = (Number(val) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            setForm({ ...form, planValue: val });
-                          }}
-                          className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium"
-                        />
-                      </div>
-                    </div>
-                    <CustomSelect
-                      label="Pagamento Inicial"
-                      value={form.initialPaymentStatus}
-                      onChange={v => setForm({ ...form, initialPaymentStatus: v })}
-                      options={[['paid', 'Pago'], ['pending', 'Pendente']]}
-                    />
-                  </div>
                 </>
               )}
             </div>

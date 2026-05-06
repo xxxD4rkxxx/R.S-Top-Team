@@ -27,7 +27,7 @@ export default function TopBar() {
           />
           <div>
             <p className="text-xs text-gray-400 leading-none tracking-widest uppercase">Rs</p>
-            <p className="font-display text-xl text-white leading-none tracking-wider">TOP TEAM</p>
+            <p className="font-sans text-xl text-white leading-none tracking-wider font-black">TOP TEAM</p>
           </div>
         </Link>
 

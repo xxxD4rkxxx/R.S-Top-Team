@@ -157,7 +157,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
             className="flex flex-col whitespace-nowrap overflow-hidden"
           >
             <p className="text-[11px] leading-none tracking-[0.35em] uppercase font-black text-primary mb-1 pl-1">RS</p>
-            <p className="font-display text-2xl leading-tight tracking-[0.05em] text-white uppercase font-black pl-1">TOP TEAM</p>
+            <p className="font-sans text-2xl leading-tight tracking-[0.05em] text-white uppercase font-black pl-1">TOP TEAM</p>
           </motion.div>
         </Link>
 
