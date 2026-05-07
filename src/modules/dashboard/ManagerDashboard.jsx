@@ -31,7 +31,7 @@ import IntelligenceSection from './components/IntelligenceSection'
 import QuickStartGuide from './components/QuickStartGuide'
 
 const R$ = (v) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
 
 // ── Custom sport PNG icon wrappers ───────────────────────────────
 function IconJiuJitsu({ size = 16, className = '' }) {
@@ -188,7 +188,7 @@ function AbsentDrawer({ students, isOpen, onClose }) {
                                         className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 justify-end mt-1">
                                         <Phone size={10} /> Telefone
                                     </a>
-                                 )}
+                                )}
                             </div>
                         </div>
                     )
@@ -250,7 +250,7 @@ export default function ManagerDashboard() {
     const today = new Date()
 
     // Derived (student-based) - Memoized to prevent hang on re-render
-    const enrolledMembers = useMemo(() => safeStudents.filter(s => !s?.isVisitor), [safeStudents])
+    const enrolledMembers = useMemo(() => safeStudents.filter(s => !s?.isVisitor && s.roles?.aluno === true), [safeStudents])
     const activeMembers = useMemo(() => enrolledMembers.filter(s => {
         const status = String(s.status || '').toLowerCase()
         return !status || status === 'active' || status === 'ativo'
@@ -385,28 +385,28 @@ export default function ManagerDashboard() {
     const history = useMemo(() => {
         const months = []
         const now = new Date()
-        
+
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
             const m = d.getMonth()
             const y = d.getFullYear()
             const label = d.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '')
-            
+
             const filterMonth = (item) => {
                 if (!item.dueDate) return false
                 const itemDate = new Date(item.dueDate + 'T00:00:00')
                 return itemDate.getMonth() === m && itemDate.getFullYear() === y
             }
-            
+
             const b = bills.filter(filterMonth)
             const e = expenses.filter(filterMonth)
-            
+
             const rev = b.filter(x => x.status === 'paid').reduce((s, x) => s + (Number(x.amount) || 0), 0)
             const exp = e.filter(x => x.status === 'paid').reduce((s, x) => s + (Number(x.amount) || 0), 0)
-            
+
             months.push({ label, rev, exp })
         }
-        
+
         return { months }
     }, [bills, expenses])
 
@@ -437,7 +437,7 @@ export default function ManagerDashboard() {
             />
 
             <div className="flex-1 px-4 md:px-6 pt-6 pb-0 w-full space-y-6 fade-slide-up">
-                
+
 
                 {/* ── KPIs ───────────────────────────────────────── */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
@@ -624,10 +624,10 @@ export default function ManagerDashboard() {
                                     </div>
                                     <div className="flex-1 space-y-1.5">
                                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(m.rev/max)*100}%` }} />
+                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(m.rev / max) * 100}%` }} />
                                         </div>
                                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full bg-rose-500 rounded-full" style={{ width: `${(m.exp/max)*100}%` }} />
+                                            <div className="h-full bg-rose-500 rounded-full" style={{ width: `${(m.exp / max) * 100}%` }} />
                                         </div>
                                     </div>
                                     <div className="w-16 shrink-0 text-right">

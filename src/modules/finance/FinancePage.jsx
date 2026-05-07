@@ -357,9 +357,9 @@ function TabRelatorios({ bills, expenses, students }) {
     const despesaTotal = expenses.filter(d => d.status === 'paid').reduce((s, d) => s + (Number(d.amount) || 0), 0)
     const despesaPendente = expenses.filter(d => d.status === 'pending').reduce((s, d) => s + (Number(d.amount) || 0), 0)
     const saldo = receitaTotal - despesaTotal
-    const totalAlunos = students.length
-    const alunosAtivos = students.filter(s => s.status === 'Ativo').length
-    const alunosIsentos = students.filter(s => s.isPaymentExempt).length
+    const totalAlunos = students.filter(s => s.roles?.aluno === true).length
+    const alunosAtivos = students.filter(s => s.status === 'Ativo' && s.roles?.aluno === true).length
+    const alunosIsentos = students.filter(s => s.isPaymentExempt && s.roles?.aluno === true).length
     const inadimplentes = [...new Set(bills.filter(b => b.status === 'overdue').map(b => b.studentId))].length
     const taxaInadimplencia = alunosAtivos > 0 ? ((inadimplentes / alunosAtivos) * 100).toFixed(1) : '0.0'
     return {
@@ -510,7 +510,7 @@ export default function FinancePage() {
     totalRevenue: formatBRL(totalPaid),
     pendingRevenue: formatBRL(totalPending),
     overdueRevenue: formatBRL(totalOverdue),
-    alunosAtivos: students.filter(s => s.status === 'Ativo').length,
+    alunosAtivos: students.filter(s => s.status === 'Ativo' && s.roles?.aluno === true).length,
   }), [totalPaid, totalPending, totalOverdue, students])
 
   const filteredBills = useMemo(() => {

@@ -34,8 +34,8 @@ const navGroups = [
   {
     title: 'Inteligência Financeira',
     items: [
-      { to: '/financeiro',  icon: PiggyBank,      label: 'Cobrança',               roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewFinance' },
-      { to: '/despesas', icon: ArrowDownRight,  label: 'Despesas',               roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewFinance' },
+      { to: '/financeiro',  icon: PiggyBank,      label: 'Cobrança',               roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewBillingTab' },
+      { to: '/despesas', icon: ArrowDownRight,  label: 'Despesas',               roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewExpensesTab' },
       { to: '/relatorios',  icon: PieChart,        label: 'Relatórios Financeiros', roles: ['admin', 'gestor', 'professor'], reqPerm: 'viewFinance' },
     ]
   },
@@ -84,6 +84,13 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
     if (!key) return true;
     if (isActuallyAdmin) return true;
     if (!userData?.permissions) return true;
+    // Fallback para compatibilidade com permissões antigas
+    if (key === 'viewBillingTab') {
+      return !!userData.permissions.viewBillingTab || !!userData.permissions.viewFinance;
+    }
+    if (key === 'viewExpensesTab') {
+      return !!userData.permissions.viewExpensesTab || !!userData.permissions.viewFinance;
+    }
     if (key === 'viewFinance') {
       return !!userData.permissions.viewFinance || !!userData.permissions.viewOnlyFinance;
     }

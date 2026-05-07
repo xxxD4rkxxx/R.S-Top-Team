@@ -253,9 +253,10 @@ export function useDashboardStats(period = 'Semana', instructorId = null) {
           }))
 
         // ── 6. Alunos ausentes há mais de 10 dias ────────────────────────────────
-        const isActive = (st) =>
-          !['inativo', 'inactive', 'suspenso', 'suspended', 'arquivado', 'archived'].includes(st)
-        const activeStudents = students.filter(s => isActive(s.status))
+        const isActiveStudent = (s) =>
+          !['inativo', 'inactive', 'suspenso', 'suspended', 'arquivado', 'archived'].includes(s.status) &&
+          s.roles?.aluno === true
+        const activeStudents = students.filter(isActiveStudent)
 
         const absentStudents = activeStudents
           .filter(s => {
@@ -293,7 +294,7 @@ export function useDashboardStats(period = 'Semana', instructorId = null) {
 
         // ── 9. Alunos inativos ────────────────────────────────────────────────────
         const inactiveStudents = students
-          .filter(s => ['inativo', 'inactive'].includes(s.status))
+          .filter(s => ['inativo', 'inactive'].includes(s.status) && s.roles?.aluno === true)
           .map(s => ({
             id: s.id,
             name: s.name,

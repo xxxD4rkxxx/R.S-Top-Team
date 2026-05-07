@@ -38,8 +38,8 @@ const mainNavItems = [
 
 // Itens do menu "Mais" (Drawer lateral/inferior)
 const drawerItems = [
-  { to: '/financeiro', icon: Banknote, label: 'Cobrança', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de mensalidades', reqPerm: 'viewFinance' },
-  { to: '/despesas', icon: ArrowDownRight, label: 'Despesas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Saídas e custos', reqPerm: 'viewFinance' },
+  { to: '/financeiro', icon: Banknote, label: 'Cobrança', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de mensalidades', reqPerm: 'viewBillingTab' },
+  { to: '/despesas', icon: ArrowDownRight, label: 'Despesas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Saídas e custos', reqPerm: 'viewExpensesTab' },
   { to: '/relatorios', icon: PieChart, label: 'Relatórios', roles: ['admin', 'gestor', 'professor'], subtitle: 'Análise financeira', reqPerm: 'viewFinance' },
   { to: '/modalidades', icon: Layers, label: 'Turmas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Modalidades e horários', reqPerm: 'manageSystem' },
   { to: '/visitantes', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'], subtitle: 'Aulas experimentais' },
@@ -81,6 +81,16 @@ export default function MobileNav() {
     if (!key) return true;
     if (isActuallyAdmin) return true;
     if (!userData?.permissions) return true;
+    // Fallback para compatibilidade com permissões antigas
+    if (key === 'viewBillingTab') {
+      return !!userData.permissions.viewBillingTab || !!userData.permissions.viewFinance;
+    }
+    if (key === 'viewExpensesTab') {
+      return !!userData.permissions.viewExpensesTab || !!userData.permissions.viewFinance;
+    }
+    if (key === 'viewFinance') {
+      return !!userData.permissions.viewFinance || !!userData.permissions.viewOnlyFinance;
+    }
     return !!userData.permissions[key];
   }
 

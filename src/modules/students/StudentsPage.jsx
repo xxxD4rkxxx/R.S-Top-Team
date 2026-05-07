@@ -9,6 +9,7 @@ import {
   Edit2, Copy, CalendarDays, GraduationCap, CreditCard, Trash2,
   FileText, RefreshCw, ChevronDown, Award, Target, Smartphone, Eye
 } from 'lucide-react'
+import { useFinance } from '../../hooks/useFinance'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { useStudents } from '../../hooks/useStudents'
@@ -180,7 +181,8 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   const { user, userData, effectiveRole } = useAuth()
   const { students, isLoadingStudents, addStudent, updateStudentProfile, changeStudentStatus, deleteStudent, deleteVisitor } = useStudents()
   const { fetchUserPin } = useSystemUsers()
-  const [fetchedPins, setFetchedPins] = useState({})
+   const [fetchedPins, setFetchedPins] = useState({})
+   const { bills } = useFinance()
 
   const isAdmin = effectiveRole === 'admin'
   const isGestor = effectiveRole === 'gestor'
@@ -559,10 +561,9 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                   <tr className="border-b border-white/10 text-[10px] uppercase font-black text-gray-500 tracking-wider bg-white/5">
                     <th className="py-3 px-5">{typeFilter === 'visitante' ? 'Visitante' : 'Aluno'}</th>
                     <th className="py-3 px-5 text-center">Telefone</th>
-                    {typeFilter !== 'visitante' && <th className="py-3 px-5 text-center">PIN</th>}
-                    <th className="py-3 px-5 text-center">Modalidade</th>
-                    {typeFilter !== 'visitante' && <th className="py-3 px-5 text-center">Pagamento</th>}
-                    {typeFilter !== 'visitante' && <th className="py-3 px-5 w-12 text-center text-gray-500">CTO</th>}
+                     {typeFilter !== 'visitante' && <th className="py-3 px-5 text-center">PIN</th>}
+                     <th className="py-3 px-5 text-center">Modalidade</th>
+                     {typeFilter !== 'visitante' && <th className="py-3 px-5 text-center">Pagamento</th>}
                     {typeFilter === 'visitante' && <th className="py-3 px-5 text-center">Última Visita</th>}
                     {typeFilter === 'visitante' && <th className="py-3 px-5 text-center">Visitas</th>}
                     <th className="py-3 px-5 text-center">Status</th>
@@ -626,48 +627,62 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                           )}
                         </td>
                       )}
-                      <td className="py-4 px-5 text-center">
-                        <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
-                          {(() => {
-                            const val = student[FIELDS.MODALIDADES] || student.modalities || []
-                            const single = student[FIELDS.MODALIDADE] || student.modality
-                            const raw = [...(Array.isArray(val) ? val : [val]), single].filter(Boolean)
-                            
-                            const mods = Array.from(new Set(
-                              raw.map(m => {
-                                if (typeof m !== 'string') return m
-                                const t = m.trim()
-                                const lower = t.toLowerCase()
-                                if (lower === 'jiu-jitsu' || lower === 'jiu jitsu' || lower === 'jiujitsu') return 'Jiu Jitsu'
-                                if (lower === 'boxe') return 'Boxe'
-                                if (lower === 'muay thai' || lower === 'muay-thai') return 'Muay Thai'
-                                return t
-                              })
-                            ));
-                            
-                            return mods.map((m, i) => (
-                              <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-gray-400 uppercase font-bold whitespace-nowrap">
-                                {m}
-                              </span>
-                            ));
-                          })()}
-                        </div>
-                      </td>
-                      {typeFilter !== 'visitante' && (
                         <td className="py-4 px-5 text-center">
-                          <span className="px-3 py-1.5 rounded-xl bg-white/5 text-gray-600 text-[10px] font-black uppercase border border-white/5 whitespace-nowrap">
-                            Em breve
-                          </span>
-                        </td>
-                      )}
-
-                      {typeFilter !== 'visitante' && (
-                        <td className="py-4 px-5 text-center">
-                          <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 mx-auto">
-                            <FileText size={18} strokeWidth={1.9} className="text-gray-500" />
+                          <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-gray-400 min-w-[80px]">
+                            {(() => {
+                              const val = student[FIELDS.MODALIDADES] || student.modalities || []
+                              const single = student[FIELDS.MODALIDADE] || student.modality
+                              const raw = [...(Array.isArray(val) ? val : [val]), single].filter(Boolean)
+                              
+                              const mods = Array.from(new Set(
+                                raw.map(m => {
+                                  if (typeof m !== 'string') return m
+                                  const t = m.trim()
+                                  const lower = t.toLowerCase()
+                                  if (lower === 'jiu-jitsu' || lower === 'jiu jitsu' || lower === 'jiujitsu') return 'Jiu Jitsu'
+                                  if (lower === 'boxe') return 'Boxe'
+                                  if (lower === 'muay thai' || lower === 'muay-thai') return 'Muay Thai'
+                                  return t
+                                })
+                              ));
+                              
+                              return mods.length > 0 ? mods.join(', ') : '---'
+                            })()}
                           </div>
                         </td>
-                      )}
+                       {typeFilter !== 'visitante' && (
+                         <td className="py-4 px-5 text-center">
+                           {(() => {
+                             const studentBill = bills.find(b => b.studentId === student.id && (b.status === 'paid' || b.status === 'pending' || b.status === 'overdue'));
+                             let paymentLabel = '---';
+                             let paymentColor = 'text-gray-400';
+                             
+                             if (studentBill) {
+                               const status = studentBill.status;
+                               const statusConfig = {
+                                 paid: { label: 'Pago', color: 'text-emerald-400' },
+                                 pending: { label: 'Pendente', color: 'text-amber-400' },
+                                 overdue: { label: 'Vencido', color: 'text-rose-400' }
+                               };
+                               const config = statusConfig[status] || statusConfig.pending;
+                               paymentLabel = config.label;
+                               paymentColor = config.color;
+                             }
+                             
+                              return canSeeStudents ? (
+                                <div className={`inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono ${paymentColor} tracking-[0.2em] min-w-[80px]`}>
+                                  {paymentLabel}
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-gray-700 tracking-widest min-w-[80px]">
+                                  ••••••
+                                </div>
+                              );
+                           })()}
+                         </td>
+                       )}
+
+
 
                       {typeFilter === 'visitante' && (
                         <td className="py-4 px-5 text-center">

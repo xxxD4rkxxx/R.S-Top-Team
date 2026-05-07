@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, User, Users, Mail, Shield, Check, Copy,
@@ -138,16 +138,25 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
   React.useEffect(() => {
     if (isOpen) {
       if (initialData) {
+        // 🛡️ Normaliza roles: pode vir como array ['admin'] ou objeto {admin: true}
+        const rawRoles = initialData.roles || {}
+        let normRoles = []
+        if (Array.isArray(rawRoles)) {
+          normRoles = rawRoles
+        } else if (typeof rawRoles === 'object' && rawRoles !== null) {
+          normRoles = Object.keys(rawRoles).filter(r => rawRoles[r])
+         }
+         // Fallback para 'aluno' apenas quando criando novo usuário
+         if (normRoles.length === 0 && !initialData) {
+           normRoles = ['aluno']
+         }
+
         setFormData({
           name: initialData.nome || initialData.name || '',
           email: initialData.email || '',
-          phone: initialData.phone || '',
+          phone: initialData.phone || initialData.telefone || '',
           pin: initialData.pin || '',
-          roles: Array.isArray(initialData.roles)
-            ? initialData.roles
-            : initialData.roles
-              ? Object.keys(initialData.roles).filter(r => initialData.roles[r])
-              : ['aluno'],
+          roles: normRoles,
           modalities: initialData.modalities || [],
           belt: initialData.belt || 'none',
           stripes: initialData.stripes || 0,
@@ -160,10 +169,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           parentPhone: initialData.parentPhone || '',
           turmas: initialData.turmas || [],
           // --------------------------------
-          permissions: {
-            ...defaultRolePermissions.aluno,
-            ...(initialData.permissions || {})
-          }
+          // 🛡️ Ao editar, preserva as permissões reais do usuário sem sobrescrever com defaults
+          permissions: { ...(initialData.permissions || {}) }
         })
         setSelectedStudentId(initialData.id || null)
       } else {
@@ -339,22 +346,25 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       ? rawRoles
       : Object.keys(rawRoles).filter(r => rawRoles[r])
 
-    setFormData(prev => ({
-      ...prev,
-      name: student.nome || student.name,
-      email: student.email || '',
-      phone: student.phone || '',
-      roles: studentRoles,
-      // --- NOVOS CAMPOS SINCRONIZADOS ---
-      gender: student.gender || 'Masculino',
-      ageCategory: student.ageCategory || 'Adulto',
-      emergency: student.emergency || '',
-      medical: student.medical || '',
-      parentName: student.parentName || '',
-      parentPhone: student.parentPhone || '',
-      // --------------------------------
-      permissions: mergePermissions(studentRoles)
-    }))
+     setFormData(prev => ({
+       ...prev,
+       name: student.nome || student.name,
+       email: student.email || '',
+       phone: student.phone || '',
+       roles: studentRoles,
+       modalities: student.modalities || [],
+       belt: student.belt || 'none',
+       stripes: student.stripes || 0,
+       // --- NOVOS CAMPOS SINCRONIZADOS ---
+       gender: student.gender || 'Masculino',
+       ageCategory: student.ageCategory || 'Adulto',
+       emergency: student.emergency || '',
+       medical: student.medical || '',
+       parentName: student.parentName || '',
+       parentPhone: student.parentPhone || '',
+       // --------------------------------
+       permissions: mergePermissions(studentRoles)
+     }))
     setSelectedStudentId(student.id)
     setStudentSearch('')
   }
@@ -369,7 +379,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     setFormData(prev => {
       const isCurrentlyOn = prev.permissions[key];
       const isTurningOff = isCurrentlyOn;
-      
+
       let newPermissions = { ...prev.permissions, [key]: !isCurrentlyOn };
 
       // Regras de dependência (desligamento automático)
@@ -380,6 +390,12 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       if (key === 'viewFinance' && isTurningOff) {
          newPermissions.managePayments = false;
          newPermissions.manageExpenses = false;
+      }
+      if (key === 'viewExpensesTab' && isTurningOff) {
+         newPermissions.manageExpensesTab = false;
+      }
+      if (key === 'viewBillingTab' && isTurningOff) {
+         newPermissions.manageBillingTab = false;
       }
 
       return {
@@ -395,6 +411,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       viewStudents: true, editStudents: true, deleteStudents: true,
       manageClasses: true, manageEvents: true,
       viewFinance: true, managePayments: true, manageExpenses: true,
+      viewExpensesTab: true, manageExpensesTab: true,
+      viewBillingTab: true, manageBillingTab: true,
       manageUsers: true, manageSystem: true,
       viewStaffPins: true, viewStudentPins: true
     },
@@ -402,6 +420,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       viewStudents: true, editStudents: true, deleteStudents: false,
       manageClasses: true, manageEvents: true,
       viewFinance: true, managePayments: true, manageExpenses: true,
+      viewExpensesTab: true, manageExpensesTab: true,
+      viewBillingTab: true, manageBillingTab: true,
       manageUsers: false, manageSystem: false,
       viewStaffPins: true, viewStudentPins: true
     },
@@ -409,6 +429,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       viewStudents: true, editStudents: false, deleteStudents: false,
       manageClasses: true, manageEvents: true,
       viewFinance: false, managePayments: false, manageExpenses: false,
+      viewExpensesTab: false, manageExpensesTab: false,
+      viewBillingTab: false, manageBillingTab: false,
       manageUsers: false, manageSystem: false,
       viewStaffPins: false, viewStudentPins: true
     },
@@ -416,6 +438,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       viewStudents: false, editStudents: false, deleteStudents: false,
       manageClasses: false, manageEvents: false,
       viewFinance: false, managePayments: false, manageExpenses: false,
+      viewExpensesTab: false, manageExpensesTab: false,
+      viewBillingTab: false, manageBillingTab: false,
       manageUsers: false, manageSystem: false,
       viewStaffPins: false, viewStudentPins: false
     }
@@ -435,10 +459,12 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     return merged
   }
 
-  /** Gerencia a adição/remoção de cargos no array */
+/** Gerencia a adição/remoção de cargos no array */
   const handleRoleToggle = (roleId) => {
+    if (!(myRank >= (ROLE_RANK[roleId] || 0) || effectiveRole === 'admin')) return
     setFormData(prev => {
-      let newRoles = prev.roles.includes(roleId)
+      const isCurrentlySelected = prev.roles.includes(roleId)
+      const newRoles = isCurrentlySelected
         ? prev.roles.filter(r => r !== roleId)
         : [...prev.roles, roleId]
 
@@ -447,6 +473,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       return {
         ...prev,
         roles: newRoles,
+        // Só recalcula permissões se o usuário tiver permissão para alterar
         permissions: mergePermissions(newRoles)
       }
     })
@@ -488,6 +515,18 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       setError('Selecione ao menos um cargo para este usuário.')
       setLoading(false)
       return
+    }
+
+    // 🔒 Validação: impede conceder permissões que o usuário não possui
+    if (effectiveRole !== 'admin') {
+      const notAllowed = Object.keys(formData.permissions).filter(
+        k => formData.permissions[k] && !canGrantPermission(k)
+      )
+      if (notAllowed.length > 0) {
+        setError(`Você não tem permissão para conceder: ${notAllowed.join(', ')}.`)
+        setLoading(false)
+        return
+      }
     }
 
     try {
@@ -544,17 +583,23 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
   const ROLE_RANK = { admin: 4, gestor: 3, professor: 2, aluno: 1 }
   const myRank = ROLE_RANK[effectiveRole] || 1
 
-  /** Lista de cargos permitidos para o usuário atual */
-  const availableRoles = [
+  /** Lista de cargos permitidos para o usuário atual + cargos do usuário sendo editado */
+  const baseRoles = [
     { id: 'admin', label: 'Admin', desc: 'Total' },
     { id: 'gestor', label: 'Gestor', desc: 'Gerência' },
     { id: 'professor', label: 'Prof.', desc: 'Aulas' },
     { id: 'aluno', label: 'Aluno', desc: 'Básico' },
-  ].filter(r => myRank >= ROLE_RANK[r.id] || effectiveRole === 'admin')
+  ]
+  const availableRoles = baseRoles.filter(r =>
+    myRank >= (ROLE_RANK[r.id] || 0) ||
+    effectiveRole === 'admin' ||
+    (initialData && Array.isArray(initialData.roles) && initialData.roles.includes(r.id))
+  )
 
   /** Verifica se o usuário logado tem uma permissão específica para poder concedê-la */
   const canGrantPermission = (key) => {
     if (effectiveRole === 'admin') return true
+    // Apenas concede se o usuário possui a permissão ativa (sem fallbacks)
     return !!userData?.permissions?.[key]
   }
 
@@ -777,18 +822,22 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                   </div>
                 </div>
 
-                {/* SELEÇÃO MÚLTIPLA DE CARGOS */}
-                <div className="space-y-3">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Atribuição de Cargos</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {availableRoles.map(r => (
-                      <button key={r.id} type="button" onClick={() => handleRoleToggle(r.id)} className={`p-2.5 md:p-3 rounded-xl border text-center transition-all relative overflow-hidden group ${formData.roles.includes(r.id) ? 'bg-primary border-primary shadow-lg shadow-primary/10' : 'bg-white/[0.02] border-white/5 hover:bg-white hover:border-white'}`}>
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${formData.roles.includes(r.id) ? 'text-white' : 'text-gray-400 group-hover:text-black'}`}>{r.label}</p>
-                        <p className={`text-[8px] uppercase font-black tracking-tighter mt-0.5 ${formData.roles.includes(r.id) ? 'text-white/70' : 'text-gray-600 group-hover:text-black/60'}`}>{r.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                 {/* SELEÇÃO MÚLTIPLA DE CARGOS */}
+                 <div className="space-y-3">
+                   <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Atribuição de Cargos</label>
+                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                     {availableRoles.map(r => {
+                       const isSelected = formData.roles.includes(r.id)
+                       const canToggle = myRank >= (ROLE_RANK[r.id] || 0) || effectiveRole === 'admin'
+                       return (
+                         <button key={r.id} type="button" disabled={!canToggle} onClick={() => handleRoleToggle(r.id)} className={`p-2.5 md:p-3 rounded-xl border text-center transition-all relative overflow-hidden group ${isSelected ? 'bg-primary border-primary shadow-lg shadow-primary/10' : 'bg-white/[0.02] border-white/5 hover:bg-white hover:border-white'} ${!canToggle ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                           <p className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-black'}`}>{r.label}</p>
+                           <p className={`text-[8px] uppercase font-black tracking-tighter mt-0.5 ${isSelected ? 'text-white/70' : 'text-gray-600 group-hover:text-black/60'}`}>{r.desc}</p>
+                         </button>
+                       )
+                     })}
+                   </div>
+                 </div>
 
                 {/* MODALIDADES PARA PROFESSOR */}
                 {formData.roles.includes('professor') && (
@@ -927,8 +976,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                   );
                 })()}
 
-                {/* GRADUAÇÃO (Somente se Jiu Jitsu estiver selecionado) */}
-                {(formData.modalities?.some(m => m.toLowerCase().includes('jiu')) || formData.roles.includes('aluno')) && (
+                 {/* GRADUAÇÃO (Somente se houver modalidade com sistema de faixas) */}
+                 {dbModalities?.some(m => formData.modalities?.includes(m.name) && m.hasBelt !== false) && (
                   <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 relative z-[40]">
                     <CustomSelect
                       label="Faixa Atual"
@@ -1030,25 +1079,25 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                       {expandedCategories.operational && (
                         <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
                           {[
-                            { k: 'viewStudents', l: 'Visualizar Alunos', d: 'Ver lista e perfis.' },
-                            { k: 'editStudents', l: 'Cadastrar/Editar', d: 'Criar e alterar dados.', dep: 'viewStudents' },
-                            { k: 'manageClasses', l: 'Gerenciar Chamadas', d: 'Iniciar aulas e treinos.' },
-                            { k: 'manageEvents', l: 'Gerenciar Eventos', d: 'Eventos e graduações.' },
-                            { k: 'deleteStudents', l: 'Excluir Registros', d: 'Deletar alunos do sistema.', r: true, dep: 'viewStudents' },
-                          ].map(p => {
-                            const isGhost = p.dep && !formData.permissions[p.dep];
-                            return (
-                              <div key={p.k} className={`flex items-center justify-between ${isGhost ? 'opacity-30 grayscale' : ''}`}>
-                                <div className="flex-1 pr-6">
-                                  <p className={`text-[11px] font-bold uppercase tracking-tight ${p.r ? 'text-red-400' : 'text-gray-200'}`}>{p.l}</p>
-                                  <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
-                                </div>
-                                <button type="button" disabled={isGhost} onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] && !isGhost ? (p.r ? 'bg-red-500' : 'bg-primary') : 'bg-gray-800'} ${isGhost ? 'cursor-not-allowed' : ''}`}>
-                                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] && !isGhost ? 'translate-x-4' : ''}`} />
-                                </button>
-                              </div>
-                            )
-                          })}
+                             { k: 'viewStudents', l: 'Visualizar Alunos', d: 'Ver lista e perfis.' },
+                             { k: 'editStudents', l: 'Cadastrar/Editar', d: 'Criar e alterar dados.', dep: 'viewStudents' },
+                             { k: 'manageClasses', l: 'Gerenciar Chamadas', d: 'Iniciar aulas e treinos.' },
+                             { k: 'manageEvents', l: 'Gerenciar Eventos', d: 'Eventos e graduações.' },
+                             { k: 'deleteStudents', l: 'Excluir Registros', d: 'Deletar alunos do sistema.', r: true, dep: 'viewStudents' },
+                           ].filter(p => canGrantPermission(p.k)).map(p => {
+                             const isGhost = p.dep && !formData.permissions[p.dep];
+                             return (
+                               <div key={p.k} className={`flex items-center justify-between ${isGhost ? 'opacity-30 grayscale' : ''}`}>
+                                 <div className="flex-1 pr-6">
+                                   <p className={`text-[11px] font-bold uppercase tracking-tight ${p.r ? 'text-red-400' : 'text-gray-200'}`}>{p.l}</p>
+                                   <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                 </div>
+                                 <button type="button" disabled={isGhost} onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] && !isGhost ? (p.r ? 'bg-red-500' : 'bg-primary') : 'bg-gray-800'} ${isGhost ? 'cursor-not-allowed' : ''}`}>
+                                   <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] && !isGhost ? 'translate-x-4' : ''}`} />
+                                 </button>
+                               </div>
+                             )
+                           })}
                         </div>
                       )}
                     </div>
@@ -1068,7 +1117,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                             { k: 'viewFinance', l: 'Ver Relatórios', d: 'Acesso a lucros e KPIs.' },
                             { k: 'managePayments', l: 'Processar Pagamentos', d: 'Lançar mensalidades.', dep: 'viewFinance' },
                             { k: 'manageExpenses', l: 'Gerenciar Despesas', d: 'Lançar contas a pagar.', dep: 'viewFinance' },
-                          ].map(p => {
+                          ].filter(p => canGrantPermission(p.k)).map(p => {
                             const isGhost = p.dep && !formData.permissions[p.dep];
                             return (
                               <div key={p.k} className={`flex items-center justify-between ${isGhost ? 'opacity-30 grayscale' : ''}`}>
@@ -1082,6 +1131,54 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                               </div>
                             )
                           })}
+
+                          {/* Despesas */}
+                          {canGrantPermission('viewExpensesTab') && (
+                            <div className="pt-3 border-t border-white/5">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3">Despesas</p>
+                              {[
+                                { k: 'viewExpensesTab', l: 'Ver aba Despesas', d: 'Acessar a aba de despesas.', dep: 'viewFinance' },
+                                { k: 'manageExpensesTab', l: 'Gerenciar aba Despesas', d: 'Adicionar/editar despesas.', dep: 'viewExpensesTab' },
+                              ].filter(p => canGrantPermission(p.k)).map(p => {
+                                const isGhost = p.dep && !formData.permissions[p.dep];
+                                return (
+                                  <div key={p.k} className={`flex items-center justify-between ${isGhost ? 'opacity-30 grayscale' : ''}`}>
+                                    <div className="flex-1 pr-6">
+                                      <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
+                                      <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                    </div>
+                                    <button type="button" disabled={isGhost} onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] && !isGhost ? 'bg-primary' : 'bg-gray-800'} ${isGhost ? 'cursor-not-allowed' : ''}`}>
+                                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] && !isGhost ? 'translate-x-4' : ''}`} />
+                                    </button>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {/* Cobrança */}
+                          {canGrantPermission('viewBillingTab') && (
+                            <div className="pt-3 border-t border-white/5">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3">Cobrança</p>
+                              {[
+                                { k: 'viewBillingTab', l: 'Ver aba Cobrança', d: 'Acessar a aba de cobranças.', dep: 'viewFinance' },
+                                { k: 'manageBillingTab', l: 'Gerenciar aba Cobrança', d: 'Adicionar/editar cobranças.', dep: 'viewBillingTab' },
+                              ].filter(p => canGrantPermission(p.k)).map(p => {
+                                const isGhost = p.dep && !formData.permissions[p.dep];
+                                return (
+                                  <div key={p.k} className={`flex items-center justify-between ${isGhost ? 'opacity-30 grayscale' : ''}`}>
+                                    <div className="flex-1 pr-6">
+                                      <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
+                                      <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                    </div>
+                                    <button type="button" disabled={isGhost} onClick={() => handleTogglePermission(p.k)} className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] && !isGhost ? 'bg-primary' : 'bg-gray-800'} ${isGhost ? 'cursor-not-allowed' : ''}`}>
+                                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] && !isGhost ? 'translate-x-4' : ''}`} />
+                                    </button>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1098,27 +1195,23 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                       {expandedCategories.system && (
                         <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
                           {[
-                            { k: 'manageUsers', l: 'Gerenciar Equipe', d: 'Criar outros colaboradores.' },
-                            { k: 'manageSystem', l: 'Configurar Regras', d: 'Modalidades e graduações.' },
-                          ].map(p => {
-                            const allowed = canGrantPermission(p.k)
-                            return (
-                              <div key={p.k} className={`flex items-center justify-between ${!allowed ? 'opacity-30 grayscale' : ''}`}>
-                                <div className="flex-1 pr-6">
-                                  <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
-                                  <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
-                                </div>
-                                <button
-                                  type="button"
-                                  disabled={!allowed}
-                                  onClick={() => handleTogglePermission(p.k)}
-                                  className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-primary' : 'bg-gray-800'} ${!allowed ? 'cursor-not-allowed' : ''}`}
-                                >
-                                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
-                                </button>
-                              </div>
-                            )
-                          })}
+                             { k: 'manageUsers', l: 'Gerenciar Equipe', d: 'Criar outros colaboradores.' },
+                             { k: 'manageSystem', l: 'Configurar Regras', d: 'Modalidades e graduações.' },
+                           ].filter(p => canGrantPermission(p.k)).map(p => (
+                               <div key={p.k} className="flex items-center justify-between">
+                                 <div className="flex-1 pr-6">
+                                   <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
+                                   <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                 </div>
+                                 <button
+                                   type="button"
+                                   onClick={() => handleTogglePermission(p.k)}
+                                   className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-primary' : 'bg-gray-800'}`}
+                                 >
+                                   <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
+                                 </button>
+                               </div>
+                           ))}
                         </div>
                       )}
                     </div>
@@ -1135,27 +1228,23 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                       {expandedCategories.security && (
                         <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
                           {[
-                            { k: 'viewStaffPins', l: 'Ver PIN da Equipe', d: 'Acesso a senhas de colaboradores.' },
-                            { k: 'viewStudentPins', l: 'Ver PIN de Alunos', d: 'Acesso a senhas de alunos.' },
-                          ].map(p => {
-                            const allowed = canGrantPermission(p.k)
-                            return (
-                              <div key={p.k} className={`flex items-center justify-between ${!allowed ? 'opacity-30 grayscale' : ''}`}>
-                                <div className="flex-1 pr-6">
-                                  <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
-                                  <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
-                                </div>
-                                <button
-                                  type="button"
-                                  disabled={!allowed}
-                                  onClick={() => handleTogglePermission(p.k)}
-                                  className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-orange-500' : 'bg-gray-800'} ${!allowed ? 'cursor-not-allowed' : ''}`}
-                                >
-                                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
-                                </button>
-                              </div>
-                            )
-                          })}
+                             { k: 'viewStaffPins', l: 'Ver PIN da Equipe', d: 'Acesso a senhas de colaboradores.' },
+                             { k: 'viewStudentPins', l: 'Ver PIN de Alunos', d: 'Acesso a senhas de alunos.' },
+                           ].filter(p => canGrantPermission(p.k)).map(p => (
+                               <div key={p.k} className="flex items-center justify-between">
+                                 <div className="flex-1 pr-6">
+                                   <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
+                                   <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
+                                 </div>
+                                 <button
+                                   type="button"
+                                   onClick={() => handleTogglePermission(p.k)}
+                                   className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-orange-500' : 'bg-gray-800'}`}
+                                 >
+                                   <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
+                                 </button>
+                               </div>
+                           ))}
                         </div>
                       )}
                     </div>
@@ -1199,4 +1288,29 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
 
   return createPortal(modalContent, document.body)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

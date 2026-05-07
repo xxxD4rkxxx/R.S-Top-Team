@@ -380,7 +380,6 @@ export default function CollaboratorsPage() {
                   <th className="py-3 px-5 text-center">E-mail</th>
                   <th className="py-3 px-5 text-center">WhatsApp</th>
                   <th className="py-3 px-5 text-center">Cargo</th>
-                  <th className="py-3 px-5 text-center text-gray-500 uppercase tracking-widest">Pin de Acesso</th>
                   <th className="py-3 px-5 text-center">Status</th>
                   <th className="py-3 px-5 w-12 text-center text-gray-500">Ações</th>
                 </tr>
@@ -464,21 +463,6 @@ export default function CollaboratorsPage() {
                           <span className="text-[10px] text-gray-700 font-bold italic">Sem Roles</span>
                         )}
                       </div>
-                    </td>
-
-                    <td className="py-4 px-5 text-center">
-                      {canSeeStaff ? (
-                        <div className="flex flex-col items-center gap-1">
-                          {/* 🔐 Mostra apenas o PIN de acesso principal (Admin se houver) */}
-                          <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-emerald-400 tracking-[0.2em] min-w-[80px]">
-                            {member.adminPin || member.pin || fetchedPins[member.id] || '---'}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-sm font-mono text-gray-700 tracking-widest min-w-[80px]">
-                          ••••••
-                        </div>
-                      )}
                     </td>
 
                     <td className="py-4 px-5 text-center">

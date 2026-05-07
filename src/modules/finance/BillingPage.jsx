@@ -19,6 +19,7 @@ import KPICard from '../../components/shared/KPICard'
 import { useFinance } from '../../hooks/useFinance'
 import { useStudents } from '../../hooks/useStudents'
 import { useModalities } from '../../hooks/useModalities'
+import { useAuth } from '../../context/AuthContext'
 import { beltConfig } from '../../data/beltConfig'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -472,6 +473,10 @@ export default function BillingPage() {
   const { bills, loading, updateBillStatus, deleteBill, addBill, updateBill, gerarCobrancasEmLote } = useFinance()
   const { students } = useStudents()
   const { modalities } = useModalities()
+  const { userData, effectiveRole } = useAuth()
+
+  const canViewBilling = userData?.permissions?.viewBillingTab ?? userData?.permissions?.viewFinance ?? false
+  const canManageBilling = userData?.permissions?.manageBillingTab ?? userData?.permissions?.managePayments ?? false
 
   const [showModal, setShowModal] = useState(false)
   const [showBatchModal, setShowBatchModal] = useState(false)
@@ -656,18 +661,22 @@ export default function BillingPage() {
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowBatchModal(true)}
-              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
-            >
-              <RefreshCcw size={16} strokeWidth={2.5} />
-              <span className="hidden md:inline">OPERAR LOTE</span>
-            </button>
-            <button onClick={() => setShowModal(true)}
-              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              <span className="hidden md:inline">NOVA COBRANÇA</span>
-            </button>
+            {canManageBilling && (
+              <button onClick={() => setShowBatchModal(true)}
+                className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
+              >
+                <RefreshCcw size={16} strokeWidth={2.5} />
+                <span className="hidden md:inline">OPERAR LOTE</span>
+              </button>
+            )}
+            {canManageBilling && (
+              <button onClick={() => setShowModal(true)}
+                className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
+              >
+                <Plus size={18} strokeWidth={2.5} />
+                <span className="hidden md:inline">NOVA COBRANÇA</span>
+              </button>
+            )}
           </div>
 
           {hasFilters && (
@@ -735,7 +744,7 @@ export default function BillingPage() {
                     <th className="py-3 px-5 text-center hidden sm:table-cell">Vencimento</th>
                     <th className="py-3 px-5 text-right">Valor</th>
                     <th className="py-3 px-5 text-center">Status</th>
-                    <th className="py-3 px-5 text-center">Ações</th>
+                    {canManageBilling && <th className="py-3 px-5 text-center">Ações</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -772,26 +781,28 @@ export default function BillingPage() {
                             {STATUS_LABEL[b.status] || b.status}
                           </span>
                         </td>
-                        <td className="py-4 px-5 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {b.status !== 'paid' && (
-                              <>
-                                <button onClick={() => updateBillStatus(b.id, 'paid')} title="Marcar como pago"
-                                  className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/20">
-                                  <CheckCircle2 size={14} />
-                                </button>
-                                <button onClick={() => setEditingBill(b)} title="Editar valor"
-                                  className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white transition-all border border-white/10">
-                                  <Edit2 size={14} />
-                                </button>
-                              </>
-                            )}
-                            <button onClick={() => deleteBill(b.id)}
-                              className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all border border-red-500/20">
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
+                        {canManageBilling && (
+                          <td className="py-4 px-5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {b.status !== 'paid' && (
+                                <>
+                                  <button onClick={() => updateBillStatus(b.id, 'paid')} title="Marcar como pago"
+                                    className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/20">
+                                    <CheckCircle2 size={14} />
+                                  </button>
+                                  <button onClick={() => setEditingBill(b)} title="Editar valor"
+                                    className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white transition-all border border-white/10">
+                                    <Edit2 size={14} />
+                                  </button>
+                                </>
+                              )}
+                              <button onClick={() => deleteBill(b.id)}
+                                className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all border border-red-500/20">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     )
                   })}

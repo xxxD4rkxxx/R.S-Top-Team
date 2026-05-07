@@ -334,28 +334,13 @@ export default function CollaboratorDetailsModal({ collaborator, onClose, onEdit
                   <div className="h-px flex-1 bg-white/5" />
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* PIN de Admin (Prioridade) */}
-                  {adminPin && (
-                    <div className="flex items-center gap-4 bg-primary/5 p-5 rounded-2xl border border-primary/10">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                        <Shield size={20} />
-                      </div>
-                      <div>
-                        <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">PIN de Administrador</p>
-                        <p className="text-xl text-primary font-mono tracking-[0.3em] font-black mt-1">
-                          {adminPin}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
                   {/* PIN de Acesso (Geral/Aluno) */}
                   <div className="flex items-center gap-4 bg-emerald-500/5 p-5 rounded-2xl border border-emerald-500/10">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
                       <Key size={20} />
                     </div>
                     <div>
-                      <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">PIN de Acesso {adminPin ? '(Aluno)' : ''}</p>
+                      <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">PIN de Acesso</p>
                       <div className="flex items-center gap-3 mt-1">
                         <p className="text-xl text-emerald-400 font-mono tracking-[0.3em] font-black">
                           {loadingPin ? <Loader2 size={16} className="animate-spin" /> : (pin || '---')}

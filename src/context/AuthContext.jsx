@@ -484,11 +484,28 @@ export function AuthProvider({ children }) {
                   logout()
                 } else {
                   setUser(fbUser)
-                  setUserData({ 
-                    ...extractSafeProfile(data), 
-                    id: snap.id,
-                    isLegacyProfile: target.col === 'users'
-                  })
+                   // Garantir permissões para admin apenas
+                   const userRole = extractSafeProfile(data);
+                   const isAdmin = 
+                     userRole.papeis?.admin || 
+                     userRole.roles?.admin || 
+                     String(userRole.role).toLowerCase() === 'admin';
+                   
+                   setUserData({ 
+                     ...userRole,
+                     ...(isAdmin && {
+                       permissions: {
+                         ...userRole.permissions,
+                         viewBillingTab: true,
+                         manageBillingTab: true,
+                         viewExpensesTab: true,
+                         manageExpensesTab: true,
+                         viewFinance: true
+                       }
+                     }),
+                     id: snap.id,
+                     isLegacyProfile: target.col === 'users'
+                   })
                 }
               } else { 
                 console.warn("❌ [AuthContext] Documento do usuário não encontrado no snapshot.")

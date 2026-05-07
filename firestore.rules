@@ -60,11 +60,14 @@ service cloud.firestore {
       match /anotacoes/{id} { allow read, write: if isStaff(); }
       match /graduacoes/{id} { allow read: if isAuth(); allow write: if isStaff(); }
 
-      allow create, update: if isAuth() && (isStaff() || request.auth.token.email.lower() == userId.lower())
-                            && (
-                              request.resource.data.get('telefone', '').size() == 0 || 
-                              (request.resource.data.get('telefone', '').size() >= 10 && request.resource.data.get('telefone', '').size() <= 15)
-                            );
+       // TODO: Validar no backend que o usuário só concede permissões que possui.
+       // Firestore Rules tem limitações para comparação complexa de objetos.
+       // A validação principal está no front-end (UserCreationModal.jsx - canGrantPermission + handleSubmit).
+       allow create, update: if isAuth() && (isStaff() || request.auth.token.email.lower() == userId.lower())
+                             && (
+                               request.resource.data.get('telefone', '').size() == 0 || 
+                               (request.resource.data.get('telefone', '').size() >= 10 && request.resource.data.get('telefone', '').size() <= 15)
+                             );
       allow delete: if isAdmin();
     }
 

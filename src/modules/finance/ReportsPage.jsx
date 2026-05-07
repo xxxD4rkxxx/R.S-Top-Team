@@ -100,7 +100,7 @@ export default function ReportsPage() {
     const despesasPagas = monthExpenses.filter(e => e.status === 'paid').reduce((s, e) => s + (Number(e.amount) || 0), 0)
     const despesasPendentes = monthExpenses.filter(e => e.status === 'pending').reduce((s, e) => s + (Number(e.amount) || 0), 0)
     const lucroLiquido = receitaRealizada - despesasPagas
-    const alunosAtivos = students.filter(s => s.status === 'Ativo')
+    const alunosAtivos = students.filter(s => s.status === 'Ativo' && s.roles?.aluno === true)
     const inadimplentes = new Set(monthBills.filter(b => b.status === 'overdue').map(b => b.studentId)).size
     const totalReceita = receitaRealizada + receitaPendente + receitaVencida
     const totalDespesa = despesasPagas + despesasPendentes

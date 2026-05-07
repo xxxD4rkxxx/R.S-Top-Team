@@ -169,8 +169,8 @@ function AppContent() {
                     <Route path="/chamadas/revisao/:sessionId" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReviewAttendancePage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/contratos" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ContractsPage /></AnimatedPage></ProtectedRoute>} />
 
-                    <Route path="/financeiro" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewFinance"><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
-                    <Route path="/despesas" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewFinance"><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/financeiro" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewBillingTab"><AnimatedPage><BillingPage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/despesas" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewExpensesTab"><AnimatedPage><ExpensesPage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/relatorios" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="viewFinance"><AnimatedPage><ReportsPage /></AnimatedPage></ProtectedRoute>} />
                     
                     {/* Redirecionamentos de Rotas Legadas */}

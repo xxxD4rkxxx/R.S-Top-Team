@@ -455,6 +455,10 @@ function ModalNovaDespesa({ onClose, onSave, loading, initialData, continueRegis
 
 export default function ExpensesPage() {
   const { expenses, loadingExpenses, addExpense, updateExpense, deleteExpense } = useFinance()
+  const { userData } = useAuth()
+
+  const canViewExpenses = userData?.permissions?.viewExpensesTab ?? userData?.permissions?.viewFinance ?? false
+  const canManageExpenses = userData?.permissions?.manageExpensesTab ?? userData?.permissions?.manageExpenses ?? false
 
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -651,12 +655,14 @@ export default function ExpensesPage() {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <button onClick={() => setShowModal(true)}
-            className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
-          >
-            <Plus size={18} strokeWidth={2.5} />
-            <span className="hidden md:inline">NOVA DESPESA</span>
-          </button>
+          {canManageExpenses && (
+            <button onClick={() => setShowModal(true)}
+              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
+            >
+              <Plus size={18} strokeWidth={2.5} />
+              <span className="hidden md:inline">NOVA DESPESA</span>
+            </button>
+          )}
 
           {hasFilters && (
             <button
@@ -717,7 +723,7 @@ export default function ExpensesPage() {
                     <th className="py-3 px-5 text-center hidden md:table-cell">Centro de Custo</th>
                     <th className="py-3 px-5 text-right">Valor</th>
                     <th className="py-3 px-5 text-center">Status</th>
-                    <th className="py-3 px-5 text-center">Ações</th>
+                    {canManageExpenses && <th className="py-3 px-5 text-center">Ações</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -754,26 +760,28 @@ export default function ExpensesPage() {
                           {STATUS_LABEL[d.status] || d.status}
                         </span>
                       </td>
-                      <td className="py-4 px-5 text-center">
-                        <div className="relative inline-block">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              const openUp = window.innerHeight - rect.bottom < 300
-                              setMenuPosition({
-                                top: openUp ? (rect.top + window.scrollY) - 180 : (rect.top + window.scrollY) + rect.height + 4,
-                                left: (rect.left + window.scrollX) - 160 + rect.width,
-                                originY: openUp ? 1 : 0
-                              })
-                              setShowMenu(showMenu === d.id ? null : d.id)
-                            }}
-                            className={`p-2.5 rounded-xl transition-all active:scale-90 border border-transparent flex items-center justify-center mx-auto ${showMenu === d.id ? 'bg-white/10 text-white border-white/10' : 'hover:bg-white/10 text-white/20 hover:text-white hover:border-white/10'}`}
-                          >
-                            <MoreVertical size={18} />
-                          </button>
-                        </div>
-                      </td>
+                      {canManageExpenses && (
+                        <td className="py-4 px-5 text-center">
+                          <div className="relative inline-block">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const openUp = window.innerHeight - rect.bottom < 300
+                                setMenuPosition({
+                                  top: openUp ? (rect.top + window.scrollY) - 180 : (rect.top + window.scrollY) + rect.height + 4,
+                                  left: (rect.left + window.scrollX) - 160 + rect.width,
+                                  originY: openUp ? 1 : 0
+                                })
+                                setShowMenu(showMenu === d.id ? null : d.id)
+                              }}
+                              className={`p-2.5 rounded-xl transition-all active:scale-90 border border-transparent flex items-center justify-center mx-auto ${showMenu === d.id ? 'bg-white/10 text-white border-white/10' : 'hover:bg-white/10 text-white/20 hover:text-white hover:border-white/10'}`}
+                            >
+                              <MoreVertical size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
