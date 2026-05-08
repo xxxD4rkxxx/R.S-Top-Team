@@ -73,7 +73,6 @@ export function AuthProvider({ children }) {
   const inactivityTimerRef = useRef(null)
   const sessionPinHashRef = useRef(null)
 
-  // Persistir papel simulado quando mudar
   useEffect(() => {
     if (simulatedRole) {
       localStorage.setItem('rs_simulated_role', simulatedRole)

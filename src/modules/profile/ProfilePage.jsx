@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   User, Shield, Bell, Database, Palette, Info, LogOut,
   ChevronRight, Edit2, Camera, Dumbbell, Activity,
@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { beltConfig } from '../../data/beltConfig'
 import { modalities } from '../../data/modalities'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
 import { useSystemLogs } from '../../hooks/useSystemLogs'
@@ -580,7 +580,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
   const isJiuJitsu = form.modalities.some(m => m.toLowerCase().includes('jiu'))
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8">
 
       {/* HEADER + ACTION */}
       <div className="flex items-center justify-between pb-2 border-b border-white/5">
@@ -618,7 +618,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
 
       {/* FORM ADICIONAR (REFACTORADO) */}
       {showAdd && (
-        <div className="rounded-xl p-6 space-y-8 bg-[#0a0a0a] border border-white/10 shadow-2xl animate-in slide-in-from-top-2 duration-300 ring-1 ring-white/5">
+        <div className="rounded-xl p-6 space-y-8 bg-[#0a0a0a] border border-white/10 shadow-2xl ring-1 ring-white/5">
 
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
@@ -1176,27 +1176,369 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
 }
 
 // ════════════════════════════════════════════════════════════════
-//  PAINEL: LOGS DE ATIVIDADE
+//  PAINEL: LOGS DE ATIVIDADE (Visual estilo cards)
 // ════════════════════════════════════════════════════════════════
-function SectionLogs({ logs, loading }) {
-  const activity = logs.filter(l => l.type === 'activity')
-  const levelIcon = { info: <Activity size={18} strokeWidth={1.9} className="text-blue-400" />, warn: <AlertTriangle size={18} strokeWidth={1.9} className="text-yellow-400" /> }
+
+// Cores por tipo de usuário
+const CORES_POR_ROLE = {
+  admin: { cor: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/25', label: 'ADMIN' },
+  gestor: { cor: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/25', label: 'GESTOR' },
+  professor: { cor: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/25', label: 'PROFESSOR' },
+  aluno: { cor: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/25', label: 'ALUNO' },
+  sistema: { cor: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/25', label: 'SISTEMA' },
+}
+
+// Ícones por categoria de atividade
+const ICONES_CATEGORIA = {
+  evento: { icon: '📢', label: 'Evento' },
+  chamada: { icon: '📋', label: 'Chamada' },
+  visita: { icon: '🚪', label: 'Visitante' },
+  aluno: { icon: '🎓', label: 'Aluno' },
+  equipe: { icon: '👥', label: 'Equipe' },
+  graduacao: { icon: '🥋', label: 'Graduação' },
+  financeiro: { icon: '💰', label: 'Financeiro' },
+  sistema: { icon: '⚙️', label: 'Sistema' },
+}
+
+// Componente de card de log individual
+function CardLog({ log, onExpand }) {
+  const [expandido, setExpandido] = useState(false)
+  const estiloRole = CORES_POR_ROLE[log.userRole] || CORES_POR_ROLE.sistema
+  const infoCategoria = ICONES_CATEGORIA[log.category] || ICONES_CATEGORIA.sistema
+
+  const formatarData = (data) => {
+    if (!data) return ''
+    const d = new Date(data)
+    const agora = new Date()
+    const diffMs = agora - d
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHoras = Math.floor(diffMs / 3600000)
+    const diffDias = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Agora mesmo'
+    if (diffMins < 60) return `Há ${diffMins}min`
+    if (diffHoras < 24) return `Há ${diffHoras}h`
+    if (diffDias < 7) return `Há ${diffDias}d`
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  }
+
   return (
-    <div className="space-y-6">
-      <Section title={`Atividade do sistema (${activity.length})`}>
-        {loading ? <p className="px-5 py-4 text-gray-600 text-sm">Carregando...</p>
-          : activity.length === 0 ? <p className="px-5 py-4 text-gray-600 text-sm">Nenhuma atividade registrada.</p>
-            : activity.map(log => (
-              <div key={log.id} className="flex items-center gap-3 px-5 py-3 border-b border-white/5 last:border-0">
-                <span className="flex-shrink-0">{levelIcon[log.level] || levelIcon.info}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-app text-sm font-semibold">{log.action}</p>
-                  <p className="text-gray-500 text-xs truncate">{log.detail} · {log.userName}</p>
-                </div>
-                <LogTime date={log.createdAt} />
-              </div>
-            ))
+    <div 
+      className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-4 hover:bg-white/[0.04] hover:border-white/10 transition-all cursor-pointer"
+      onClick={() => setExpandido(!expandido)}
+    >
+      {/* Barra lateral colorida por role */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl ${estiloRole.bg.replace('/10', '/30')}`} />
+
+      <div className="pl-3">
+        {/* Linha superior: ícone categoria + título */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-base">{infoCategoria.icon}</span>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{infoCategoria.label}</span>
+          <div className="flex-1" />
+          <span className="text-[10px] text-gray-600">{formatarData(log.createdAt)}</span>
+        </div>
+
+        {/* Título da ação */}
+        <h3 className="text-sm font-black text-gray-200 mb-1 group-hover:text-white transition-colors">
+          {log.action}
+        </h3>
+
+        {/* Detalhes (visível quando expandido ou no desktop) */}
+        <div className={`overflow-hidden transition-all ${expandido ? 'max-h-40' : 'max-h-0'}`}>
+          <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-white/5">
+            {log.detail}
+          </p>
+          {log.targetName && (
+            <p className="text-xs text-gray-600 mt-1">
+              Alvo: <span className="text-gray-400">{log.targetName}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Linha inferior: usuário com badge do role */}
+        <div className="flex items-center gap-2 mt-3">
+          <div className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${estiloRole.bg} ${estiloRole.cor} border ${estiloRole.border}`}>
+            {estiloRole.label}
+          </div>
+          <span className="text-xs text-gray-400 truncate">{log.userName}</span>
+          {expandido && (
+            <span className="text-[10px] text-gray-600 ml-auto">▼</span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SectionLogs({ logs, loading, carregandoMais, temMais, carregarMais }) {
+  const activity = logs.filter(l => l.type === 'activity')
+  const containerRef = useRef(null)
+
+  // Scroll infinito
+  useEffect(() => {
+    if (!containerRef.current || loading || !temMais) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !carregandoMais) {
+          carregarMais()
         }
+      },
+      { threshold: 0.1 }
+    )
+
+    const sentinel = containerRef.current.querySelector('[data-sentinel]')
+    if (sentinel) observer.observe(sentinel)
+
+    return () => observer.disconnect()
+  }, [loading, carregandoMais, temMais, carregarMais])
+
+  return (
+    <div className="space-y-6" ref={containerRef}>
+      <Section title={`Atividade do sistema (${activity.length})`}>
+        {loading ? (
+          <div className="px-5 py-8 flex flex-col items-center gap-3">
+            <RefreshCw size={24} className="animate-spin text-gray-500" />
+            <p className="text-gray-600 text-sm">Carregando atividades...</p>
+          </div>
+        ) : activity.length === 0 ? (
+          <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
+            <Activity size={32} strokeWidth={1.9} className="text-gray-600" />
+            <p className="text-gray-500 text-sm font-medium">Nenhuma atividade registrada</p>
+            <p className="text-gray-700 text-xs">As ações realizadas aparecerão aqui</p>
+          </div>
+        ) : (
+          <div className="space-y-3 px-2">
+            {activity.map(log => (
+              <CardLog key={log.id} log={log} />
+            ))}
+            
+            {/* Sentinela para scroll infinito */}
+            {temMais && (
+              <div data-sentinel className="py-4 flex justify-center">
+                {carregandoMais ? (
+                  <RefreshCw size={20} className="animate-spin text-gray-500" />
+                ) : (
+                  <p className="text-xs text-gray-600">Role para carregar mais</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </Section>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PAINEL: TIMELINE (Visual estilo eventos/avisos)
+// ════════════════════════════════════════════════════════════════
+
+// Função para obter cores baseadas no tema (escuro ou claro)
+function obterCoresPorTema(tema) {
+  const temaEscuro = ['crimson', 'dark_purple', 'neon_cyber', 'midnight', 'ocean', 'forest', 'sunset'].includes(tema)
+  
+  // Cores por tipo de usuário (adaptadas ao tema)
+  return {
+    admin: { 
+      cor: temaEscuro ? 'text-purple-400' : 'text-purple-600', 
+      bg: temaEscuro ? 'bg-purple-500/10' : 'bg-purple-100', 
+      border: temaEscuro ? 'border-purple-500/25' : 'border-purple-200', 
+      badge: temaEscuro ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-200 text-purple-700' 
+    },
+    gestor: { 
+      cor: temaEscuro ? 'text-emerald-400' : 'text-emerald-600', 
+      bg: temaEscuro ? 'bg-emerald-500/10' : 'bg-emerald-100', 
+      border: temaEscuro ? 'border-emerald-500/25' : 'border-emerald-200', 
+      badge: temaEscuro ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-200 text-emerald-700' 
+    },
+    professor: { 
+      cor: temaEscuro ? 'text-blue-500' : 'text-blue-600', 
+      bg: temaEscuro ? 'bg-blue-500/10' : 'bg-blue-100', 
+      border: temaEscuro ? 'border-blue-500/25' : 'border-blue-200', 
+      badge: temaEscuro ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-200 text-blue-700' 
+    },
+    aluno: { 
+      cor: temaEscuro ? 'text-cyan-400' : 'text-cyan-600', 
+      bg: temaEscuro ? 'bg-cyan-500/10' : 'bg-cyan-100', 
+      border: temaEscuro ? 'border-cyan-500/25' : 'border-cyan-200', 
+      badge: temaEscuro ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-200 text-cyan-700' 
+    },
+    sistema: { 
+      cor: temaEscuro ? 'text-gray-400' : 'text-gray-600', 
+      bg: temaEscuro ? 'bg-gray-500/10' : 'bg-gray-100', 
+      border: temaEscuro ? 'border-gray-500/25' : 'border-gray-200', 
+      badge: temaEscuro ? 'bg-gray-500/20 text-gray-300' : 'bg-gray-200 text-gray-700' 
+    },
+    // Cores do card baseadas no tema
+    cardBg: temaEscuro ? 'bg-white/[0.025]' : 'bg-gray-50',
+    cardBorder: temaEscuro ? 'border-white/5' : 'border-gray-200',
+    cardHover: temaEscuro ? 'hover:bg-white/[0.05] hover:border-white/10' : 'hover:bg-white hover:border-gray-300',
+    titulo: temaEscuro ? 'text-gray-200' : 'text-gray-800',
+    tituloHover: 'text-black',
+    texto: temaEscuro ? 'text-gray-500' : 'text-gray-600',
+  }
+}
+
+// Ícones e labels por categoria
+const INFO_CATEGORIA = {
+  evento: { emoji: '📢', label: 'EVENTO', cor: 'text-blue-400' },
+  chamada: { emoji: '📋', label: 'CHAMADA', cor: 'text-green-400' },
+  visita: { emoji: '🚪', label: 'VISITANTE', cor: 'text-orange-400' },
+  aluno: { emoji: '🎓', label: 'ALUNO', cor: 'text-cyan-400' },
+  equipe: { emoji: '👥', label: 'EQUIPE', cor: 'text-pink-400' },
+  graduacao: { emoji: '🥋', label: 'GRADUAÇÃO', cor: 'text-yellow-400' },
+  financeiro: { emoji: '💰', label: 'FINANCEIRO', cor: 'text-emerald-400' },
+  sistema: { emoji: '⚙️', label: 'SISTEMA', cor: 'text-gray-400' },
+}
+
+// Card de timeline individual
+function CardTimeline({ log, tema = 'crimson' }) {
+  const [expandido, setExpandido] = useState(false)
+  const cores = obterCoresPorTema(tema)
+  const estilo = cores[log.userRole] || cores.sistema
+  const info = INFO_CATEGORIA[log.category] || INFO_CATEGORIA.sistema
+
+  const formatarDataHora = (data) => {
+    if (!data) return ''
+    const d = new Date(data)
+    return d.toLocaleString('pt-BR', { 
+      day: '2-digit', 
+      month: 'short', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  }
+
+  const tempoRelativo = (data) => {
+    if (!data) return ''
+    const d = new Date(data)
+    const agora = new Date()
+    const diffMs = agora - d
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHoras = Math.floor(diffMs / 3600000)
+    const diffDias = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Agora'
+    if (diffMins < 60) return `${diffMins}min`
+    if (diffHoras < 24) return `${diffHoras}h`
+    if (diffDias < 7) return `${diffDias}d`
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  }
+
+  return (
+    <div 
+      className={`group relative ${cores.cardBg} border ${cores.cardBorder} rounded-2xl p-4 ${cores.cardHover} transition-all cursor-pointer overflow-hidden`}
+      onClick={() => setExpandido(!expandido)}
+    >
+      {/* Barra lateral colorida por role */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl ${estilo.bg.replace('/10', '/30')}`} />
+
+      <div className="pl-3 flex flex-col gap-3">
+        {/* Header: categoria + tempo relativo */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base">{info.emoji}</span>
+            <span className={`text-[10px] font-black uppercase tracking-wider ${info.cor}`}>{info.label}</span>
+          </div>
+          <span className="text-[10px] text-gray-600 font-medium">{tempoRelativo(log.createdAt)}</span>
+        </div>
+
+        {/* Título principal */}
+        <div>
+          <h3 className={`text-sm font-bold ${cores.titulo} group-hover:${cores.tituloHover} transition-colors line-clamp-2`}>
+            {log.action}
+          </h3>
+          {log.detail && (
+            <p className={`text-xs ${cores.texto} mt-1 transition-all ${expandido ? 'max-h-40' : 'max-h-0 overflow-hidden'}`}>
+              {log.detail}
+            </p>
+          )}
+        </div>
+
+        {/* Footer: autor + role */}
+        <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${estilo.badge}`}>
+            {estilo.label || log.userRole?.toUpperCase()}
+          </span>
+          <span className="text-xs text-gray-400 truncate flex-1">{log.userName}</span>
+          
+          {log.targetName && (
+            <span className="text-[10px] text-gray-600 flex items-center gap-1">
+              →
+              <span className="text-gray-500">{log.targetName}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Timestamp completo quando expandido */}
+        {expandido && (
+          <div className="text-[10px] text-gray-700 font-mono">
+            {formatarDataHora(log.createdAt)}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Seção Timeline principal
+function SectionTimeline({ logs, loading, carregandoMais, temMais, carregarMais }) {
+  const activity = logs.filter(l => l.type === 'activity')
+  const containerRef = useRef(null)
+
+  // Scroll infinito
+  useEffect(() => {
+    if (!containerRef.current || loading || !temMais) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !carregandoMais) {
+          carregarMais()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    const sentinel = containerRef.current.querySelector('[data-sentinel]')
+    if (sentinel) observer.observe(sentinel)
+
+    return () => observer.disconnect()
+  }, [loading, carregandoMais, temMais, carregarMais])
+
+  return (
+    <div className="space-y-6" ref={containerRef}>
+      <Section title={`Timeline de Atividades (${activity.length})`}>
+        {loading ? (
+          <div className="px-5 py-8 flex flex-col items-center gap-3">
+            <RefreshCw size={24} className="animate-spin text-gray-500" />
+            <p className="text-gray-600 text-sm">Carregando timeline...</p>
+          </div>
+        ) : activity.length === 0 ? (
+          <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
+            <Clock size={32} strokeWidth={1.9} className="text-gray-600" />
+            <p className="text-gray-500 text-sm font-medium">Nenhuma atividade na timeline</p>
+            <p className="text-gray-700 text-xs">Ações realizadas aparecerão aqui em tempo real</p>
+          </div>
+        ) : (
+          <div className="space-y-3 px-2">
+            {activity.map(log => (
+              <CardTimeline key={log.id} log={log} />
+            ))}
+            
+            {/* Sentinela para scroll infinito */}
+            {temMais && (
+              <div data-sentinel className="py-4 flex justify-center">
+                {carregandoMais ? (
+                  <RefreshCw size={20} className="animate-spin text-gray-500" />
+                ) : (
+                  <p className="text-xs text-gray-600">Role para baixo para carregar mais</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </Section>
     </div>
   )
@@ -1641,18 +1983,24 @@ function SectionNotificacoes({ user, onUpdateProfile }) {
 // ════════════════════════════════════════════════════════════════
 export default function ProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') || 'conta'
+  const location = useLocation()
+  const navigate = useNavigate()
+  
+  // Detectar sub-rota (ex: /perfil/logs) ou query param (ex: ?tab=logs)
+  const pathParts = location.pathname.split('/').filter(Boolean)
+  const activeTab = pathParts[1] || searchParams.get('tab') || 'conta'
 
   const setActive = (id) => {
-    setSearchParams({ tab: id })
+    // Usa sub-rota para /perfil/logs, /perfil/conta, etc
+    navigate(`/perfil/${id}`, { replace: true })
   }
 
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
-  const navigate = useNavigate()
   const { user: authUser, userData, logout, effectiveRole } = useAuth()
   const { setIsMobileNavHidden } = useApp()
   const { users, loading: usersLoading, updateProfile, uploadAvatar, uploadBanner, createNewUser, changePassword, deleteUser, runDeepMigration } = useSystemUsers()
-  const { logs, loading: logsLoading } = useSystemLogs('all', 100)
+  const { logs, loading: logsLoading, carregandoMais, temMais, carregarMais } = useSystemLogs('all', 100)
+  const { activeId: temaAtivo } = useTheme()
 
   // O 'id' do usuário logado para as operações de salvamento
   const currentUserId = userData?.id || userData?.uid || ''
@@ -1679,12 +2027,12 @@ export default function ProfilePage() {
       onSync={runDeepMigration}
     />,
     dados: <SectionDados onSync={runDeepMigration} />,
-    logs: <SectionLogs logs={logs} loading={logsLoading} />,
+    logs: <SectionLogs logs={logs} loading={logsLoading} carregandoMais={carregandoMais} temMais={temMais} carregarMais={carregarMais} />,
     erros: <SectionErros logs={logs} loading={logsLoading} />,
     sobre: <SectionSobre />,
   }
 
-  const isStaff = !['aluno', 'professor'].includes(effectiveRole)
+  const isStaff = ['admin', 'gestor', 'professor'].includes(effectiveRole)
 
   // Filtra as seções baseado no cargo (Sistema apenas para Gestor/Admin)
   const visibleSections = SECTIONS.filter(sec => {
@@ -1874,7 +2222,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Content */}
-              <div className="p-6 pb-40 fade-in">
+              <div className="p-6 pb-40">
                 {panels[activeTab]}
               </div>
             </motion.div>
@@ -1895,7 +2243,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div key={activeTab} className="fade-slide-up pb-20">
+          <div key={activeTab} className="pb-20">
             {panels[activeTab]}
           </div>
         </div>

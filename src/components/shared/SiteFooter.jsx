@@ -5,7 +5,7 @@ export default function SiteFooter() {
     <footer className="w-full border-t border-white/5 py-2 !mt-2 flex items-center justify-center">
       <div className="flex items-center justify-center gap-1.5 md:gap-2">
         <img 
-          src="/logo.png" 
+          src="/logo.webp" 
           alt="Logo" 
           className="w-3.5 h-3.5 rounded-full" 
         />

@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import {
   Home, Calendar, Clock, Award, Users,
-  PlusCircle, BookOpen, MessageSquare, StickyNote,
+  PlusCircle, BookOpen, StickyNote,
   BarChart3, ChevronRight, PlayCircle, Eye,
-  Filter, Search, Send, Settings, Smartphone,
+  Filter, Search, Settings, Smartphone,
   Zap, TrendingUp, Activity, CheckCircle2,
-  AlertCircle, History, Info
+  AlertCircle, History, Info, GraduationCap,
+  CalendarDays, Target
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useStudents } from '../../hooks/useStudents'
@@ -21,6 +22,7 @@ import {
 import { db } from '../../firebase/config'
 import PageHeader from '../../components/shared/PageHeader'
 import SlideOver from '../../components/shared/SlideOver'
+import KPICard from '../../components/shared/KPICard'
 import { beltConfig } from '../../data/beltConfig'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTeacherIntelligence } from '../../hooks/useTeacherIntelligence'
@@ -52,41 +54,6 @@ function Card({ children, className = '', title, subtitle, icon: Icon, action })
       )}
       <div className="flex-1 px-6 pb-6">
         {children}
-      </div>
-    </motion.div>
-  )
-}
-
-function StatMini({ label, value, icon: Icon, colorClass = "text-white", desc }) {
-  return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      whileTap={{ scale: 0.98 }}
-      className="kpi-card stat-card flex flex-col p-6 rounded-[32px] relative overflow-hidden group h-[160px] border border-white/5 bg-[#0c0c0c]/50 hover:bg-[#0f0f0f] transition-all cursor-default shadow-xl"
-    >
-      {/* Glow sutil ao fundo no hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-      {/* Linha de topo: caixinha de ícone + título */}
-      <div className="flex items-center gap-3 mb-auto relative z-10 w-full">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.05] border border-white/[0.08] shrink-0 group-hover:border-primary/20 transition-colors">
-          {Icon && <Icon size={16} strokeWidth={2.5} className="text-primary" />}
-        </div>
-        <span className="text-[10px] uppercase tracking-[0.25em] font-black text-gray-500 group-hover:text-gray-400 transition-colors leading-tight">
-          {label}
-        </span>
-      </div>
-
-      {/* Valor + Descrição */}
-      <div className="relative z-10 flex flex-col pt-4">
-        <div className={`text-3xl lg:text-4xl font-black mb-1.5 tracking-tighter ${colorClass} animate-value-reveal`}>
-          {value}
-        </div>
-        {desc && (
-          <p className="text-[10px] text-gray-600 leading-tight font-bold tracking-wide uppercase">
-            {desc}
-          </p>
-        )}
       </div>
     </motion.div>
   )
@@ -151,6 +118,135 @@ export default function TeacherDashboard() {
     }
   }, [stats, students, notices])
 
+  // ============================================================
+  // KPIs DO PROFESSOR - Dashboard Personalizado
+  // ============================================================
+  // Cada KPI filtra dados específicos das turmas/modalidades
+  // que o professor está vinculado no userData.
+  // Se o professor não tiver turmas, os valores serão 0.
+  // ============================================================
+
+  const KPIData = useMemo(() => {
+    // ---------------------------------------------------
+    // 1. Definir período de 30 dias e 7 dias para cálculos
+    // ---------------------------------------------------
+    const now = new Date()
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    // ---------------------------------------------------
+    // 2. Capturar turmas e modalidades do professor
+    //    ( viene do perfil do professor em userData )
+    // ---------------------------------------------------
+    const teacherModalities = userData?.modalities || []
+    const teacherTurmas = userData?.turmas || []
+
+    // ---------------------------------------------------
+    // 3. Meus Alunos - Alunos ativos das turmas do professor
+    //    Filtra por modalities e turmas que o professor ensina.
+    //    Se não tiver turmas vinculadas, retorna 0.
+    // ---------------------------------------------------
+    const myStudents = (students || []).filter(s => {
+      if (s.status !== 'ativo') return false
+      // Se professor não tem turmas, não mostrar alunos
+      if (teacherModalities.length === 0 && teacherTurmas.length === 0) return false
+      const studentMods = Array.isArray(s.modalities) ? s.modalities : [s.modality].filter(Boolean)
+      const studentTurmas = Array.isArray(s.turmas) ? s.turmas : [s.turma].filter(Boolean)
+      const hasModality = teacherModalities.some(m => studentMods.includes(m))
+      const hasTurma = teacherTurmas.some(t => studentTurmas.includes(t))
+      return hasModality || hasTurma
+    })
+
+    // ---------------------------------------------------
+    // 4. Novos (30d) - Novos alunos criados nos últimos 30 dias
+    //    Verifica a data de criação (createdAt) do aluno.
+    //    Só conta alunos das turmas do professor.
+    //    Suporta diferentes formatos de data (timestamp, string, objeto Date).
+    // ---------------------------------------------------
+    const newStudents = (students || []).filter(s => {
+      if (s.status !== 'ativo' || !s.createdAt) return false
+      const studentMods = Array.isArray(s.modalities) ? s.modalities : [s.modality].filter(Boolean)
+      const studentTurmas = Array.isArray(s.turmas) ? s.turmas : [s.turma].filter(Boolean)
+      const hasModality = teacherModalities.some(m => studentMods.includes(m))
+      const hasTurma = teacherTurmas.some(t => studentTurmas.includes(t))
+      if (!hasModality && !hasTurma && teacherModalities.length > 0) return false
+
+      // Converter createdAt para Date (suporta timestamp Firestore, string, ou objeto Date)
+      let created
+      if (s.createdAt.toDate) {
+        // Timestamp do Firestore
+        created = s.createdAt.toDate()
+      } else if (typeof s.createdAt === 'string') {
+        created = new Date(s.createdAt)
+      } else if (s.createdAt.seconds) {
+        // Timestamp em segundos
+        created = new Date(s.createdAt.seconds * 1000)
+      } else {
+        return false
+      }
+      return created >= thirtyDaysAgo
+    })
+
+    // ---------------------------------------------------
+    // 5. Média (30d) - Média de presença das aulas dos últimos 30 dias
+    //    Calcula: (total de presenças / total de alunos) * 100
+    //    Baseado nas sessões do professor (stats.sessions).
+    // ---------------------------------------------------
+    const recentSessions = (stats?.sessions || []).filter(s => {
+      const sessionDate = new Date(s.date)
+      return sessionDate >= thirtyDaysAgo
+    })
+    // Soma presenças e total de alunos, depois calcula percentual
+    const avgAttendance = recentSessions.length > 0
+      ? Math.round(recentSessions.reduce((acc, s) => acc + (s.presencasCount || 0), 0) / recentSessions.reduce((acc, s) => acc + (s.totalCount || s.total || 0), 0) * 100)
+      : 0
+
+    // ---------------------------------------------------
+    // 6. Ausentes (7d) - Alunos ausentes nos últimos 7 dias
+    //    Identifica IDs de alunos que não compareceram.
+    //    Usa Set para evitar duplicatas (conta aluno 1x).
+    // ---------------------------------------------------
+    const absentStudentIds = new Set()
+    // Filtrar sessões dos últimos 7 dias
+    const recentSessions7d = recentSessions.filter(s => {
+      const sessionDate = new Date(s.date)
+      return sessionDate >= sevenDaysAgo
+    })
+
+    recentSessions7d.forEach(s => {
+      const presentes = s.presentIds || []
+      const total = s.totalCount || s.total || 0
+      // Para cada aluno na aula, verificar se está na lista de presentes
+      for (let i = 0; i < total; i++) {
+        if (!presentes.includes(i)) {
+          absentStudentIds.add(i)
+        }
+      }
+    })
+    const ausentesCount = absentStudentIds.size
+
+    return [
+      {
+        title: 'Meus Alunos', value: String(myStudents.length), desc: 'Alunos ativos', icon: Users, color: 'text-white', iconColor: 'text-gray-400'
+      },
+      {
+        title: 'Aulas Hoje', value: String(todaySessions.length), desc: 'Agendadas para hoje', icon: CalendarDays, color: 'text-white', iconColor: 'text-gray-400'
+      },
+      {
+        title: 'Aulas do Mês', value: String(teacherStats.classesTaught), desc: 'Total de aulas', icon: Clock, color: 'text-emerald-400', iconColor: 'text-gray-400'
+      },
+      {
+        title: 'Média (30d)', value: `${avgAttendance}%`, desc: 'Média de presença', icon: Target, color: avgAttendance >= 80 ? 'text-emerald-400' : 'text-yellow-400', iconColor: 'text-gray-400'
+      },
+      {
+        title: 'Novos (30d)', value: String(newStudents.length), desc: 'Novos alunos', icon: GraduationCap, color: newStudents.length > 0 ? 'text-blue-400' : 'text-gray-400', iconColor: 'text-gray-400'
+      },
+      {
+        title: 'Ausentes (7d)', value: String(ausentesCount), desc: 'Alunos ausentes', icon: AlertCircle, color: ausentesCount > 0 ? 'text-rose-400' : 'text-gray-400', iconColor: 'text-gray-400'
+      },
+    ]
+  }, [students, todaySessions, teacherStats, stats])
+
   // 3. Handlers
   const handleAddNote = async (e) => {
     e.preventDefault()
@@ -206,8 +302,17 @@ export default function TeacherDashboard() {
         </div>
       )}
 
+      {/* KPIs do Professor */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {KPIData.map((kpi, idx) => (
+          <div key={idx} style={{ animationDelay: `${idx * 35}ms` }} className="fade-slide-up">
+            <KPICard {...kpi} />
+          </div>
+        ))}
+      </div>
+
       {/* Resumo Integrado Premium (Inspirado nas imagens de referência) */}
-      <IntelligenceSection data={intelligence} userName={userData?.name || 'Professor'} />
+      <IntelligenceSection data={intelligence} userName={userData?.name || 'Professor'} hideKPIs={true} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Agenda */}
@@ -256,59 +361,7 @@ export default function TeacherDashboard() {
           </div>
         </Card>
 
-        {/* Announcements Preview */}
-        <Card title="Comunicados de Técnica" subtitle="Avise seus alunos" icon={MessageSquare}>
-          <div className="space-y-4">
-            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xll p-5">
-              <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">Postar nova técnica</h4>
-              <form onSubmit={handlePostAnnouncement} className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Título (ex: Raspagem de Meia Guarda)"
-                  className="w-full bg-black border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none"
-                  value={announcement.title}
-                  onChange={e => setAnnouncement(p => ({ ...p, title: e.target.value }))}
-                />
-                <textarea
-                  placeholder="O que será ensinado?"
-                  rows="2"
-                  className="w-full bg-black border border-white/10 rounded-xll px-4 py-2.5 text-sm focus:border-emerald-500/50 transition-all outline-none resize-none"
-                  value={announcement.content}
-                  onChange={e => setAnnouncement(p => ({ ...p, content: e.target.value }))}
-                />
-                <div className="flex gap-2">
-                  <select
-                    className="bg-black border border-white/10 rounded-xll px-3 text-xs focus:border-emerald-500/50 transition-all outline-none"
-                    value={announcement.difficulty}
-                    onChange={e => setAnnouncement(p => ({ ...p, difficulty: e.target.value }))}
-                  >
-                    <option value="Iniciante">Iniciante</option>
-                    <option value="Intermediário">Intermediário</option>
-                    <option value="Avançado">Avançado</option>
-                  </select>
-                  <button type="submit" className="flex-1 bg-primary hover:opacity-90 text-black font-black text-[10px] uppercase tracking-widest py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20">
-                    <Send size={14} /> Enviar p/ Alunos
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Últimos comunicados</h4>
-              {notices.slice(0, 2).map((n, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-xll bg-white/[0.02] border border-white/5">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                    <Info size={14} className="text-gray-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-white">{n.title}</p>
-                    <p className="text-[11px] text-gray-500 line-clamp-1">{n.content}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
+        
       </div>
 
       {/* PWA Promo Card */}
@@ -609,45 +662,8 @@ export default function TeacherDashboard() {
       />
 
       <div className="px-4 md:px-6 py-6 space-y-8 w-full pb-24">
-        {/* Tabs Suavizados (Design Premium) */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-sm shadow-xl">
-            {[
-              { id: 'dashboard', label: 'Visão Geral', icon: Home },
-              { id: 'aulas', label: 'Meu Dia', icon: PlayCircle },
-              { id: 'turmas', label: 'Turmas', icon: Users },
-              { id: 'historico', label: 'Histórico', icon: History }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
-                  ${activeTab === tab.id
-                    ? 'bg-primary text-black shadow-lg shadow-primary/20 scale-105'
-                    : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-              >
-                <tab.icon size={14} strokeWidth={2.5} />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setActiveTab('notas')}
-            className={`p-2.5 rounded-xl border transition-all ${activeTab === 'notas' ? 'bg-amber-500/20 border-amber-500/50 text-amber-500' : 'bg-white/5 border-white/5 text-gray-500 hover:bg-white/10'}`}
-            title="Anotações"
-          >
-            <StickyNote size={20} />
-          </button>
+        {renderDashboard()}
         </div>
-
-        {/* Dynamic Content */}
-        {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'aulas' && renderAulas()}
-        {activeTab === 'turmas' && renderTurmas()}
-        {activeTab === 'historico' && renderHistorico()}
-        {activeTab === 'notas' && renderNotas()}
-      </div>
 
       {/* Note Creation Modal */}
       <SlideOver

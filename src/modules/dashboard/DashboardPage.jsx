@@ -5,7 +5,6 @@ import ManagerDashboard from './ManagerDashboard'
 import TeacherDashboard from './TeacherDashboard'
 import StudentDashboard from './StudentDashboard'
 import { Activity, ShieldCheck, RefreshCw } from 'lucide-react'
-import { runGlobalMigration } from '../../scripts/migrate_to_pt'
 import { toast } from 'react-hot-toast'
 
 /**
@@ -72,40 +71,8 @@ export default function DashboardPage() {
   const currentRole = effectiveRole
 
   if (currentRole === 'admin' || currentRole === 'gestor') {
-    // Se o usuário explicitamente mudou o papel simulado no AuthContext, ele já virá no currentRole
-    // mas o DashboardPage pode oferecer um atalho visual.
     return (
       <div className="flex flex-col flex-1 min-h-screen">
-        {/* Switcher discreto para Admins visualizarem outros Dashboards */}
-        <div className="bg-primary/10 border-b border-primary/20 px-6 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={14} className="text-primary" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Modo Administrador</span>
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setSimulatedRole(null)}
-              className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${!simulatedRole ? 'bg-primary text-black' : 'bg-white/5 text-gray-500 hover:text-white'}`}
-            >
-              Visão Gestor
-            </button>
-            <button 
-              onClick={() => setSimulatedRole('professor')}
-              className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${simulatedRole === 'professor' ? 'bg-primary text-black' : 'bg-white/5 text-gray-500 hover:text-white'}`}
-            >
-              Visão Professor
-            </button>
-            <button 
-              onClick={handleRunMigration}
-              disabled={isMigrating}
-              className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-2 ${isMigrating ? 'bg-yellow-500/20 text-yellow-500' : 'bg-white/5 text-gray-500 hover:text-white'}`}
-            >
-              <RefreshCw size={10} className={isMigrating ? 'animate-spin' : ''} />
-              {isMigrating ? migrationStatus : 'Migrar para PT-BR'}
-            </button>
-          </div>
-        </div>
-        
         {simulatedRole === 'professor' ? <TeacherDashboard /> : <ManagerDashboard />}
       </div>
     )

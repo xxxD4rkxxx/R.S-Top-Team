@@ -33,6 +33,8 @@ const LoginPage = lazy(() => import('./modules/auth/LoginPage'))
 const ResetPasswordPage = lazy(() => import('./modules/auth/ResetPasswordPage'))
 const ContractsPage = lazy(() => import('./modules/contracts/ContractsPage'))
 const ModuleUnderDevelopment = lazy(() => import('./components/shared/ModuleUnderDevelopment'))
+const LogsPagina = lazy(() => import('./modules/profile/paginas/logs_pagina'))
+const ErrosPagina = lazy(() => import('./modules/profile/paginas/erros_pagina'))
 const ModalitiesPage = lazy(() => import('./modules/modalities/ModalitiesPage'))
 // Módulo Financeiro — 3 páginas independentes com responsabilidade única
 const BillingPage = lazy(() => import('./modules/finance/BillingPage'))   // Cobrança
@@ -166,6 +168,9 @@ function AppContent() {
                     <Route path="/equipe" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']} requiredPermission="manageUsers"><AnimatedPage><CollaboratorsPage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/eventos" element={<ProtectedRoute requiredPermission="manageEvents"><AnimatedPage><EventsPage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/perfil" element={<ProtectedRoute><AnimatedPage><ProfilePage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/perfil/:aba" element={<ProtectedRoute><AnimatedPage><ProfilePage /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/logs" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><LogsPagina /></AnimatedPage></ProtectedRoute>} />
+                    <Route path="/erros" element={<ProtectedRoute allowedRoles={['admin']}><AnimatedPage><ErrosPagina /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/chamadas/revisao/:sessionId" element={<ProtectedRoute allowedRoles={['admin', 'gestor', 'professor']}><AnimatedPage><ReviewAttendancePage /></AnimatedPage></ProtectedRoute>} />
                     <Route path="/contratos" element={<ProtectedRoute allowedRoles={['admin', 'gestor']}><AnimatedPage><ContractsPage /></AnimatedPage></ProtectedRoute>} />
 

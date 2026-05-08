@@ -17,7 +17,7 @@ export default function TopBar() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3">
           <img 
-            src="/logo.png" 
+            src="/logo.webp" 
             alt="RS Top Team" 
             className="w-10 h-10 rounded-full object-cover" 
             style={{ 

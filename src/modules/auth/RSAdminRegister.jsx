@@ -168,7 +168,7 @@ export default function RSAdminRegister() {
             <div className="relative mb-4">
               <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full scale-150 opacity-100 transition-opacity duration-700" />
               <img
-                src="/logo.png"
+                src="/logo.webp"
                 alt="Logo Academy"
                 className="w-20 h-20 object-cover rounded-full border-2 border-white/10 shadow-2xl relative z-10"
                 style={{ boxShadow: '0 0 30px color-mix(in srgb, var(--clr-primary) 30%, transparent)' }}
@@ -188,7 +188,7 @@ export default function RSAdminRegister() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] flex items-center justify-center pointer-events-none z-0">
             <div className="absolute inset-0 bg-primary/5 rounded-full blur-[80px] opacity-40 scale-110" />
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt=""
               className="w-[320px] h-[320px] object-contain rounded-full opacity-[0.05] grayscale brightness-50 p-8"
             />

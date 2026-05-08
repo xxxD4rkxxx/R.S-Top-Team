@@ -175,8 +175,27 @@ export default function EventsPage() {
     return `Há ${diffInDays}d`
   }
 
-  // Permissões
-  const canEdit = ['admin', 'gestor', 'professor'].includes(effectiveRole)
+  // Permissões do usuário
+  // canPost: pode postar novos eventos/avisos (admin, gestor, professor)
+  const canPost = ['admin', 'gestor', 'professor'].includes(effectiveRole)
+  
+  // canManageAll: tem permissão específica para gerenciar qualquer evento/aviso do sistema
+  // Admin e Gestor têm essa permissão por padrão, mas professores precisam ter a flag 'manageEvents' ativa
+  const canManageAll = (() => {
+    if (effectiveRole === 'admin' || effectiveRole === 'gestor') return true
+    return userData?.permissions?.manageEvents === true
+  })()
+
+  // canEditOwn: pode editar/excluir apenas os próprios posts
+  const canEditOwn = canPost
+
+  // canEditThis: pode editar/excluir um post específico
+  // - Se tem canManageAll, pode editar qualquer um
+  // - Se não tem, só pode editar o próprio post
+  const canEditThis = (notice) => {
+    if (canManageAll) return true
+    return notice.authorId === user?.uid
+  }
 
   // ── KPIs ──
   const totalNotices = notices.length
@@ -333,16 +352,18 @@ export default function EventsPage() {
   }
 
   const handleEdit = (notice) => {
-    if (!canEdit) return
+    // Verifica se pode editar este post específico
+    if (!canEditThis(notice)) return
     setEditingNotice(notice)
     if (isMobile) setExpandedId(notice.id)
     setActiveDropdown(null)
   }
 
-  const handleDelete = async (id) => {
-    if (!canEdit) return
+  const handleDelete = async (notice) => {
+    // Verifica se pode excluir este post específico
+    if (!canEditThis(notice)) return
     if (window.confirm('Apagar este aviso permanentemente?')) {
-      await deleteNotice(id)
+      await deleteNotice(notice.id)
     }
     setActiveDropdown(null)
   }
@@ -371,7 +392,7 @@ export default function EventsPage() {
       <div className="flex-1 px-4 md:px-6 py-6 w-full pb-32 space-y-8 max-w-[1600px] mx-auto">
 
         {/* ── KPIs (Visible only for staff) ── */}
-        {canEdit && (
+        {canPost && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 fade-slide-up">
             <KPICard
               title="Total"
@@ -434,7 +455,7 @@ export default function EventsPage() {
               ))}
             </div>
 
-            {canEdit && (
+            {canPost && (
               <button
                 onClick={() => { setEditingNotice(null); setShowForm(s => !s) }}
                 className={`h-11 px-4 md:px-6 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 border shadow-lg active:scale-95 shrink-0 ${showForm && !editingNotice
@@ -533,8 +554,8 @@ export default function EventsPage() {
                     <div className="absolute top-2 left-3 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] z-10 animate-pulse" />
                   )}
 
-                  {/* STAFF CONTROLS (MoreVertical) */}
-                  {canEdit && (
+                  {/* STAFF CONTROLS (MoreVertical) - só mostra se puder editar este post específico */}
+                  {canEditThis(notice) && (
                     <div className="absolute top-6 right-6 z-10 transition-opacity">
                       <button
                         onClick={(e) => {

@@ -68,7 +68,7 @@ const NavTooltip = ({ content, visible }) => (
 
 function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
   // Hook de autenticação para controle de acesso e simulação de roles
-  const { userData, effectiveRole, setSimulatedRole, simulatedRole } = useAuth()
+  const { userData, effectiveRole, simulatedRole, setSimulatedRole } = useAuth()
   const { isNavLocked } = useApp()
   const [showSimMenu, setShowSimMenu] = useState(false)
   const [hoveredItem, setHoveredItem] = useState(null)
@@ -102,7 +102,6 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
     items: group.items.filter(item => item.roles.includes(effectiveRole) && hasPerm(item.reqPerm))
   })).filter(group => group.items.length > 0)
 
-  // Opções para troca rápida de visualização (apenas admins)
   const simulationOptions = [
     { label: 'Admin (Real)', value: null, icon: ShieldCheck },
     { label: 'Visão Gestor', value: 'gestor', icon: ShieldCheck },
@@ -144,7 +143,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
         >
           <div className={`${effectivelyCollapsed ? 'w-10 h-10' : 'w-12 h-12'} flex-shrink-0 relative flex items-center justify-center transition-all duration-500`}>
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt="RS Top Team"
               className="w-full h-full rounded-full object-cover transition-transform duration-700"
               style={{
@@ -311,7 +310,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
                   className="flex-1 flex items-center gap-2 overflow-hidden flex-nowrap"
                 >
                   <span className="text-xs flex-1 text-left font-medium whitespace-nowrap">
-                    {simulatedRole ? `Modo: ${simulatedRole}` : 'Admin Mode'}
+                    {simulatedRole ? `Modo: ${simulatedRole}` : 'Admin'}
                   </span>
                   <ChevronDown size={14} className={`transition-transform duration-500 ${showSimMenu ? 'rotate-180' : ''}`} />
                 </motion.div>

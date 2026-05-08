@@ -32,7 +32,7 @@ function NoticeActionMenu({ notice, menuPosition, onClose, onEdit, onDelete }) {
                     </div>
                     Editar Comunicado
                 </button>
-                <button onClick={() => { onDelete(notice.id); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-all group font-medium text-left">
+                <button onClick={() => { onDelete(notice); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-all group font-medium text-left">
                     <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
                         <Trash2 size={14} />
                     </div>
@@ -99,7 +99,7 @@ function NoticeActionMenu({ notice, menuPosition, onClose, onEdit, onDelete }) {
                         </button>
 
                         <button
-                            onClick={() => { onDelete(notice.id); onClose(); }}
+                            onClick={() => { onDelete(notice); onClose(); }}
                             className="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 active:scale-95 transition-all text-left group"
                         >
                             <div className="w-11 h-11 rounded-xl bg-red-500/10 flex items-center justify-center border border-red-500/20 group-hover:bg-red-500/20 transition-all">

@@ -15,6 +15,7 @@ import {
 import { db } from '../firebase/config'
 import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
 import { sanitizeHTML } from '../utils/security'
+import { useSystemLogs } from './useSystemLogs'
 
 const LS_KEY = 'academy_notice_views'
 
@@ -101,8 +102,19 @@ export function useNotices(userId = null) {
     }
   }, [])
 
+  // Hook para logging
+  const { registrarAtividade } = useSystemLogs()
+
+  // Função auxiliar para extrair tipo de post
+  const getTipoPost = (noticeData) => {
+    if (noticeData.types?.includes('evento')) return 'evento'
+    if (noticeData.types?.includes('aviso')) return 'aviso'
+    return 'aviso'
+  }
+
   // ── Adicionar ──
-  async function addNotice(noticeData) {
+  async function addNotice(noticeData, usuario) {
+    const tipo = getTipoPost(noticeData)
     const payload = {
       ...noticeData,
       description: sanitizeHTML(noticeData.description || ''),
@@ -111,11 +123,28 @@ export function useNotices(userId = null) {
       updatedAt: serverTimestamp(),
     }
     const docRef = await addDoc(collection(db, COLLECTIONS.EVENTOS), payload)
+
+    // Log da atividade
+    if (usuario) {
+      await registrarAtividade(
+        tipo === 'evento' ? 'Criar evento' : 'Criar aviso',
+        noticeData.title || 'Sem título',
+        {
+          userId: usuario.uid,
+          userName: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
+          userRole: usuario.papel || usuario.effectiveRole || 'professor',
+          category: 'evento',
+          targetId: docRef.id,
+          targetName: noticeData.title || 'Sem título'
+        }
+      )
+    }
+
     return docRef.id
   }
 
   // ── Atualizar ──
-  async function updateNotice(id, updates) {
+  async function updateNotice(id, updates, usuario) {
     const cleanUpdates = { ...updates }
     if (cleanUpdates.description) {
       cleanUpdates.description = sanitizeHTML(cleanUpdates.description)
@@ -124,11 +153,47 @@ export function useNotices(userId = null) {
       ...cleanUpdates,
       updatedAt: serverTimestamp(),
     })
+
+    // Log da atividade
+    if (usuario) {
+      await registrarAtividade(
+        'Atualizar evento/aviso',
+        updates.title || 'Post atualizado',
+        {
+          userId: usuario.uid,
+          userName: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
+          userRole: usuario.papel || usuario.effectiveRole || 'professor',
+          category: 'evento',
+          targetId: id,
+          targetName: updates.title || 'Post atualizado'
+        }
+      )
+    }
   }
 
   // ── Deletar ──
-  async function deleteNotice(id) {
+  async function deleteNotice(id, usuario) {
+    // Buscar título antes de deletar para o log
+    const docSnap = await getDoc(doc(db, COLLECTIONS.EVENTOS, id))
+    const titulo = docSnap.exists() ? docSnap.data().title : 'Post deletado'
+
     await deleteDoc(doc(db, COLLECTIONS.EVENTOS, id))
+
+    // Log da atividade
+    if (usuario) {
+      await registrarAtividade(
+        'Excluir evento/aviso',
+        titulo,
+        {
+          userId: usuario.uid,
+          userName: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
+          userRole: usuario.papel || usuario.effectiveRole || 'professor',
+          category: 'evento',
+          targetId: id,
+          targetName: titulo
+        }
+      )
+    }
   }
 
   // ── Marcar como Visto ──
