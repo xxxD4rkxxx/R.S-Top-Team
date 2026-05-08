@@ -39,6 +39,14 @@ const STATUS_STYLE = {
 }
 const STATUS_LABEL = { paid: 'Pago', pending: 'Pendente', overdue: 'Atrasado' }
 
+const isVencimentoAtrasado = (dueDate) => {
+  if (!dueDate) return false
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const vencimento = new Date(dueDate + 'T12:00:00')
+  return vencimento <= hoje
+}
+
 // ─── CustomSelect — mesmo componente da página Alunos ─────────────────────────
 
 function CustomSelect({ label, value, onChange, options }) {
@@ -787,7 +795,11 @@ export default function BillingPage() {
                               {b.status !== 'paid' && (
                                 <>
                                   <button onClick={() => updateBillStatus(b.id, 'paid')} title="Marcar como pago"
-                                    className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/20">
+                                    className={`p-2 rounded-xl transition-all border ${
+                                      isVencimentoAtrasado(b.dueDate)
+                                        ? 'bg-amber-500 text-black hover:bg-amber-400 border-amber-500 animate-pulse'
+                                        : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20'
+                                    }`}>
                                     <CheckCircle2 size={14} />
                                   </button>
                                   <button onClick={() => setEditingBill(b)} title="Editar valor"
