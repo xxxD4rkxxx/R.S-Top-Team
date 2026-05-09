@@ -9,10 +9,11 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   CreditCard, Plus, Search, Trash2, X,
   CheckCircle2, Clock, AlertCircle, DollarSign,
-  ChevronDown, Loader2, Users, RefreshCcw, Save, Edit2
+  ChevronDown, Loader2, Users, RefreshCcw, Save, Edit2, FileText
 } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import PaymentReportModal from '../../components/shared/PaymentReportModal'
 import PageHeader from '../../components/shared/PageHeader'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import KPICard from '../../components/shared/KPICard'
@@ -21,6 +22,7 @@ import { useStudents } from '../../hooks/useStudents'
 import { useModalities } from '../../hooks/useModalities'
 import { useAuth } from '../../context/AuthContext'
 import { beltConfig } from '../../data/beltConfig'
+import { calculateModalityValue } from '../../utils/billingUtils'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,19 @@ const isVencimentoAtrasado = (dueDate) => {
   hoje.setHours(0, 0, 0, 0)
   const vencimento = new Date(dueDate + 'T12:00:00')
   return vencimento <= hoje
+}
+
+/**
+ * Extrai o primeiro e segundo nome de um nome completo.
+ * Ex: "Julio Silva Santos" retorna "Julio Silva"
+ * @param {string} fullName - Nome completo do gestor
+ * @returns {string} Primeiro e segundo nome
+ */
+const getFirstTwoNames = (fullName) => {
+  if (!fullName) return ''
+  const parts = fullName.trim().split(' ')
+  if (parts.length === 1) return parts[0]
+  return `${parts[0]} ${parts[1]}`
 }
 
 // ─── CustomSelect — mesmo componente da página Alunos ─────────────────────────
@@ -487,27 +502,16 @@ export default function BillingPage() {
   const canManageBilling = userData?.permissions?.manageBillingTab ?? userData?.permissions?.managePayments ?? false
 
   const [showModal, setShowModal] = useState(false)
-  const [showBatchModal, setShowBatchModal] = useState(false)
+  
+  const [showReportModal, setShowReportModal] = useState(false)
   const [editingBill, setEditingBill] = useState(null)
 
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
   const [sortOrder, setSortOrder] = useState('recente')
-
-  const handleBatchBilling = async (mesRef, dataVencimento) => {
-    setSaving(true)
-    try {
-      const criadas = await gerarCobrancasEmLote(students, modalities, mesRef, dataVencimento)
-      alert(`${criadas} cobranças geradas com sucesso para o mês ${mesRef}!`)
-      setShowBatchModal(false)
-    } catch (err) {
-      console.error('Erro no faturamento em lote:', err)
-      alert(`Falha ao gerar cobranças: ${err.message}`)
-    } finally {
-      setSaving(false)
-    }
-  }
+  const [modalityFilter, setModalityFilter] = useState('todas')
+  const [paidByFilter, setPaidByFilter] = useState('todos')
 
   const handleUpdate = async (data) => {
     setSaving(true)
@@ -548,13 +552,28 @@ export default function BillingPage() {
     }
   }, [bills, students])
 
-  const hasFilters = searchTerm || statusFilter !== 'todos'
+  const hasFilters = searchTerm || statusFilter !== 'todos' || modalityFilter !== 'todas' || paidByFilter !== 'todos'
+
+  // Lista única de quem confirmou (paidBy)
+  const paidByOptions = useMemo(() => {
+    const unique = new Set(bills.filter(b => b.paidBy).map(b => b.paidBy))
+    return Array.from(unique).sort()
+  }, [bills])
 
   const filtered = useMemo(() => {
     const result = bills.filter(b => {
       const byName = b.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
       const byStatus = statusFilter === 'todos' || b.status === statusFilter
-      return byName && byStatus
+      
+      // Filtro por modalidade do aluno
+      const student = students.find(s => s.id === b.studentId)
+      const studentMods = student?.modalities || student?.modalitiesArray || []
+      const byModality = modalityFilter === 'todas' || studentMods.includes(modalityFilter)
+      
+      // Filtro por quem confirmou
+      const byPaidBy = paidByFilter === 'todos' || b.paidBy === paidByFilter
+      
+      return byName && byStatus && byModality && byPaidBy
     })
 
     // Ordenação
@@ -568,7 +587,7 @@ export default function BillingPage() {
     })
 
     return result
-  }, [bills, searchTerm, statusFilter, sortOrder])
+  }, [bills, students, searchTerm, statusFilter, sortOrder, modalityFilter, paidByFilter])
 
   function renderAvatar(student) {
     if (!student) return (
@@ -600,9 +619,7 @@ export default function BillingPage() {
         <ModalNovaCobranca students={students} onClose={() => setShowModal(false)} onSave={handleSave} loading={saving} />
       )}
 
-      {showBatchModal && (
-        <ModalFaturamentoLote onClose={() => setShowBatchModal(false)} onConfirm={handleBatchBilling} loading={saving} />
-      )}
+      <PaymentReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} />
 
       {editingBill && (
         <ModalEditarCobranca bill={editingBill} onClose={() => setEditingBill(null)} onSave={handleUpdate} loading={saving} />
@@ -669,14 +686,13 @@ export default function BillingPage() {
             />
           </div>
           <div className="flex gap-2">
-            {canManageBilling && (
-              <button onClick={() => setShowBatchModal(true)}
-                className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
-              >
-                <RefreshCcw size={16} strokeWidth={2.5} />
-                <span className="hidden md:inline">OPERAR LOTE</span>
-              </button>
-            )}
+            
+            <button onClick={() => setShowReportModal(true)}
+              className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
+            >
+              <FileText size={16} strokeWidth={2.5} />
+              <span className="hidden md:inline">RELATÓRIO</span>
+            </button>
             {canManageBilling && (
               <button onClick={() => setShowModal(true)}
                 className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary text-white shadow-xl shadow-primary/20 hover:shadow-primary/30"
@@ -689,7 +705,7 @@ export default function BillingPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearchTerm(''); setStatusFilter('todos') }}
+              onClick={() => { setSearchTerm(''); setStatusFilter('todos'); setModalityFilter('todas'); setPaidByFilter('todos') }}
               className="flex items-center justify-center gap-2 px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
               <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
@@ -724,6 +740,24 @@ export default function BillingPage() {
                 ['antigo', 'Mais Antigo'],
               ]}
             />
+            <CustomSelect
+              label="Modalidade"
+              value={modalityFilter}
+              onChange={setModalityFilter}
+              options={[
+                ['todas', 'Todas'],
+                ...modalities.map(m => [m.name, m.name]),
+              ]}
+            />
+            <CustomSelect
+              label="Confirmado por"
+              value={paidByFilter}
+              onChange={setPaidByFilter}
+              options={[
+                ['todos', 'Todos'],
+                ...paidByOptions.map(p => [p, p]),
+              ]}
+            />
             <div className="col-span-2 flex items-end">
               <p className="text-[11px] text-gray-600 font-bold ml-1">
                 Exibindo <span className="text-gray-400">{filtered.length}</span> de <span className="text-gray-400">{bills.length}</span> cobranças
@@ -748,9 +782,10 @@ export default function BillingPage() {
                 <thead>
                   <tr className="border-b border-white/10 text-[10px] uppercase font-black text-gray-500 tracking-wider bg-white/5">
                     <th className="py-3 px-5">Aluno</th>
-                    <th className="py-3 px-5 text-center hidden sm:table-cell">Referência</th>
+                    <th className="py-3 px-5 text-center hidden sm:table-cell">Confirmado por</th>
                     <th className="py-3 px-5 text-center hidden sm:table-cell">Vencimento</th>
                     <th className="py-3 px-5 text-right">Valor</th>
+                    <th className="py-3 px-5 text-right hidden sm:table-cell">Próximo Pagamento</th>
                     <th className="py-3 px-5 text-center">Status</th>
                     {canManageBilling && <th className="py-3 px-5 text-center">Ações</th>}
                   </tr>
@@ -775,14 +810,26 @@ export default function BillingPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-5 text-center text-xs text-gray-400 font-medium hidden sm:table-cell">
-                          {b.referenceMonth || '—'}
+                        <td className="py-4 px-5 text-center hidden sm:table-cell">
+                          {b.paidBy ? (
+                            <div className="flex flex-col items-center">
+                              <span className="text-[9px] text-gray-500 uppercase">Confirmado por</span>
+                              <span className="text-xs text-emerald-400 font-medium">{b.paidBy}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-600">—</span>
+                          )}
                         </td>
                         <td className="py-4 px-5 text-center font-mono text-xs text-gray-400 hidden sm:table-cell">
                           {dataBR(b.dueDate)}
                         </td>
                         <td className="py-4 px-5 text-right font-black text-sm text-white font-mono">
                           {R$(b.amount)}
+                        </td>
+                        <td className="py-4 px-5 text-right hidden sm:table-cell">
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-400 font-mono">{R$(calculateModalityValue(student, modalities))}</span>
+                          </div>
                         </td>
                         <td className="py-4 px-5 text-center">
                           <span className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border inline-flex ${STATUS_STYLE[b.status] || ''}`}>
@@ -794,7 +841,7 @@ export default function BillingPage() {
                             <div className="flex items-center justify-center gap-1.5">
                               {b.status !== 'paid' && (
                                 <>
-                                  <button onClick={() => updateBillStatus(b.id, 'paid')} title="Marcar como pago"
+                                  <button onClick={() => updateBillStatus(b.id, 'paid', getFirstTwoNames(userData?.nome))} title="Marcar como pago"
                                     className={`p-2 rounded-xl transition-all border ${
                                       isVencimentoAtrasado(b.dueDate)
                                         ? 'bg-amber-500 text-black hover:bg-amber-400 border-amber-500 animate-pulse'

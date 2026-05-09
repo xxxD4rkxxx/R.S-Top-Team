@@ -331,8 +331,11 @@ export function useFinance() {
 
   /**
    * Atualiza o status (Ex: marcar como Paga). Restrito a admin/gestor.
+   * @param {string} idCobranca - ID da cobrança no Firestore
+   * @param {string} novoStatus - Novo status ('paid', 'pending', 'overdue')
+   * @param {string|null} paidBy - Nome do gestor que registrou o pagamento (primeiro + segundo nome)
    */
-  async function atualizarStatusCobranca(idCobranca, novoStatus) {
+  async function atualizarStatusCobranca(idCobranca, novoStatus, paidBy = null) {
     if (effectiveRole === 'aluno') {
       throw new Error('Segurança Operacional: Acesso Negado para alterar status.')
     }
@@ -343,8 +346,12 @@ export function useFinance() {
     }
     if (novoStatus === 'paid') {
       payload.paidAt = serverTimestamp()
+      if (paidBy) {
+        payload.paidBy = paidBy
+      }
     } else {
-      payload.paidAt = null // Limpa se foi marcado como pendente/vencido por engano
+      payload.paidAt = null
+      payload.paidBy = null
     }
     await updateDoc(cobrancaRef, payload)
   }
@@ -363,7 +370,7 @@ export function useFinance() {
     })
   }
 
-  /**
+/**
    * Deleta uma cobrança específica.
    */
   async function deletarCobranca(idCobranca) {
@@ -373,47 +380,86 @@ export function useFinance() {
     await deleteDoc(doc(db, COLLECTIONS.FATURAMENTO, idCobranca))
   }
 
-  // ==========================================
-  // MÉTODOS CRUD - DESPESAS
-  // ==========================================
-
   /**
-   * Adiciona uma nova despesa do estúdio/academia.
+   * Ajusta a cobrança pendente do aluno quando suas modalidades mudam.
+   * Chamado quando um aluno sai ou entra em uma modalidade.
+   * @param {string} studentId - ID do aluno
+   * @param {string[]} newModalities - Novas modalidades do aluno
+   * @param {Array} modalitiesConfig - Configuração de preços das modalidades (do useModalities)
    */
-  async function criarDespesa(dadosDespesa) {
-    if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
-      throw new Error('Segurança Operacional: Apenas gestores podem lançar despesas.')
-    }
-    const despesasRef = collection(db, COLLECTIONS.DESPESAS)
-    await addDoc(despesasRef, {
-      ...dadosDespesa,
-      createdAt: serverTimestamp(),
-      amount: Number(dadosDespesa.amount)
-    })
-  }
-
-  /**
-   * Atualiza uma despesa existente (Status de pago, etc).
-   */
-  async function atualizarDespesa(idDespesa, dadosAtualizados) {
-    if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
-      throw new Error('Segurança Operacional: Apenas gestores podem editar despesas.')
-    }
-    const despesaRef = doc(db, COLLECTIONS.DESPESAS, idDespesa)
-    await updateDoc(despesaRef, {
-      ...dadosAtualizados,
-      updatedAt: serverTimestamp()
-    })
-  }
-
-  /**
-   * Deleta uma despesa.
-   */
-  async function deletarDespesa(idDespesa) {
-    if (effectiveRole !== 'gestor' && effectiveRole !== 'admin') {
+  async function ajustarCobrancaPorMudancaModalidade(studentId, newModalities, modalitiesConfig) {
+    if (effectiveRole === 'aluno') {
       throw new Error('Segurança Operacional: Acesso Negado.')
     }
-    await deleteDoc(doc(db, COLLECTIONS.DESPESAS, idDespesa))
+
+    if (!studentId || !Array.isArray(newModalities) || !Array.isArray(modalitiesConfig)) {
+      return
+    }
+
+    const normalizeText = (text) => {
+      if (!text) return ''
+      return text.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    }
+
+    // Buscar cobrança pendente mais recente do aluno
+    const today = new Date()
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+    const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    
+    const q = query(
+      collection(db, COLLECTIONS.FATURAMENTO),
+      where('studentId', '==', studentId),
+      where('status', '==', 'pending'),
+      orderBy('dueDate', 'desc'),
+      limit(1)
+    )
+
+    const snapshot = await getDocs(q)
+    
+    if (snapshot.empty) {
+      console.log('[Cobrança] Nenhuma cobrança pendente encontrada para ajuste')
+      return
+    }
+
+    const cobranca = snapshot.docs[0]
+    const cobrancaData = cobranca.data()
+
+    // Verificar se a cobrança é do mês atual ou futuro próximo
+    const cobrancaDueDate = new Date(cobrancaData.dueDate + 'T00:00:00')
+    if (cobrancaDueDate < currentMonthStart || cobrancaDueDate > currentMonthEnd) {
+      console.log('[Cobrança] Cobrança pendente não é do mês atual, não precisa ajustar')
+      return
+    }
+
+    // Calcular novo valor baseado nas novas modalidades
+    const cat = (cobrancaData.ageCategory || 'Adulto').toLowerCase()
+    let novoValor = 0
+
+    newModalities.forEach(modName => {
+      const normalizedSearch = normalizeText(modName)
+      const modConfig = modalitiesConfig.find(m => 
+        normalizeText(m.name) === normalizedSearch || 
+        normalizeText(m.id) === normalizedSearch ||
+        normalizeText(m.slug) === normalizedSearch
+      )
+      if (modConfig && modConfig.pricing && modConfig.pricing[cat]) {
+        const rule = modConfig.pricing[cat]
+        if (rule.enabled) {
+          novoValor += Number(rule.price) || 0
+        }
+      }
+    })
+
+    // Verificar se o valor mudou
+    const valorAtual = Number(cobrancaData.amount) || 0
+    if (novoValor !== valorAtual && novoValor > 0) {
+      await updateDoc(doc(db, COLLECTIONS.FATURAMENTO, cobranca.id), {
+        amount: novoValor,
+        modalities: newModalities,
+        updatedAt: serverTimestamp()
+      })
+      console.log(`[Cobrança] Valor ajustado de R$${valorAtual} para R$${novoValor}`)
+    }
   }
 
   // Compatibilidade Legada (Mantendo nomes em inglês pro restante do app não quebrar instantaneamente)
@@ -439,8 +485,8 @@ export function useFinance() {
     loadingExpenses: carregandoDespesas,
     expensesPaidTotal: totalDespesasPagas,
     expensesPendingTotal: totalDespesasPendentes,
-    addExpense: criarDespesa,
-    updateExpense: atualizarDespesa,
-    deleteExpense: deletarDespesa
+    
+    // Ajuste de cobrança por mudança de modalidade
+    ajustarCobrancaPorMudancaModalidade
   }
 }

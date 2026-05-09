@@ -17,6 +17,8 @@ import { useSystemUsers } from '../../hooks/useSystemUsers'
 import { useStudentJourney } from '../../hooks/useStudentJourney'
 import { useAttendanceAlerts } from '../../hooks/useAttendanceAlerts'
 import { useApp } from '../../context/AppContext'
+import { useModalities } from '../../hooks/useModalities'
+import { adjustBillForModalityChange } from '../../utils/billingAdjustment'
 import AddStudentModal from '../../components/shared/AddStudentModal'
 import GraduationHistoryModal from '../../components/students/GraduationHistoryModal'
 import PaymentDrawer from '../../components/students/PaymentDrawer'
@@ -183,6 +185,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
   const { fetchUserPin } = useSystemUsers()
    const [fetchedPins, setFetchedPins] = useState({})
    const { bills } = useFinance()
+   const { modalities: modalitiesConfig } = useModalities()
 
   const isAdmin = effectiveRole === 'admin'
   const isGestor = effectiveRole === 'gestor'
@@ -346,11 +349,20 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
           await deleteVisitor(editData.id)
         } else {
           // EDIÇÃO NORMAL
+          const oldModalities = editData.modalities || editData[FIELDS.MODALIDADES] || []
+          const newModalities = Array.isArray(modality) ? modality : [modality]
+          
           await updateStudentProfile(editData.id, {
             ...data,
-            modalities: modality,
-            modality: modality[0] || 'Jiu Jitsu'
+            modalities: newModalities,
+            modality: newModalities[0] || 'Jiu Jitsu'
           })
+          
+          // Ajustar cobrança se modalidades mudaram
+          const modalitiesChanged = JSON.stringify(oldModalities.sort()) !== JSON.stringify(newModalities.sort())
+          if (modalitiesChanged && modalitiesConfig.length > 0) {
+            await adjustBillForModalityChange(editData.id, newModalities, modalitiesConfig)
+          }
         }
       } else {
         // MODO CRIAÇÃO: Verifica duplicidade antes de adicionar

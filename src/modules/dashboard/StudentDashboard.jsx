@@ -3,8 +3,12 @@ import {
   Trophy, Medal, Target, Calendar, Clock, TrendingUp, 
   ChevronRight, Star, Zap, Bell, AlertCircle, History,
   Activity, Sparkles, Check, LayoutDashboard, DollarSign, 
-  Wallet, ArrowUpRight, ShieldCheck
+  Wallet, ArrowUpRight, ShieldCheck, CalendarDays
 } from 'lucide-react'
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  Tooltip as RechartsTooltip, ResponsiveContainer 
+} from 'recharts'
 import { useModalities } from '../../hooks/useModalities'
 import QuickStartGuide from './components/QuickStartGuide'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -124,6 +128,26 @@ const PaymentStatCard = ({ info, delay = 0 }) => {
 };
 
 
+// ChartTooltip customizado (mesmo do IntelligenceSection)
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="glass-card p-3 rounded-xl border border-white/10 shadow-2xl bg-[#0a0a0a]/90 backdrop-blur text-xs">
+      <p className="text-gray-400 font-bold tracking-wider mb-2">{label}</p>
+      {payload.map((e, i) => (
+        <div key={i} className="flex items-center justify-between gap-5 mb-1 last:mb-0">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full" style={{ background: e.color }} />
+            <span className="text-gray-300">{e.name}</span>
+          </div>
+          <span className="font-black text-white">{e.value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+
 export default function StudentDashboard({ user, cobrancas = [] }) {
   const { total: hookTotal, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.id)
 
@@ -154,6 +178,83 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
   const pendingBills = useMemo(() => 
     cobrancas.filter(b => b.status === 'pending' || b.status === 'overdue'),
   [cobrancas])
+
+  // Dados do gráfico de presença
+  const [period, setPeriod] = useState('ano')
+  
+  const attendanceChartData = useMemo(() => {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    
+    if (period === 'mes') {
+      // Dados por dia do mês atual
+      const currentMonth = now.getMonth()
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+      const dataMap = {}
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        dataMap[d] = { name: d.toString().padStart(2, '0'), presencas: 0, faltas: 0 }
+      }
+
+      if (recent && recent.length > 0) {
+        recent.forEach(log => {
+          let date = null
+          if (log.parsedDate) {
+            date = log.parsedDate instanceof Date ? log.parsedDate : new Date(log.parsedDate)
+          } else if (log.date) {
+            date = new Date(log.date + 'T12:00:00')
+          } else if (log.data) {
+            date = new Date(log.data + 'T12:00:00')
+          }
+          
+          if (date && !isNaN(date.getTime())) {
+            if (date.getFullYear() === currentYear && date.getMonth() === currentMonth) {
+              const day = date.getDate()
+              if (dataMap[day]) {
+                if (log.status === 'present' || log.status === 'presente' || !log.status) {
+                  dataMap[day].presencas += 1
+                } else if (log.status === 'absent' || log.status === 'ausente') {
+                  dataMap[day].faltas += 1
+                }
+              }
+            }
+          }
+        })
+      }
+      return Object.values(dataMap)
+    } else {
+      // Dados por mês do ano atual
+      const dataMap = {}
+      for (let m = 0; m < 12; m++) {
+        dataMap[m] = { name: months[m], presencas: 0, faltas: 0 }
+      }
+
+      if (recent && recent.length > 0) {
+        recent.forEach(log => {
+          let date = null
+          if (log.parsedDate) {
+            date = log.parsedDate instanceof Date ? log.parsedDate : new Date(log.parsedDate)
+          } else if (log.date) {
+            date = new Date(log.date + 'T12:00:00')
+          } else if (log.data) {
+            date = new Date(log.data + 'T12:00:00')
+          }
+          
+          if (date && !isNaN(date.getTime())) {
+            if (date.getFullYear() === currentYear && dataMap[date.getMonth()]) {
+              if (log.status === 'present' || log.status === 'presente' || !log.status) {
+                dataMap[date.getMonth()].presencas += 1
+              } else if (log.status === 'absent' || log.status === 'ausente') {
+                dataMap[date.getMonth()].faltas += 1
+              }
+            }
+          }
+        })
+      }
+      return Object.values(dataMap)
+    }
+  }, [recent, period])
 
   // Configuração da Faixa Atual
   const beltInfo = defaultBelts[user?.belt?.toLowerCase()] || defaultBelts.white
@@ -397,66 +498,87 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
 
 
 
-          {/* Atividades Recentes */}
-          <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>
-             <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-white/5 border border-white/10"><History size={20} className="text-primary" /></div>
-                  <h3 className="text-xl font-black text-white uppercase tracking-widest">Atividades Recentes</h3>
+          {/* Tendência de Presença */}
+          <section className="glass-card rounded-[32px] p-6 border border-white/10 relative overflow-hidden">
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div>
+                  <h2 className="text-lg font-black text-white tracking-wide">Tendência de Presença</h2>
+                  <p className="text-xs text-gray-500 mt-1 tracking-tighter">Sua frequência de treino</p>
                 </div>
-                
-                {(user?.roles?.admin || user?.papeis?.admin) && (
-                  <button
-                    onClick={handleSync}
-                    disabled={syncing}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                      syncing ? 'bg-white/5 text-gray-500 cursor-not-allowed' : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20'
-                    }`}
-                  >
-                    {syncing ? (
-                      <>
-                        <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                        Sincronizando...
-                      </>
-                    ) : (
-                      <>
-                        <Activity size={14} />
-                        Sincronizar
-                      </>
-                    )}
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  <div className="flex bg-black p-1 rounded-xl border border-white/5">
+                    {['mes', 'ano'].map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setPeriod(v)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === v ? 'bg-primary text-white shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                      >
+                        {v === 'mes' ? 'Mês' : 'Ano'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
              </div>
 
-             <div className="space-y-4">
-               {loadingAttendance ? (
-                 [1, 2, 3].map(i => <div key={i} className="h-16 bg-white/5 rounded-2xl animate-pulse" />)
-               ) : recent.length > 0 ? (
-                 recent.slice(0, 5).map((log, idx) => (
-                   <div key={idx} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-white/10 transition-colors">
-                      <div className="flex items-center gap-4">
-                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <Check size={18} className="text-primary" />
-                         </div>
-                         <div>
-                            <h4 className="text-sm font-black text-white uppercase tracking-tight">{log.modality}</h4>
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                               {new Date(log.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
-                            </p>
-                         </div>
-                      </div>
-                      <div className="text-right">
-                         <div className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest">
-                            Presente
-                         </div>
-                      </div>
-                   </div>
-                 ))
-               ) : (
-                 <p className="text-[11px] text-gray-500 uppercase font-black text-center py-8">Nenhuma atividade recente.</p>
-               )}
-             </div>
-          </section>
+<div className="h-[260px] w-full">
+                {loadingAttendance ? (
+                  <div className="h-full bg-white/5 rounded-2xl animate-pulse" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={attendanceChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="gradPresencas" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#DC143C" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#DC143C" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="gradFaltas" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#6B7280', fontSize: 11, fontWeight: 600 }}
+                        dy={8}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#6B7280', fontSize: 10 }}
+                      />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
+                      <RechartsTooltip 
+                        content={<ChartTooltip />}
+                        cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="faltas" 
+                        name="Faltas" 
+                        stroke="#f97316" 
+                        strokeWidth={2} 
+                        strokeDasharray="5 5" 
+                        fillOpacity={1} 
+                        fill="url(#gradFaltas)"
+                        activeDot={{ r: 5, fill: '#f97316', stroke: '#111', strokeWidth: 2 }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="presencas" 
+                        name="Presenças" 
+                        stroke="#DC143C" 
+                        strokeWidth={3} 
+                        fillOpacity={1} 
+                        fill="url(#gradPresencas)"
+                        activeDot={{ r: 7, fill: '#DC143C', stroke: '#111', strokeWidth: 2 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+           </section>
 
         </div>
 
