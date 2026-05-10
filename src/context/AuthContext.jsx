@@ -114,6 +114,9 @@ export function AuthProvider({ children }) {
     return 'aluno'
   })()
 
+  const isAdmin = effectiveRole === 'admin'
+  const isGestor = effectiveRole === 'gestor'
+
   const getPinAuthEmail = (raw) => {
     const rawId = String(raw || '').toLowerCase().trim()
     
@@ -251,9 +254,8 @@ export function AuthProvider({ children }) {
       const dbPin = String(getValueRobust(dbData, 'pin') || '').trim()
       const dbAdminPin = String(getValueRobust(dbData, 'adminPin') || getValueRobust(dbData, 'admPin') || '').trim()
 
-      // Valida o PIN (Aceita tanto o PIN de aluno quanto o PIN de admin/mestre)
-      const isValidPin = typedPin === dbPin || securePIN === dbPin || 
-                         (dbAdminPin && (typedPin === dbAdminPin || securePIN === dbAdminPin))
+      // Valida o PIN (No modo normal, aceita APENAS o PIN de aluno/normal)
+      const isValidPin = typedPin === dbPin || securePIN === dbPin
 
       if (!isValidPin) {
         throw new Error('PIN incorreto.')
@@ -490,16 +492,21 @@ export function AuthProvider({ children }) {
                      userRole.roles?.admin || 
                      String(userRole.role).toLowerCase() === 'admin';
                    
+                   const hasAll = 
+                     userRole.permissões?.all === true || 
+                     userRole.permissions?.all === true;
+
                    setUserData({ 
                      ...userRole,
-                     ...(isAdmin && {
+                     ...( (isAdmin || hasAll) && {
                        permissions: {
                          ...userRole.permissions,
                          viewBillingTab: true,
                          manageBillingTab: true,
                          viewExpensesTab: true,
                          manageExpensesTab: true,
-                         viewFinance: true
+                         viewFinance: true,
+                         all: hasAll
                        }
                      }),
                      id: snap.id,
@@ -591,6 +598,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user, userData, loading, login, loginAdmin, logout, verifyPIN, effectiveRole,
+    isAdmin, isGestor,
     simulatedRole, setSimulatedRole, sendResetEmail,
     isSetupMode, hasAdmin, hasGestor
   }

@@ -7,7 +7,8 @@ import {
   Users, User, Plus, FileDown, FileUp, Search, Clock,
   UserCheck, UserX, UserMinus, Archive, ArchiveRestore, MoreVertical,
   Edit2, Copy, CalendarDays, GraduationCap, CreditCard, Trash2,
-  FileText, RefreshCw, ChevronDown, Award, Target, Smartphone, Eye
+  FileText, RefreshCw, ChevronDown, Award, Target, Smartphone, Eye,
+  GraduationCap as GraduationIcon, CheckCircle2
 } from 'lucide-react'
 import { useFinance } from '../../hooks/useFinance'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -370,15 +371,23 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
           const emailMatch = data.email && s.email?.toLowerCase() === data.email.toLowerCase();
           const nameMatch = (s.nome || s.name || s.nomeCompleto)?.toLowerCase() === (data.nome || data.name || data.nomeCompleto)?.toLowerCase();
           
-          // Se tiver e-mail, ele é o identificador principal e único.
-          if (data.email) return emailMatch;
+          const isSamePerson = data.email ? emailMatch : nameMatch;
           
-          // Se NÃO tiver e-mail, o nome passa a ser o critério de duplicidade (para evitar lixo no banco).
-          return nameMatch;
+          if (isSamePerson) {
+            // Se a pessoa já existe, verificamos se ela JÁ TEM o papel que estamos tentando adicionar
+            const isTryingToCreateVisitor = options?.isVisitor;
+            if (isTryingToCreateVisitor && s.roles?.visitante) return true;
+            if (!isTryingToCreateVisitor && s.roles?.aluno) return true;
+            
+            // Se ela existe mas não tem o papel (ex: é apenas Admin), não consideramos duplicata fatal.
+            // O backend fará o merge dos papéis.
+            return false;
+          }
+          return false;
         });
 
         if (isDuplicate) {
-          alert('🛑 ATENÇÃO: Já existe um aluno cadastrado com este nome ou e-mail.');
+          alert('🛑 ATENÇÃO: Já existe um aluno/visitante ativo cadastrado com este nome ou e-mail.');
           return;
         }
 
@@ -539,7 +548,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
               onClick={() => { setStatusFilter('todos'); setModalityFilter('todas'); setTypeFilter(defaultTypeFilter); setSearchTerm('') }}
               className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
-              <RefreshCcw size={18} strokeWidth={1.9} />
+              <RefreshCw size={18} strokeWidth={1.9} />
               <span className="hidden md:inline">Limpar Filtros</span>
             </button>
           )}
@@ -699,15 +708,7 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                       {typeFilter === 'visitante' && (
                         <td className="py-4 px-5 text-center">
                           <span className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase text-gray-400 whitespace-nowrap">
-                            {(() => {
-                              const d = student.lastAttendanceAt || student.createdAt;
-                              if (!d) return '--/--/----';
-                              try {
-                                return (typeof d.toDate === 'function' ? d.toDate() : new Date(d)).toLocaleDateString('pt-BR');
-                              } catch (e) {
-                                return '--/--/----';
-                              }
-                            })()}
+                            {formatBR(student.lastAttendanceAt || student.createdAt)}
                           </span>
                         </td>
                       )}
@@ -742,73 +743,68 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                         </div>
                       </td>
                     </tr>
-                  ))
-                  }
-                </tbody >
-              </table >
+                  ))}
+                </tbody>
+              </table>
             )}
-          </div >
+          </div>
 
           {!isLoadingStudents && (
             <p className="text-[11px] text-gray-600 text-center mt-4">
               Exibindo {filtered.length} de {students.length} {typeFilter === 'visitante' ? 'visitante' : 'aluno'}{students.length !== 1 ? 's' : ''}
             </p>
           )}
-        </div >
-      </div >
+        </div>
+      </div>
 
       {/* Modais e Gavetas */}
-      < AttendanceHistoryDrawer
+      <AttendanceHistoryDrawer
         student={attendanceDrawerStudent}
         isOpen={!!attendanceDrawerStudent}
         onClose={() => setAttendanceDrawerStudent(null)}
       />
 
-      < GraduationHistoryModal
+      <GraduationHistoryModal
         student={graduationModalStudent}
         isOpen={!!graduationModalStudent}
         onClose={() => setGraduationModalStudent(null)}
       />
 
-      < PaymentDrawer
+      <PaymentDrawer
         student={paymentDrawerStudent}
         isOpen={!!paymentDrawerStudent}
         onClose={() => setPaymentDrawerStudent(null)}
       />
 
-      {
-        statusDialogStudent && (
-          <StatusChangeDialog
-            student={statusDialogStudent.student}
-            action={statusDialogStudent.action}
-            onConfirm={handleStatusChange}
-            onClose={() => setStatusDialogStudent(null)}
-          />
-        )
-      }
+      {statusDialogStudent && (
+        <StatusChangeDialog
+          student={statusDialogStudent.student}
+          action={statusDialogStudent.action}
+          onConfirm={handleStatusChange}
+          onClose={() => setStatusDialogStudent(null)}
+        />
+      )}
 
-      {
-        deleteDialogStudent && (
-          <DeleteConfirmDialog
-            student={deleteDialogStudent}
-            onConfirm={handleConfirmDelete}
-            onClose={() => setDeleteDialogStudent(null)}
-          />
-        )
-      }
+      {deleteDialogStudent && (
+        <DeleteConfirmDialog
+          student={deleteDialogStudent}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteDialogStudent(null)}
+        />
+      )}
 
-      {
-        selectedStudent && (
+      <AnimatePresence>
+        {selectedStudent && (
           <StudentDetailsModal
             student={selectedStudent}
             onClose={() => setSelectedStudent(null)}
             onUpdate={updateStudentProfile}
           />
-        )
-      }
+        )}
+      </AnimatePresence>
 
-      {
-        showModal && (
+      <AnimatePresence>
+        {showModal && (
           <AddStudentModal
             isOpen={true}
             initialModality={modalityFilter !== 'todas' ? modalityFilter : null}
@@ -822,10 +818,9 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
             }}
             onAdd={handleAddStudent}
           />
-        )
-      }
+        )}
+      </AnimatePresence>
 
-      {/* 🛡️ Pin Verification for Sensitive Actions */}
       {showPinModal && (
         <PinVerificationModal
           onConfirm={() => {
@@ -835,7 +830,6 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
               setSelectedStudent(student);
             } else if (type === 'edit' || type === 'convert') {
               setShowPinModal(false);
-              // Se for conversão, forçamos o tipo para 'aluno' nos dados que enviamos para o modal
               if (type === 'convert') {
                 setEditData({ ...student, isPromoting: true })
               } else {
@@ -843,7 +837,6 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
               }
               setShowModal(true);
             } else if (type === 'delete') {
-              // 🛡️ Segurança: Todos agora passam pela confirmação de nome após o PIN
               setShowPinModal(false);
               setDeleteDialogStudent(student);
             }
@@ -867,7 +860,6 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
               } else if (actionType === 'attendance') {
                 setAttendanceDrawerStudent(student);
               } else if (actionType === 'duplicate') {
-                // Passamos os dados do aluno para criar um novo idêntico (sem o ID)
                 setDuplicateData(student);
                 setShowModal(true);
               } else if (actionType === 'graduations') {
@@ -875,7 +867,6 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
               } else if (actionType === 'cards') {
                 setPaymentDrawerStudent(student);
               } else if (actionType === 'edit' || actionType === 'delete' || actionType === 'convert') {
-                // 🛡️ Visitantes não exigem PIN para ações (UX agilidade para leads)
                 if (student.roles?.visitante) {
                   if (actionType === 'delete') {
                     setDeleteDialogStudent(student);
@@ -891,10 +882,8 @@ export default function StudentsPage({ defaultTypeFilter = 'aluno' }) {
                 const actionMap = { inactive: 'inativar', suspend: 'suspender', archive: 'arquivar' }
                 setStatusDialogStudent({ student, action: actionMap[actionType] })
               } else if (actionType === 'active') {
-                // Reativar: tanto para inativo quanto suspenso
                 setStatusDialogStudent({ student, action: 'reativar' })
               } else if (actionType === 'unarchive') {
-                // Remover arquivado
                 setStatusDialogStudent({ student, action: 'remover arquivado' })
               }
               setShowMenu(null)
@@ -945,7 +934,7 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
           {student.roles?.visitante && (
             <button onClick={(e) => { e.stopPropagation(); onAction('convert', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-all group font-medium">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <GraduationCap size={14} className="text-primary" />
+                <GraduationIcon size={14} className="text-primary" />
               </div>
               Converter em Aluno
             </button>
@@ -966,7 +955,7 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
               </button>
               <button onClick={(e) => { e.stopPropagation(); onAction('graduations', student) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-                  <GraduationCap size={14} className="text-emerald-400" />
+                  <GraduationIcon size={14} className="text-emerald-400" />
                 </div>
                 Histórico de Graduações
               </button>
@@ -1059,11 +1048,11 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
                 {student.photo ? (
                   <img src={student.photo} alt="" className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  student.name.charAt(0)
+                  (student.nome || student.name || 'A').charAt(0)
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-base font-black text-white truncate">{student.name}</p>
+                <p className="text-base font-black text-white truncate">{student.nome || student.name}</p>
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{student.roles?.visitante ? 'Visitante da Academia' : 'Aluno da Academia'}</p>
               </div>
             </div>
@@ -1088,7 +1077,7 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
                   className="w-full flex items-center gap-4 p-4 rounded-2xl bg-primary/10 border border-primary/20 active:scale-95 text-left"
                 >
                   <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                    <GraduationCap size={20} className="text-primary" />
+                    <GraduationIcon size={20} className="text-primary" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-black text-primary">Converter em Aluno</p>
@@ -1130,7 +1119,7 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
                     className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 active:scale-95 text-left"
                   >
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                      <GraduationCap size={20} className="text-emerald-500" />
+                      <GraduationIcon size={20} className="text-emerald-500" />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-black text-white">Graduações</p>
@@ -1193,4 +1182,3 @@ function StudentActionMenu({ student, menuPosition, onClose, onAction }) {
     document.body
   );
 }
-

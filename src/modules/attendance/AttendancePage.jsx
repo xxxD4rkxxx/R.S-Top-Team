@@ -245,11 +245,15 @@ export default function AttendancePage() {
     }))
   }, [staffMembers])
 
-  useEffect(() => {
-    if (userData?.nome && !sessionProfessor) {
-      setSessionProfessor(userData.nome)
-    }
-  }, [userData?.nome, sessionProfessor])
+
+
+  const filteredInstructors = useMemo(() => {
+    const search = (sessionProfessor || '').toLowerCase().trim();
+    if (!search) return instructorsOnly;
+    return instructorsOnly.filter(s => 
+      s.name.toLowerCase().includes(search)
+    );
+  }, [instructorsOnly, sessionProfessor]);
 
   useEffect(() => {
     if (!currentModality) return
@@ -436,7 +440,6 @@ export default function AttendancePage() {
 
       if (isSelf || isStaff) return false;
 
-      if (student.isVisitor) return false;
 
       // Regra 1: Deve ter a modalidade da sessão
       const studentMods = (student.modalities || [student.modality] || [])
@@ -449,7 +452,8 @@ export default function AttendancePage() {
       if (!hasModality) return false
 
       // Regra 2: Se a sessão está vinculada a uma turma específica, filtra por ela (SSoT)
-      if (activeSession.turmaId) {
+      // EXCEPT for visitors (who are guests in this session)
+      if (activeSession.turmaId && !student.isVisitor) {
         const studentTurmas = (student.turmas || []).map(t => String(t).toLowerCase());
         return studentTurmas.includes(activeSession.turmaId.toLowerCase());
       }
@@ -476,16 +480,11 @@ export default function AttendancePage() {
 
   // Helper to sync professors when modality/time changes
   const syncProfessors = (modName, timeStr) => {
-    // 👑 Prioridade Absoluta: Se o usuário logado for Staff, ele é o responsável padrão
-    // Isso evita que o nome dele seja trocado pelo professor da modalidade ao clicar em uma aula
-    const isStaff = effectiveRole === 'admin' || effectiveRole === 'gestor' || effectiveRole === 'professor'
-    if (isStaff && userData?.nome) {
-      setSessionProfessor(userData.nome)
-      return
-    }
-
-    // Se o usuário já selecionou um professor manualmente, não sobrescreve
-    if (sessionProfessor && sessionProfessor !== 'Visitante' && !isStaff) {
+    // 🥇 Prioridade Absoluta: Usuário logado (Seja Gestor ou Professor)
+    // Conforme pedido: "quero q meu nome, ja fique como selecionado"
+    const currentName = userData?.name || userData?.nome
+    if (currentName) {
+      setSessionProfessor(currentName)
       return
     }
 
@@ -493,18 +492,15 @@ export default function AttendancePage() {
     if (mod && mod.turmas) {
       const time = ensureTimeFormat(timeStr)
       const turma = mod.turmas.find(t => ensureTimeFormat(t.horario || t.horarioInicio) === time)
+      
+      // 🥈 Prioridade 2: Professor(es) vinculado(s) à TURMA (Fallback se o usuário não tiver nome)
       if (turma && turma.professors && turma.professors.length > 0) {
-        // Pega os nomes e junta em string
         setSessionProfessor(turma.professors.map(p => p.nome || p.name).join(', '))
         return
       } else if (turma && (turma.professor || turma.professorId)) {
         setSessionProfessor(turma.professor || 'Professor')
         return
       }
-    }
-    // Fallback final
-    if (userData?.nome) {
-      setSessionProfessor(userData.nome)
     }
   }
 
@@ -746,7 +742,7 @@ export default function AttendancePage() {
                           <div className="relative z-[10] flex flex-col items-center w-full">
                             <p className={`text-[8px] font-black uppercase mb-1 tracking-[0.3em] text-center ${isSelection ? 'text-rose-500' : 'text-gray-500'}`}>MODALIDADE</p>
                             <h3 className="text-2xl md:text-3xl font-black text-white uppercase mb-4 text-center leading-none tracking-tight">{mod.name}</h3>
-                            <div className="flex flex-wrap justify-center gap-2.5 w-full">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 w-full">
                               {turmas.map(t => {
                                 const time = ensureTimeFormat(t.horario || t.horarioInicio)
                                 const isSel = sessionTime === time && sessionModality === mod.name
@@ -757,7 +753,7 @@ export default function AttendancePage() {
                                     setSessionTime(time);
                                     syncProfessors(mod.name, time);
                                   }}
-                                    className={`flex-1 min-w-[120px] px-5 py-2.5 rounded-xl text-[10px] font-black border transition-all duration-300
+                                    className={`px-5 py-2.5 rounded-xl text-[10px] font-black border transition-all duration-300 w-full
                                       ${isSel
                                         ? 'bg-rose-600 border-rose-600 text-white scale-105 shadow-lg shadow-rose-600/20'
                                         : 'border-white/10 text-gray-400 hover:bg-white hover:text-black hover:border-white'}`}>
@@ -814,7 +810,7 @@ export default function AttendancePage() {
                           <p className={`text-[9px] font-black uppercase tracking-[0.3em] mb-1.5 ${sessionModality === mod.name ? 'text-rose-500' : 'text-gray-500'}`}>MODALIDADE</p>
                           <h3 className="text-3xl font-black text-white uppercase tracking-tight mb-6">{mod.name}</h3>
 
-                          <div className="flex flex-wrap justify-center gap-2.5">
+                          <div className="grid grid-cols-[repeat(auto-fit,minmax(90px,1fr))] gap-2 w-full">
                             {turmas.map(t => {
                               const time = t.horario || t.horarioInicio
                               const isSel = sessionModality === mod.name && sessionTime === ensureTimeFormat(time)
@@ -825,7 +821,7 @@ export default function AttendancePage() {
                                     e.stopPropagation();
                                     handleOpenDrawer(mod.name, time);
                                   }}
-                                  className={`px-8 py-3 rounded-2xl font-black text-xs transition-all active:scale-95 border
+                                  className={`py-3 rounded-2xl font-black text-[11px] transition-all active:scale-95 border w-full
                                       ${isSel ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-white/5 border-white/10 text-gray-400'}`}
                                 >
                                   {time}
@@ -895,11 +891,14 @@ export default function AttendancePage() {
                               exit={{ opacity: 0, y: -5, scale: 0.98 }}
                               className="absolute left-0 right-0 bottom-full mb-2 z-[999] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
                             >
-                              <div className="bg-white/5 p-2.5 border-b border-white/5">
+                              <div className="bg-white/5 p-2.5 border-b border-white/5 flex items-center justify-between">
                                 <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">Equipe</p>
+                                {filteredInstructors.length === 0 && sessionProfessor && (
+                                  <span className="text-[8px] font-black text-rose-500 uppercase px-2 py-0.5 bg-rose-500/10 rounded-full">Visitante</span>
+                                )}
                               </div>
                               <div className="max-h-[160px] overflow-y-auto py-1 custom-scrollbar">
-                                {[...(instructorsOnly.length > 0 ? instructorsOnly : [{ id: 'default', name: userData?.nome || 'Prof. Robson' }])].map((s) => (
+                                {filteredInstructors.map((s) => (
                                   <button
                                     key={s.id}
                                     type="button"
@@ -907,14 +906,18 @@ export default function AttendancePage() {
                                     className={`w-full text-left px-4 py-2.5 font-bold text-[11px] transition-all hover:bg-white/5 flex items-center justify-between
                                       ${sessionProfessor === s.name ? "text-primary bg-primary/5" : "text-gray-400 hover:text-white"}`}
                                   >
-                                    {s.name}
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-1.5 h-1.5 rounded-full ${s.roles?.admin || s.roles?.gestor ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                      {s.name}
+                                    </div>
                                     {sessionProfessor === s.name && <Check size={12} />}
                                   </button>
                                 ))}
-                                {sessionProfessor && !instructorsOnly.some(s => s.name.trim().toLowerCase() === sessionProfessor.trim().toLowerCase()) && (
-                                  <div className="px-4 py-2 border-t border-white/5 bg-primary/5">
-                                    <p className="text-[8px] font-black text-primary uppercase mb-0.5 tracking-tighter">VISITANTE</p>
-                                    <p className="text-white text-[11px] font-bold">{sessionProfessor}</p>
+                                {filteredInstructors.length === 0 && sessionProfessor && (
+                                  <div className="px-4 py-3 text-center">
+                                    <p className="text-[10px] text-gray-500 font-medium italic">Nenhum instrutor encontrado.</p>
+                                    <p className="text-[10px] text-white font-bold mt-1 uppercase">"{sessionProfessor}"</p>
+                                    <p className="text-[8px] text-rose-500 font-black mt-2 tracking-tighter uppercase">Definido como Visitante</p>
                                   </div>
                                 )}
                               </div>
@@ -1204,18 +1207,68 @@ export default function AttendancePage() {
                   {/* Professor Selector */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-muted uppercase ml-1">Professor Responsável</label>
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50 z-20" size={18} />
                       <input
-                        list="professores-mobile"
                         value={sessionProfessor}
-                        onChange={(e) => setSessionProfessor(e.target.value)}
-                        className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white font-bold outline-none focus:border-primary/30"
-                        placeholder="Nome do Professor"
+                        onChange={(e) => { setSessionProfessor(e.target.value); setShowProfessorDropdown(true); }}
+                        onFocus={() => setShowProfessorDropdown(true)}
+                        className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white font-bold outline-none focus:border-primary/30"
+                        placeholder="Nome do Professor ou Visitante"
                       />
-                      <datalist id="professores-mobile">
-                        {(staffMembers || []).filter(u => u.roles?.professor || u.roles?.admin).map(s => <option key={s.id} value={s.name || s.displayName} />)}
-                      </datalist>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <ChevronDown size={18} className={`text-gray-600 transition-transform duration-300 ${showProfessorDropdown ? 'rotate-180' : ''}`} />
+                      </div>
+
+                      <AnimatePresence>
+                        {showProfessorDropdown && (
+                          <>
+                            <div className="fixed inset-0 z-[100]" onClick={() => setShowProfessorDropdown(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-full left-0 right-0 mt-2 z-[200] bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+                            >
+                              <div className="bg-white/5 p-3 border-b border-white/5 flex items-center justify-between">
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Resultados da Busca</span>
+                                {filteredInstructors.length === 0 && sessionProfessor && (
+                                  <span className="text-[8px] font-black text-rose-500 uppercase px-2 py-0.5 bg-rose-500/10 rounded-full">Visitante</span>
+                                )}
+                              </div>
+                              <div className="max-h-[200px] overflow-y-auto py-2 custom-scrollbar">
+                                {filteredInstructors.map((s) => (
+                                  <button
+                                    key={s.id}
+                                    type="button"
+                                    onClick={() => { setSessionProfessor(s.name); setShowProfessorDropdown(false); }}
+                                    className={`w-full text-left px-5 py-4 text-xs font-bold transition-all flex items-center justify-between border-b border-white/[0.02] last:border-0
+                                      ${sessionProfessor === s.name ? "text-primary bg-primary/5" : "text-gray-300 active:bg-white/5"}`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-2 h-2 rounded-full ${s.roles?.admin || s.roles?.gestor ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]'}`} />
+                                      {s.name}
+                                    </div>
+                                    {sessionProfessor === s.name && <Check size={16} />}
+                                  </button>
+                                ))}
+                                {filteredInstructors.length === 0 && sessionProfessor && (
+                                  <div className="p-6 text-center">
+                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+                                      <UserPlus size={18} className="text-gray-600" />
+                                    </div>
+                                    <p className="text-xs text-gray-400 font-medium">Nenhum instrutor encontrado.</p>
+                                    <p className="text-sm text-white font-black mt-1 uppercase">"{sessionProfessor}"</p>
+                                    <div className="mt-4 px-3 py-2 bg-rose-600/10 rounded-xl border border-rose-600/20">
+                                      <p className="text-[9px] text-rose-500 font-black tracking-widest uppercase">Professor Visitante</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
 
@@ -1247,7 +1300,7 @@ export default function AttendancePage() {
 
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-muted uppercase ml-1">Horário Previsto</label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(90px,1fr))] gap-2 w-full">
                       {(availableModalities.find(m => m.name === sessionModality)?.turmas || [])
                         .filter(t => t.status === 'ativo')
                         .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''))
@@ -1258,7 +1311,7 @@ export default function AttendancePage() {
                             <button
                               key={idx}
                               onClick={() => setSessionTime(tTime)}
-                              className={`px-5 py-3 rounded-xl text-[10px] font-black transition-all border
+                              className={`px-3 py-3 rounded-xl text-[10px] w-full font-black transition-all border
                                 ${isSelected
                                   ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-600/30 scale-105 active:scale-95'
                                   : 'bg-white/5 border-white/5 text-gray-400 active:scale-95 hover:bg-white/10'}`}
@@ -1267,16 +1320,16 @@ export default function AttendancePage() {
                             </button>
                           )
                         })}
-                      {/* Fallback Input for Custom Time */}
-                      <div className="relative flex-1 min-w-[120px]">
-                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={14} />
-                        <input
-                          type="time"
-                          value={sessionTime}
-                          onChange={(e) => setSessionTime(e.target.value)}
-                          className="w-full h-full bg-white/10 border border-white/10 rounded-xl py-3 pl-10 pr-3 text-[10px] text-white font-black outline-none focus:border-primary/30"
-                        />
-                      </div>
+                    </div>
+                    {/* Fallback Input for Custom Time */}
+                    <div className="relative w-full mt-3">
+                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
+                      <input
+                        type="time"
+                        value={sessionTime}
+                        onChange={(e) => setSessionTime(e.target.value)}
+                        className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white font-bold outline-none focus:border-primary/30"
+                      />
                     </div>
                   </div>
 
@@ -1297,13 +1350,7 @@ export default function AttendancePage() {
 
               {/* FOOTER ACTIONS */}
               <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex flex-col gap-3 shrink-0">
-                <button
-                  onClick={() => setShowVisitorModal(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/5 text-white rounded-xl py-4 font-bold uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all shadow-lg shadow-black/20"
-                >
-                  <UserPlus size={16} className="text-primary" />
-                  VISITANTES
-                </button>
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowMobileConfig(false)}

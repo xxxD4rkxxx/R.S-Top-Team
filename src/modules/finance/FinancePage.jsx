@@ -1,19 +1,23 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   CreditCard, DollarSign, TrendingUp, TrendingDown,
   AlertCircle, CheckCircle2, Clock, Filter,
   Download, Plus, Search, Trash2, X,
   Zap, MoreVertical, BarChart3, Receipt,
   Calendar, FileText, ArrowUpCircle, ArrowDownCircle,
-  ChevronDown, Tag, Building, Loader2
+  ChevronDown, Tag, Building, Loader2, RefreshCcw
 } from 'lucide-react'
 import PageHeader from '../../components/shared/PageHeader'
 import { useStudents } from '../../hooks/useStudents'
 import { useFinance } from '../../hooks/useFinance'
+import { useModalities } from '../../hooks/useModalities'
 import { useAuth } from '../../context/AuthContext'
 import KPICard from '../../components/shared/KPICard'
 import MobileHeader from '../../components/navigation/MobileHeader'
+import PaymentReportModal from '../../components/shared/PaymentReportModal'
 
 // ─── Helpers Locais ───────────────────────────────────────────────────────────
 
@@ -486,18 +490,37 @@ function TabRelatorios({ bills, expenses, students }) {
 export default function FinancePage() {
   const { effectiveRole } = useAuth()
   const { students } = useStudents()
+  const { modalities } = useModalities()
   const {
     bills, loading,
     updateBillStatus, deleteBill,
     totalOverdue, totalPending, totalPaid,
     expenses, loadingExpenses,
-    addExpense, updateExpense, deleteExpense
+    addExpense, updateExpense, deleteExpense,
+    gerarCobrancasEmLote
   } = useFinance()
 
   const location = useLocation()
   const [activeTab, setActiveTab] = useState('cobranças')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState(location.state?.status || 'all')
+  const [showBatchModal, setShowBatchModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [batchLoading, setBatchLoading] = useState(false)
+
+  const handleBatchBilling = async (mesRef, dataVencimento) => {
+    setBatchLoading(true)
+    try {
+      const criadas = await gerarCobrancasEmLote(students, modalities, mesRef, dataVencimento)
+      alert(`${criadas} cobranças geradas com sucesso para o mês ${mesRef}!`)
+      setShowBatchModal(false)
+    } catch (err) {
+      console.error('Erro no faturamento em lote:', err)
+      alert(`Falha ao gerar cobranças: ${err.message}`)
+    } finally {
+      setBatchLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (location.state?.status) {
@@ -587,6 +610,22 @@ export default function FinancePage() {
                   </div>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
+                  {effectiveRole !== 'aluno' && effectiveRole !== 'professor' && (
+                    <>
+                      <button onClick={() => setShowBatchModal(true)}
+                        className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
+                      >
+                        <RefreshCcw size={16} strokeWidth={2.5} />
+                        <span className="hidden md:inline">OPERAR LOTE</span>
+                      </button>
+                      <button onClick={() => setShowReportModal(true)}
+                        className="flex items-center justify-center gap-2 px-4 md:px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10"
+                      >
+                        <FileText size={16} strokeWidth={2.5} />
+                        <span className="hidden md:inline">RELATÓRIO</span>
+                      </button>
+                    </>
+                  )}
                   <select
                     className="bg-black border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-gray-400 outline-none"
                     value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
@@ -677,6 +716,137 @@ export default function FinancePage() {
 
         </div>
       </div>
+
+      {/* ── Modais ── */}
+      {showBatchModal && (
+        <ModalFaturamentoLote 
+          onClose={() => setShowBatchModal(false)} 
+          onConfirm={handleBatchBilling} 
+          loading={batchLoading} 
+        />
+      )}
+      <PaymentReportModal 
+        isOpen={showReportModal} 
+        onClose={() => setShowReportModal(false)} 
+      />
     </>
+  )
+}
+
+// ─── Modal: Faturamento em Lote ───────────────────────────────────────────────
+function ModalFaturamentoLote({ onClose, onConfirm, loading }) {
+  const [referenceMonth, setReferenceMonth] = useState('')
+  const [dueDate, setDueDate] = useState('')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!referenceMonth || !dueDate) return
+    const [y, m] = referenceMonth.split('-')
+    onConfirm(`${m}/${y}`, dueDate)
+  }
+
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        className="modal-backdrop z-[200]"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div
+          onClick={e => e.stopPropagation()}
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose();
+            }
+          }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="bg-[#0d0d0d] w-full max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl border border-white/10"
+        >
+          <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+            <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+          </div>
+
+          <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300 shadow-lg"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--clr-primary) 15%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                }}
+              >
+                <RefreshCcw
+                  size={28}
+                  strokeWidth={2.5}
+                  className={loading ? 'animate-spin' : ''}
+                  style={{ color: 'var(--clr-primary)' }}
+                />
+              </div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight leading-none">
+                  Faturamento Automático
+                </h2>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                  <span className="w-1 h-1 rounded-full animate-pulse transition-all duration-300"
+                    style={{
+                      backgroundColor: 'var(--clr-primary)',
+                      boxShadow: '0 0 10px var(--clr-primary)'
+                    }}
+                  />
+                  Cálculo em massa
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-gray-500 hover:text-white transition-all hover:bg-white/10 border border-white/5">
+              <X size={24} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 pb-32 space-y-7 custom-scrollbar no-scrollbar">
+              <div className="bg-white/5 rounded-2xl p-4 text-[11px] text-gray-400 font-medium">
+                O sistema calculará as mensalidades baseadas nas modalidades de cada aluno ativo.
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mês de Referência</label>
+                <input required type="month" className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                  value={referenceMonth} onChange={e => setReferenceMonth(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vencimento das Faturas</label>
+                <input required type="date" className="w-full bg-black border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 [color-scheme:dark]"
+                  value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="p-6 md:p-8 bg-[#0d0d0d] border-t border-white/5 flex gap-4 shrink-0">
+              <button type="button" onClick={onClose} className="flex-1 py-4 rounded-2xl bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-[2] py-4 rounded-2xl text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-white hover:text-black transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'var(--clr-primary)',
+                  boxShadow: '0 4px 14px 0 color-mix(in srgb, var(--clr-primary) 30%, transparent)'
+                }}
+              >
+                <Download size={16} /> {loading ? 'Processando...' : 'Gerar Cobranças'}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   )
 }

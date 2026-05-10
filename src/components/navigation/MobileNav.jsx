@@ -42,7 +42,7 @@ const drawerItems = [
   { to: '/despesas', icon: ArrowDownRight, label: 'Despesas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Saídas e custos', reqPerm: 'viewExpensesTab' },
   { to: '/relatorios', icon: PieChart, label: 'Relatórios', roles: ['admin', 'gestor', 'professor'], subtitle: 'Análise financeira', reqPerm: 'viewFinance' },
   { to: '/modalidades', icon: Layers, label: 'Turmas', roles: ['admin', 'gestor', 'professor'], subtitle: 'Modalidades e horários', reqPerm: 'manageSystem' },
-  { to: '/visitantes', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'], subtitle: 'Aulas experimentais' },
+  // { to: '/visitantes', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'], subtitle: 'Aulas experimentais' },
   // { to: '/contratos', icon: FileText, label: 'Contratos', roles: ['admin', 'gestor'], subtitle: 'Documentos e termos' },
   { to: '/equipe', icon: ShieldCheck, label: 'Equipe', roles: ['admin', 'gestor', 'professor'], subtitle: 'Gestão de professores', reqPerm: 'manageUsers' },
   { to: '/perfil', icon: Settings, label: 'Perfil', roles: ['admin', 'gestor', 'professor', 'aluno'], subtitle: 'Minha conta' },

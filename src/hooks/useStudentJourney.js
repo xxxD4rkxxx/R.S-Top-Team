@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { useStudents } from './useStudents'
 import { db } from '../firebase/config'
 import { collection, getDocs } from 'firebase/firestore'
+import { COLLECTIONS } from '../firebase/collections'
 import { beltConfig as defaultBelts } from '../data/beltConfig'
 import { useAuth } from '../context/AuthContext'
 
 /**
- * Hook de Inteligência da Jornada Técnica (SaaS Premium)
+ * Hook de Inteligência da Jornada Técnica (SaaS)
  * Gerencia o cálculo dinâmico de progressão, métricas e histórico baseado em regras de negócio.
  */
 export function useStudentJourney() {
@@ -19,8 +20,10 @@ export function useStudentJourney() {
   // 1. Carrega as configurações de graduação (Regras por Modalidade/Categoria)
   useEffect(() => {
     async function fetchConfigs() {
+      if (!userData) return // Evita erro de permissão se não houver usuário logado
+
       try {
-        const snap = await getDocs(collection(db, 'tech_journey_configs'))
+        const snap = await getDocs(collection(db, COLLECTIONS.CONFIGURACOES_JORNADA))
         const data = {}
         snap.forEach(d => { data[d.id] = d.data() })
         setConfigs(data)
@@ -31,7 +34,7 @@ export function useStudentJourney() {
       }
     }
     fetchConfigs()
-  }, [])
+  }, [userData])
 
   // 2. Processa a inteligência de dados da Jornada
   const journeyStats = useMemo(() => {

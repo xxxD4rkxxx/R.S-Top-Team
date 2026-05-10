@@ -13,6 +13,7 @@ import { useModalities } from '../../hooks/useModalities'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { useAuth } from '../../context/AuthContext'
 import { formatPhoneUI, parsePhoneData } from '../../utils/phoneUtils'
+import { calculateModalityValue } from '../../utils/billingUtils'
 
 /**
  * Seletor Customizado Premium
@@ -62,7 +63,7 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
   )
 }
 
-export default function AddStudentModal({ isOpen, onClose, onAdd, initialModality = 'Jiu Jitsu', initialData = null, initialType = 'aluno' }) {
+export default function AddStudentModal({ isOpen = true, onClose, onAdd, initialModality = 'todas', initialData = null, initialType = 'aluno' }) {
   const { modalities, loading: loadingModalities } = useModalities()
   const activeModalities = (modalities || []).filter(m => m.status === 'ativo')
   const { effectiveRole } = useAuth()
@@ -128,13 +129,25 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           medical: initialData.medical || '',
           belt: initialData.belt || 'none',
           stripes: initialData.stripes || 0,
-          modality: normalizedModalities.length > 0 ? normalizedModalities : ['Jiu Jitsu'],
+          modality: normalizedModalities.length > 0 ? normalizedModalities : [],
           type: initialData.isPromoting ? 'aluno' : (initialData.roles?.equipe ? 'equipe' : (initialData.roles?.visitante ? 'visitante' : 'aluno')),
           ageCategory: initialData.ageCategory || 'Adulto',
           gender: initialData.gender || 'Masculino',
           parentName: initialData.parentName || '',
           parentPhone: initialData.parentPhone || '',
           initialPaymentStatus: 'paid',
+          startDate: initialData.startDate || (initialData.createdAt instanceof Date ? initialData.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+          // 🔥 Carrega turmas salvas — normaliza para o formato uniqueId (modId:turmaId)
+          turmas: (() => {
+            const savedTurmas = Array.isArray(initialData.turmas) ? initialData.turmas : []
+            return savedTurmas.map(t => {
+              // Já está no formato correto (modId:turmaId)
+              if (typeof t === 'string' && t.includes(':')) return t
+              // Formato legado: só o ID da turma — tenta encontrar a modalidade pai
+              const turmaObj = (modalities || []).flatMap(m => (m.turmas || []).map(tr => ({ ...tr, modalityId: m.id }))).find(tr => tr.id === t)
+              return turmaObj ? `${turmaObj.modalityId}:${turmaObj.id}` : t
+            }).filter(Boolean)
+          })()
         })
       } else {
         // Se não houver modalidade inicial (ex: filtro 'todas'), começa vazio para evitar seleções fantasmas
@@ -147,8 +160,10 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
           ageCategory: 'Adulto', gender: 'Masculino',
           parentName: '', parentPhone: '',
           initialPaymentStatus: 'paid',
+          initialPaymentStatus: 'paid',
           planValue: 'R$ 0,00',
-          turmas: []
+          turmas: [],
+          startDate: new Date().toISOString().split('T')[0]
         })
       }
       setErrorMsg('')
@@ -244,22 +259,25 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
-    if (!initialData && modalities && form.modality.length > 0 && form.type === 'aluno') {
-      let total = 0;
-      const cat = (form.ageCategory || 'Adulto').toLowerCase();
-
-      form.modality.forEach(modId => {
-        const mod = modalities.find(m => m.id === modId || m.name === modId);
-        if (mod && mod.pricing && mod.pricing[cat] && mod.pricing[cat].enabled) {
-          total += Number(mod.pricing[cat].price) || 0;
-        }
-      });
-
-      if (total > 0) {
-        setForm(prev => ({ ...prev, planValue: (total * 100).toString() }));
+    // Cálculo automático do valor do plano baseado nas modalidades e categoria de idade
+    if (modalities && form.modality.length > 0 && form.type === 'aluno') {
+      const total = calculateModalityValue(form, modalities);
+      
+      // Só atualizamos automaticamente se:
+      // 1. For um aluno novo (não tem initialData)
+      // 2. OU se for uma edição mas as modalidades/categoria mudaram em relação ao original
+      // No entanto, para simplificar e garantir a regra de negócio do usuário:
+      // "quando seleciono categoria... vai pegar o valor", vamos atualizar sempre que houver mudança.
+      
+      const newPlanValue = (total * 100).toString();
+      
+      // Evita loops infinitos verificando se o valor realmente mudou
+      if (form.planValue !== newPlanValue && total > 0) {
+        setForm(prev => ({ ...prev, planValue: newPlanValue }));
       }
     }
-  }, [form.modality, form.ageCategory, modalities, initialData, form.type]);
+  }, [form.modality, form.ageCategory, modalities, form.type]);
+
 
   // 🥋 Lógica de Faixas Extraída (Evita IIFE no JSX)
   const getBeltOptions = () => {
@@ -291,6 +309,18 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
   async function handleSubmit(e) {
     if (e) e.preventDefault()
     if (!form.name.trim()) { setErrorMsg('Nome é obrigatório'); return }
+
+    // Valida turma: se houver modalidades com turmas disponíveis, exige seleção
+    if (form.type !== 'visitante' && form.modality.length > 0) {
+      const hasAvailableTurmas = (modalities || []).some(m =>
+        form.modality.some(modName => modName.toLowerCase() === m.name.toLowerCase()) &&
+        (m.turmas || []).length > 0
+      )
+      if (hasAvailableTurmas && (!form.turmas || form.turmas.length === 0)) {
+        setErrorMsg('Selecione pelo menos uma turma antes de salvar.')
+        return
+      }
+    }
 
     setSaving(true)
     setErrorMsg('')
@@ -333,10 +363,11 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
     }
   }
 
-  if (!isOpen) return null
-
+  // Se isOpen for explicitamente falso, não renderizamos (para uso sem AnimatePresence externo)
+  // Mas se for usado com AnimatePresence externo (como no FloatingActionMenu), o isOpen costuma ser omitido ou true.
   return createPortal(
     <motion.div
+      key="add-student-modal-backdrop"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -411,7 +442,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome Completo</label>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome Completo *</label>
                   <div className="relative">
                     <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
                     <input
@@ -426,7 +457,7 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">Telefone / WhatsApp</label>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">Telefone / WhatsApp *</label>
                   <div className="relative">
                     <Smartphone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
                     <input
@@ -443,18 +474,34 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
 
               {form.type === 'aluno' && (
                 <>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">E-mail de Acesso</label>
-                    <div className="relative">
-                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                      <input
-                        type="email"
-                        required
-                        value={form.email}
-                        onChange={e => setForm({ ...form, email: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
-                        placeholder="email@exemplo.com"
-                      />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">E-mail de Acesso *</label>
+                      <div className="relative">
+                        <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                        <input
+                          type="email"
+                          required
+                          value={form.email}
+                          onChange={e => setForm({ ...form, email: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans"
+                          placeholder="email@exemplo.com"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1 font-sans">Data de Início na Academia *</label>
+                      <div className="relative">
+                        <Clock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                        <input
+                          type="date"
+                          required
+                          value={form.startDate}
+                          onChange={e => setForm({ ...form, startDate: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium font-sans [color-scheme:dark]"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -630,13 +677,14 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
                     <CustomSelect
                       label="Faixa Atual"
                       value={form.belt}
-                      onChange={v => setForm({ ...form, belt: v })}
+                      onChange={v => setForm({ ...form, belt: v, stripes: v === 'none' ? 0 : form.stripes })}
                       options={getBeltOptions()}
                     />
                     <CustomSelect
                       label="Graus (Stripes)"
                       value={form.stripes}
                       onChange={v => setForm({ ...form, stripes: v })}
+                      disabled={form.belt === 'none'}
                       options={[
                         [0, 'Nenhum Grau'],
                         [1, '1 Grau'],
@@ -746,7 +794,16 @@ export default function AddStudentModal({ isOpen, onClose, onAdd, initialModalit
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || (() => {
+                // Bloqueia se há modalidades com turmas disponíveis mas nenhuma turma selecionada
+                if (form.type === 'visitante') return false
+                if (form.modality.length === 0) return false
+                const hasAvailableTurmas = (modalities || []).some(m =>
+                  form.modality.some(modName => modName.toLowerCase() === m.name.toLowerCase()) &&
+                  (m.turmas || []).length > 0
+                )
+                return hasAvailableTurmas && (!form.turmas || form.turmas.length === 0)
+              })()}
               className={`flex-[2] py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all active:scale-95 disabled:opacity-30 disabled:grayscale
                 ${saving ? 'bg-gray-800 text-gray-500' : 'bg-rose-600 text-white shadow-rose-600/30'}`}
             >

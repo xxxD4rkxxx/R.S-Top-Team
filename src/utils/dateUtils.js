@@ -28,15 +28,34 @@ export function parseFirestoreDate(value) {
 }
 
 /**
- * FORMATAÇÃO DE DATA EM PORTUGUÊS (BR)
+ * FORMATAÇÃO DE DATA EM PORTUGUÊS (BR) RESILIENTE
+ * @param {Date|Timestamp|string} date 
+ * @param {object} options - Opções extras para o toLocaleDateString
+ * @param {boolean} forceUTC - Se deve forçar o uso de UTC (útil para datas de calendário sem hora)
  */
-export function formatLongDate(date) {
-  const d = parseFirestoreDate(date)
+export function formatBR(date, options = {}, forceUTC = true) {
+  let d = parseFirestoreDate(date)
   if (!d) return 'DATA INDISPONÍVEL'
-  
-  return d.toLocaleDateString('pt-BR', {
+
+  // Se for uma string pura (YYYY-MM-DD), normalizamos para meio-dia UTC antes de formatar
+  // para evitar que o fuso horário local mude o dia.
+  if (forceUTC && typeof date === 'string' && date.length === 10) {
+    d = new Date(date + 'T12:00:00Z')
+  }
+
+  const defaultOptions = {
     day: '2-digit',
-    month: 'long',
+    month: '2-digit',
     year: 'numeric'
-  })
+  }
+
+  if (forceUTC) {
+    defaultOptions.timeZone = 'UTC'
+  }
+
+  return d.toLocaleDateString('pt-BR', { ...defaultOptions, ...options })
+}
+
+export function formatLongDate(date) {
+  return formatBR(date, { month: 'long' })
 }

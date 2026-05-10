@@ -263,8 +263,8 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                             </div>
                         </div>
 
-                        <div className="h-[260px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                        <div className="h-[260px] w-full" style={{ minHeight: '260px' }}>
+                            <ResponsiveContainer width="100%" height="100%" debounce={100}>
                                 <AreaChart data={activeChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="gradPresencas" x1="0" y1="0" x2="0" y2="1">
@@ -344,8 +344,8 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                             </div>
                         </div>
 
-                        <div className="h-[220px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                        <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
+                            <ResponsiveContainer width="100%" height="100%" debounce={100}>
                                 <AreaChart data={activeFluxoData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="gradNovos" x1="0" y1="0" x2="0" y2="1">

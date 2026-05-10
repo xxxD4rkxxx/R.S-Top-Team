@@ -27,7 +27,7 @@ const navGroups = [
       { to: '/equipe', icon: Users, label: 'Equipe & Professores', roles: ['admin', 'gestor', 'professor'], reqPerm: 'manageUsers' },
       { to: '/chamadas', icon: CheckCircle2, label: 'Chamada', roles: ['admin', 'gestor', 'professor'], reqPerm: 'manageClasses' },
       { to: '/eventos', icon: BellRing, label: 'Avisos & Eventos', roles: ['admin', 'gestor', 'professor', 'aluno'], reqPerm: 'manageEvents' },
-      { to: '/visitantes', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
+      // { to: '/visitantes', icon: Clock, label: 'Visitantes', roles: ['admin', 'gestor', 'professor'] },
       { to: '/modalidades', icon: Layers, label: 'Modalidades e Turmas', roles: ['admin', 'gestor', 'professor'], reqPerm: 'manageSystem' },
     ]
   },

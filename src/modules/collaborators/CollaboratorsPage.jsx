@@ -504,20 +504,28 @@ export default function CollaboratorsPage() {
         </div>
       </main>
 
-      <UserCreationModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setSelectedUser(null)
-        }}
-        initialData={selectedUser}
-      />
+      <AnimatePresence>
+        {isModalOpen && (
+          <UserCreationModal
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false)
+              setSelectedUser(null)
+            }}
+            initialData={selectedUser}
+          />
+        )}
+      </AnimatePresence>
 
-      <CollaboratorDetailsModal
-        collaborator={selectedCollaborator}
-        onClose={() => setSelectedCollaborator(null)}
-        onEdit={handleEdit}
-      />
+      <AnimatePresence>
+        {selectedCollaborator && (
+          <CollaboratorDetailsModal
+            collaborator={selectedCollaborator}
+            onClose={() => setSelectedCollaborator(null)}
+            onEdit={handleEdit}
+          />
+        )}
+      </AnimatePresence>
 
       {/* 🛡️ Pin Verification for Sensitive Actions */}
       {showPinModal && (

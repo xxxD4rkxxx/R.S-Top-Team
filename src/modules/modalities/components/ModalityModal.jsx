@@ -369,7 +369,7 @@ export default function ModalityModal({
                       <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
                         <div className="space-y-2">
                           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                            <UsersIcon size={12} /> NOME DA TURMA
+                            <UsersIcon size={12} /> NOME DA TURMA *
                           </label>
                           <input 
                             type="text"
@@ -383,7 +383,7 @@ export default function ModalityModal({
                         {/* Seleção de Dias da Semana */}
                         <div className="space-y-3">
                           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                            <Calendar size={12} /> DIAS DA SEMANA
+                            <Calendar size={12} /> DIAS DA SEMANA *
                           </label>
                           <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                             {days.map(day => (
@@ -408,7 +408,7 @@ export default function ModalityModal({
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                                <Clock size={12} /> INÍCIO
+                                <Clock size={12} /> INÍCIO *
                               </label>
                               <input 
                                 type="time"
@@ -420,7 +420,7 @@ export default function ModalityModal({
 
                             <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                                <Clock size={12} /> FIM
+                                <Clock size={12} /> FIM *
                               </label>
                               <input 
                                 type="time"
@@ -433,7 +433,7 @@ export default function ModalityModal({
 
                           <div ref={professorRef} className="space-y-2 relative">
                             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                              <GraduationCap size={12} /> PROFESSOR
+                              <GraduationCap size={12} /> PROFESSOR *
                             </label>
                             <div 
                               onClick={() => setShowProfessors(!showProfessors)}

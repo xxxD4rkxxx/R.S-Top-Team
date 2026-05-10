@@ -20,7 +20,7 @@ import {
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
-  persistentSingleTabManager,
+  persistentMultipleTabManager,
   CACHE_SIZE_UNLIMITED
 } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
@@ -41,23 +41,25 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 let dbInstance = null
 try {
   if (app) {
-    // Usamos SingleTabManager por padrão para evitar o erro b815/ca9 de sincronização
+    // Usamos MultipleTabManager para permitir que várias abas compartilhem o cache sem erro
+    // E explicitamos o databaseId como '(default)' para evitar confusão no SDK
     dbInstance = initializeFirestore(app, {
       localCache: persistentLocalCache({
-        tabManager: persistentSingleTabManager(),
+        tabManager: persistentMultipleTabManager(),
         cacheSizeBytes: CACHE_SIZE_UNLIMITED
       })
-    }, 'default')
-    console.log('🔥 [Firebase/Config] Firestore inicializado com Persistent Cache (Single-Tab para estabilidade).')
+    })
+    console.log('🔥 [Firebase/Config] Firestore inicializado com Persistent Cache (Multi-Tab) no banco (default).')
   }
 } catch (error) {
   const errMsg = error.message || ''
   if (errMsg.includes('INTERNAL ASSERTION FAILED') || error.code === 'failed-precondition') {
-    console.warn('⚠️ [Firebase/Config] Conflito de cache detectado. Reiniciando Firestore em modo padrão...')
+    console.warn('⚠️ [Firebase/Config] Erro de persistência detectado. Recorrendo ao modo memória...')
   } else {
-    console.error('❌ [Firebase/Config] Erro ao inicializar Firestore:', error)
+    console.error('❌ [Firebase/Config] Erro crítico ao inicializar Firestore:', error)
   }
-  dbInstance = getFirestore(app)
+  // Fallback seguro especificando o banco (default)
+  dbInstance = getFirestore(app, '(default)')
 }
 
 export const db = dbInstance

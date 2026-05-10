@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LogIn, Lock, Mail, Eye, EyeOff, User, ShieldCheck } from 'lucide-react'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
-import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp, collection, query, where, getDocs, limit } from 'firebase/firestore'
 import { auth, db } from '../../firebase/config'
 import { COLLECTIONS, FIELDS } from '../../firebase/collections'
 import { useAuth } from '../../context/AuthContext'
@@ -32,7 +32,7 @@ export default function RSAdminRegister() {
   useEffect(() => {
     const checkAdminExists = async () => {
       try {
-        const q = query(collection(db, COLLECTIONS.USUARIOS), where('papeis.admin', '==', true))
+        const q = query(collection(db, COLLECTIONS.USUARIOS), where('papeis.admin', '==', true), limit(1))
         const querySnapshot = await getDocs(q)
         if (!querySnapshot.empty) {
           setIsBlocked(true)

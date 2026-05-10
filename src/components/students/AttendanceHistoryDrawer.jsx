@@ -8,6 +8,7 @@ import {
 import { COLLECTIONS, SUB_COLLECTIONS } from '../../firebase/collections'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts'
 import SlideOver from '../shared/SlideOver'
+import { formatBR } from '../../utils/dateUtils'
 
 const DAYS_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 const DAYS_FULL = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -246,7 +247,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
       const statusLabel = isPresence ? 'Presente' : isAbsence ? 'Falta' : 'Justificado'
 
       return `<tr>
-        <td>${r.date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+        <td>${formatBR(r.date, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }, true)}</td>
         <td style="font-weight:bold">${r.modality}</td>
         <td>${statusIcon} ${statusLabel}</td>
       </tr>`
@@ -262,7 +263,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
         .kpi b{display:block;font-size:24px}
       </style></head><body>
         <h1>Relatório de Frequência</h1>
-        <p>${student.nome || student.name} — Gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
+        <p>${student.nome || student.name} — Gerado em ${formatBR(new Date(), {}, true)}</p>
         <div class="kpis">
           <div class="kpi"><b>${presentRecords.length}</b>Total de Presenças</div>
           <div class="kpi"><b>${thisMonthCount}</b>Presenças este Mês</div>
@@ -487,7 +488,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                               {isJustified && <div className="w-2 h-2 rounded-full shrink-0 bg-[#3b82f6] shadow-[0_0_8px_rgba(59,130,246,0.3)]" />}
                               <div className="flex-1">
                                 <div className={`text-sm font-medium ${isAbsent ? 'text-gray-400 line-through' : 'text-white'}`}>
-                                  {r.date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                                  {formatBR(r.date, { weekday: 'long', day: '2-digit', month: 'long' }, true)}
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <span className="text-[10px] font-bold uppercase" style={{ color: mColor }}>{r.modality}</span>
@@ -683,7 +684,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                               <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
                                 {note.author || 'Professor'}
                               </span>
-                              {d && <span className="text-[10px] text-gray-600">{d.toLocaleDateString('pt-BR')}</span>}
+                              {d && <span className="text-[10px] text-gray-600">{formatBR(d, {}, true)}</span>}
                             </div>
                             <p className="text-sm text-gray-300 leading-relaxed">{note.text}</p>
                           </div>

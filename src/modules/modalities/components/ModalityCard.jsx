@@ -92,11 +92,21 @@ export default function ModalityCard({
             </button>
           </div>
 
-          <div 
-            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-            className={`p-2.5 rounded-xl bg-white/5 text-gray-500 border border-white/5 cursor-pointer hover:bg-white/10 transition-all duration-300 ${isExpanded ? 'rotate-180 text-primary border-primary/30' : ''}`}
-          >
-            <ChevronDown size={18} strokeWidth={2.5} />
+          <div className="flex items-center gap-2">
+            {/* Botão de Adicionar Nova Turma (Turno) posicionado à direita */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onAddClass(modality.id); }}
+              className="p-2.5 rounded-xl bg-white/5 text-primary border border-white/5 cursor-pointer hover:bg-primary/10 transition-all duration-300"
+              title="Adicionar Turma"
+            >
+              <PlusCircle size={18} strokeWidth={2.5} />
+            </button>
+            <div 
+              onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+              className={`p-2.5 rounded-xl bg-white/5 text-gray-500 border border-white/5 cursor-pointer hover:bg-white/10 transition-all duration-300 ${isExpanded ? 'rotate-180 text-primary border-primary/30' : ''}`}
+            >
+              <ChevronDown size={18} strokeWidth={2.5} />
+            </div>
           </div>
         </div>
       </div>
@@ -122,8 +132,17 @@ export default function ModalityCard({
                 <button 
                   onClick={() => onDelete(modality.id)}
                   className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500"
+                  title="Excluir"
                 >
                   <Trash2 size={16} />
+                </button>
+                {/* Mobile: Botão de Adicionar Nova Turma (Turno) à direita */}
+                <button
+                  onClick={() => onAddClass(modality.id)}
+                  className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 cursor-pointer hover:bg-primary/10 transition-all duration-300"
+                  title="Adicionar Turma"
+                >
+                  <PlusCircle size={18} strokeWidth={2.5} />
                 </button>
                 {/* Mobile: Seta de expansão também à direita da lixeira */}
                 <button 

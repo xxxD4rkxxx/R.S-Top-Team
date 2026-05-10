@@ -205,6 +205,7 @@ export function useStudents() {
     }
   }, [students])
 
+
   /**
    * ADICIONAR NOVO ALUNO / VISITANTE
    */
@@ -224,8 +225,7 @@ export function useStudents() {
       return trimmed
     }))).filter(Boolean)
 
-    if (finalModalities.length === 0) finalModalities.push('Jiu Jitsu')
-
+    // if (finalModalities.length === 0) finalModalities.push('Jiu Jitsu') // Removido para permitir aluno sem modalidade
     const beltFinal = finalModalities.some(m => m.toLowerCase().includes('jiu')) ? (belt || 'white') : 'none'
 
     const pin = newStudent.pin || generatePIN()
@@ -235,8 +235,8 @@ export function useStudents() {
       name: sanitizeString(newStudent.name),
       initials: buildInitials(newStudent.name),
       belt: beltFinal,
-      [FIELDS.MODALIDADE]: finalModalities[0],
-      modality: finalModalities[0],
+      [FIELDS.MODALIDADE]: finalModalities[0] || null,
+      modality: finalModalities[0] || null,
       [FIELDS.MODALIDADES]: finalModalities,
       modalities: finalModalities,
       stripes: Number(stripes) || 0,
@@ -275,7 +275,8 @@ export function useStudents() {
           reason: 'Ingresso na Academia'
         }]
       },
-      [FIELDS.CRIADO_EM]: serverTimestamp(),
+      [FIELDS.CRIADO_EM]: newStudent.startDate ? new Date(newStudent.startDate + 'T12:00:00Z') : serverTimestamp(),
+      startDate: newStudent.startDate || null,
       [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
       ultima_visita: null,
       total_visitas: 0
@@ -297,7 +298,7 @@ export function useStudents() {
     }
 
     const targetCollection = isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
-    await setDoc(doc(db, targetCollection, docId), payload)
+    await setDoc(doc(db, targetCollection, docId), payload, { merge: true })
 
     // 🏆 ATUALIZAÇÃO DE TURMAS (Contabilização)
     if (!isVisitor && payload.turmas && payload.turmas.length > 0) {
@@ -344,9 +345,6 @@ export function useStudents() {
 
     // Subcoleções apenas para Alunos
     if (!isVisitor) {
-      const visitorSubRef = collection(doc(db, targetCollection, docId), 'visitantes')
-      await addDoc(visitorSubRef, { data: serverTimestamp(), tipo: 'entrada', observacao: 'Cadastro inicial' })
-
       // ========================================================================
       // FATURAMENTO INICIAL OBRIGATÓRIO: SEMPRE PAGO
       // ========================================================================
@@ -369,6 +367,14 @@ export function useStudents() {
         // Mês de referência = mês do VENCIMENTO (ex: se vence em 06/06, referência é Junho/2026)
         const referenceMonth = `${dueDate.toLocaleString('pt-BR', { month: 'long' })} / ${dueDate.getFullYear()}`
         
+        // Extrair primeira modalidade e turma para o relatório
+        const initMods = Array.isArray(payload.modalities) ? payload.modalities : payload.modality ? [payload.modality] : []
+        const initFirstMod = initMods[0]
+        const initModalityName = typeof initFirstMod === 'object' ? (initFirstMod?.name || '') : (initFirstMod || '')
+        const initTurmas = Array.isArray(payload.turmas) ? payload.turmas : payload.turma ? [payload.turma] : []
+        const initFirstTurma = initTurmas[0]
+        const initTurmaName = typeof initFirstTurma === 'object' ? (initFirstTurma?.name || '') : (initFirstTurma || '')
+
         await addDoc(collection(db, COLLECTIONS.FATURAMENTO), {
           studentId: docId,
           studentName: payload.name,
@@ -376,6 +382,8 @@ export function useStudents() {
           status: 'paid', // SEMPRE PAGO para novos alunos
           dueDate: dueDateStr,
           referenceMonth: referenceMonth,
+          modalityName: initModalityName || null,
+          turmaName: initTurmaName || null,
           paidAt: serverTimestamp(), // Marcar como pago no momento da criação
           createdAt: serverTimestamp()
         })
@@ -385,7 +393,20 @@ export function useStudents() {
         console.error('❌ Erro ao criar faturamento inicial:', err)
       }
     }
-  }, [])
+
+    return { id: docId, ...payload }
+  }, [generatePIN])
+
+  /**
+   * ADICIONAR NOVO VISITANTE (Lead)
+   * Wrapper especializado para simplificar a criação durante a chamada.
+   */
+  const addVisitor = useCallback(async (name, modality, responsibleProfessor) => {
+    return await addStudent({ name }, modality, { 
+      isVisitor: true,
+      responsibleProfessor 
+    })
+  }, [addStudent])
 
   /**
    * Atualiza dados cadastrais do perfil.
@@ -401,6 +422,10 @@ export function useStudents() {
         [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
       }
 
+      if (updates.startDate) {
+        payload[FIELDS.CRIADO_EM] = new Date(updates.startDate + 'T12:00:00Z')
+      }
+
       // 🔥 Sincronização SSoT: Garantir que se modalidades forem alteradas, os campos EN/PT fiquem iguais
       const newModalities = updates[FIELDS.MODALIDADES] || updates.modalities || updates[FIELDS.MODALIDADE] || updates.modality
       if (newModalities) {
@@ -414,8 +439,8 @@ export function useStudents() {
 
         payload[FIELDS.MODALIDADES] = normalized
         payload.modalities = normalized
-        payload[FIELDS.MODALIDADE] = normalized[0] || 'Jiu Jitsu'
-        payload.modality = normalized[0] || 'Jiu Jitsu'
+        payload[FIELDS.MODALIDADE] = normalized[0] || null
+        payload.modality = normalized[0] || null
       }
 
       if (payload.name) {
@@ -511,6 +536,7 @@ export function useStudents() {
     deleteStudent,
     deleteVisitor,
     addStudent,
+    addVisitor,
     updateStudentProfile,
   }
 }

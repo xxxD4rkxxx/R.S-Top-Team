@@ -262,7 +262,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
               {/* Nome da Turma */}
               <div className={`space-y-2 ${(!modalityId && !editingClass) ? '' : 'md:col-span-1'}`}>
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                   <Hash size={12} /> NOME DA TURMA
+                   <Hash size={12} /> NOME DA TURMA *
                 </label>
                 <input 
                   type="text"
@@ -277,7 +277,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
               {/* Professor (Multi-Select) */}
               <div ref={professorRef} className="space-y-2 relative md:col-span-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                  <GraduationCap size={12} /> PROFESSORES RESPONSÁVEIS ({selectedProfessors.length}/3)
+                  <GraduationCap size={12} /> PROFESSORES RESPONSÁVEIS ({selectedProfessors.length}/3) *
                 </label>
                 <div 
                   onClick={() => setShowProfessors(!showProfessors)}
@@ -340,7 +340,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
               {/* Dias da Semana */}
               <div className="md:col-span-2 space-y-4">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                  <Calendar size={12} /> DIAS DA SEMANA
+                  <Calendar size={12} /> DIAS DA SEMANA *
                 </label>
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                   {DAYS.map(day => (
@@ -366,7 +366,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
               <div className="grid grid-cols-2 gap-4 md:col-span-2">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                    <Clock size={12} /> INÍCIO
+                    <Clock size={12} /> INÍCIO *
                   </label>
                   <input 
                     type="time"
@@ -379,7 +379,7 @@ export default function ClassModal({ isOpen, onClose, onSave, editingClass = nul
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-1 flex items-center gap-2">
-                    <Clock size={12} /> FIM
+                    <Clock size={12} /> FIM *
                   </label>
                   <input 
                     type="time"

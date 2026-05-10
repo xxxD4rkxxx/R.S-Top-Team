@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
+import { motion } from 'framer-motion'
+import { formatBR } from '../../utils/dateUtils'
 
 
 // Status de Assiduidade removido conforme solicitado
@@ -37,7 +39,6 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
     }
   }, [student, canSeePIN, fetchUserPin])
 
-  if (!student) return null;
 
   const name = student.nome || student.name;
   const {
@@ -50,18 +51,23 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
   const textColor = beltConfig[normalizedBelt]?.textColor || '#111111'
   const primaryMod = modality || modalities[0] || 'Não informada'
   
-  function formatDate(d) {
-    if (!d) return 'Não registrada'
-    if (typeof d === 'string') return new Date(d).toLocaleDateString('pt-BR')
-    if (d.toDate) return d.toDate().toLocaleDateString('pt-BR')
-    if (d instanceof Date) return d.toLocaleDateString('pt-BR')
-    return 'Data inválida'
-  }
+  const formatDate = (d) => formatBR(d, {}, true)
 
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onClose}>
-      <div 
+    <motion.div 
+      key="student-details-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="modal-backdrop" 
+      onClick={onClose}
+    >
+      <motion.div 
+        key="student-details-content"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
         onClick={e => e.stopPropagation()}
         className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
       >
@@ -207,37 +213,6 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
             </div>
           </div>
 
-          {/* Financeiro e Contrato */}
-          {(isAdmin || isGestor) && !isVisitor && (
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                Financeiro & Contrato
-                <div className="h-px flex-1 bg-emerald-500/10" />
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner hover:bg-emerald-500/[0.04]">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                    <AlertTriangle size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Condição Especial</p>
-                    <p className="text-sm text-white font-bold mt-0.5">{student.isPaymentExempt ? 'Bolsista / Isento' : 'Pagante Regular'}</p>
-                  </div>
-                </div>
-                {!student.isPaymentExempt && (
-                  <div className="flex items-center gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner hover:bg-emerald-500/[0.04]">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                      <span className="font-bold text-lg">R$</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Valor Base (Plano)</p>
-                      <p className="text-sm text-white font-bold mt-0.5 font-mono">{student.planValue ? `R$ ${Number(student.planValue).toFixed(2)}` : 'Não definido'}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Segurança */}
           {canSeePIN && !isVisitor && (
@@ -276,8 +251,8 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
               </div>
               <div className="flex-1 flex justify-between gap-6">
                 <div>
-                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Membro desde</p>
-                  <p className="text-sm text-white font-bold">{formatDate(createdAt)}</p>
+                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Início na Academia</p>
+                  <p className="text-sm text-white font-bold">{formatDate(student.startDate || createdAt)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Última aula</p>
@@ -296,8 +271,8 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
             Fechar Perfil
           </button>
         </div>
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>,
     document.body
   )
 }

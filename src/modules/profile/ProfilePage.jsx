@@ -18,6 +18,7 @@ import { useTheme, THEMES } from '../../context/ThemeContext'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { formatPhoneUI, parsePhoneData } from '../../utils/phoneUtils'
+import { formatBR } from '../../utils/dateUtils'
 
 // ── Ícones de role ──────────────────────────────────────────────
 const roleConfig = {
@@ -197,24 +198,10 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
           <div className="flex flex-wrap gap-2">
             <span className="px-3 py-1.5 rounded-2xl text-[11px] font-bold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>🥋 RS Top Team</span>
             <span className="px-3 py-1.5 rounded-2xl text-[11px] font-bold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              📅 Desde {
+              📅 Início na Academia {
                 (() => {
                   const raw = user?.startDate || user?.criadoEm || user?.createdAt || user?.dataRegistro || user?.registrationDate || authUser?.metadata?.creationTime
-                  if (!raw) return '—'
-                  try {
-                    // Função auxiliar para converter qualquer formato de data do Firebase/JS
-                    const date = (raw && typeof raw.toDate === 'function')
-                      ? raw.toDate()
-                      : (typeof raw === 'string' || typeof raw === 'number')
-                        ? new Date(raw)
-                        : raw
-
-                    return date instanceof Date && !isNaN(date)
-                      ? date.toLocaleDateString('pt-BR')
-                      : '—'
-                  } catch (e) {
-                    return '—'
-                  }
+                  return formatBR(raw, {}, true)
                 })()
               }
             </span>
@@ -554,12 +541,8 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
 
   // Formatting helpers
   const formatDate = (d) => {
-    if (!d) return '—'
     try {
-      const date = (typeof d === 'string')
-        ? (d.includes('T') ? new Date(d) : new Date(d + 'T12:00:00'))
-        : (d.toDate ? d.toDate() : new Date(d))
-      return date.toLocaleDateString('pt-BR')
+      return formatBR(d, {}, true)
     } catch (e) {
       return '—'
     }
@@ -866,7 +849,7 @@ function SectionUsuarios({ users, onAddUser, onUpdateUser, onDeleteUser, onSync 
                       <div className="flex items-center gap-2">
                         <span className="text-gray-500 text-[10px] font-medium tracking-tight truncate">{u.email || '—'}</span>
                         <span className="w-1 h-1 rounded-full bg-white/10" />
-                        <span className="text-gray-600 text-[9px] font-bold uppercase tracking-wider">Desde {dateStr}</span>
+                        <span className="text-gray-600 text-[9px] font-bold uppercase tracking-wider">Início na Academia {dateStr}</span>
                       </div>
                     </div>
                   </div>
@@ -1219,7 +1202,7 @@ function CardLog({ log, onExpand }) {
     if (diffMins < 60) return `Há ${diffMins}min`
     if (diffHoras < 24) return `Há ${diffHoras}h`
     if (diffDias < 7) return `Há ${diffDias}d`
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    return formatBR(d, { day: '2-digit', month: 'short' }, true)
   }
 
   return (
@@ -1424,7 +1407,7 @@ function CardTimeline({ log, tema = 'crimson' }) {
     if (diffMins < 60) return `${diffMins}min`
     if (diffHoras < 24) return `${diffHoras}h`
     if (diffDias < 7) return `${diffDias}d`
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    return formatBR(d, { day: '2-digit', month: 'short' }, true)
   }
 
   return (
@@ -2333,7 +2316,7 @@ function LogTime({ date }) {
   const d = (typeof date === 'string' || typeof date === 'number') ? new Date(date) : date.toDate()
   return (
     <div className="text-right flex-shrink-0">
-      <p className="text-gray-500 text-[10px] font-bold">{d.toLocaleDateString('pt-BR')}</p>
+      <p className="text-gray-500 text-[10px] font-bold">{formatBR(d, {}, true)}</p>
       <p className="text-gray-700 text-[10px]">{d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
     </div>
   )

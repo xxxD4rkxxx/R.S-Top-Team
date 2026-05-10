@@ -61,7 +61,7 @@ export function StudentsProvider({ children }) {
     // Função para mapear documentos (DRY)
     const mapDoc = (item, isVisitorForce = false) => {
       const data = item.data()
-      const modalities = data.modalities || [data.modality || 'Jiu Jitsu']
+      const modalities = data.modalities || (data.modality ? [data.modality] : [])
       
       let rawName = data.name || data.nome || ''
       const cleanName = rawName.toLowerCase().trim()
@@ -81,12 +81,13 @@ export function StudentsProvider({ children }) {
         name: rawName,
         initials: data.initials || buildInitials(rawName),
         belt: (tech.faixa_atual || data.belt || data.faixa || 'none').toLowerCase(),
-        modality: data.modality || modalities[0] || 'Jiu Jitsu',
+        modality: data.modality || modalities[0] || null,
         modalities,
-        modalityPrimary: modalities[0] || data.modality || 'Jiu Jitsu',
+        modalityPrimary: modalities[0] || data.modality || null,
         stripes: Number.isFinite(tech.graus_atuais) ? tech.graus_atuais : (Number.isFinite(data.stripes) ? data.stripes : 0),
         pin: data.pin || '',
-        gender: data.gender || '',
+        gender: data.gender || 'Masculino',
+        ageCategory: data.ageCategory || 'Adulto',
         status: data.status ?? 'Ativo',
         isVisitor: isVisitorForce || Boolean(data.isVisitor) || Boolean(data.roles?.visitante),
         photo: photo,
@@ -96,6 +97,7 @@ export function StudentsProvider({ children }) {
         medical: data.medical || '',
         birthday: parseFirestoreDate(data.birthday),
         createdAt: parseFirestoreDate(data.createdAt || data.criadoEm),
+        startDate: data.startDate || null,
         lastAttendanceAt: parseFirestoreDate(data.lastAttendanceAt),
         roles: data.roles || data.papeis || {},
         turmas: data.turmas || []

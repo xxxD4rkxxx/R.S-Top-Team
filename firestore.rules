@@ -6,34 +6,62 @@ service cloud.firestore {
     function isAuth() { return request.auth != null; }
 
     function isAdmin() {
+      let email = request.auth.token.email.lower();
       return isAuth() && (
-        request.auth.token.email.lower() == 'pmadsonm@gmail.com' || 
-        request.auth.token.email.lower() == 'pmadsonm_gmail_com@rstopteam.internal' ||
+        email == 'pmadsonm@gmail.com' || 
+        email == 'pmadsonm_gmail_com@rstopteam.internal' ||
         request.auth.token.admin == true ||
-        (exists(/databases/$(database)/documents/usuarios/$(request.auth.token.email.lower())) && (
-          get(/databases/$(database)/documents/usuarios/$(request.auth.token.email.lower())).data.get('papeis', {}).get('admin', false) == true ||
-          get(/databases/$(database)/documents/usuarios/$(request.auth.token.email.lower())).data.get('roles', {}).get('admin', false) == true ||
-          get(/databases/$(database)/documents/usuarios/$(request.auth.token.email.lower())).data.get('role', '') == 'admin'
+        (exists(/databases/$(database)/documents/usuarios/$(email)) && (
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('permissões', {}).get('all', false) == true ||
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('permissions', {}).get('all', false) == true ||
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('papeis', {}).get('admin', false) == true ||
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('roles', {}).get('admin', false) == true ||
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('role', '') == 'admin'
         ))
       );
     }
 
     function isStaff() {
+      let email = request.auth.token.email.lower();
       return isAuth() && (
         isAdmin() ||
         request.auth.token.gestor == true ||
         request.auth.token.professor == true ||
-        (exists(/databases/$(database)/documents/usuarios/$(request.auth.token.email.lower())) && (
-          get(/databases/$(database)/documents/usuarios/$(request.auth.token.email.lower())).data.get('papeis', {}).get('gestor', false) == true ||
-          get(/databases/$(database)/documents/usuarios/$(request.auth.token.email.lower())).data.get('papeis', {}).get('professor', false) == true ||
-          get(/databases/$(database)/documents/usuarios/$(request.auth.token.email.lower())).data.get('role', '') in ['gestor', 'professor']
+        (exists(/databases/$(database)/documents/usuarios/$(email)) && (
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('permissões', {}).get('all', false) == true ||
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('permissions', {}).get('all', false) == true ||
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('papeis', {}).get('gestor', false) == true ||
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('papeis', {}).get('professor', false) == true ||
+          get(/databases/$(database)/documents/usuarios/$(email)).data.get('role', '') in ['gestor', 'professor']
         ))
       );
     }
 
-    // ── Regra Global (Prioridade Máxima) ──────────────────────────────────────
-    match /{document=**} {
-      allow read, write: if isAdmin();
+// ── CRIAÇÃO DE PERFIL: Qualquer usuário autenticado pode criar seu próprio perfil
+    // Staff pode criar outros perfis (necessário para gestão de equipe)
+    match /usuarios/{userId} {
+      allow create: if isAuth() && (request.auth.token.email.lower() == userId.lower() || isStaff());
+      allow get: if true;
+      allow list: if isAuth() || request.query.limit <= 1;
+
+      match /privacy/secrets {
+        allow read: if isAuth() && (isStaff() || request.auth.token.email.lower() == userId.lower());
+        allow write: if isAuth() && isStaff();
+      }
+      
+      match /anotacoes/{id} { allow read, write: if isStaff(); }
+      match /graduacoes/{id} { allow read: if isAuth(); allow write: if isStaff(); }
+      match /visitantes/{id} { allow read, write: if isStaff(); }
+
+       // TODO: Validar no backend que o usuário só concede permissões que possui.
+       // Firestore Rules tem limitações para comparação complexa de objetos.
+       // A validação principal está no front-end (UserCreationModal.jsx - canGrantPermission + handleSubmit).
+       allow update: if isAuth() && (isStaff() || request.auth.token.email.lower() == userId.lower())
+                             && (
+                                request.resource.data.get('telefone', '').size() == 0 || 
+                                (request.resource.data.get('telefone', '').size() >= 10 && request.resource.data.get('telefone', '').size() <= 15)
+                              );
+      allow delete: if isAdmin();
     }
 
     // ── Suporte para Collection Group ─────────────────────────────────────────
@@ -47,29 +75,8 @@ service cloud.firestore {
       allow read: if isAuth();
     }
 
-    // ── Perfil de Usuário ─────────────────────────────────────────────────────
-    match /usuarios/{userId} {
-      allow get: if true;
-      allow list: if isAuth() || request.query.limit <= 1;
-
-      match /privacy/secrets {
-        allow read: if isAuth() && (isStaff() || request.auth.token.email.lower() == userId.lower());
-        allow write: if isAuth() && isStaff();
-      }
-      
-      match /anotacoes/{id} { allow read, write: if isStaff(); }
-      match /graduacoes/{id} { allow read: if isAuth(); allow write: if isStaff(); }
-
-       // TODO: Validar no backend que o usuário só concede permissões que possui.
-       // Firestore Rules tem limitações para comparação complexa de objetos.
-       // A validação principal está no front-end (UserCreationModal.jsx - canGrantPermission + handleSubmit).
-       allow create, update: if isAuth() && (isStaff() || request.auth.token.email.lower() == userId.lower())
-                             && (
-                               request.resource.data.get('telefone', '').size() == 0 || 
-                               (request.resource.data.get('telefone', '').size() >= 10 && request.resource.data.get('telefone', '').size() <= 15)
-                             );
-      allow delete: if isAdmin();
-    }
+    // ── Perfil de Usuário (sub-coleções) ───────────────────────────────────────
+    // ATENÇÃO: Evite criar match duplicados para /usuarios/{userId}
 
     // ── Modalidades e Turmas ──────────────────────────────────────────────────
     match /modalidades/{id} {
@@ -119,7 +126,8 @@ service cloud.firestore {
                    && (
                      request.resource.data.get('telefone', '').size() == 0 ||
                      (request.resource.data.get('telefone', '').size() >= 10 && request.resource.data.get('telefone', '').size() <= 15)
-                   );
+                     );
+      match /visitantes/{subId} { allow read, write: if isStaff(); }
     }
 
     // ── Configurações e Logs ──────────────────────────────────────────────────

@@ -33,6 +33,15 @@ const getVerifyAuth = () => {
 }
 const vAuth = getVerifyAuth()
 
+/** Converte e-mail comum para o formato administrativo interno */
+const toInternalEmail = (email) => {
+  if (!email || email.includes('@rstopteam.internal')) return email;
+  return email.toLowerCase()
+    .trim()
+    .replace('@', '_')
+    .replace(/\./g, '_') + '@rstopteam.internal';
+};
+
 // Nome da coleção unificada no Firestore
 const USERS_COLLECTION = COLLECTIONS.USUARIOS
 
@@ -212,10 +221,19 @@ export function useSystemUsers() {
       [FIELDS.TELEFONE_COMPLETO]: userData.telefone_completo || '',
       [FIELDS.PAPEIS]: rolesMap,
       [FIELDS.STATUS]: userData.status || 'Ativo',
-      [FIELDS.ATUALIZADO_EM]: serverTimestamp()
+      [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
+      // 🛡️ Sincronização de Permissões (Compatibilidade com Regras e Schema)
+      // 🛡️ Sincronização de Permissões (Compatibilidade com Regras e Schema)
+      [FIELDS.PERMISSOES]: userData.permissions || {},
+      'permissões': userData.permissions || {},
+      startDate: userData.startDate || null
     }
 
-    // Lista de campos temporários/redundantes que devem ser removidos para manter o schema limpo.
+    // Se uma startDate for fornecida, converte para Timestamp, senão deixa vazio/null
+    // O criado_em ainda será o serverTimestamp, mas se houver startDate, forçamos.
+    if (userData.startDate) {
+      basePayload[FIELDS.CRIADO_EM] = new Date(userData.startDate + 'T12:00:00Z')
+    }
     // Apenas incluímos campos cujos nomes no Firestore (via FIELDS) são diferentes do nome no formulário.
     const redundantFields = ['name', 'phone', 'roles']
 
@@ -228,17 +246,33 @@ export function useSystemUsers() {
       })
       
       // Proteção e Geração de PIN:
-      // Se o usuário está ganhando cargo de Staff (Admin/Gestor/Prof) e não tem PIN, geramos um.
-      const isStaff = rolesMap.admin || rolesMap.gestor || rolesMap.professor
+      // Agora suportamos dois PINs: 'pin' (aluno/normal) e 'adminPin' (administrativo)
+      const rolesMap = Array.isArray(userData.roles) 
+        ? userData.roles.reduce((acc, r) => ({ ...acc, [r]: true }), {})
+        : (userData.roles || {})
+        
+      const isAdmin = rolesMap.admin === true
+      
       let finalPin = userData.pin || existingData.pin
-      let pinWasGenerated = false
+      let finalAdminPin = userData.adminPin || existingData.adminPin || existingData.admPin
+      let pinWasGenerated = false;
 
-      if (isStaff && !finalPin) {
+      // 1. Garante PIN Normal (Para todos ou pelo menos Staff)
+      if (!finalPin) {
         finalPin = generatePIN()
+        basePayload[FIELDS.PIN] = finalPin
         pinWasGenerated = true
+      } else {
         basePayload[FIELDS.PIN] = finalPin
-      } else if (finalPin) {
-        basePayload[FIELDS.PIN] = finalPin
+      }
+
+      // 2. Garante PIN Administrativo (Apenas para Admin)
+      if (isAdmin && !finalAdminPin) {
+        finalAdminPin = generatePIN()
+        basePayload['adminPin'] = finalAdminPin
+        pinWasGenerated = true
+      } else if (finalAdminPin) {
+        basePayload['adminPin'] = finalAdminPin
       }
 
       // 🏆 Sincronização de Turmas no Update (Existing User)
@@ -281,6 +315,7 @@ export function useSystemUsers() {
       await updateDoc(userRef, basePayload)
 
       // Se geramos um PIN novo para um usuário existente, precisamos criar o Auth Secundário dele
+      // 5. Garante Auth de PIN (Aluno)
       if (pinWasGenerated) {
         try {
           const pinAuthEmail = getPinAuthEmail(emailId)
@@ -291,13 +326,42 @@ export function useSystemUsers() {
         }
       }
 
-      return { id: emailId, pin: finalPin, isExisting: true, pinWasGenerated }
+      // 6. 👑 Garante Auth de ADMIN (@rstopteam.internal)
+      if (isAdmin && finalAdminPin) {
+        try {
+          const vAuth = getVerifyAuth()
+          const adminAuthEmail = toInternalEmail(emailId)
+          const secureAdminPIN = finalAdminPin.length >= 6 ? finalAdminPin : finalAdminPin.padEnd(6, '0')
+          await createUserWithEmailAndPassword(vAuth, adminAuthEmail, secureAdminPIN)
+          console.log(`[useSystemUsers] Shadow Account criada para: ${adminAuthEmail}`)
+        } catch (e) {
+          if (e.code === 'auth/email-already-in-use') {
+             // Se já existe, opcionalmente poderíamos atualizar o password aqui, 
+             // mas para segurança vamos apenas avisar. O password será atualizado via loginAdmin se necessário.
+             console.log('[useSystemUsers] Shadow Account já existe.')
+          } else {
+            console.warn('Erro ao criar Shadow Account Admin:', e.message)
+          }
+        }
+      }
+
+      return { 
+        id: emailId, 
+        pin: finalPin, 
+        adminPin: finalAdminPin, 
+        isExisting: true, 
+        pinWasGenerated 
+      }
     } else {
       const pin = userData.pin || generatePIN()
+      const isAdmin = rolesMap.admin === true
+      const adminPin = isAdmin ? (userData.adminPin || generatePIN()) : null
+
       const newUser = {
         ...basePayload,
         [FIELDS.PIN]: pin,
-        [FIELDS.CRIADO_EM]: serverTimestamp()
+        adminPin: adminPin,
+        [FIELDS.CRIADO_EM]: userData.startDate ? new Date(userData.startDate + 'T12:00:00Z') : serverTimestamp()
       }
       
       // Para setDoc (criação), NÃO podemos usar deleteField().
@@ -340,7 +404,19 @@ export function useSystemUsers() {
         console.warn('Erro ao criar Auth Secundário (PIN):', e.message)
       }
 
-      return { id: emailId, pin, isExisting: false }
+      // 👑 Garante Auth de ADMIN (@rstopteam.internal)
+      if (isAdmin && adminPin) {
+        try {
+          const vAuth = getVerifyAuth()
+          const adminAuthEmail = toInternalEmail(emailId)
+          const secureAdminPIN = adminPin.length >= 6 ? adminPin : adminPin.padEnd(6, '0')
+          await createUserWithEmailAndPassword(vAuth, adminAuthEmail, secureAdminPIN)
+        } catch (e) {
+          console.warn('Erro ao criar Shadow Account Admin (Novo):', e.message)
+        }
+      }
+
+      return { id: emailId, pin, adminPin, isExisting: false }
     }
   }, [])
 

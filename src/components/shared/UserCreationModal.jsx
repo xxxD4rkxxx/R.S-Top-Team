@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, User, Users, Mail, Shield, Check, Copy,
@@ -70,6 +70,16 @@ function CustomSelect({ label, value, onChange, options, disabled }) {
  * Este componente permite criar novos colaboradores ou promover alunos.
  * Implementa a lógica de Single Source of Truth (SSoT) e RBAC (Múltiplos Cargos).
  */
+// ── Utilitários de Segurança ──────────────────────────────────────────────────
+/** Converte e-mail comum para o formato administrativo interno */
+const toInternalEmail = (email) => {
+  if (!email || email.includes('@rstopteam.internal')) return email;
+  return email.toLowerCase()
+    .trim()
+    .replace('@', '_')
+    .replace(/\./g, '_') + '@rstopteam.internal';
+};
+
 export default function UserCreationModal({ isOpen, onClose, initialData }) {
   // Oculta a navegação mobile para evitar conflitos visuais com o modal
   useHideMobileNav(isOpen)
@@ -92,8 +102,9 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     name: '',
     email: '',
     phone: '',
-    pin: '', // 🔑 OPCIONAL: Permite definir manualmente
-    roles: [], // Inicia vazio para escolha explícita
+    pin: '', // 🔑 PIN Aluno / Normal
+    adminPin: '', // 👑 PIN Administrativo
+    roles: [], 
     modalities: [], // 🥋 Modalidades do professor
     belt: 'none',
     stripes: 0,
@@ -118,8 +129,10 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       manageSystem: false,
       viewStaffPins: false,   // 🔐 NOVA
       viewStudentPins: false, // 🔐 NOVA
+      all: false,             // 👑 PERMISSÃO GLOBAL
     },
-    turmas: []
+    turmas: [],
+    originalEmail: '' // 📧 Referência para reverter ou vincular contas
   })
 
   // Controla quais categorias de permissão estão abertas (Iniciam fechadas para maior limpeza visual)
@@ -138,18 +151,43 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
   React.useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        // 🛡️ Normaliza roles: pode vir como array ['admin'] ou objeto {admin: true}
-        const rawRoles = initialData.roles || {}
-        let normRoles = []
-        if (Array.isArray(rawRoles)) {
-          normRoles = rawRoles
-        } else if (typeof rawRoles === 'object' && rawRoles !== null) {
-          normRoles = Object.keys(rawRoles).filter(r => rawRoles[r])
-         }
-         // Fallback para 'aluno' apenas quando criando novo usuário
-         if (normRoles.length === 0 && !initialData) {
-           normRoles = ['aluno']
-         }
+        // 🛡️ Normalização Robusta de Roles: Procura em múltiplos campos e formatos (Array, Objeto ou String)
+        const rolesFromRoles = initialData.roles;
+        const rolesFromPapeis = initialData.papeis;
+        const rolesFromPapeisMap = initialData.papeisMap;
+        const rolesFromRole = initialData.role;
+
+        let combinedRoles = [];
+
+        // 1. Processa 'roles' (Array ou Objeto)
+        if (Array.isArray(rolesFromRoles)) {
+          combinedRoles = [...combinedRoles, ...rolesFromRoles];
+        } else if (typeof rolesFromRoles === 'object' && rolesFromRoles !== null) {
+          combinedRoles = [...combinedRoles, ...Object.keys(rolesFromRoles).filter(r => rolesFromRoles[r])];
+        }
+
+        // 2. Processa 'papeis' (Objeto)
+        if (typeof rolesFromPapeis === 'object' && rolesFromPapeis !== null && !Array.isArray(rolesFromPapeis)) {
+          combinedRoles = [...combinedRoles, ...Object.keys(rolesFromPapeis).filter(r => rolesFromPapeis[r])];
+        }
+
+        // 3. Processa 'papeisMap' (Objeto)
+        if (typeof rolesFromPapeisMap === 'object' && rolesFromPapeisMap !== null && !Array.isArray(rolesFromPapeisMap)) {
+          combinedRoles = [...combinedRoles, ...Object.keys(rolesFromPapeisMap).filter(r => rolesFromPapeisMap[r])];
+        }
+
+        // 4. Processa 'role' singular (String)
+        if (rolesFromRole && typeof rolesFromRole === 'string') {
+          combinedRoles.push(rolesFromRole);
+        }
+
+        // Remove duplicados e filtra valores vazios
+        let normRoles = [...new Set(combinedRoles)].filter(Boolean);
+
+        // Fallback para 'aluno' apenas quando criando novo usuário
+        if (normRoles.length === 0 && !initialData) {
+          normRoles = ['aluno']
+        }
 
         setFormData({
           name: initialData.nome || initialData.name || '',
@@ -168,6 +206,9 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           parentName: initialData.parentName || '',
           parentPhone: initialData.parentPhone || '',
           turmas: initialData.turmas || [],
+          originalEmail: initialData.originalEmail || initialData.email || '',
+          adminPin: initialData.adminPin || initialData.admPin || '',
+          startDate: initialData.startDate || (initialData.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
           // --------------------------------
           // 🛡️ Ao editar, preserva as permissões reais do usuário sem sobrescrever com defaults
           permissions: { ...(initialData.permissions || {}) }
@@ -188,6 +229,9 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
           parentName: '',
           parentPhone: '',
           turmas: [],
+          originalEmail: '',
+          adminPin: '',
+          startDate: new Date().toISOString().split('T')[0],
           permissions: { ...defaultRolePermissions.aluno }
         })
         setSelectedStudentId(null)
@@ -412,7 +456,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       manageClasses: true, manageEvents: true,
       viewFinance: true, managePayments: true, manageExpenses: true,
       viewExpensesTab: true, manageExpensesTab: true,
-      viewBillingTab: true, manageBillingTab: true,
+viewBillingTab: true, manageBillingTab: true,
+      visualizar_relatorio_pagamentos: true,
       manageUsers: true, manageSystem: true,
       viewStaffPins: true, viewStudentPins: true
     },
@@ -421,7 +466,8 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       manageClasses: true, manageEvents: true,
       viewFinance: true, managePayments: true, manageExpenses: true,
       viewExpensesTab: true, manageExpensesTab: true,
-      viewBillingTab: true, manageBillingTab: true,
+viewBillingTab: true, manageBillingTab: true,
+      visualizar_relatorio_pagamentos: true,
       manageUsers: false, manageSystem: false,
       viewStaffPins: true, viewStudentPins: true
     },
@@ -431,6 +477,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       viewFinance: false, managePayments: false, manageExpenses: false,
       viewExpensesTab: false, manageExpensesTab: false,
       viewBillingTab: false, manageBillingTab: false,
+      visualizar_relatorio_pagamentos: false,
       manageUsers: false, manageSystem: false,
       viewStaffPins: false, viewStudentPins: true
     },
@@ -440,6 +487,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
       viewFinance: false, managePayments: false, manageExpenses: false,
       viewExpensesTab: false, manageExpensesTab: false,
       viewBillingTab: false, manageBillingTab: false,
+      visualizar_relatorio_pagamentos: false,
       manageUsers: false, manageSystem: false,
       viewStaffPins: false, viewStudentPins: false
     }
@@ -546,8 +594,15 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
         return
       }
 
+      // 👑 Lógica de Shadow Account para ADMIN
+      const finalEmail = formData.email;
+      const finalOriginalEmail = formData.originalEmail || formData.email;
+
       const result = await createNewUser({
         ...formData,
+        email: finalEmail,
+        originalEmail: finalOriginalEmail,
+        adminPin: formData.adminPin,
         phone: phoneData.display,
         ddd: phoneData.ddd,
         telefone_limpo: phoneData.telefone_limpo,
@@ -556,7 +611,10 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
         roles: rolesMap
       })
 
-      setCreatedPin(result.pin)
+      setCreatedPin({ 
+        pin: result.pin, 
+        adminPin: result.adminPin 
+      })
       setCountdown(10) // Reinicia contador de segurança
 
       // Inicia o timer de 10 segundos
@@ -593,21 +651,27 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
   const availableRoles = baseRoles.filter(r =>
     myRank >= (ROLE_RANK[r.id] || 0) ||
     effectiveRole === 'admin' ||
-    (initialData && Array.isArray(initialData.roles) && initialData.roles.includes(r.id))
+    formData.roles.includes(r.id)
   )
 
   /** Verifica se o usuário logado tem uma permissão específica para poder concedê-la */
   const canGrantPermission = (key) => {
     if (effectiveRole === 'admin') return true
+    if (userData?.permissions?.all) return true
     // Apenas concede se o usuário possui a permissão ativa (sem fallbacks)
     return !!userData?.permissions?.[key]
   }
 
-  if (!isOpen) return null
 
   const modalContent = (
     createdPin ? (
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-500 overflow-hidden">
+      <motion.div 
+        key="user-creation-success-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl overflow-hidden"
+      >
         <div className="w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-[32px] p-6 sm:p-8 shadow-[0_0_100px_rgba(254,110,0,0.1)] text-center relative overflow-hidden">
           {/* Fundo decorativo de bloqueio */}
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 blur-[100px] rounded-full" />
@@ -630,18 +694,37 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
               : 'O cofre foi liberado. Agora você pode prosseguir.'}
           </p>
 
-          <div className="bg-black border border-white/5 rounded-2xl p-6 mb-8 relative group">
-            <p className="text-[10px] text-gray-600 uppercase tracking-widest font-bold mb-2">PIN DE ACESSO</p>
-            <p className="text-5xl font-mono font-black text-white tracking-[0.2em]">{createdPin}</p>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(createdPin)
-                // Pequeno feedback de cópia se quiser...
-              }}
-              className="absolute top-4 right-4 p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
-            >
-              <Copy size={16} />
-            </button>
+          <div className="space-y-4 mb-8">
+            <div className="bg-black border border-white/5 rounded-2xl p-5 relative group">
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest font-black mb-2 text-left">PIN DE ALUNO</p>
+              <div className="flex items-center justify-between">
+                <p className="text-4xl font-mono font-black text-white tracking-[0.2em]">{createdPin.pin}</p>
+                <button
+                  onClick={() => navigator.clipboard.writeText(createdPin.pin)}
+                  className="p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                >
+                  <Copy size={16} />
+                </button>
+              </div>
+            </div>
+
+            {createdPin.adminPin && (
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 relative group animate-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-2 mb-2">
+                   <Shield size={10} className="text-primary" />
+                   <p className="text-[10px] text-primary/60 uppercase tracking-widest font-black text-left">PIN ADMINISTRATIVO</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-4xl font-mono font-black text-primary tracking-[0.2em]">{createdPin.adminPin}</p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(createdPin.adminPin)}
+                    className="p-2 bg-primary/10 rounded-xl hover:bg-primary/20 transition-colors text-primary/60 hover:text-primary"
+                  >
+                    <Copy size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <button
@@ -655,33 +738,33 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
             Finalizar e Sair
           </button>
         </div>
-      </div>
+      </motion.div>
     ) : (
-      <AnimatePresence>
-        <motion.div
-          className="modal-backdrop z-[1000]"
-          onClick={onClose}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+      <motion.div 
+        key="user-creation-form-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="modal-backdrop z-[1000]" 
+        onClick={onClose}
+      >
+        <motion.div 
+          key="user-creation-form-content"
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          onClick={e => e.stopPropagation()}
+          drag={isMobile ? "y" : false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 500) {
+              onClose();
+            }
+          }}
+          className="modal-content modal-content-bottom-sheet relative max-w-4xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[90vh] overflow-hidden bg-black/80 border border-white/5 shadow-2xl rounded-t-[32px] sm:rounded-[32px]"
         >
-          {/* MODAL / DRAWER */}
-          <motion.div
-            onClick={e => e.stopPropagation()}
-            drag={isMobile ? "y" : false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(e, info) => {
-              if (info.offset.y > 100 || info.velocity.y > 500) {
-                onClose();
-              }
-            }}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden bg-black/80 border border-white/5 shadow-2xl rounded-t-[32px] sm:rounded-[32px]"
-          >
             {/* Mobile Drag Handle */}
             <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
               <div className="w-12 h-1.5 bg-white/10 rounded-full" />
@@ -762,7 +845,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome Completo</label>
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Nome Completo *</label>
                     <div className="relative">
                       <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
                       <input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="Nome do colaborador" />
@@ -783,11 +866,27 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">E-mail (Único)</label>
-                  <div className="relative">
-                    <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                    <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="email@exemplo.com" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">E-mail (Único) *</label>
+                    <div className="relative">
+                      <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                      <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" placeholder="email@exemplo.com" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Data de Início na Academia *</label>
+                    <div className="relative">
+                      <Clock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                      <input
+                        type="date"
+                        required
+                        value={formData.startDate}
+                        onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium [color-scheme:dark]"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -807,19 +906,38 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">PIN de Acesso (Opcional - 6 Dígitos)</label>
-                  <div className="relative">
-                    <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={formData.pin}
-                      onChange={e => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '') })}
-                      className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/30 transition-all"
-                      placeholder="Deixe em branco para gerar"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">PIN de Aluno (6 Dígitos)</label>
+                    <div className="relative">
+                      <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={formData.pin}
+                        onChange={e => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '') })}
+                        className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/30 transition-all"
+                        placeholder="Gerar automático"
+                      />
+                    </div>
                   </div>
+
+                  {formData.roles.includes('admin') && (
+                    <div className="space-y-1.5 animate-in slide-in-from-left-2">
+                      <label className="text-[10px] text-primary uppercase tracking-widest font-bold ml-1">PIN Administrativo (Acesso Restrito)</label>
+                      <div className="relative">
+                        <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary/50" />
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={formData.adminPin}
+                          onChange={e => setFormData({ ...formData, adminPin: e.target.value.replace(/\D/g, '') })}
+                          className="w-full pl-10 pr-4 py-3 bg-primary/5 border border-primary/20 rounded-xl text-sm font-mono text-primary focus:outline-none focus:border-primary/50 transition-all"
+                          placeholder="Gerar automático"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                  {/* SELEÇÃO MÚLTIPLA DE CARGOS */}
@@ -1115,10 +1233,10 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                         <div className="px-5 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-1">
                           {[
                             { k: 'viewFinance', l: 'Ver Relatórios', d: 'Acesso a lucros e KPIs.' },
-                            { k: 'managePayments', l: 'Processar Pagamentos', d: 'Lançar mensalidades.', dep: 'viewFinance' },
-                            { k: 'manageExpenses', l: 'Gerenciar Despesas', d: 'Lançar contas a pagar.', dep: 'viewFinance' },
+                            { k: 'managePayments', l: 'Processar mensalidades.', d: 'Lançar mensalidades.', dep: 'viewFinance' },
                           ].filter(p => canGrantPermission(p.k)).map(p => {
-                            const isGhost = p.dep && !formData.permissions[p.dep];
+                            const isStudent = (formData.modalities || []).length > 0;
+                            const isGhost = (p.dep && !formData.permissions[p.dep]) || (p.k === 'managePayments' && isStudent && !formData.permissions.managePayments);
                             return (
                               <div key={p.k} className={`flex items-center justify-between ${isGhost ? 'opacity-30 grayscale' : ''}`}>
                                 <div className="flex-1 pr-6">
@@ -1161,8 +1279,9 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                             <div className="pt-3 border-t border-white/5">
                               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3">Cobrança</p>
                               {[
-                                { k: 'viewBillingTab', l: 'Ver aba Cobrança', d: 'Acessar a aba de cobranças.', dep: 'viewFinance' },
+{ k: 'viewBillingTab', l: 'Ver aba Cobrança', d: 'Acessar a aba de cobranças.', dep: 'viewFinance' },
                                 { k: 'manageBillingTab', l: 'Gerenciar aba Cobrança', d: 'Adicionar/editar cobranças.', dep: 'viewBillingTab' },
+                                { k: 'visualizar_relatorio_pagamentos', l: 'Visualizar Relatório', d: 'Gerar relatórios de pagamentos.', dep: 'viewBillingTab' },
                               ].filter(p => canGrantPermission(p.k)).map(p => {
                                 const isGhost = p.dep && !formData.permissions[p.dep];
                                 return (
@@ -1230,16 +1349,17 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                           {[
                              { k: 'viewStaffPins', l: 'Ver PIN da Equipe', d: 'Acesso a senhas de colaboradores.' },
                              { k: 'viewStudentPins', l: 'Ver PIN de Alunos', d: 'Acesso a senhas de alunos.' },
+                             { k: 'all', l: 'Acesso Total (Super Admin)', d: 'Ignora todas as restrições.', r: true },
                            ].filter(p => canGrantPermission(p.k)).map(p => (
                                <div key={p.k} className="flex items-center justify-between">
                                  <div className="flex-1 pr-6">
-                                   <p className="text-[11px] font-bold uppercase tracking-tight text-gray-200">{p.l}</p>
+                                   <p className={`text-[11px] font-bold uppercase tracking-tight ${p.r ? 'text-red-400' : 'text-gray-200'}`}>{p.l}</p>
                                    <p className="text-[10px] text-gray-500 font-medium leading-tight">{p.d}</p>
                                  </div>
                                  <button
                                    type="button"
                                    onClick={() => handleTogglePermission(p.k)}
-                                   className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? 'bg-orange-500' : 'bg-gray-800'}`}
+                                   className={`w-9 h-5 rounded-full relative transition-all ${formData.permissions[p.k] ? (p.r ? 'bg-red-500' : 'bg-orange-500') : 'bg-gray-800'}`}
                                  >
                                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${formData.permissions[p.k] ? 'translate-x-4' : ''}`} />
                                  </button>
@@ -1280,11 +1400,10 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
                 </button>
               </div>
             </form>
-          </motion.div>
         </motion.div>
-      </AnimatePresence>
+      </motion.div>
     )
-  )
+  );
 
   return createPortal(modalContent, document.body)
 }

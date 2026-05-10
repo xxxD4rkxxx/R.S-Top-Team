@@ -80,7 +80,7 @@ function ChartTooltip({ active, payload, label }) {
     )
 }
 
-// ── Session Drawer ─────────────────────────────────────────────
+// ── Session Drawer ───────────────────────────────────────────── 
 function SessionDrawer({ session, isOpen, onClose, students }) {
     if (!session) return null
     const attList = session.attendances || []

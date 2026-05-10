@@ -828,7 +828,9 @@ export default function BillingPage() {
                         </td>
                         <td className="py-4 px-5 text-right hidden sm:table-cell">
                           <div className="flex flex-col items-end">
-                            <span className="text-xs text-gray-400 font-mono">{R$(calculateModalityValue(student, modalities))}</span>
+                            <span className="text-xs text-gray-400 font-mono">
+                              {student ? R$(calculateModalityValue(student, modalities)) : '—'}
+                            </span>
                           </div>
                         </td>
                         <td className="py-4 px-5 text-center">
