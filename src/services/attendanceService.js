@@ -75,21 +75,24 @@ export const attendanceService = {
           })
 
           if (student.status === 'present') {
-            const collectionName = student.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
-            const userRef = doc(db, collectionName, String(student.id))
-            const JORNADA = FIELDS.JORNADA_TECNICA || 'jornada_tecnica'
-            const AULAS = FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO || 'aulas_desde_ultima_graduacao'
-            
-            batch.set(userRef, {
-              lastAttendanceAt: serverTimestamp(),
-              ultima_visita: serverTimestamp(),
-              total_visitas: increment(1),
-              [FIELDS.STATUS]: 'Ativo',
-              [JORNADA]: {
-                [AULAS]: increment(1)
-              },
-              [FIELDS.ATUALIZADO_EM]: serverTimestamp()
-            }, { merge: true })
+            // Se for visitante temporário, não o salva no banco global de alunos/visitantes
+            if (!student.isTemporary) {
+              const collectionName = student.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
+              const userRef = doc(db, collectionName, String(student.id))
+              const JORNADA = FIELDS.JORNADA_TECNICA || 'jornada_tecnica'
+              const AULAS = FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO || 'aulas_desde_ultima_graduacao'
+              
+              batch.set(userRef, {
+                lastAttendanceAt: serverTimestamp(),
+                ultima_visita: serverTimestamp(),
+                total_visitas: increment(1),
+                [FIELDS.STATUS]: 'Ativo',
+                [JORNADA]: {
+                  [AULAS]: increment(1)
+                },
+                [FIELDS.ATUALIZADO_EM]: serverTimestamp()
+              }, { merge: true })
+            }
 
             // 🔥 Registro em Coleção Raiz (Double-Write) para facilitar KPIs e Histórico sem erros de índice
             const logRef = doc(collection(db, COLLECTIONS.PRESENCAS_LOG), `${student.id}_${activeSession.id}`)

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   CalendarDays, Users, Clock3, History, CheckCircle2, XCircle,
-  AlertCircle, ChevronLeft, Cake, Stethoscope, Trophy, Search, Edit2, Save
+  AlertCircle, ChevronLeft, Cake, Stethoscope, Trophy, Search, Edit2, Save, User
 } from 'lucide-react'
 import { db } from '../../firebase/config'
 import {
@@ -38,6 +38,8 @@ export default function ReviewAttendancePage() {
   const [search, setSearch] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [extraStudents, setExtraStudents] = useState([]) // 🔥 Armazena visitantes temporários
+
 
   async function handleSaveEdits() {
     setIsSaving(true)
@@ -94,11 +96,24 @@ export default function ReviewAttendancePage() {
         const attendancesRef = collection(db, COLLECTIONS.CHAMADAS, sessionId, SUB_COLLECTIONS.PRESENCAS)
         const recordsSnap = await getDocs(attendancesRef)
         const recordsMap = {}
+        const extras = []
+
         recordsSnap.docs.forEach(d => {
           const data = d.data()
           recordsMap[data.studentId] = data[FIELDS.STATUS] || data.status
+          
+          // Se for um visitante temporário (ou alguém que já foi excluído do banco principal)
+          if (String(data.studentId).startsWith('temp_vis_')) {
+            extras.push({
+              id: data.studentId,
+              [FIELDS.NOME]: data.studentName || 'Visitante',
+              type: 'visitante',
+              isVisitor: true
+            })
+          }
         })
         setRecords(recordsMap)
+        setExtraStudents(extras)
 
       } catch (err) {
         console.error('Erro ao buscar dados:', err)
@@ -138,6 +153,9 @@ export default function ReviewAttendancePage() {
 
       return hasModality || hasRecord
     })
+
+    // ➕ Adiciona os visitantes temporários que só existem nesta sessão
+    list = [...list, ...extraStudents]
 
     if (search) {
       list = list.filter(s => {
@@ -266,7 +284,11 @@ export default function ReviewAttendancePage() {
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    {student.photo ? (
+                    {student.type === 'visitante' || student.isVisitor ? (
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-primary bg-primary/20 border border-primary/30">
+                        <User size={18} strokeWidth={2.5} />
+                      </div>
+                    ) : student.photo ? (
                       <img src={student.photo} alt={student.nome || student.name} className="w-10 h-10 rounded-full object-cover border border-white/10" />
                     ) : (
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${bgClass}`}>

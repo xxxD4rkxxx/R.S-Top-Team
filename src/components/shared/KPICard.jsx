@@ -53,7 +53,7 @@ export default function KPICard({
         <div className={`text-2xl sm:text-3xl lg:text-4xl font-black mb-1.5 tracking-tight ${displayColor}`}>
           {value}
         </div>
-        <p className="text-[10px] lg:text-[11px] text-gray-500 leading-tight font-medium tracking-wide">
+        <p className="text-[10px] lg:text-[11px] text-gray-500 leading-tight font-medium tracking-wide truncate">
           {displayDesc}
         </p>
       </div>

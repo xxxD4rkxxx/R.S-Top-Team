@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   ClipboardCheck, Search, Check, X, Plus, Clock, Calendar,
   User, History, Trophy, Eye, Info, AlertTriangle, Clock3, ChevronDown, ChevronUp,
-  Edit3, ChevronRight, RefreshCcw, LayoutGrid, List, UserPlus
+  Edit3, ChevronRight, RefreshCcw, LayoutGrid, List, UserPlus, Trash2
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
@@ -120,6 +120,8 @@ export default function AttendancePage() {
   const [isFinishingSession, setIsFinishingSession] = useState(false)
   const [recentSessions, setRecentSessions] = useState([])
   const [sessionAttendance, setSessionAttendance] = useState({})
+  const [sessionVisitors, setSessionVisitors] = useState([])
+  const [sessionNotes, setSessionNotes] = useState('')
   const { modalities, loading: loadingModalities } = useModalities()
   const { users: staffMembers } = useSystemUsers()
   const { user, userData, effectiveRole } = useAuth()
@@ -198,6 +200,20 @@ export default function AttendancePage() {
       }
     }
   }, [availableModalities, loadingModalities, sessionModality])
+
+  // 🔥 Inicializar professor responsável com o usuário logado (Apenas uma vez)
+  const hasInitializedProfessor = React.useRef(false)
+  const wasManuallyEdited = React.useRef(false)
+  
+  useEffect(() => {
+    if (userData && !hasInitializedProfessor.current) {
+      const myName = userData.nome || userData.name || ''
+      if (myName) {
+        setSessionProfessor(myName)
+        hasInitializedProfessor.current = true
+      }
+    }
+  }, [userData])
 
   // ── States dos Filtros de Histórico ──────────────────────────────────────────
   const [historySortBy, setHistorySortBy] = useState('recente')
@@ -426,7 +442,12 @@ export default function AttendancePage() {
   const activeList = useMemo(() => {
     if (!activeSession) return []
 
+    // 🛡️ Filtro: MOSTRAR APENAS ALUNOS (Visitantes fixos não aparecem mais por padrão)
     let list = students.filter(student => {
+      // 1. Mostrar apenas ALUNOS (exclui visitantes permanentes da lista padrão)
+      const papeis = student.papeis || student.roles || {};
+      if (student.isVisitor || papeis.visitante) return false;
+
       // Função de normalização robusta
       const normalizeStr = (str) => String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
 
@@ -452,25 +473,40 @@ export default function AttendancePage() {
       if (!hasModality) return false
 
       // Regra 2: Se a sessão está vinculada a uma turma específica, filtra por ela (SSoT)
-      // EXCEPT for visitors (who are guests in this session)
-      if (activeSession.turmaId && !student.isVisitor) {
+      if (activeSession.turmaId) {
         const studentTurmas = (student.turmas || []).map(t => String(t).toLowerCase());
         return studentTurmas.includes(activeSession.turmaId.toLowerCase());
       }
 
       // Fallback: Se não houver ID de turma na sessão, mostra todos da modalidade
       return true
-    })
+    });
 
     if (searchActive) {
       list = list.filter(s => (s.name || '').toLowerCase().includes(searchActive.toLowerCase()))
     }
 
-    return list.map(student => ({
-      ...student,
-      status: sessionAttendance[student.id] || null
-    }))
-  }, [activeSession, students, searchActive, sessionAttendance])
+    // ➕ Mesclar com os visitantes adicionados manualmente nesta sessão
+    const visitorsForList = sessionVisitors.map(v => ({
+      ...v,
+      isVisitor: true,
+      isTemporary: true,
+      roles: { visitante: true },
+      belt: 'none',
+      status: sessionAttendance[v.id] !== undefined ? sessionAttendance[v.id] : 'present'
+    }));
+
+    return [...list.map(student => ({
+        ...student,
+        status: sessionAttendance[student.id] || null
+      })), ...visitorsForList]
+      .sort((a, b) => {
+        const aVis = a.isVisitor ? 1 : 0;
+        const bVis = b.isVisitor ? 1 : 0;
+        if (aVis !== bVis) return aVis - bVis;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+  }, [activeSession, students, searchActive, sessionAttendance, sessionVisitors])
 
   const stats = useMemo(() => {
     const present = activeList.filter(s => s.status === 'present').length
@@ -480,8 +516,10 @@ export default function AttendancePage() {
 
   // Helper to sync professors when modality/time changes
   const syncProfessors = (modName, timeStr) => {
+    // 🛡️ Se o usuário já mexeu no campo manualmente, não sobrescrevemos mais
+    if (wasManuallyEdited.current) return;
+
     // 🥇 Prioridade Absoluta: Usuário logado (Seja Gestor ou Professor)
-    // Conforme pedido: "quero q meu nome, ja fique como selecionado"
     const currentName = userData?.name || userData?.nome
     if (currentName) {
       setSessionProfessor(currentName)
@@ -549,6 +587,7 @@ export default function AttendancePage() {
       setShowMobileConfig(false)
       setToastMessage('Sessão iniciada localmente')
       setObsText('')
+      setSessionVisitors([])
     } catch (err) {
       console.error('Erro crítico ao iniciar chamada:', err)
       setToastMessage('Erro interno ao iniciar chamada')
@@ -575,8 +614,17 @@ export default function AttendancePage() {
       return
     }
     try {
-      const visitorData = await addVisitor(visitorName.trim(), sessionModality, sessionProfessor || userData?.nome || 'Sistema')
-      setToastMessage(`Visitante ${visitorName} cadastrado!`)
+      // 🚀 Cria um visitante TEMPORÁRIO apenas para a sessão atual
+      const visitorData = {
+        id: `temp_vis_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        name: visitorName.trim(),
+        roles: { visitante: true },
+        isVisitor: true,
+        total_visitas: 1 // Por ser temporário, consideramos 1 visita nesta aula
+      };
+
+      setToastMessage(`Visitante ${visitorName} adicionado à chamada!`)
+      setSessionVisitors(prev => [...prev, visitorData])
       setVisitorName('')
       setShowVisitorModal(false)
       
@@ -587,8 +635,18 @@ export default function AttendancePage() {
         }))
       }
     } catch (err) {
-      setToastMessage('Erro ao cadastrar visitante')
+      setToastMessage('Erro ao adicionar visitante à lista')
     }
+  }
+
+  const handleRemoveVisitor = (visitorId) => {
+    setSessionVisitors(prev => prev.filter(v => v.id !== visitorId))
+    setSessionAttendance(prev => {
+      const updated = { ...prev }
+      delete updated[visitorId]
+      return updated
+    })
+    setToastMessage('Visitante removido da chamada')
   }
 
   const handleSaveObs = () => {
@@ -661,15 +719,29 @@ export default function AttendancePage() {
               <button
                 onClick={handleDiscardSession}
                 className="p-2.5 rounded-xl bg-white/5 text-rose-500 border border-white/5 active:scale-90 transition-all"
+                title="Cancelar Chamada"
               >
                 <X size={20} strokeWidth={3} />
               </button>
-              <button
-                onClick={handleFinalizeSession}
-                className="p-2.5 rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"
-              >
-                {isFinishingSession ? <RefreshCcw className="animate-spin" size={20} /> : <Check size={20} strokeWidth={3} />}
-              </button>
+              
+              <div className="flex items-center gap-3">
+                {activeList.filter(s => !s.status).length > 0 && (
+                  <span className="hidden sm:inline-block text-[10px] font-black uppercase tracking-widest text-gray-500">
+                    {activeList.filter(s => !s.status).length} Pendentes
+                  </span>
+                )}
+                <button
+                  onClick={handleFinalizeSession}
+                  className={`p-2.5 rounded-xl transition-all shadow-lg active:scale-90 ${
+                    activeList.filter(s => !s.status).length === 0 
+                    ? 'bg-emerald-500 text-white shadow-emerald-500/20' 
+                    : 'bg-white/5 text-gray-500 border border-white/5 hover:bg-white/10'
+                  }`}
+                  title="Finalizar Chamada"
+                >
+                  {isFinishingSession ? <RefreshCcw className="animate-spin" size={20} /> : <Check size={20} strokeWidth={3} />}
+                </button>
+              </div>
             </>
           ) : (
             <button
@@ -931,13 +1003,6 @@ export default function AttendancePage() {
 
                 <div className="hidden md:flex justify-center gap-3 pt-1">
                   <button
-                    onClick={() => setShowVisitorModal(true)}
-                    className="flex items-center gap-2 bg-white/5 border border-white/5 text-white rounded-xl px-6 py-3 font-bold uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all shadow-lg shadow-black/20"
-                  >
-                    <UserPlus size={16} className="text-primary" />
-                    VISITANTES
-                  </button>
-                  <button
                     onClick={handleStartSession}
                     disabled={isSavingSession || !sessionModality}
                     className={`btn-primary rounded-xl px-10 py-3 font-black uppercase text-[10px] tracking-[0.2em] shadow-xl transition-all disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed
@@ -1120,34 +1185,58 @@ export default function AttendancePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {activeList.map(s => (
-                <div key={s.id} className="p-4 rounded-xl bg-[#0d0d0d] border border-white/5 flex flex-col gap-3 group transition-all shadow-lg">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shadow-inner border border-white/10 ${beltConfig[s.belt]?.bgClass || 'bg-zinc-800 text-white'} ${(!s.belt || s.belt === 'branca') ? 'text-black' : 'text-white'}`}>
-                      {s.name ? s.name.trim().charAt(0).toUpperCase() : '?'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-white uppercase text-[11px] truncate tracking-tight">{s.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-[9px] text-gray-500 uppercase font-black">{beltConfig[s.belt]?.label}</p>
-                        {s.isVisitor && (
-                          <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md">
-                            <span className="text-[8px] font-black text-primary uppercase tracking-tighter">VISITANTE</span>
-                            <span className="w-1 h-1 rounded-full bg-primary/40" />
-                            <span className="text-[8px] font-black text-primary/70 uppercase tracking-tighter">{s.total_visitas || 0} DIAS</span>
+              {activeList.map((s, idx) => {
+                const isVisitor = s.isVisitor || s.roles?.visitante;
+                const showDivider = idx > 0 && isVisitor && !activeList[idx-1].isVisitor;
+
+                return (
+                  <React.Fragment key={s.id}>
+                    {showDivider && (
+                      <div className="col-span-full mt-4 mb-2 flex items-center gap-4">
+                        <div className="h-[1px] flex-1 bg-white/10" />
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] whitespace-nowrap">Visitantes</span>
+                        <div className="h-[1px] flex-1 bg-white/10" />
+                      </div>
+                    )}
+                    <div className={`p-4 rounded-xl bg-[#0d0d0d] border transition-all shadow-lg flex flex-col gap-3 group
+                      ${unmarkedAlert && !s.status ? 'border-rose-500 shadow-rose-500/20 animate-pulse' : 
+                      isVisitor ? 'border-primary/20 shadow-primary/10' : 'border-white/5'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 flex items-center justify-center font-black text-xs shadow-inner border border-white/10 shrink-0
+                          ${isVisitor ? 'rounded-full bg-primary/20 text-primary border-primary/30' : 
+                          `rounded-full ${beltConfig[s.belt]?.bgClass || 'bg-zinc-800 text-white'} ${(!s.belt || s.belt === 'branca') ? 'text-black' : 'text-white'}`}`}>
+                          {isVisitor ? <User size={18} strokeWidth={2.5} /> : (s.name ? s.name.trim().charAt(0).toUpperCase() : '?')}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-black uppercase text-[11px] truncate tracking-tight ${isVisitor ? 'text-primary' : 'text-white'}`}>{s.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[9px] text-gray-500 uppercase font-black">{isVisitor ? 'Visitante' : beltConfig[s.belt]?.label}</p>
+                            {!isVisitor && <StudentAttendanceAlert student={s} />}
                           </div>
+                        </div>
+                        {isVisitor && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleRemoveVisitor(s.id); }}
+                            className="h-[42px] w-[42px] flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-500 transition-all shrink-0 ml-auto"
+                            title="Remover visitante da chamada"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         )}
-                        <StudentAttendanceAlert student={s} />
+                      </div>
+                      <div className={`grid gap-1.5 ${isVisitor ? 'grid-cols-1' : 'grid-cols-3'}`}>
+                        <button onClick={() => handleMark(s.id, 'present')} className={`py-2.5 rounded-lg text-[9px] font-black transition-all ${s.status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-emerald-500 hover:bg-emerald-500/10'}`}>PRESENTE</button>
+                        {!isVisitor && (
+                          <>
+                            <button onClick={() => handleMark(s.id, 'absent')} className={`py-2.5 rounded-lg text-[9px] font-black transition-all ${s.status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-rose-500 hover:bg-rose-500/10'}`}>FALTA</button>
+                            <button onClick={() => handleMark(s.id, 'justified')} className={`py-2.5 rounded-lg text-[9px] font-black transition-all ${s.status === 'justified' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-blue-500 hover:bg-blue-500/10'}`}>JUSTIF.</button>
+                          </>
+                        )}
                       </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <button onClick={() => handleMark(s.id, 'present')} className={`py-2.5 rounded-lg text-[9px] font-black transition-all ${s.status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-emerald-500 hover:bg-emerald-500/10'}`}>PRESENTE</button>
-                    <button onClick={() => handleMark(s.id, 'absent')} className={`py-2.5 rounded-lg text-[9px] font-black transition-all ${s.status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-rose-500 hover:bg-rose-500/10'}`}>FALTA</button>
-                    <button onClick={() => handleMark(s.id, 'justified')} className={`py-2.5 rounded-lg text-[9px] font-black transition-all ${s.status === 'justified' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-blue-500 hover:bg-blue-500/10'}`}>JUSTIF.</button>
-                  </div>
-                </div>
-              ))}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1208,13 +1297,17 @@ export default function AttendancePage() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-muted uppercase ml-1">Professor Responsável</label>
                     <div className="relative group">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50 z-20" size={18} />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50 z-20" size={18} />
                       <input
                         value={sessionProfessor}
-                        onChange={(e) => { setSessionProfessor(e.target.value); setShowProfessorDropdown(true); }}
+                        onChange={(e) => { 
+                          setSessionProfessor(e.target.value); 
+                          setShowProfessorDropdown(true);
+                          wasManuallyEdited.current = true; // 🚩 Trava o auto-preenchimento
+                        }}
                         onFocus={() => setShowProfessorDropdown(true)}
-                        className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white font-bold outline-none focus:border-primary/30"
-                        placeholder="Nome do Professor ou Visitante"
+                        className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white font-bold outline-none focus:border-primary/30 transition-all placeholder:text-gray-700"
+                        placeholder="Pesquisar instrutor..."
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                         <ChevronDown size={18} className={`text-gray-600 transition-transform duration-300 ${showProfessorDropdown ? 'rotate-180' : ''}`} />
@@ -1228,39 +1321,52 @@ export default function AttendancePage() {
                               initial={{ opacity: 0, y: 10, scale: 0.95 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                              className="absolute top-full left-0 right-0 mt-2 z-[200] bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+                              className="absolute top-full left-0 right-0 mt-2 z-[200] bg-[#141414] border border-white/10 rounded-2xl shadow-2xl overflow-hidden divide-y divide-white/5"
                             >
-                              <div className="bg-white/5 p-3 border-b border-white/5 flex items-center justify-between">
-                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Resultados da Busca</span>
+                              <div className="bg-white/[0.02] p-3 border-b border-white/5 flex items-center justify-between">
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Membros da Equipe</span>
                                 {filteredInstructors.length === 0 && sessionProfessor && (
                                   <span className="text-[8px] font-black text-rose-500 uppercase px-2 py-0.5 bg-rose-500/10 rounded-full">Visitante</span>
                                 )}
                               </div>
-                              <div className="max-h-[200px] overflow-y-auto py-2 custom-scrollbar">
+                              <div className="max-h-[240px] overflow-y-auto py-1 custom-scrollbar">
                                 {filteredInstructors.map((s) => (
                                   <button
                                     key={s.id}
                                     type="button"
-                                    onClick={() => { setSessionProfessor(s.name); setShowProfessorDropdown(false); }}
-                                    className={`w-full text-left px-5 py-4 text-xs font-bold transition-all flex items-center justify-between border-b border-white/[0.02] last:border-0
-                                      ${sessionProfessor === s.name ? "text-primary bg-primary/5" : "text-gray-300 active:bg-white/5"}`}
+                                    onClick={() => { 
+                                      setSessionProfessor(s.name); 
+                                      setShowProfessorDropdown(false); 
+                                      wasManuallyEdited.current = true;
+                                    }}
+                                    className={`w-full text-left px-5 py-4 transition-all flex items-center gap-4 border-b border-white/[0.02] last:border-0 group/item
+                                      ${sessionProfessor === s.name ? "bg-primary/5" : "hover:bg-white/5 active:bg-white/10"}`}
                                   >
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-2 h-2 rounded-full ${s.roles?.admin || s.roles?.gestor ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]'}`} />
-                                      {s.name}
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg
+                                      ${sessionProfessor === s.name ? 'bg-primary text-black' : 'bg-primary/10 text-primary group-hover/item:bg-primary group-hover/item:text-black'}`}>
+                                      {s.roles?.admin || s.roles?.gestor ? <Shield size={16} /> : <GraduationCap size={16} />}
                                     </div>
-                                    {sessionProfessor === s.name && <Check size={16} />}
+                                    <div className="flex-1">
+                                      <p className={`text-xs font-black uppercase tracking-tight ${sessionProfessor === s.name ? 'text-primary' : 'text-white'}`}>
+                                        {s.name}
+                                      </p>
+                                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mt-0.5">
+                                        {s.roles?.admin ? 'Administrador' : s.roles?.gestor ? 'Gestor' : 'Professor'}
+                                      </p>
+                                    </div>
+                                    {sessionProfessor === s.name && <Check size={16} className="text-primary" />}
                                   </button>
                                 ))}
+                                
                                 {filteredInstructors.length === 0 && sessionProfessor && (
-                                  <div className="p-6 text-center">
-                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
-                                      <UserPlus size={18} className="text-gray-600" />
+                                  <div className="p-8 text-center bg-rose-600/[0.02]">
+                                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/5">
+                                      <UserPlus size={20} className="text-gray-600" />
                                     </div>
-                                    <p className="text-xs text-gray-400 font-medium">Nenhum instrutor encontrado.</p>
-                                    <p className="text-sm text-white font-black mt-1 uppercase">"{sessionProfessor}"</p>
-                                    <div className="mt-4 px-3 py-2 bg-rose-600/10 rounded-xl border border-rose-600/20">
-                                      <p className="text-[9px] text-rose-500 font-black tracking-widest uppercase">Professor Visitante</p>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Nenhum instrutor encontrado</p>
+                                    <p className="text-sm text-white font-black mt-1 uppercase tracking-tight">"{sessionProfessor}"</p>
+                                    <div className="mt-5 px-4 py-2.5 bg-rose-600/10 rounded-xl border border-rose-600/20 inline-block">
+                                      <p className="text-[9px] text-rose-500 font-black tracking-widest uppercase">Será registrado como Visitante</p>
                                     </div>
                                   </div>
                                 )}
@@ -1298,6 +1404,8 @@ export default function AttendancePage() {
                     </div>
                   </div>
 
+                  {/* Data da Aula — aparece primeiro */}
+                  {/* Horário Previsto — aparece primeiro */}
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-muted uppercase ml-1">Horário Previsto</label>
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(90px,1fr))] gap-2 w-full">
@@ -1321,8 +1429,8 @@ export default function AttendancePage() {
                           )
                         })}
                     </div>
-                    {/* Fallback Input for Custom Time */}
-                    <div className="relative w-full mt-3">
+                    {/* Input manual com mesmo estilo da data */}
+                    <div className="relative">
                       <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                       <input
                         type="time"
@@ -1333,6 +1441,7 @@ export default function AttendancePage() {
                     </div>
                   </div>
 
+                  {/* Data da Aula — abaixo do horário */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-muted uppercase ml-1">Data da Aula</label>
                     <div className="relative">

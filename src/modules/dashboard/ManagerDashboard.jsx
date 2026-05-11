@@ -318,10 +318,6 @@ export default function ManagerDashboard() {
                 desc: 'Total em pendentes', icon: Wallet, color: 'text-rose-400', iconColor: 'text-gray-400'
             },
             {
-                title: 'Grad. Próximas', value: initialLoading && !graduations.length ? '...' : String(graduations.length),
-                desc: 'Aptos a graduar', icon: Award, color: 'text-white', iconColor: 'text-[#DC143C]'
-            },
-            {
                 title: 'Professores', value: loadingStaff ? '...' : String(staffMembers.filter(s => {
                     const roles = s.papeis || s.roles || {};
                     const roleStr = String(s.role || '').toLowerCase();
@@ -380,7 +376,7 @@ export default function ManagerDashboard() {
         }
 
         return baseKPIs
-    }, [isLoadingStudents, loadingModalities, masterModalities, activeMembers, newMembers30Days, initialLoading, presentCount, absentList, retentionRate, weekGrowth, graduations, loadingStaff, staffMembers, safeStudents, totalPaid, totalOverdue, overdueCount])
+    }, [isLoadingStudents, loadingModalities, masterModalities, activeMembers, newMembers30Days, initialLoading, presentCount, absentList, retentionRate, weekGrowth, loadingStaff, staffMembers, safeStudents, totalPaid, totalOverdue, overdueCount])
 
     const history = useMemo(() => {
         const months = []
