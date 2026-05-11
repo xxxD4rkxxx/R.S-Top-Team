@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { db } from '../../firebase/config'
 import { collectionGroup, query, where, getDocs, orderBy, collection as fsCollection, addDoc, serverTimestamp } from 'firebase/firestore'
 import {
@@ -6,8 +7,9 @@ import {
   Trophy, FileDown, Target, MessageSquare, Plus, X, Star
 } from 'lucide-react'
 import { COLLECTIONS, SUB_COLLECTIONS } from '../../firebase/collections'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ReferenceLine } from 'recharts'
-import SlideOver from '../shared/SlideOver'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { formatBR } from '../../utils/dateUtils'
 
 const DAYS_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
@@ -47,15 +49,17 @@ function CustomBarTooltip({ active, payload, label }) {
 
 // ── Component ────────────────────────────────────────────────
 export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
-  const [records, setRecords] = useState([]) // { date: Date, modality, status, sessionId }
+  const [records, setRecords] = useState([])
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewDate, setViewDate] = useState(() => new Date())
-  const [activeTab, setActiveTab] = useState('calendar') // 'calendar' | 'charts' | 'notes'
+  const [activeTab, setActiveTab] = useState('calendar') // 'calendar' | 'notes'
   const [showNoteForm, setShowNoteForm] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [savingNote, setSavingNote] = useState(false)
   const [selectedDayInfo, setSelectedDayInfo] = useState(null)
+
+  useHideMobileNav(isOpen)
 
   // ── Load data ───────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -278,13 +282,59 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
 
   const tabs = [
     { id: 'calendar', label: 'Calendário' },
-    { id: 'charts', label: 'Gráficos' },
     { id: 'notes', label: `Notas${notes.length ? ` (${notes.length})` : ''}` },
   ]
 
-  return (
-    <SlideOver isOpen={isOpen} onClose={onClose} title="Histórico de Presença" subtitle={student?.name} width="max-w-xl">
-      <div className="flex flex-col">
+  if (!isOpen) return null
+
+  return createPortal(
+    <motion.div
+      key="attendance-history-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[9990] bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        drag={window.innerWidth < 640 ? 'y' : false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.5 }}
+        onDragEnd={(_, info) => { if (info.offset.y > 100) onClose() }}
+        initial={{ y: '100%', opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: '100%', opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 350, mass: 0.5 }}
+        onClick={e => e.stopPropagation()}
+        className="fixed z-[9991] bg-[#0A0A0A] border border-white/10 shadow-2xl flex flex-col overflow-hidden
+                   inset-x-0 bottom-0 h-[95vh] rounded-t-[32px]
+                   sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-xl sm:w-full sm:h-[90vh] sm:rounded-[32px]"
+      >
+        {/* Mobile Drag Handle */}
+        <div className="sm:hidden flex justify-center pt-4 pb-2 shrink-0">
+          <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+        </div>
+
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02] shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+              <CalendarDays className="text-primary" size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-white uppercase tracking-tight">Histórico de Presença</h2>
+              {student?.name && <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{student.name}</p>}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* ── KPIs ─────────────────────────────────────── */}
         <div className="px-5 pt-5 pb-4 border-b border-white/10 space-y-4">
           <div className="grid grid-cols-3 gap-3">
@@ -342,6 +392,20 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
             <>
               {/* ══ CALENDAR TAB ══ */}
               {activeTab === 'calendar' && (
+                <>
+                {/* Consistência Mensal — movida para cima do calendário */}
+                <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
+                  <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Consistência Mensal</h3>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <BarChart data={monthlyData} barSize={12}>
+                      <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 9 }} axisLine={false} tickLine={false} />
+                      <YAxis hide />
+                      <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                      <Bar dataKey="count" fill="var(--clr-primary)" radius={[5, 5, 0, 0]}
+                        label={{ position: 'top', fill: '#6b7280', fontSize: 9, formatter: v => v || '' }} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
                 <div className="space-y-5">
                   <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
                     {/* Calendar Navigation */}
@@ -509,131 +573,9 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                     )}
                   </div>
                 </div>
+                </>
               )}
 
-
-              {/* ══ CHARTS TAB ══ */}
-              {activeTab === 'charts' && (
-                <div className="space-y-6">
-                  {/* Bar: Consistência Mensal */}
-                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
-                    <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Consistência Mensal</h3>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={monthlyData} barSize={14}>
-                        <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis hide />
-                        <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                        <Bar dataKey="count" fill="var(--clr-primary)" radius={[6, 6, 0, 0]}
-                          label={{ position: 'top', fill: '#6b7280', fontSize: 9, formatter: v => v || '' }} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Line: Rumo à Graduação */}
-                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Rumo à Graduação</h3>
-                      <span className="text-[10px] text-purple-400 font-bold">{Math.min(presentRecords.length, PROMO_TARGET)}/{PROMO_TARGET} treinos</span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="w-full bg-white/10 rounded-full h-2 mb-3 overflow-hidden">
-                      <div className="h-2 rounded-full transition-all duration-700"
-                        style={{ width: `${Math.min(100, (presentRecords.length / PROMO_TARGET) * 100)}%`, background: 'linear-gradient(90deg,#8b5cf6,var(--clr-primary))' }} />
-                    </div>
-                    {presentRecords.length >= PROMO_TARGET
-                      ? <p className="text-xs text-emerald-400 font-bold text-center">🎉 Pronto para Graduação!</p>
-                      : <p className="text-xs text-gray-600 text-center">{PROMO_TARGET - presentRecords.length} treinos restantes</p>
-                    }
-                  </div>
-
-                  {/* Pie: Modalidades */}
-                  {modalityData.length > 1 && (
-                    <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
-                      <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Divisão por Modalidade</h3>
-                      <div className="flex items-center gap-4">
-                        <ResponsiveContainer width={120} height={120}>
-                          <PieChart>
-                            <Pie data={modalityData} cx="50%" cy="50%" innerRadius={30} outerRadius={52} paddingAngle={3} dataKey="value">
-                              {modalityData.map((entry, i) => (
-                                <Cell key={i} fill={modalityColors[entry.name] || '#8b5cf6'} />
-                              ))}
-                            </Pie>
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="flex-1 space-y-2">
-                          {modalityData.map(m => {
-                            const pct = Math.round((m.value / presentRecords.length) * 100)
-                            return (
-                              <div key={m.name}>
-                                <div className="flex items-center justify-between text-xs mb-1">
-                                  <span className="text-gray-300 font-medium">{m.name}</span>
-                                  <span className="font-black" style={{ color: modalityColors[m.name] }}>{pct}%</span>
-                                </div>
-                                <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
-                                  <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: modalityColors[m.name] }} />
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Heatmap GitHub-style */}
-                  <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
-                    <h3 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Mapa de Frequência (Horário)</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-[9px]">
-                        <thead>
-                          <tr>
-                            <th className="text-gray-600 text-left pr-3 font-bold pb-1.5 w-8"></th>
-                            <th className="text-gray-600 font-bold pb-1.5 text-center">Manhã</th>
-                            <th className="text-gray-600 font-bold pb-1.5 text-center">Tarde</th>
-                            <th className="text-gray-600 font-bold pb-1.5 text-center">Noite</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {DAYS_FULL.map((day, i) => {
-                            const row = heatmapData[i]
-                            return (
-                              <tr key={day}>
-                                <td className="text-gray-600 pr-3 font-bold py-1">{day.slice(0, 3)}</td>
-                                {['morning', 'afternoon', 'evening'].map(period => {
-                                  const v = row[period]
-                                  const intensity = v / heatMax
-                                  return (
-                                    <td key={period} className="py-1 px-1 text-center">
-                                      <div
-                                        title={`${v} treino${v !== 1 ? 's' : ''}`}
-                                        className="w-8 h-8 rounded-lg mx-auto flex items-center justify-center text-[10px] font-bold transition-all"
-                                        style={{
-                                          background: v > 0 ? `color-mix(in srgb, var(--clr-primary) ${Math.round((0.1 + intensity * 0.8) * 100)}%, transparent)` : 'rgba(255,255,255,0.04)',
-                                          color: intensity > 0.5 ? '#fff' : intensity > 0 ? 'var(--clr-primary)' : '#374151',
-                                          border: v > 0 ? '1px solid color-mix(in srgb, var(--clr-primary) 30%, transparent)' : '1px solid rgba(255,255,255,0.05)'
-                                        }}
-                                      >
-                                        {v > 0 ? v : ''}
-                                      </div>
-                                    </td>
-                                  )
-                                })}
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3 justify-end">
-                      <span className="text-[9px] text-gray-600">Menos</span>
-                      {[0.05, 0.3, 0.55, 0.8, 1].map(v => (
-                        <div key={v} className="w-3 h-3 rounded-sm" style={{ background: `color-mix(in srgb, var(--clr-primary) ${Math.round(v * 100)}%, transparent)` }} />
-                      ))}
-                      <span className="text-[9px] text-gray-600">Mais</span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* ══ NOTES TAB ══ */}
               {activeTab === 'notes' && (
@@ -697,8 +639,9 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
             </>
           )}
         </div>
-      </div>
-    </SlideOver>
+      </motion.div>
+    </motion.div>,
+    document.body
   )
 }
 
