@@ -106,12 +106,23 @@ export function useModalities() {
     const totalModalities = modalities.length
     const totalClasses = turmas.length
     
-    // Média de alunos por turma (Lógica baseada nos dados reais das turmas)
-    const totalStudents = turmas.reduce((acc, t) => acc + (t.enrolledCount || 0), 0)
+    // Média de alunos por turma.
+    // Compatível com dados legados e atuais: totalAlunos / enrolledCount / studentCount.
+    const totalStudents = turmas.reduce((acc, t) => {
+      const students =
+        Number(t.totalAlunos) ||
+        Number(t.enrolledCount) ||
+        Number(t.studentCount) ||
+        0
+      return acc + students
+    }, 0)
     const avgStudentsPerClass = totalClasses > 0 ? totalStudents / totalClasses : 0
     
-    // Ocupação média
-    const totalCapacity = turmas.reduce((acc, t) => acc + (t.capacidade || 0), 0)
+    // Ocupação média (aceita capacidade/capacity para evitar zero em dados antigos).
+    const totalCapacity = turmas.reduce((acc, t) => {
+      const capacity = Number(t.capacidade) || Number(t.capacity) || 0
+      return acc + capacity
+    }, 0)
     const avgOccupancy = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0
 
     return {

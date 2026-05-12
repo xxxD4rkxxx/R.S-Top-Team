@@ -639,6 +639,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
             </>
           )}
         </div>
+        </div>
       </motion.div>
     </motion.div>,
     document.body

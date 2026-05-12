@@ -596,7 +596,10 @@ export default function BillingPage() {
       </div>
     )
 
-    const bgClass = beltConfig[student.belt]?.bgClass || 'belt-none'
+    const beltKey = String(student.belt || 'none').toLowerCase()
+    const belt = beltConfig[beltKey] || beltConfig.none
+    const bgClass = belt.bgClass || 'belt-none'
+    const initialsColor = belt.textColor || '#FFFFFF'
     const initials = student.initials || (student.nome || student.name)?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'A'
 
     return (
@@ -604,9 +607,9 @@ export default function BillingPage() {
         {student.photo ? (
           <img src={student.photo} alt={student.nome || student.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10" />
         ) : (
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black ring-1 ring-white/10 ${bgClass} text-white shadow-inner relative overflow-hidden`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black ring-1 ring-white/10 ${bgClass} shadow-inner relative overflow-hidden`}>
             <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent opacity-40" />
-            <span className="relative z-10 drop-shadow-md">{initials}</span>
+            <span className="relative z-10 drop-shadow-md" style={{ color: initialsColor }}>{initials}</span>
           </div>
         )}
       </div>

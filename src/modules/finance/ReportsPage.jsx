@@ -83,24 +83,31 @@ export default function ReportsPage() {
     const now = new Date()
     const currentMonth = now.getMonth()
     const currentYear = now.getFullYear()
-
-    // Filtro para garantir que pegamos apenas o que pertence ao mês/ano atual
-    const isThisMonth = (item) => {
-      if (!item.dueDate) return false
-      const d = new Date(item.dueDate + 'T00:00:00') // Adicionado T00:00:00 para evitar problemas de timezone
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+    const parseDate = (item, preferPaidAt = false) => {
+      if (preferPaidAt && item?.paidAt?.seconds) return new Date(item.paidAt.seconds * 1000)
+      if (item?.dueDate) return new Date(`${item.dueDate}T00:00:00`)
+      if (item?.createdAt?.seconds) return new Date(item.createdAt.seconds * 1000)
+      return null
     }
+    const inMonth = (date) => !!date && date.getMonth() === currentMonth && date.getFullYear() === currentYear
 
-    const monthBills = bills.filter(isThisMonth)
-    const monthExpenses = expenses.filter(isThisMonth)
+    const monthBills = bills.filter((b) => inMonth(parseDate(b)))
+    const monthBillsPaid = bills.filter((b) => b.status === 'paid' && inMonth(parseDate(b, true)))
+    const monthExpenses = expenses.filter((e) => inMonth(parseDate(e)))
+    const monthExpensesPaid = expenses.filter((e) => e.status === 'paid' && inMonth(parseDate(e, true)))
 
-    const receitaRealizada = monthBills.filter(b => b.status === 'paid').reduce((s, b) => s + (Number(b.amount) || 0), 0)
+    // Receita/despesa realizada = competência de pagamento (paidAt)
+    const receitaRealizada = monthBillsPaid.reduce((s, b) => s + (Number(b.amount) || 0), 0)
     const receitaPendente = monthBills.filter(b => b.status === 'pending').reduce((s, b) => s + (Number(b.amount) || 0), 0)
     const receitaVencida = monthBills.filter(b => b.status === 'overdue').reduce((s, b) => s + (Number(b.amount) || 0), 0)
-    const despesasPagas = monthExpenses.filter(e => e.status === 'paid').reduce((s, e) => s + (Number(e.amount) || 0), 0)
+    const despesasPagas = monthExpensesPaid.reduce((s, e) => s + (Number(e.amount) || 0), 0)
     const despesasPendentes = monthExpenses.filter(e => e.status === 'pending').reduce((s, e) => s + (Number(e.amount) || 0), 0)
     const lucroLiquido = receitaRealizada - despesasPagas
-    const alunosAtivos = students.filter(s => s.status === 'Ativo' && s.roles?.aluno === true)
+    const alunosAtivos = students.filter(s => {
+      const status = String(s.status || '').toLowerCase()
+      const papeis = s.roles || s.papeis || {}
+      return (status === 'ativo' || status === 'active') && (papeis.aluno === true || (!papeis.admin && !papeis.gestor && !papeis.professor))
+    })
     const inadimplentes = new Set(monthBills.filter(b => b.status === 'overdue').map(b => b.studentId)).size
     const totalReceita = receitaRealizada + receitaPendente + receitaVencida
     const totalDespesa = despesasPagas + despesasPendentes
@@ -133,6 +140,12 @@ export default function ReportsPage() {
   const history = useMemo(() => {
     const months = []
     const now = new Date()
+    const parseDate = (item, preferPaidAt = false) => {
+      if (preferPaidAt && item?.paidAt?.seconds) return new Date(item.paidAt.seconds * 1000)
+      if (item?.dueDate) return new Date(`${item.dueDate}T00:00:00`)
+      if (item?.createdAt?.seconds) return new Date(item.createdAt.seconds * 1000)
+      return null
+    }
     
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -140,17 +153,16 @@ export default function ReportsPage() {
       const y = d.getFullYear()
       const label = d.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '')
       
-      const filterMonth = (item) => {
-        if (!item.dueDate) return false
-        const itemDate = new Date(item.dueDate + 'T00:00:00')
-        return itemDate.getMonth() === m && itemDate.getFullYear() === y
+      const filterMonth = (item, preferPaidAt = false) => {
+        const itemDate = parseDate(item, preferPaidAt)
+        return itemDate && itemDate.getMonth() === m && itemDate.getFullYear() === y
       }
       
       const b = bills.filter(filterMonth)
       const e = expenses.filter(filterMonth)
       
-      const rev = b.filter(x => x.status === 'paid').reduce((s, x) => s + (Number(x.amount) || 0), 0)
-      const exp = e.filter(x => x.status === 'paid').reduce((s, x) => s + (Number(x.amount) || 0), 0)
+      const rev = bills.filter(x => x.status === 'paid' && filterMonth(x, true)).reduce((s, x) => s + (Number(x.amount) || 0), 0)
+      const exp = expenses.filter(x => x.status === 'paid' && filterMonth(x, true)).reduce((s, x) => s + (Number(x.amount) || 0), 0)
       
       months.push({ label, rev, exp })
     }
