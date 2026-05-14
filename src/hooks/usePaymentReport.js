@@ -2,24 +2,89 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { db } from '../firebase/config'
 import { collection, query, onSnapshot, orderBy, getDocs } from 'firebase/firestore'
 import { COLLECTIONS } from '../firebase/collections'
-import { useAuth } from '../context/AuthContext'
 import { useModalities } from './useModalities'
 
 let _cachedBills = null
 let _billListeners = []
+
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
+
+const toDateKey = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const getCurrentMonthRange = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const start = `${year}-${String(month + 1).padStart(2, '0')}-01`
+  const lastDay = new Date(year, month + 1, 0).getDate()
+  const end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+  return { start, end }
+}
+
+const getDateKeyFromAny = (value) => {
+  if (!value) return null
+
+  if (typeof value === 'string') {
+    if (DATE_ONLY_REGEX.test(value)) return value
+    const parsed = new Date(value)
+    return toDateKey(parsed)
+  }
+
+  if (value?.seconds) {
+    return toDateKey(new Date(value.seconds * 1000))
+  }
+
+  if (value instanceof Date) {
+    return toDateKey(value)
+  }
+
+  return null
+}
+
+function formatDateForReport(value) {
+  if (!value) return '-'
+
+  if (typeof value === 'string') {
+    if (DATE_ONLY_REGEX.test(value)) {
+      const [year, month, day] = value.split('-')
+      return `${day}/${month}/${year}`
+    }
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+    }
+    return value
+  }
+
+  if (value?.seconds) {
+    return new Date(value.seconds * 1000).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+  }
+
+  return '-'
+}
 
 /**
  * Enriquece um bill com dados de modalidade e turma vindos do perfil do aluno.
  * Garante compatibilidade retroativa com cobranças antigas que não têm esses campos.
  */
 function enrichBillWithStudentData(bill, studentsMap) {
-  // Se já tem os campos preenchidos, não precisa enriquecer
-  if (bill.modalityName && bill.turmaName) return bill
+  const hadOriginalModalityName = !!bill.modalityName
+
+  if (hadOriginalModalityName && bill.turmaName) return bill
 
   const aluno = studentsMap[bill.studentId]
   if (!aluno) return bill
 
-  // Extrai a primeira modalidade do aluno
   const modalities = Array.isArray(aluno.modalities) ? aluno.modalities : 
                      aluno.modality ? [aluno.modality] : []
   
@@ -28,7 +93,6 @@ function enrichBillWithStudentData(bill, studentsMap) {
                        (typeof firstMod === 'object' ? firstMod?.name : firstMod) || 
                        null
 
-  // Extrai a primeira turma do aluno
   const turmas = Array.isArray(aluno.turmas) ? aluno.turmas : 
                  aluno.turma ? [aluno.turma] : []
   const firstTurma = turmas[0]
@@ -40,22 +104,24 @@ function enrichBillWithStudentData(bill, studentsMap) {
     ...bill,
     modalityName: modalityName || bill.modalityName,
     turmaName: turmaName || bill.turmaName,
+    _hasOriginalModalityName: hadOriginalModalityName,
   }
 }
 
 export function usePaymentReport() {
-  const { userData } = useAuth()
   const { modalities } = useModalities()
   const [bills, setBills] = useState(_cachedBills || [])
   const [loading, setLoading] = useState(!_cachedBills)
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(true)
+  const monthRange = useMemo(() => getCurrentMonthRange(), [])
 
   const [filters, setFilters] = useState({
+    periodType: 'payment',
     modalityId: '',
     turmaId: '',
-    startDate: '',
-    endDate: '',
+    startDate: monthRange.start,
+    endDate: monthRange.end,
     year: '',
     studentName: '',
     status: '',
@@ -122,11 +188,13 @@ export function usePaymentReport() {
   }, [])
 
   const resetFilters = useCallback(() => {
+    const range = getCurrentMonthRange()
     setFilters({
+      periodType: 'payment',
       modalityId: '',
       turmaId: '',
-      startDate: '',
-      endDate: '',
+      startDate: range.start,
+      endDate: range.end,
       year: '',
       studentName: '',
       status: '',
@@ -172,7 +240,15 @@ export function usePaymentReport() {
   }, [bills, studentsMap, loadingStudents, students.length])
 
   const filteredBills = useMemo(() => {
-    return enrichedBills.filter(bill => {
+    return enrichedBills
+      .map(bill => ({
+        ...bill,
+        reportPaidAt: formatDateForReport(bill.paidAt),
+        reportDueDate: formatDateForReport(bill.dueDate),
+        paidDateKey: getDateKeyFromAny(bill.paidAt),
+        dueDateKey: getDateKeyFromAny(bill.dueDate),
+      }))
+      .filter(bill => {
       if (filters.modalityId) {
         const matchById = bill.modalityId === filters.modalityId
         const matchByName = (bill.modalityName || '').toLowerCase() === filters.modalityId.toLowerCase()
@@ -181,26 +257,23 @@ export function usePaymentReport() {
       if (filters.turmaId && bill.turmaId !== filters.turmaId) return false
       if (filters.status && bill.status !== filters.status) return false
       if (filters.studentName && !(bill.studentName || '').toLowerCase().includes(filters.studentName.toLowerCase())) return false
-      if (filters.startDate && bill.dueDate < filters.startDate) return false
-      if (filters.endDate && bill.dueDate > filters.endDate) return false
+
+      const periodDateKey = filters.periodType === 'due' ? bill.dueDateKey : bill.paidDateKey
+      if ((filters.startDate || filters.endDate) && !periodDateKey) return false
+      if (filters.startDate && periodDateKey < filters.startDate) return false
+      if (filters.endDate && periodDateKey > filters.endDate) return false
+
       if (filters.year) {
-        const billYear = bill.dueDate ? bill.dueDate.split('-')[0] : ''
+        const billYear = bill.dueDateKey ? bill.dueDateKey.split('-')[0] : ''
         if (billYear !== filters.year) return false
       }
       if (filters.paymentType && bill.type !== filters.paymentType) return false
       if (filters.earlyPaymentOnly) {
-        if (bill.status !== 'paid' || !bill.paidAt || !bill.dueDate) return false
-        const paidTs = bill.paidAt?.seconds
-          ? new Date(bill.paidAt.seconds * 1000)
-          : new Date(bill.paidAt)
-        const dueTs = new Date(bill.dueDate + 'T23:59:59')
-        if (paidTs > dueTs) return false
+        if (bill.status !== 'paid' || !bill.paidDateKey || !bill.dueDateKey) return false
+        if (bill.paidDateKey > bill.dueDateKey) return false
       }
       if (filters.paymentDateStart || filters.paymentDateEnd) {
-        if (!bill.paidAt) return false
-        const paidStr = bill.paidAt?.seconds
-          ? new Date(bill.paidAt.seconds * 1000).toISOString().slice(0, 10)
-          : (typeof bill.paidAt === 'string' ? bill.paidAt.slice(0, 10) : null)
+        const paidStr = bill.paidDateKey
         if (!paidStr) return false
         if (filters.paymentDateStart && paidStr < filters.paymentDateStart) return false
         if (filters.paymentDateEnd && paidStr > filters.paymentDateEnd) return false
@@ -213,62 +286,68 @@ export function usePaymentReport() {
     const modalityMap = {}
     const normalize = (str) => str?.toLowerCase().trim() || ''
 
-    /**
-     * Para cada bill, retorna array de { modName, turmaName } — um par por modalidade do aluno.
-     * Se o bill já tem modalityName salvo → usa ele direto.
-     * Senão, itera TODAS as modalidades do aluno e vincula a turma correspondente de cada uma.
-     */
-    const getModalityTurmaPairs = (bill) => {
+const getAllModalitiesFromStudent = (bill) => {
       const aluno = studentsMap[bill.studentId]
+      if (!aluno) return []
 
-      // Aluno desconhecido → usa o que está salvo no bill (fallback)
-      if (!aluno) {
-        return [{ modName: bill.modalityName || 'Outros', turmaName: bill.turmaName || 'Sem Turma' }]
-      }
+      const alunoMods = Array.isArray(aluno.modalities)
+        ? aluno.modalities
+        : aluno.modality
+          ? [aluno.modality]
+          : []
+      
+      if (alunoMods.length === 0) return []
 
-      // SEMPRE usa o perfil do aluno para pegar TODAS as modalidades corretas
-      const alunoMods = Array.isArray(aluno.modalities) ? aluno.modalities :
-                        aluno.modality ? [aluno.modality] : []
-      const modNames = alunoMods.map(m => typeof m === 'object' ? m?.name : m).filter(Boolean)
-
-      // Sem modalidades no perfil → usa o que está salvo no bill
-      if (modNames.length === 0) {
-        return [{ modName: bill.modalityName || 'Outros', turmaName: 'Sem Turma' }]
-      }
-
-      // Turmas do aluno como uniqueIds (ex: "boxe:tarde", "jiu-jitsu:geral")
       const alunoTurmas = Array.isArray(aluno.turmas) ? aluno.turmas : []
-
-      return modNames.map(modName => {
-        // Localiza a modalidade nos dados carregados para obter o ID
-        const matchedMod = (modalities || []).find(m =>
-          m.name.toLowerCase() === modName.toLowerCase()
-        )
-
-        if (!matchedMod) return { modName, turmaName: 'Sem Turma' }
-
-        // Encontra o uniqueId da turma do aluno que pertence a ESTA modalidade
-        const matchingUniqueId = alunoTurmas.find(t => {
-          if (typeof t !== 'string') return false
-          if (t.includes(':')) {
-            const [tModId] = t.split(':')
-            return tModId === matchedMod.id
-          }
-          // Formato legado (só turmaId): procura dentro das turmas da modalidade
-          return (matchedMod.turmas || []).some(tr => tr.id === t)
+      
+      return alunoMods.map(mod => {
+        const modName = typeof mod === 'object' ? mod?.name : mod
+        
+        let turmaName = 'Geral'
+        
+        const foundTurma = alunoTurmas.find(t => {
+          if (typeof t !== 'string' || !t.includes(':')) return false
+          const [foundModId] = t.split(':')
+          return foundModId.toLowerCase() === modName.toLowerCase()
         })
+        
+        if (foundTurma) {
+          const [, rawTurmaName] = foundTurma.split(':')
+          if (rawTurmaName) {
+            turmaName = rawTurmaName.charAt(0).toUpperCase() + rawTurmaName.slice(1)
+          }
+        }
 
-        if (!matchingUniqueId) return { modName, turmaName: 'Sem Turma' }
-
-        // Resolve o nome legível via turmaLookup (ex: "boxe:tarde" → "Tarde")
-        const looked = turmaLookup[matchingUniqueId]
-        if (looked) return { modName, turmaName: looked.turmaDisplayName }
-
-        // Fallback: capitaliza a parte após os dois pontos
-        const parts = matchingUniqueId.split(':')
-        const rawName = parts.length > 1 ? parts[1] : matchingUniqueId
-        return { modName, turmaName: rawName.charAt(0).toUpperCase() + rawName.slice(1) }
+        return {
+          modName: modName || 'Outros',
+          turmaName,
+        }
       })
+    }
+
+/**
+     * Retorna TODOS os pares modalidade/turma do aluno.
+     * Se o bill tem modalityName original (não enriquecido), retorna apenas 1.
+     * Se o bill foi enriquecido (não tinha modalityName original), retorna todas as modalidades do aluno.
+     * Se o aluno tem 2 turmas na mesma modalidade, retorna apenas a primeira.
+     */
+    const getAllModalityTurmaPairs = (bill) => {
+      const hasOriginal = bill._hasOriginalModalityName
+      
+      if (hasOriginal) {
+        return [{
+          modName: bill.modalityName || 'Outros',
+          turmaName: bill.turmaName || 'Geral',
+        }]
+      }
+
+      const pairs = getAllModalitiesFromStudent(bill)
+      if (pairs.length > 0) return pairs
+      
+      return [{
+        modName: 'Outros',
+        turmaName: 'Geral',
+      }]
     }
 
 
@@ -307,10 +386,10 @@ export function usePaymentReport() {
       }
     }
 
-    filteredBills.forEach(bill => {
-      const pairs = getModalityTurmaPairs(bill)
-      pairs.forEach(({ modName, turmaName }) => {
-        addBillToGroup(bill, modName || 'Outros', turmaName || 'Sem Turma')
+filteredBills.forEach(bill => {
+      const pairs = getAllModalityTurmaPairs(bill)
+      pairs.forEach(pair => {
+        addBillToGroup(bill, pair.modName, pair.turmaName)
       })
     })
 

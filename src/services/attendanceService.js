@@ -56,10 +56,14 @@ export const attendanceService = {
       let presences = 0
       let absents = 0
       let justified = 0
+      let visitantes = 0
 
       activeList.forEach(student => {
         if (student.status) {
-          if (student.status === 'present') presences++
+          if (student.status === 'present') {
+            presences++
+            if (student.isVisitor) visitantes++
+          }
           else if (student.status === 'absent') absents++
           else if (student.status === 'justified') justified++
 
@@ -69,15 +73,17 @@ export const attendanceService = {
             studentId: student.id,
             studentName: student.name,
             [FIELDS.STATUS]: student.status,
-            [FIELDS.MODALIDADE]: activeSession.modality,
-            [FIELDS.DATA]: activeSession.date,
+            [FIELDS.MODALIDADE]: activeSession[FIELDS.MODALIDADE] || activeSession.modality || '',
+            [FIELDS.DATA]: activeSession[FIELDS.DATA] || activeSession.date || '',
+            isVisitor: !!student.isVisitor,
             timestamp: serverTimestamp() 
           })
 
           if (student.status === 'present') {
             // Se for visitante temporário, não o salva no banco global de alunos/visitantes
             if (!student.isTemporary) {
-              const collectionName = student.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
+              // 🛡️ USAR COLEÇÃO DE ORIGEM DINÂMICA (Evita atualizar coleção errada)
+              const collectionName = student.collectionName || (student.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION)
               const userRef = doc(db, collectionName, String(student.id))
               const JORNADA = FIELDS.JORNADA_TECNICA || 'jornada_tecnica'
               const AULAS = FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO || 'aulas_desde_ultima_graduacao'
@@ -100,9 +106,10 @@ export const attendanceService = {
               studentId: student.id,
               studentName: student.name,
               status: student.status,
-              modalidade: activeSession.modality,
-              data: activeSession.date,
-              date: activeSession.date, // Legado
+              modalidade: activeSession[FIELDS.MODALIDADE] || activeSession.modality || '',
+              data: activeSession[FIELDS.DATA] || activeSession.date || '',
+              date: activeSession[FIELDS.DATA] || activeSession.date || '', // Legado
+              isVisitor: !!student.isVisitor,
               timestamp: serverTimestamp(),
               sessionId: activeSession.id
             })
@@ -123,6 +130,7 @@ export const attendanceService = {
         presencasCount: presences,
         faltasCount: absents,
         justificadosCount: justified,
+        visitantesCount: visitantes,
         totalCount: activeList.length,
         [FIELDS.FINALIZADA]: true,
         [CRIADO_EM]: serverTimestamp(),

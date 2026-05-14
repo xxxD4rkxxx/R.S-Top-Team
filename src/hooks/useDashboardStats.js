@@ -30,7 +30,10 @@ export function daysBetween(dateInput, base = new Date()) {
 }
 
 function toYMD(d) {
-  return d.toLocaleDateString('en-CA') // YYYY-MM-DD
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // ── Busca subcoleções de presença em paralelo (elimina N+1) ───────────────────
@@ -143,69 +146,111 @@ export function useDashboardStats(period = 'Semana', instructorId = null) {
       setLoading(true)
 
       try {
-        const now = new Date()
-        const todayStr = toYMD(now)
+        function getBrasiliaNow() {
+          const now = new Date();
+          const spStr = now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+          return new Date(spStr);
+        }
+        const nowBR = getBrasiliaNow();
+        const todayStr = toYMD(nowBR)
         const sessRef = collection(db, COLLECTIONS.CHAMADAS)
 
         // ── 1. Presenças de hoje ─────────────────────────────────────────────────
         // Busca somente sessões de hoje (filtro por data = indexed)
-        let todayQuery = query(sessRef, where('date', '==', todayStr))
+        let todayQuery = query(sessRef, where('data', '==', todayStr))
         if (instructorId) {
-          todayQuery = query(sessRef, where('date', '==', todayStr), where('instructorId', '==', instructorId))
+          todayQuery = query(sessRef, where('data', '==', todayStr), where('instrutorId', '==', instructorId))
         }
-        const todaySnap = await getDocs(todayQuery)
+        const todaySnap = await getDocs(todayQuery).catch(err => {
+          console.error("[DashboardStats] Erro no todayQuery:", err);
+          throw err;
+        })
         const todayResults = await fetchAttendanceCounts(todaySnap.docs)
         const todayPresences = todayResults.reduce((sum, s) => sum + s.presencas, 0)
 
         // ── 2. Limites do período ────────────────────────────────────────────────
-        let rangeStart = new Date(now)
-        let prevRangeStart = new Date(now)
+        let rangeStart = new Date(nowBR)
+        let prevRangeStart = new Date(nowBR)
 
         const DAYS_ABR = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
         const MNTHS_ABR = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
         if (period === 'Semana') {
-          rangeStart.setDate(now.getDate() - 6)
-          prevRangeStart.setDate(now.getDate() - 13)
+          rangeStart.setDate(nowBR.getDate() - 6)
+          prevRangeStart.setDate(nowBR.getDate() - 13)
         } else if (period === 'Mês') {
           rangeStart.setDate(1)
-          prevRangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+          prevRangeStart = new Date(nowBR.getFullYear(), nowBR.getMonth() - 1, 1)
         } else {
-          rangeStart = new Date(now.getFullYear(), 0, 1)
-          prevRangeStart = new Date(now.getFullYear() - 1, 0, 1)
+          rangeStart = new Date(nowBR.getFullYear(), 0, 1)
+          prevRangeStart = new Date(nowBR.getFullYear() - 1, 0, 1)
         }
 
         const rangeStartStr = toYMD(rangeStart)
         const prevRangeStartStr = toYMD(prevRangeStart)
 
-        // 📊 Query simplificada para evitar necessidade de índices compostos complexos
-        const currentQ = query(sessRef, where('date', '>=', rangeStartStr), where('date', '<=', todayStr))
-        const prevQ = query(sessRef, where('date', '>=', prevRangeStartStr), where('date', '<', rangeStartStr))
-
+        // 📊 Busca dupla para o período (Novo vs Legado)
+        // 📊 Busca simplificada pelo campo 'data'
+        const currentQ = query(sessRef, where('data', '>=', rangeStartStr), where('data', '<=', todayStr))
+        const prevQ = query(sessRef, where('data', '>=', prevRangeStartStr), where('data', '<', rangeStartStr))
+ 
         const [currentSnap, prevSnap] = await Promise.all([
           getDocs(currentQ),
           getDocs(prevQ)
-        ])
+        ]).catch(err => {
+          console.error("[DashboardStats] Erro CRÍTICO nas queries de período:", err);
+          throw err;
+        })
+ 
+        let currentDocs = currentSnap.docs.map(d => {
+            const raw = d.data();
+            const keys = Object.keys(raw);
+            const actualDataField = keys.find(k => k.trim() === 'data' || k.trim() === 'date');
+            const docData = String(raw[actualDataField] || '').trim();
+            
+            // Normalização de data para YYYY-MM-DD para comparação
+            let normalized = docData;
+            if (docData.includes('-') && docData.split('-')[0].length === 2) {
+               const [dd, mm, yyyy] = docData.split('-');
+               normalized = `${yyyy}-${mm}-${dd}`;
+            }
 
-        let currentDocs = currentSnap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() }))
-        let prevDocs = prevSnap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() }))
+            return { id: d.id, ref: d.ref, ...raw, data: normalized }
+        })
+
+        let prevDocs = prevSnap.docs.map(d => {
+            const raw = d.data();
+            const keys = Object.keys(raw);
+            const actualDataField = keys.find(k => k.trim() === 'data' || k.trim() === 'date');
+            const docData = String(raw[actualDataField] || '').trim();
+            
+            let normalized = docData;
+            if (docData.includes('-') && docData.split('-')[0].length === 2) {
+               const [dd, mm, yyyy] = docData.split('-');
+               normalized = `${yyyy}-${mm}-${dd}`;
+            }
+            return { id: d.id, ref: d.ref, ...raw, data: normalized }
+        })
+
+        console.log(`[DashboardStats] Período: ${period} | Range: ${rangeStartStr} até ${todayStr}`);
+        console.log(`[DashboardStats] Sessões encontradas no currentSnap: ${currentSnap.docs.length}`);
 
         // 🎓 Filtro de Instrutor na memória (mais rápido que criar índices para cada combinação)
         if (instructorId) {
-          currentDocs = currentDocs.filter(d => d.instructorId === instructorId || d.instrutorId === instructorId)
-          prevDocs = prevDocs.filter(d => d.instructorId === instructorId || d.instrutorId === instructorId)
+          currentDocs = currentDocs.filter(d => d.instrutorId === instructorId)
+          prevDocs = prevDocs.filter(d => d.instrutorId === instructorId)
         }
 
         // ── 3. Montar skeleton do gráfico ────────────────────────────────────────
         let skeleton = []
         if (period === 'Semana') {
           skeleton = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date(now)
-            d.setDate(now.getDate() - (6 - i))
+            const d = new Date(nowBR)
+            d.setDate(nowBR.getDate() - (6 - i))
             return { name: DAYS_ABR[d.getDay()], presencas: 0, faltas: 0, justificados: 0 }
           })
         } else if (period === 'Mês') {
-          const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+          const daysInMonth = new Date(nowBR.getFullYear(), nowBR.getMonth() + 1, 0).getDate()
           skeleton = Array.from({ length: daysInMonth }, (_, i) => ({
             name: String(i + 1).padStart(2, '0'),
             presencas: 0, faltas: 0, justificados: 0
@@ -219,7 +264,9 @@ export function useDashboardStats(period = 'Semana', instructorId = null) {
 
         // Preenche o skeleton com dados reais
         for (const s of currentResults) {
-          const dateStr = s.date
+          const dateStr = s.data || s.date
+          if (!dateStr) continue
+
           let label = ''
           if (period === 'Semana') {
             label = DAYS_ABR[new Date(`${dateStr}T12:00:00Z`).getDay()]
@@ -244,7 +291,7 @@ export function useDashboardStats(period = 'Semana', instructorId = null) {
 
         // ── 5. Histórico de sessões (máx. 10, já enriquecido pelo passo 3) ───────
         const recentSessions = currentResults
-          .sort((a, b) => b.date?.localeCompare(a.date))
+          .sort((a, b) => (b.data || b.date || '').localeCompare(a.data || a.date || ''))
           .slice(0, 10)
           .map(s => ({
             ...s,
@@ -260,13 +307,20 @@ export function useDashboardStats(period = 'Semana', instructorId = null) {
 
         const absentStudents = activeStudents
           .filter(s => {
-            const d = parseDate(s.lastAttendanceAt || s.createdAt)
-            const days = d ? daysBetween(d, now) : null
-            return days === null || days > 10
+            const lastAttendance = parseDate(s.lastAttendanceAt)
+            // 🛡️ IMPORTANTE: Usamos APENAS a data de criação no SISTEMA, ignorando a data de início histórica da academia
+            const systemCreated = parseDate(s.createdAt || s.criadoEm)
+            
+            // Se o aluno nunca treinou no sistema...
+if (!lastAttendance) return false
+
+            // Se ele já treinou, a regra é a mesma: última presença > 10 dias
+            const days = daysBetween(lastAttendance, nowBR)
+            return days > 10
           })
           .map(s => {
-            const last = parseDate(s.lastAttendanceAt || s.createdAt)
-            const days = last ? daysBetween(last, now) : null
+            const lastAttendance = parseDate(s.lastAttendanceAt)
+            const days = lastAttendance ? daysBetween(lastAttendance, nowBR) : null
             return {
               id: s.id,
               name: s.name,
@@ -274,8 +328,8 @@ export function useDashboardStats(period = 'Semana', instructorId = null) {
               belt: s.belt || 'white',
               modality: s.modality || '',
               daysAbsent: days,
-              lastSeen: last,
-              isCritical: days === null || days > 30,
+              lastSeen: lastAttendance,
+              isCritical: days !== null && days > 30,
             }
           })
           .sort((a, b) => (b.daysAbsent || 999) - (a.daysAbsent || 999))

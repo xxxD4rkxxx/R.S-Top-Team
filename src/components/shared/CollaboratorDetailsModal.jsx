@@ -6,6 +6,7 @@ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
 import { useAttendanceAlerts } from '../../hooks/useAttendanceAlerts'
 import { beltConfig } from '../../data/beltConfig'
+import { COLLECTIONS, FIELDS } from '../../firebase/collections'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatBR } from '../../utils/dateUtils'
 
@@ -44,7 +45,7 @@ export default function CollaboratorDetailsModal({ collaborator, onClose, onEdit
   // 🔄 Mapeamento Flexível de Dados (Padronizado com Aluno)
   const name = collaborator.nome || collaborator.name;
   const email = collaborator.email;
-  const phone = collaborator.telefone || collaborator.phone; // Prioridade para telefone (campo equipe)
+  const phone = collaborator.telefone || collaborator[FIELDS?.TELEFONE] || collaborator.telefone_completo || collaborator.phone || '';
   const status = collaborator.status || 'Ativo';
   const createdAt = collaborator.createdAt || collaborator.criadoEm;
   const updatedAt = collaborator.updatedAt || collaborator.atualizadoEm;

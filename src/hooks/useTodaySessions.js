@@ -17,12 +17,23 @@ export function useTodaySessions(instructorId = null) {
   const [loading, setLoading]   = useState(sessionsCache.length === 0)
 
   useEffect(() => {
-    const todayStr = new Date().toLocaleDateString('en-CA')
+    function getBrasiliaNow() {
+      const now = new Date();
+      const spStr = now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+      return new Date(spStr);
+    }
+    const nowBR = getBrasiliaNow();
+    const year = nowBR.getFullYear()
+    const month = String(nowBR.getMonth() + 1).padStart(2, '0')
+    const day = String(nowBR.getDate()).padStart(2, '0')
+    const todayStr = `${year}-${month}-${day}`
+
     const sessRef = collection(db, COLLECTIONS.CHAMADAS)
     
-    let q = query(sessRef, where('date', '==', todayStr))
+    // Busca apenas pelo campo 'data' (Novo Padrão)
+    let q = query(sessRef, where('data', '==', todayStr))
     if (instructorId) {
-      q = query(sessRef, where('date', '==', todayStr), where('instructorId', '==', instructorId))
+      q = query(sessRef, where('data', '==', todayStr), where('instrutorId', '==', instructorId))
     }
 
     const unsubscribe = onSnapshot(q, (snap) => {
@@ -31,15 +42,13 @@ export function useTodaySessions(instructorId = null) {
         return {
           id: docSnap.id,
           classTitle: d.classTitle || d.title || 'Aula',
-          modality: d.modality || '',
-          time: d.time || '',
-          date: d.date || todayStr,
+          modality: d.modalidade || d.modality || '',
+          time: d.horario || d.time || '',
+          date: d.data || d.date || todayStr,
           presentes: d.presencasCount || 0,
           ausentes: d.faltasCount || 0,
           total: d.totalCount || 0,
           finalizada: d.finalizada || false,
-          // Não buscamos 'attendances' aqui para performance. 
-          // O drawer de detalhes deve buscar se necessário.
         }
       })
 

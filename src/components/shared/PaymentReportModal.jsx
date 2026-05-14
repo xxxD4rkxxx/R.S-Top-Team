@@ -13,12 +13,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const R$ = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
 
-const formatDate = (date) => {
-  if (!date) return '-'
-  if (typeof date === 'string') return date.split('-').reverse().join('/')
-  if (date.seconds) return new Date(date.seconds * 1000).toLocaleDateString('pt-BR')
-  return '-'
-}
+const formatReportDate = (date) => (date ? String(date) : '-')
 
 /**
  * Seletor Customizado Premium (Reutilizado do padrão AddStudentModal)
@@ -91,7 +86,7 @@ function SimpleReportView({ data, filters, modalities }) {
           thead { display: table-header-group; }
           tfoot { display: table-footer-group; }
           .page-break { page-break-before: always; }
-          .report-header { border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
+          .report-header { margin-bottom: 20px; padding-bottom: 10px; }
           .group-header { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
           .text-primary { color: #000 !important; }
           .bg-primary\\/5 { background-color: transparent !important; }
@@ -104,24 +99,36 @@ function SimpleReportView({ data, filters, modalities }) {
       `}</style>
 
       {/* Cabeçalho do Relatório */}
-      <div className="report-header flex justify-between items-start mb-8 pb-4 border-b-2 border-gray-900">
+      <div className="report-header flex justify-between items-start mb-4 pb-4 border-b-2 border-gray-900">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter">Relatório de Pagamentos</h1>
           <div className="mt-2 space-y-1">
             <p className="text-[10px] uppercase font-bold text-gray-600">Filtro: {filterModality}</p>
           </div>
-        </div>
+        </div>  
         <div className="text-right">
           <p className="text-[9px] uppercase font-black text-gray-500">Gerado em: {genDate} às {genTime}</p>
-          <div className="mt-2 flex gap-4 justify-end">
-            <div className="text-center">
-              <p className="text-[8px] uppercase font-bold text-gray-400">Total de Registros</p>
-              <p className="text-sm font-black">{data.count}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[8px] uppercase font-bold text-gray-400">Valor Total</p>
-              <p className="text-sm font-black">{R$(data.totalAmount)}</p>
-            </div>
+        </div>
+      </div>
+
+      {/* Totais no Topo */}
+      <div className="mb-8 pt-4 border-t-4 border-gray-900">
+        <div className="grid grid-cols-4 gap-4">
+          <div className="bg-gray-50 p-3 rounded-xl text-center">
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Pago</p>
+            <p className="text-lg font-black text-emerald-600">{R$(data.totalPaid)}</p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-xl text-center">
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Pendente</p>
+            <p className="text-lg font-black text-amber-600">{R$(data.totalPending)}</p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-xl text-center">
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Atrasado</p>
+            <p className="text-lg font-black text-rose-600">{R$(data.totalOverdue)}</p>
+          </div>
+          <div className="bg-gray-900 p-3 rounded-xl text-center">
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Geral</p>
+            <p className="text-xl font-black text-white">{R$(data.totalAmount)}</p>
           </div>
         </div>
       </div>
@@ -151,29 +158,27 @@ function SimpleReportView({ data, filters, modalities }) {
                     <span className="text-[10px] font-bold text-gray-400">{R$(turma.totalAmount)}</span>
                   </div>
 
-                  <table className="w-full text-[10px]">
+<table className="w-full text-[10px]">
                     <thead>
                       <tr className="border-b border-gray-200 text-gray-400 text-[8px] font-black uppercase tracking-widest">
-                        <th className="text-left py-2 px-1 w-1/3">Aluno</th>
-                        <th className="text-left py-2 px-1">Matrícula</th>
-                        <th className="text-center py-2 px-1">Vencimento</th>
+                        <th className="text-center py-2 px-1 w-1/3">Aluno</th>
                         <th className="text-center py-2 px-1">Pagamento</th>
+                        <th className="text-center py-2 px-1">Vencimento</th>
                         <th className="text-center py-2 px-1">Confirmado por</th>
-                        <th className="text-right py-2 px-1">Valor</th>
+                        <th className="text-center py-2 px-1">Valor</th>
                         <th className="text-center py-2 px-1">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {turma.bills.map((bill, bIdx) => (
                         <tr key={bill.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                          <td className="py-2 px-1 font-bold">{bill.studentName}</td>
-                          <td className="py-2 px-1 text-gray-500">{bill.enrollmentNumber || '-'}</td>
-                          <td className="py-2 px-1 text-center font-mono">{formatDate(bill.dueDate)}</td>
-                          <td className="py-2 px-1 text-center font-mono">{formatDate(bill.paidAt)}</td>
+                          <td className="py-2 px-1 text-center font-bold">{bill.studentName}</td>
+                          <td className="py-2 px-1 text-center font-mono">{formatReportDate(bill.reportPaidAt || bill.paidAt)}</td>
+                          <td className="py-2 px-1 text-center font-mono">{formatReportDate(bill.reportDueDate || bill.dueDate)}</td>
                           <td className="py-2 px-1 text-center text-emerald-600 font-medium text-xs">
                             {bill.paidBy || '-'}
                           </td>
-                          <td className="py-2 px-1 text-right font-black">{R$(bill.amount)}</td>
+                          <td className="py-2 px-1 text-center font-black">{R$(bill.amount)}</td>
                           <td className="py-2 px-1 text-center uppercase font-black text-[8px]">
                             <span className={
                               bill.status === 'paid' ? 'status-paid text-emerald-600' : 
@@ -195,28 +200,6 @@ function SimpleReportView({ data, filters, modalities }) {
               ))}
             </div>
           ))}
-
-          {/* Rodapé de Totais Gerais */}
-          <div className="mt-12 pt-8 border-t-4 border-gray-900">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-gray-50 p-4 rounded-xl">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Pago</p>
-                <p className="text-lg font-black text-emerald-600">{R$(data.totalPaid)}</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-xl">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Pendente</p>
-                <p className="text-lg font-black text-amber-600">{R$(data.totalPending)}</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-xl">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Atrasado</p>
-                <p className="text-lg font-black text-rose-600">{R$(data.totalOverdue)}</p>
-              </div>
-              <div className="bg-gray-900 p-4 rounded-xl">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Total Geral</p>
-                <p className="text-xl font-black text-white">{R$(data.totalAmount)}</p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
@@ -248,6 +231,10 @@ export default function PaymentReportModal({ isOpen, onClose }) {
     ['paid', 'Pago'],
     ['pending', 'Pendente'],
     ['overdue', 'Atrasado'],
+  ]
+  const periodTypeOptions = [
+    ['payment', 'Data de Pagamento'],
+    ['due', 'Data de Vencimento'],
   ]
 
   const modalityOptions = [
@@ -281,13 +268,6 @@ export default function PaymentReportModal({ isOpen, onClose }) {
     const filterModality = filters.modalityId 
       ? modalities?.find(m => m.id === filters.modalityId)?.name 
       : 'Todas'
-
-    const formatDateForReport = (date) => {
-      if (!date) return '-'
-      if (typeof date === 'string') return date.split('-').reverse().join('/')
-      if (date.seconds) return new Date(date.seconds * 1000).toLocaleDateString('pt-BR')
-      return '-'
-    }
 
     const now = new Date()
     const genDate = now.toLocaleDateString('pt-BR')
@@ -357,7 +337,6 @@ export default function PaymentReportModal({ isOpen, onClose }) {
           .header {
             display: flex;
             justify-content: space-between;
-            border-bottom: 2px solid #000;
             padding-bottom: 15px;
             margin-bottom: 20px;
           }
@@ -450,8 +429,26 @@ export default function PaymentReportModal({ isOpen, onClose }) {
             <div class="header-right">
               <p>Gerado em: ${genDate} às ${genTime}</p>
               <p class="meta">Por: ${userName}</p>
-              <p class="meta">Registros: ${groupedData.count || 0}</p>
-              <p class="meta">Total: ${R$(groupedData.totalAmount)}</p>
+            </div>
+          </div>
+
+          <!-- Totais no Topo -->
+          <div class="totals-grid" style="margin-bottom:30px;padding-top:15px;border-top:3px solid #000;">
+            <div class="total-box">
+              <label>Total Pago</label>
+              <div class="value" style="color:#059669;">${R$(groupedData.totalPaid)}</div>
+            </div>
+            <div class="total-box">
+              <label>Total Pendente</label>
+              <div class="value" style="color:#d97706;">${R$(groupedData.totalPending)}</div>
+            </div>
+            <div class="total-box">
+              <label>Total Atrasado</label>
+              <div class="value" style="color:#dc2626;">${R$(groupedData.totalOverdue)}</div>
+            </div>
+            <div class="total-box dark">
+              <label style="color:#999;">Total Geral</label>
+              <div class="value">${R$(groupedData.totalAmount)}</div>
             </div>
           </div>
     `
@@ -468,7 +465,7 @@ export default function PaymentReportModal({ isOpen, onClose }) {
             </div>
         `
         
-        mod.turmas.forEach(turma => {
+mod.turmas.forEach(turma => {
           html += `
             <div class="turma-section">
               <div class="turma-header">
@@ -478,13 +475,12 @@ export default function PaymentReportModal({ isOpen, onClose }) {
               <table>
                 <thead>
                   <tr>
-                    <th>Aluno</th>
-                    <th>Matrícula</th>
-                    <th>Vencimento</th>
-                    <th>Pagamento</th>
-                    <th>Confirmado por</th>
-                    <th>Valor</th>
-                    <th>Status</th>
+                    <th style="text-align:center;">Aluno</th>
+                    <th style="text-align:center;">Pagamento</th>
+                    <th style="text-align:center;">Vencimento</th>
+                    <th style="text-align:center;">Confirmado por</th>
+                    <th style="text-align:center;">Valor</th>
+                    <th style="text-align:center;">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -496,12 +492,11 @@ export default function PaymentReportModal({ isOpen, onClose }) {
             
             html += `
               <tr>
-                <td style="font-weight:bold;">${bill.studentName || '-'}</td>
-                <td>${bill.enrollmentNumber || bill.matricula || '-'}</td>
-                <td style="text-align:center;">${formatDateForReport(bill.dueDate)}</td>
-                <td style="text-align:center;">${formatDateForReport(bill.paidAt)}</td>
+                <td style="text-align:center;font-weight:bold;">${bill.studentName || '-'}</td>
+                <td style="text-align:center;">${formatReportDate(bill.reportPaidAt || bill.paidAt)}</td>
+                <td style="text-align:center;">${formatReportDate(bill.reportDueDate || bill.dueDate)}</td>
                 <td style="text-align:center;color:#059669;">${bill.paidBy || '-'}</td>
-                <td style="text-align:right;font-weight:bold;">${R$(bill.amount)}</td>
+                <td style="text-align:center;font-weight:bold;">${R$(bill.amount)}</td>
                 <td style="text-align:center;" class="${statusClass}">${statusLabel}</td>
               </tr>
             `
@@ -516,27 +511,6 @@ export default function PaymentReportModal({ isOpen, onClose }) {
         
         html += '</div>'
       })
-
-      html += `
-        <div class="totals-grid">
-          <div class="total-box">
-            <label>Total Pago</label>
-            <div class="value" style="color:#059669;">${R$(groupedData.totalPaid)}</div>
-          </div>
-          <div class="total-box">
-            <label>Total Pendente</label>
-            <div class="value" style="color:#d97706;">${R$(groupedData.totalPending)}</div>
-          </div>
-          <div class="total-box">
-            <label>Total Atrasado</label>
-            <div class="value" style="color:#dc2626;">${R$(groupedData.totalOverdue)}</div>
-          </div>
-          <div class="total-box dark">
-            <label style="color:#999;">Total Geral</label>
-            <div class="value">${R$(groupedData.totalAmount)}</div>
-          </div>
-        </div>
-      `
     }
 
     html += `
@@ -648,47 +622,48 @@ export default function PaymentReportModal({ isOpen, onClose }) {
               onChange={v => updateFilters('status', v)} 
               options={statusOptions} 
             />
+
+            <CustomSelect
+              label="Campo do Período"
+              value={filters.periodType}
+              onChange={v => updateFilters('periodType', v)}
+              options={periodTypeOptions}
+            />
           </div>
 
           {/* Período */}
-          {(() => {
-            const today = new Date().toISOString().split('T')[0]
-            return (
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
-                  Período
-                  <div className="h-px flex-1 bg-white/5" />
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">De</label>
-                    <div className="relative">
-                      <Calendar size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                      <input 
-                        type="date" 
-                        value={filters.startDate} 
-                        onChange={e => updateFilters('startDate', e.target.value)} 
-                        className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" 
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Até</label>
-                    <div className="relative">
-                      <Calendar size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-                      <input 
-                        type="date" 
-                        value={filters.endDate} 
-                        onChange={e => updateFilters('endDate', e.target.value)} 
-                        max={today}
-                        className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" 
-                      />
-                    </div>
-                  </div>
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
+              Período
+              <div className="h-px flex-1 bg-white/5" />
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">De</label>
+                <div className="relative">
+                  <Calendar size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                  <input 
+                    type="date" 
+                    value={filters.startDate} 
+                    onChange={e => updateFilters('startDate', e.target.value)} 
+                    className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" 
+                  />
                 </div>
               </div>
-            )
-          })()}
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Até</label>
+                <div className="relative">
+                  <Calendar size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+                  <input 
+                    type="date" 
+                    value={filters.endDate} 
+                    onChange={e => updateFilters('endDate', e.target.value)} 
+                    className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium" 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* PREVIEW DO RELATÓRIO */}
           {step === 'preview' && (

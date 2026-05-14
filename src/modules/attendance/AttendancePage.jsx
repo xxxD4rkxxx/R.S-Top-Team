@@ -23,6 +23,7 @@ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import PageHeader from '../../components/shared/PageHeader'
 import AddStudentModal from '../../components/shared/AddStudentModal'
+import { normalizeStr } from '../../utils/stringUtils'
 
 import { db } from '../../firebase/config'
 
@@ -32,9 +33,18 @@ const StudentAttendanceAlert = ({ student }) => {
   return null;
 }
 
-// Formatação auxiliar de data e hora para inputs
+// Formatação auxiliar de data e hora para inputs no fuso de Brasília
+function getBrasiliaDate() {
+  const now = new Date();
+  const spStr = now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+  return new Date(spStr);
+}
+
 function formatInputDate(dateObj) {
-  return dateObj.toISOString().slice(0, 10)
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function ensureTimeFormat(time) {
@@ -110,7 +120,7 @@ export default function AttendancePage() {
 
   const [showModal, setShowModal] = useState(false)
   const [sessionModality, setSessionModality] = useState('')
-  const [sessionDate, setSessionDate] = useState(formatInputDate(new Date()))
+  const [sessionDate, setSessionDate] = useState(formatInputDate(getBrasiliaDate()))
   const [sessionTime, setSessionTime] = useState('20:00')
   const [sessionProfessor, setSessionProfessor] = useState('')
   const [activeSession, setActiveSession] = useState(null)
@@ -122,7 +132,7 @@ export default function AttendancePage() {
   const [sessionAttendance, setSessionAttendance] = useState({})
   const [sessionVisitors, setSessionVisitors] = useState([])
   const [sessionNotes, setSessionNotes] = useState('')
-  const { modalities, loading: loadingModalities } = useModalities()
+  const { modalities, allTurmas, loading: loadingModalities } = useModalities()
   const { users: staffMembers } = useSystemUsers()
   const { user, userData, effectiveRole } = useAuth()
 
@@ -131,6 +141,9 @@ export default function AttendancePage() {
   const INSTRUTOR_ID = FIELDS.INSTRUTOR_ID || 'instrutorId'
   const NOME_INSTRUTOR = FIELDS.NOME_INSTRUTOR || 'nomeInstrutor'
   const MODALIDADE = FIELDS.MODALIDADE || 'modalidade'
+  const DATA = FIELDS.DATA || 'data'
+  const HORARIO = FIELDS.HORARIO || 'horario'
+  const OBSERVACAO = FIELDS.OBSERVACAO || 'observacao'
 
   // 🥋 Filter modalities for professors (RBAC)
   const availableModalities = useMemo(() => {
@@ -448,8 +461,6 @@ export default function AttendancePage() {
       const papeis = student.papeis || student.roles || {};
       if (student.isVisitor || papeis.visitante) return false;
 
-      // Função de normalização robusta
-      const normalizeStr = (str) => String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
 
       // Regra 0: Ocultar o próprio professor logado e qualquer um com papel de equipe
       const isSelf = student.id === user?.uid ||
@@ -467,15 +478,32 @@ export default function AttendancePage() {
         .filter(Boolean)
         .map(m => normalizeStr(m));
 
-      const sessionModNorm = normalizeStr(activeSession.modality);
+      const sessionModNorm = normalizeStr(activeSession.modality || activeSession[MODALIDADE] || activeSession.modalidade);
       const hasModality = studentMods.includes(sessionModNorm);
 
-      if (!hasModality) return false
+      if (!hasModality) return false;
 
-      // Regra 2: Se a sessão está vinculada a uma turma específica, filtra por ela (SSoT)
+      // Regra 2: Se a sessão está vinculada a uma turma específica (SSoT - Single Source of Truth)
       if (activeSession.turmaId) {
+        const targetTurma = allTurmas.find(t => {
+          const fullId = `${t.modalityId}:${t.id}`.toLowerCase();
+          return fullId === activeSession.turmaId.toLowerCase();
+        });
+
+        const officialEmails = (targetTurma?.alunos || []).map(e => String(e).toLowerCase().trim());
+        
+        if (officialEmails.length > 0) {
+          const studentEmail = (student.email || '').toLowerCase().trim();
+          const found = officialEmails.includes(studentEmail);
+          if (!found) return false;
+          return true;
+        }
+
         const studentTurmas = (student.turmas || []).map(t => String(t).toLowerCase());
-        return studentTurmas.includes(activeSession.turmaId.toLowerCase());
+        if (studentTurmas.length === 0) return true;
+
+        const hasT = studentTurmas.includes(activeSession.turmaId.toLowerCase());
+        return hasT;
       }
 
       // Fallback: Se não houver ID de turma na sessão, mostra todos da modalidade
@@ -569,17 +597,14 @@ export default function AttendancePage() {
       const payload = {
         id: tempId,
         [MODALIDADE]: sessionModality,
-        modality: sessionModality,
         turmaId: foundTurmaId, // 🔥 Link direto com a turma para SSoT
-        date: sessionDate,
-        time: ensureTimeFormat(sessionTime),
+        [DATA]: sessionDate,
+        [HORARIO]: ensureTimeFormat(sessionTime),
         professor: sessionProfessor,
         [INSTRUTOR_ID]: user?.uid || 'system',
-        instructorId: user?.uid || 'system',
         [NOME_INSTRUTOR]: userData?.nome || user?.displayName || 'Sistema',
-        instructorName: userData?.nome || user?.displayName || 'Sistema',
         [CRIADO_EM]: new Date().toISOString(),
-        observation: obsText || null
+        [OBSERVACAO]: obsText || null
       }
 
       // Transição instantânea para a lista (MANTIDO LOCALMENTE ATÉ FINALIZAR)
@@ -1096,9 +1121,9 @@ export default function AttendancePage() {
                 {filteredRecentSessions.slice(0, visibleHistoryCount).map(s => (
                   <div key={s.id} className="stat-card p-4 md:p-5 rounded-[20px] md:rounded-[22px] border border-white/5 flex flex-col items-center text-center gap-3 md:gap-3.5 bg-[#080808]/50 animate-in fade-in zoom-in-95 duration-300">
                     <div className="w-full">
-                      <h5 className="text-xs md:text-base font-black text-white uppercase tracking-tight leading-tight line-clamp-1">{s.modality}</h5>
+                      <h5 className="text-xs md:text-base font-black text-white uppercase tracking-tight leading-tight line-clamp-1">{s.modalidade || s.modality}</h5>
                       <p className="text-[8px] md:text-[9px] text-gray-500 uppercase font-black tracking-widest mt-1 line-clamp-1">
-                        {s.date?.split('-').reverse().slice(0, 2).join('/')} · {s.time}
+                        {(s.data || s.date)?.split('-').reverse().slice(0, 2).join('/')} · {s.horario || s.time}
                       </p>
                       <p className="text-[7px] md:text-[8px] text-gray-400 uppercase font-bold tracking-widest mt-0.5 line-clamp-1">
                         {s.professor || s.instructorName}
@@ -1139,8 +1164,8 @@ export default function AttendancePage() {
           <div className="space-y-4">
             <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/5 flex justify-between items-center">
               <div>
-                <h2 className="text-3xl font-black text-white uppercase leading-none tracking-tight">{activeSession.modality}</h2>
-                <p className="text-[10px] text-gray-500 font-bold uppercase mt-1 tracking-widest">{activeSession.professor} · {activeSession.time}</p>
+                <h2 className="text-3xl font-black text-white uppercase leading-none tracking-tight">{activeSession.modalidade || activeSession.modality}</h2>
+                <p className="text-[10px] text-gray-500 font-bold uppercase mt-1 tracking-widest">{activeSession.professor} · {activeSession.horario || activeSession.time}</p>
               </div>
               <div className="hidden md:flex items-center gap-6 text-right">
                 <div><div className="text-4xl font-black text-white tracking-tighter">{stats.present}/{stats.total}</div><p className="text-[9px] font-black uppercase text-gray-500">PRESENTES</p></div>
@@ -1189,6 +1214,37 @@ export default function AttendancePage() {
                 const isVisitor = s.isVisitor || s.roles?.visitante;
                 const showDivider = idx > 0 && isVisitor && !activeList[idx-1].isVisitor;
 
+                // 🎨 BUSCA DE COR DINÂMICA DO BANCO (beltSystem)
+                const currentModDoc = modalities.find(m => 
+                  normalizeStr(m.name) === normalizeStr(activeSession.modality || activeSession[MODALIDADE] || activeSession.modalidade)
+                );
+                
+                let beltColor = '#1f1f1f'; // Fallback escuro
+                let isLight = false;
+
+                if (s.belt && currentModDoc?.beltSystem?.categories) {
+                  const studentBeltName = String(s.belt).toUpperCase().trim();
+                  
+                  // Procura em todas as categorias de faixa da modalidade
+                  for (const cat of currentModDoc.beltSystem.categories) {
+                    const foundBelt = cat.belts?.find(b => b.name.toUpperCase().trim() === studentBeltName);
+                    if (foundBelt) {
+                      beltColor = foundBelt.color || beltColor;
+                      break;
+                    }
+                  }
+                }
+
+                // 🌓 Lógica de Contraste (Branco/Preto no texto)
+                if (beltColor) {
+                  const hex = beltColor.replace('#', '');
+                  const r = parseInt(hex.substr(0, 2), 16);
+                  const g = parseInt(hex.substr(2, 2), 16);
+                  const b = parseInt(hex.substr(4, 2), 16);
+                  const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+                  isLight = brightness > 155; // Se for claro, texto preto
+                }
+
                 return (
                   <React.Fragment key={s.id}>
                     {showDivider && (
@@ -1202,9 +1258,11 @@ export default function AttendancePage() {
                       ${unmarkedAlert && !s.status ? 'border-rose-500 shadow-rose-500/20 animate-pulse' : 
                       isVisitor ? 'border-primary/20 shadow-primary/10' : 'border-white/5'}`}>
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 flex items-center justify-center font-black text-xs shadow-inner border border-white/10 shrink-0
-                          ${isVisitor ? 'rounded-full bg-primary/20 text-primary border-primary/30' : 
-                          `rounded-full ${beltConfig[s.belt]?.bgClass || 'bg-zinc-800 text-white'} ${(!s.belt || s.belt === 'branca') ? 'text-black' : 'text-white'}`}`}>
+                        <div 
+                          style={{ backgroundColor: isVisitor ? 'transparent' : beltColor }}
+                          className={`w-10 h-10 flex items-center justify-center font-black text-xs shadow-inner border border-white/10 shrink-0
+                            ${isVisitor ? 'rounded-full bg-primary/20 text-primary border-primary/30' : 
+                            `rounded-full ${isLight ? 'text-black' : 'text-white'}`}`}>
                           {isVisitor ? <User size={18} strokeWidth={2.5} /> : (s.name ? s.name.trim().charAt(0).toUpperCase() : '?')}
                         </div>
                         <div className="flex-1 min-w-0">

@@ -13,6 +13,7 @@ export const beltConfig = {
   black: { label: 'Preta', textColor: '#FFFFFF', bgClass: 'belt-black', next: 'none' },
   // Aliases em Português
   branca: { label: 'Branca', textColor: '#111111', bgClass: 'belt-white' },
+  branco: { label: 'Branca', textColor: '#111111', bgClass: 'belt-white' },
   cinza: { label: 'Cinza', textColor: '#FFFFFF', bgClass: 'belt-grey' },
   amarela: { label: 'Amarela', textColor: '#111111', bgClass: 'belt-yellow' },
   laranja: { label: 'Laranja', textColor: '#FFFFFF', bgClass: 'belt-orange' },

@@ -275,6 +275,10 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                                             <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
                                             <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                                         </linearGradient>
+                                        <linearGradient id="gradVisitantesActivity" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                        </linearGradient>
                                     </defs>
                                     <XAxis
                                         dataKey="name"
@@ -306,6 +310,16 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                                             activeDot={{ r: 5, fill: '#f97316', stroke: '#111', strokeWidth: 2 }}
                                         />
                                     )}
+                                    <Area
+                                        type="monotone"
+                                        dataKey="visitantes"
+                                        name="Visitantes"
+                                        stroke="#8b5cf6"
+                                        strokeWidth={2}
+                                        fillOpacity={1}
+                                        fill="url(#gradVisitantesActivity)"
+                                        activeDot={{ r: 5, fill: '#8b5cf6', stroke: '#111', strokeWidth: 2 }}
+                                    />
                                     <Area
                                         type="monotone"
                                         dataKey="presencas"
@@ -426,7 +440,7 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                                                 </div>
                                             ) : (
                                                 <div
-                                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-black text-white transition-all duration-500 shadow-inner relative overflow-hidden ${beltConfig[student.belt?.toLowerCase()]?.bgClass || 'belt-none'}`}
+                                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-black text-gray-900 transition-all duration-500 shadow-inner relative overflow-hidden ${beltConfig[student.belt?.toLowerCase()]?.bgClass || 'belt-none'}`}
                                                 >
                                                     <div className="absolute inset-0 bg-gradient-to-tr from-black/40 to-transparent opacity-50" />
                                                     <span className="relative z-10 drop-shadow-lg">{getInitials(student.nome || student.name)}</span>

@@ -70,6 +70,7 @@ export const FIELDS = {
   INSTRUTOR_ID: 'instrutorId',
   NOME_INSTRUTOR: 'nomeInstrutor',
   FINALIZADA: 'finalizada',
+  OBSERVACAO: 'observacao',
   
   // Financeiro
   VALOR: 'valor',

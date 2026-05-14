@@ -435,7 +435,7 @@ export default function CollaboratorsPage() {
                     <td className="py-4 px-5 text-center">
                       {member.phone ? (
                         <a
-                          href={`https://wa.me/${member.telefone_completo || ('55' + (member.phone || '').replace(/\D/g, ''))}`}
+                          href={`https://wa.me/55${(member.phone || '').replace(/\D/g, '')}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all font-mono"

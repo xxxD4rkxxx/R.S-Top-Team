@@ -13,7 +13,9 @@ import {
 } from 'firebase/firestore'
 import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../../firebase/collections'
 import { useStudents } from '../../hooks/useStudents'
+import { useModalities } from '../../hooks/useModalities'
 import { beltConfig } from '../../data/beltConfig'
+import { normalizeStr } from '../../utils/stringUtils'
 
 function formatFriendly(dateStr, timeStr) {
   if (!dateStr) return ''
@@ -30,6 +32,7 @@ export default function ReviewAttendancePage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
   const { students } = useStudents()
+  const { modalities } = useModalities()
 
   const [session, setSession] = useState(null)
   const [records, setRecords] = useState({}) // { studentId: status }
@@ -47,14 +50,36 @@ export default function ReviewAttendancePage() {
       const batch = writeBatch(db)
       const attendancesRef = collection(db, COLLECTIONS.CHAMADAS, sessionId, SUB_COLLECTIONS.PRESENCAS)
 
+      // 📊 Calcular totais para salvar no documento principal da sessão
+      const totalCount = Object.values(records).filter(v => v).length
+      const presencasCount = Object.values(records).filter(v => v === 'present').length
+      const faltasCount = Object.values(records).filter(v => v === 'absent').length
+      const justificadosCount = Object.values(records).filter(v => v === 'justified').length
+      
+      // Contagem de visitantes (inclui os temporários e os marcados como visitantes no perfil)
+      const visitantesCount = filteredStudents.filter(s => records[s.id] === 'present' && (s.isVisitor || s.type === 'visitante')).length
+
+      // 1. Atualizar Documento Principal da Sessão
+      const sessionRef = doc(db, COLLECTIONS.CHAMADAS, sessionId)
+      batch.update(sessionRef, {
+        totalCount,
+        presencasCount,
+        faltasCount,
+        justificadosCount,
+        visitantesCount,
+        [FIELDS.ATUALIZADO_EM]: serverTimestamp()
+      })
+
+      // 2. Atualizar Subcoleção de Presenças
       Object.entries(records).forEach(([studentId, status]) => {
         if (status) {
           const docRef = doc(attendancesRef, studentId)
-          const student = students.find(s => s.id === studentId) || {}
+          const student = filteredStudents.find(s => s.id === studentId) || {}
           batch.set(docRef, {
             studentId: studentId,
             studentName: student[FIELDS.NOME] || student.nome || student.name || 'Desconhecido',
             [FIELDS.STATUS]: status,
+            isVisitor: !!(student.isVisitor || student.type === 'visitante' || String(studentId).startsWith('temp_vis_')),
             [FIELDS.MODALIDADE]: session[FIELDS.MODALIDADE] || session.modality || '',
             [FIELDS.DATA]: session[FIELDS.DATA] || session.date || '',
             [FIELDS.CRIADO_EM]: serverTimestamp(),
@@ -147,9 +172,26 @@ export default function ReviewAttendancePage() {
         ? rawMods.map(m => String(m).trim().toLowerCase())
         : [String(s[FIELDS.MODALIDADE] || s.modality || '').trim().toLowerCase()]
 
-      // Inclui se o aluno pertence à modalidade OU se ele já tem um registro nesta chamada específica
-      const hasModality = studentMods.includes(normalizedSessMod)
+      // Inclui se o aluno já tem um registro nesta chamada específica
       const hasRecord = !!records[s.id]
+      
+      // 📸 LÓGICA DE SNAPSHOT (Requisitada pelo Usuário)
+      // Se NÃO estamos editando, mostramos APENAS quem tem registro (a "foto" da chamada)
+      if (!isEditing) return hasRecord;
+
+      // 🛠️ Se ESTAMOS editando, mostramos quem pertence à modalidade + filtro temporal
+      const hasModality = studentMods.includes(normalizedSessMod)
+
+      if (s.createdAt && session?.date) {
+        try {
+          const studentDate = new Date(s.createdAt);
+          studentDate.setHours(0,0,0,0);
+          const sessionDate = new Date(session.date + 'T12:00:00');
+          sessionDate.setHours(0,0,0,0);
+          
+          if (studentDate > sessionDate && !hasRecord) return false;
+        } catch (e) {}
+      }
 
       return hasModality || hasRecord
     })
@@ -275,7 +317,34 @@ export default function ReviewAttendancePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredStudents.map(student => {
             const status = records[student.id]
-            const bgClass = beltConfig[student.belt]?.bgClass || 'belt-white'
+            // 🎨 BUSCA DE COR DINÂMICA DO BANCO (beltSystem)
+            const currentModDoc = modalities.find(m => 
+              normalizeStr(m.name) === normalizeStr(session?.[FIELDS.MODALIDADE] || session?.modality || '')
+            );
+            
+            let beltColor = '#1f1f1f'; // Fallback escuro
+            let isLight = false;
+
+            if (student.belt && currentModDoc?.beltSystem?.categories) {
+              const studentBeltName = String(student.belt).toUpperCase().trim();
+              for (const cat of currentModDoc.beltSystem.categories) {
+                const foundBelt = cat.belts?.find(b => b.name.toUpperCase().trim() === studentBeltName);
+                if (foundBelt) {
+                  beltColor = foundBelt.color || beltColor;
+                  break;
+                }
+              }
+            }
+
+            // 🌓 Lógica de Contraste
+            if (beltColor) {
+              const hex = beltColor.replace('#', '');
+              const r = parseInt(hex.substr(0, 2), 16);
+              const g = parseInt(hex.substr(2, 2), 16);
+              const b = parseInt(hex.substr(4, 2), 16);
+              const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+              isLight = brightness > 155;
+            }
 
             return (
               <div
@@ -291,7 +360,9 @@ export default function ReviewAttendancePage() {
                     ) : student.photo ? (
                       <img src={student.photo} alt={student.nome || student.name} className="w-10 h-10 rounded-full object-cover border border-white/10" />
                     ) : (
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${bgClass}`}>
+                      <div 
+                        style={{ backgroundColor: beltColor }}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border border-white/10 ${isLight ? 'text-black' : 'text-white'}`}>
                         {student.initials || (student.nome || student.name ? (student.nome || student.name)[0] : 'A')}
                       </div>
                     )}

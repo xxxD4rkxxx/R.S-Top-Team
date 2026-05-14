@@ -108,6 +108,7 @@ export default function UserCreationModal({ isOpen, onClose, initialData }) {
     modalities: [], // 🥋 Modalidades do professor
     belt: 'none',
     stripes: 0,
+    startDate: '',
     // --- NOVOS CAMPOS SINCRONIZADOS COM ALUNOS ---
     gender: 'Masculino',
     ageCategory: 'Adulto',

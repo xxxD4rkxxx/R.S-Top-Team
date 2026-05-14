@@ -90,6 +90,30 @@ function buildInitials(name) {
     .toUpperCase()
 }
 
+const toDateKeyUTC = (date) => {
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const getReferenceMonthLabelUTC = (date) => {
+  const month = date.toLocaleString('pt-BR', { month: 'long', timeZone: 'UTC' })
+  const year = date.getUTCFullYear()
+  return `${month} / ${year}`
+}
+
+const getNextMonthlyDueDateFromDate = (baseDate) => {
+  const day = baseDate.getUTCDate()
+  const nextMonthStart = new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth() + 1, 1, 12, 0, 0))
+  const targetYear = nextMonthStart.getUTCFullYear()
+  const targetMonth = nextMonthStart.getUTCMonth()
+  const maxDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 12, 0, 0)).getUTCDate()
+  const normalizedDay = Math.min(day, maxDay)
+
+  return new Date(Date.UTC(targetYear, targetMonth, normalizedDay, 12, 0, 0))
+}
+
 export function useStudents() {
   const { students, isLoadingStudents } = useStudentsContext()
   const [isUpdating, setIsUpdating] = useState(false)
@@ -352,20 +376,14 @@ export function useStudents() {
       // Evita que o gestor precise criar via "Nova Cobrança"
       try {
         // ========================================================================
-        // CÁLCULO DA DATA DE VENCIMENTO: Exatamente 30 dias após o cadastro
+        // CÁLCULO DA DATA DE VENCIMENTO: mesmo dia no mês seguinte
         // ========================================================================
-        // Exemplo: Entrou dia 06/05 (Pago), vence dia 06/06 (fica Pendente)
+        // Exemplo: Entrou dia 10/05 (Pago), vence dia 10/06 (fica Pendente)
         const now = new Date()
-        
-        // Adicionar 30 dias à data atual
-        const dueDate = new Date(now)
-        dueDate.setDate(dueDate.getDate() + 30)
-        
-        // Formatar para YYYY-MM-DD
-        const dueDateStr = dueDate.toISOString().split('T')[0]
-        
-        // Mês de referência = mês do VENCIMENTO (ex: se vence em 06/06, referência é Junho/2026)
-        const referenceMonth = `${dueDate.toLocaleString('pt-BR', { month: 'long' })} / ${dueDate.getFullYear()}`
+
+        const dueDate = getNextMonthlyDueDateFromDate(now)
+        const dueDateStr = toDateKeyUTC(dueDate)
+        const referenceMonth = getReferenceMonthLabelUTC(dueDate)
         
         // Extrair primeira modalidade e turma para o relatório
         const initMods = Array.isArray(payload.modalities) ? payload.modalities : payload.modality ? [payload.modality] : []

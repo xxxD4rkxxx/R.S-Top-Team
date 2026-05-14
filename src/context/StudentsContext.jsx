@@ -42,102 +42,96 @@ function parseFirestoreDate(value) {
 export function StudentsProvider({ children }) {
   const [students, setStudents] = useState([])
   const [rawUsers, setRawUsers] = useState([])
+  const [rawAlunos, setRawAlunos] = useState([])
+  const [rawStudents, setRawStudents] = useState([])
+  const [rawUsersOld, setRawUsersOld] = useState([]) // 🔥 Adicionado para a coleção 'users'
   const [rawVisitors, setRawVisitors] = useState([])
   const [isLoadingStudents, setIsLoadingStudents] = useState(true)
   const { user } = useAuth()
 
   useEffect(() => {
-    // 🛡️ PROTEÇÃO: Só iniciamos a escuta se houver um utilizador autenticado.
-    // Isso evita erros de "Permission Denied" na tela de login.
     if (!user) {
       setStudents([])
       setIsLoadingStudents(false)
       return
     }
 
-    const usersRef = collection(db, 'usuarios')
-    const visitorsRef = collection(db, 'visitantes')
+    // Todas as coleções possíveis onde os alunos podem estar
+    const refs = {
+      usuarios: collection(db, 'usuarios'),
+      alunos: collection(db, 'alunos'),
+      students: collection(db, 'students'),
+      users: collection(db, 'users'), // 🔥 A coleção que faltava
+      visitantes: collection(db, 'visitantes')
+    }
 
-    // Função para mapear documentos (DRY)
-    const mapDoc = (item, isVisitorForce = false) => {
-      const data = item.data()
-      const modalities = data.modalities || (data.modality ? [data.modality] : [])
-      
-      let rawName = data.name || data.nome || ''
-      const cleanName = rawName.toLowerCase().trim()
-      if (!rawName || cleanName === 'undefined' || cleanName === 'null' || cleanName.includes('indefin')) {
-        rawName = 'Pessoa'
-      }
+    const mapDoc = (item, collectionName, isVisitorForce = false) => {
+      try {
+        const data = item.data()
+        
+        // 🛡️ Captura Flexível de Modalidades (Suporta pt-BR e en-US)
+        const rawModalities = data.modalities || data.modalidades || []
+        const rawModality = data.modality || data.modalidade || null
+        const modalities = Array.isArray(rawModalities) ? rawModalities : (rawModality ? [rawModality] : [])
+        if (modalities.length === 0 && rawModality) modalities.push(rawModality)
 
-      let photo = data.photo || null
-      if (photo === 'undefined' || photo === 'null' || (typeof photo === 'string' && photo.includes('undefined'))) {
-        photo = null
-      }
-      
-      const tech = data.jornada_tecnica || {}
-      
-      return {
-        id: item.id,
-        name: rawName,
-        initials: data.initials || buildInitials(rawName),
-        belt: (tech.faixa_atual || data.belt || data.faixa || 'none').toLowerCase(),
-        modality: data.modality || modalities[0] || null,
-        modalities,
-        modalityPrimary: modalities[0] || data.modality || null,
-        stripes: Number.isFinite(tech.graus_atuais) ? tech.graus_atuais : (Number.isFinite(data.stripes) ? data.stripes : 0),
-        pin: data.pin || '',
-        gender: data.gender || 'Masculino',
-        ageCategory: data.ageCategory || 'Adulto',
-        status: data.status ?? 'Ativo',
-        isVisitor: isVisitorForce || Boolean(data.isVisitor) || Boolean(data.roles?.visitante),
-        photo: photo,
-        email: data.email || '',
-        phone: data.phone || data.telefone || '',
-        emergency: data.emergency || '',
-        medical: data.medical || '',
-        birthday: parseFirestoreDate(data.birthday),
-        createdAt: parseFirestoreDate(data.createdAt || data.criadoEm),
-        startDate: data.startDate || null,
-        lastAttendanceAt: parseFirestoreDate(data.lastAttendanceAt),
-        roles: data.roles || data.papeis || {},
-        turmas: data.turmas || []
+        let rawName = data.nome || data.name || 'Sem Nome'
+        const tech = data.jornada_tecnica || {}
+        const roles = data.roles || data.papeis || {}
+        
+        return {
+          id: item.id,
+          name: rawName,
+          initials: data.initials || buildInitials(rawName),
+          belt: (tech.faixa_atual || data.belt || data.faixa || 'none').toLowerCase(),
+          modality: rawModality || modalities[0] || null,
+          modalities,
+          stripes: Number(tech.graus_atuais || data.stripes || 0),
+          pin: data.pin || '',
+          status: String(data.status || 'Ativo').toLowerCase(),
+          isVisitor: isVisitorForce || Boolean(data.isVisitor) || Boolean(roles.visitante) || Boolean(roles.papeis?.visitante),
+          photo: data.photo || null,
+          email: data.email || '',
+          phone: data.phone || data.telefone || data.whatsapp || '',
+          data: data.data || null,
+          createdAt: parseFirestoreDate(data.createdAt || data.criadoEm || data.criado_em),
+          roles,
+          turmas: data.turmas || [],
+          collectionName
+        }
+      } catch (e) {
+        console.error("❌ Erro ao mapear aluno:", item.id, e)
+        return { id: item.id, name: 'Erro no mapeamento', status: 'inativo' }
       }
     }
 
-    // Escuta Alunos/Professores
-    const unsubUsers = onSnapshot(usersRef, snapshot => {
-      const usersData = snapshot.docs.map(d => mapDoc(d))
-      setRawUsers(usersData)
-    }, (err) => {
-      console.error("❌ Erro ao escutar 'usuarios' no StudentsContext:", err)
-      setRawUsers([])
-    })
-
-    // Escuta Visitantes (Leads)
-    const unsubVisitors = onSnapshot(visitorsRef, snapshot => {
-      const visitorsData = snapshot.docs.map(d => mapDoc(d, true))
-      setRawVisitors(visitorsData)
-    }, (err) => {
-      console.error("❌ Erro ao escutar 'visitantes' no StudentsContext:", err)
-      setRawVisitors([])
-    })
+    const unsub1 = onSnapshot(refs.usuarios, snap => setRawUsers(snap.docs.map(d => mapDoc(d, 'usuarios'))), err => console.warn("usuarios off"))
+    const unsub2 = onSnapshot(refs.alunos, snap => setRawAlunos(snap.docs.map(d => mapDoc(d, 'alunos'))), err => console.warn("alunos off"))
+    const unsub3 = onSnapshot(refs.students, snap => setRawStudents(snap.docs.map(d => mapDoc(d, 'students'))), err => console.warn("students off"))
+    const unsub4 = onSnapshot(refs.users, snap => setRawUsersOld(snap.docs.map(d => mapDoc(d, 'users'))), err => console.warn("users off"))
+    const unsub5 = onSnapshot(refs.visitantes, snap => setRawVisitors(snap.docs.map(d => mapDoc(d, 'visitantes', true))), err => console.warn("visitantes off"))
 
     return () => {
-      unsubUsers()
-      unsubVisitors()
+      unsub1(); unsub2(); unsub3(); unsub4(); unsub5();
     }
   }, [user])
 
-  // Consolidação dos dados
   useEffect(() => {
-    const combined = [...rawUsers, ...rawVisitors]
-    const sorted = combined.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    const combined = [...rawUsers, ...rawAlunos, ...rawStudents, ...rawUsersOld, ...rawVisitors]
+    const uniqueMap = new Map()
+    combined.forEach(s => {
+      if (s.id && !uniqueMap.has(s.id)) uniqueMap.set(s.id, s)
+    })
     
-    console.log(`👥 [StudentsContext] Sincronização concluída: ${rawUsers.length} usuários, ${rawVisitors.length} visitantes. Total: ${combined.length}`)
+    const finalData = Array.from(uniqueMap.values())
+    const sorted = finalData.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    
+    const names = finalData.map(s => s.name).join(', ')
+    console.log(`👥 [Context] FINAL: ${finalData.length} registros únicos. Nomes: [${names}]`)
     
     setStudents(sorted)
     setIsLoadingStudents(false)
-  }, [rawUsers, rawVisitors])
+  }, [rawUsers, rawAlunos, rawStudents, rawUsersOld, rawVisitors])
 
   return (
     <StudentsContext.Provider value={{ students, isLoadingStudents }}>

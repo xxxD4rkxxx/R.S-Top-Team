@@ -9,6 +9,44 @@ import { COLLECTIONS } from '../firebase/collections'
 import { useAuth } from '../context/AuthContext'
 import { calculateModalityValue } from '../utils/billingUtils'
 
+const toDateKeyUTC = (date) => {
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const toDateFromAny = (value) => {
+  if (!value) return null
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+  if (value?.seconds) return new Date(value.seconds * 1000)
+  if (typeof value === 'string') {
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+  return null
+}
+
+const getReferenceMonthLabelUTC = (date) => {
+  const month = date.toLocaleString('pt-BR', { month: 'long', timeZone: 'UTC' })
+  const year = date.getUTCFullYear()
+  return `${month} / ${year}`
+}
+
+const getNextMonthlyDueDate = (baseValue) => {
+  const baseDate = toDateFromAny(baseValue)
+  if (!baseDate) return null
+
+  const day = baseDate.getUTCDate()
+  const nextMonthStart = new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth() + 1, 1, 12, 0, 0))
+  const targetYear = nextMonthStart.getUTCFullYear()
+  const targetMonth = nextMonthStart.getUTCMonth()
+  const maxDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 12, 0, 0)).getUTCDate()
+  const normalizedDay = Math.min(day, maxDay)
+
+  return new Date(Date.UTC(targetYear, targetMonth, normalizedDay, 12, 0, 0))
+}
+
 /**
  * Hook para gerenciar as operações financeiras (Receitas e Despesas).
  * Possui proteções no lado do cliente para evitar que Alunos acessem
@@ -73,11 +111,10 @@ const studentsList = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
       
       if (novoValor <= 0) continue
       
-      // Calcular data de vencimento (30 dias após o vencimento anterior)
-      const prevDueDate = new Date(cobranca.dueDate + 'T00:00:00')
-      const newDueDate = new Date(prevDueDate)
-      newDueDate.setDate(newDueDate.getDate() + 30)
-      const dueDateStr = newDueDate.toISOString().split('T')[0]
+      // Próximo vencimento mensal no mesmo dia-base do pagamento.
+      const nextDueDate = getNextMonthlyDueDate(cobranca.paidAt || cobranca.dueDate)
+      if (!nextDueDate) continue
+      const dueDateStr = toDateKeyUTC(nextDueDate)
       
       // Extrair primeira modalidade e turma do aluno para o relatório
       const alunoMods = Array.isArray(aluno.modalities) ? aluno.modalities : aluno.modality ? [aluno.modality] : []
@@ -94,7 +131,7 @@ const studentsList = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
         amount: novoValor,
         status: 'pending',
         dueDate: dueDateStr,
-        referenceMonth: `${newDueDate.toLocaleString('pt-BR', { month: 'long' })} / ${newDueDate.getFullYear()}`,
+        referenceMonth: getReferenceMonthLabelUTC(nextDueDate),
         modalityName: alunoModalityName || null,
         turmaName: alunoTurmaName || null,
         createdAt: serverTimestamp(),

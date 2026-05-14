@@ -84,7 +84,15 @@ function subscribeToUsers(callback) {
     try {
       const q = query(collection(db, USERS_COLLECTION))
       _activeListener = onSnapshot(q, (snap) => {
-        let users = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        let users = snap.docs.map(d => {
+          const data = d.data()
+          return {
+            id: d.id,
+            ...data,
+            phone: data[FIELDS.TELEFONE] || data[FIELDS.TELEFONE_COMPLETO] || '',
+            nome: data[FIELDS.NOME] || data.name || '',
+          }
+        })
         users.sort((a, b) => {
           const timeA = a[FIELDS.CRIADO_EM]?.toMillis?.() || 0
           const timeB = b[FIELDS.CRIADO_EM]?.toMillis?.() || 0
