@@ -259,7 +259,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
   // Configuração da Faixa Atual
   const beltInfo = defaultBelts[user?.belt?.toLowerCase()] || defaultBelts.white
   const beltColor = user?.belt?.toLowerCase() || ''
-  const isWhiteBelt = beltColor === 'white' || beltColor === 'branca'
+  const isWhiteBelt = beltColor === 'white' || beltColor === 'branca' || beltColor === 'branco'
   
   // Cálculo de Progresso Técnico Real
   const { technicalProgress, monthsInBelt } = useMemo(() => {

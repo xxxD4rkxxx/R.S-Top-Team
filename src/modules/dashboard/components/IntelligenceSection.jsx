@@ -440,7 +440,8 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                                                 </div>
                                             ) : (
                                                 <div
-                                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-black text-gray-900 transition-all duration-500 shadow-inner relative overflow-hidden ${beltConfig[student.belt?.toLowerCase()]?.bgClass || 'belt-none'}`}
+                                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-black transition-all duration-500 shadow-inner relative overflow-hidden ${(beltConfig[student.belt?.toLowerCase()] || beltConfig.none).bgClass}`}
+                                                    style={{ color: (beltConfig[student.belt?.toLowerCase()] || beltConfig.none).textColor }}
                                                 >
                                                     <div className="absolute inset-0 bg-gradient-to-tr from-black/40 to-transparent opacity-50" />
                                                     <span className="relative z-10 drop-shadow-lg">{getInitials(student.nome || student.name)}</span>

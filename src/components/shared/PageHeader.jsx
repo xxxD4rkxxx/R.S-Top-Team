@@ -32,6 +32,11 @@ export default function PageHeader({ icon: Icon, title, subtitle, onRefresh, loa
   }
 
   const role = roleLabels[userRole] || roleLabels.aluno
+  
+  const isWhiteBelt = React.useMemo(() => {
+    const b = userData?.belt?.toLowerCase()
+    return b === 'white' || b === 'branca' || b === 'branco'
+  }, [userData?.belt])
 
   return (
     <header className="content-header hidden md:flex items-center justify-between px-4 md:px-6 py-5 z-20 sticky top-0 backdrop-blur-md border-b" style={{ background: 'var(--clr-bg)', opacity: 0.9, borderColor: 'var(--clr-card-border)' }}>
@@ -97,12 +102,12 @@ export default function PageHeader({ icon: Icon, title, subtitle, onRefresh, loa
                 ) : (
                   <span 
                     className={`text-sm font-black w-full h-full flex items-center justify-center ${
-                      (userData?.belt?.toLowerCase() === 'white' || userData?.belt?.toLowerCase() === 'branca')
+                      isWhiteBelt
                         ? 'bg-gradient-to-br from-white to-gray-200 text-[#111]' 
                         : 'text-white'
                     }`}
                     style={
-                      !(userData?.belt?.toLowerCase() === 'white' || userData?.belt?.toLowerCase() === 'branca')
+                      !isWhiteBelt
                         ? { background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }
                         : {}
                     }

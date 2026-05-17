@@ -11,7 +11,8 @@ const statusConfig = {
 }
 
 function BeltBadge({ belt }) {
-  const config = beltConfig[belt]
+  const key = belt?.toLowerCase() || 'none'
+  const config = beltConfig[key] || beltConfig.none
   return (
     <span
       className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm ${config.bgClass}`}
@@ -27,15 +28,17 @@ function BeltBadge({ belt }) {
 function StudentAvatar({ student, belt }) {
   const [imageError, setImageError] = useState(false)
   const hasPhoto = Boolean(student.photo) && !imageError
+  const beltLower = belt?.toLowerCase() || 'none'
+  const isWhite = beltLower === 'white' || beltLower === 'branca' || beltLower === 'branco'
 
   return (
     <div className="relative flex-shrink-0">
       <div
         className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden ring-1 ring-white/10 shadow-[0_0_18px_color-mix(in_srgb,var(--clr-primary)_20%,transparent)]"
         style={{
-          background: belt === 'white'
+          background: isWhite
             ? 'linear-gradient(135deg,#D1D5DB,#9CA3AF)'
-            : `linear-gradient(135deg, ${beltColor(belt)})`,
+            : `linear-gradient(135deg, ${beltColor(beltLower)})`,
         }}
       >
         {hasPhoto ? (
@@ -50,9 +53,9 @@ function StudentAvatar({ student, belt }) {
         ) : (
           <div
             className="w-full h-full flex items-center justify-center text-sm md:text-base font-bold"
-            style={{ color: belt === 'white' ? '#111' : '#fff' }}
+            style={{ color: isWhite ? '#111' : '#fff' }}
           >
-            {student.initials}
+            {student.initials || (student.nome || student.name)?.[0]?.toUpperCase()}
           </div>
         )}
       </div>
@@ -128,9 +131,13 @@ export default function StudentCard({ student, onClick }) {
 function beltColor(belt) {
   const map = {
     blue:   '#1E40AF, #3B82F6',
+    azul:   '#1E40AF, #3B82F6',
     purple: '#7C3AED, #A855F7',
+    roxa:   '#7C3AED, #A855F7',
     brown:  '#78350F, #B45309',
+    marrom: '#78350F, #B45309',
     black:  '#111111, #374151',
+    preta:  '#111111, #374151',
   }
   return map[belt] || 'var(--clr-primary-dark), var(--clr-primary)'
 }
