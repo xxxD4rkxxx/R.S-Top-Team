@@ -1,72 +1,56 @@
 // RESUMO: Tela de Login.
-// Suporta login por E-mail/Senha (Administradores) e por E-mail/PIN (Gestores/Professores).
-// Implementa detecção de cliques no logo para alternar entre os modos de acesso.
-import React, { useState, useEffect } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LogIn, Lock, Mail, Eye, EyeOff, HelpCircle } from 'lucide-react'
+// Usa loginSmart: mesmo e-mail, PIN diferente = papel diferente.
+// 3 cliques na logo → modo Admin (PIN admin visível).
+import React, { useState, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { LogIn, Lock, Mail, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import AmbientBackground from '../../components/shared/AmbientBackground'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [pin, setPin] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [showPin, setShowPin] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
-
-  const [clickCount, setClickCount] = useState(0)
+  const [email, setEmail]       = useState('')
+  const [pin, setPin]           = useState('')
+  const [showPin, setShowPin]   = useState(false)
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState(null)
+  const [success, setSuccess]   = useState(null)
   const [isAdminMode, setIsAdminMode] = useState(false)
+  const [clickCount, setClickCount]   = useState(0)
+  const timerRef = useRef(null)
 
+  const { loginSmart, sendResetEmail } = useAuth()
+  const navigate  = useNavigate()
+  const location  = useLocation()
+  const from      = location.state?.from?.pathname || '/'
 
-  const { login, loginAdmin, sendResetEmail, checkUserExists } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = location.state?.from?.pathname || '/'
-
-  const timerRef = React.useRef(null)
-
+  // ── 3 cliques na logo → modo Admin ──────────────────────────────
   const handleLogoClick = () => {
-    if (isAdminMode) return // Já está no modo admin
-
+    if (isAdminMode) return
     setClickCount(prev => {
-      const newCount = prev + 1
-      
+      const next = prev + 1
       if (timerRef.current) clearTimeout(timerRef.current)
-      
-      if (newCount >= 3) {
+      if (next >= 3) {
         setIsAdminMode(true)
         return 0
       }
-      
-      timerRef.current = setTimeout(() => {
-        setClickCount(0)
-      }, 2000) // 2 segundos para ser mais tolerante
-      
-      return newCount
+      timerRef.current = setTimeout(() => setClickCount(0), 2000)
+      return next
     })
   }
 
+  // ── Submit ───────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setSuccess(null)
     try {
-      if (isAdminMode) {
-        // Usa o PIN de Administrador (adminPin no Firestore)
-        await loginAdmin(email, password)
-      } else {
-        // Usa o PIN Normal (pin no Firestore)
-        await login(email, pin)
-      }
+      await loginSmart(email, pin)
       navigate(from, { replace: true })
     } catch (err) {
       console.error(err)
       if (err.code === 'auth/too-many-requests') {
-        setError('Muitas tentativas. Por favor, aguarde de 10 a 15 minutos antes de tentar novamente.')
+        setError('Muitas tentativas. Aguarde alguns minutos e tente novamente.')
       } else {
         setError(err.message || 'Credenciais inválidas.')
       }
@@ -76,36 +60,29 @@ export default function LoginPage() {
   }
 
   const handleForgotPin = async () => {
-    if (!email) {
-      setError('Por favor, informe seu e-mail para recuperar o PIN.')
-      return
-    }
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
+    if (!email) { setError('Informe seu e-mail para recuperar o PIN.'); return }
+    setLoading(true); setError(null); setSuccess(null)
     try {
-      const exists = await checkUserExists(email)
-      if (!exists) {
-        setError('Este e-mail não está cadastrado no sistema. Verifique a digitação ou fale com seu Gestor.')
-        return
-      }
       await sendResetEmail(email)
       setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.')
-    } catch (err) {
+    } catch {
       setError('Erro ao enviar e-mail. Verifique se o endereço está correto.')
     } finally {
       setLoading(false)
     }
   }
 
+  // ── UI ───────────────────────────────────────────────────────────
   return (
     <div className="min-h-dvh flex items-center justify-center p-4 bg-[#050505] overflow-hidden relative">
       <AmbientBackground />
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo Section */}
+
+        {/* Logo (clicável) */}
         <div className="text-center mb-10">
           <button
+            type="button"
             onClick={handleLogoClick}
             className="group relative inline-flex flex-col items-center transition-all active:scale-95"
           >
@@ -120,32 +97,22 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col items-center">
               <span className="text-[12px] text-gray-500 uppercase tracking-[0.3em] font-medium leading-none mb-1">Rs</span>
-              <h1 className="text-5xl font-sans font-black tracking-tighter animate-text-reveal">
-                TOP TEAM
-              </h1>
+              <h1 className="text-5xl font-sans font-black tracking-tighter animate-text-reveal">TOP TEAM</h1>
             </div>
           </button>
           <p className="mt-3 text-gray-400 text-sm font-light uppercase tracking-[0.2em] opacity-40">Gestão Esportiva de Alto Nível</p>
         </div>
 
-        {/* Login Card Layer Container */}
+        {/* Card */}
         <div className="relative">
-          {/* Logo Watermark */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] flex items-center justify-center pointer-events-none z-0">
             <div className="absolute inset-0 bg-primary/5 rounded-full blur-[80px] opacity-40 scale-110" />
-            <img
-              src="/logo.webp"
-              alt=""
-              className="w-[320px] h-[320px] object-contain rounded-full opacity-[0.05] grayscale brightness-50 p-8 transition-all duration-1000"
-            />
+            <img src="/logo.webp" alt="" className="w-[320px] h-[320px] object-contain rounded-full opacity-[0.05] grayscale brightness-50 p-8" />
           </div>
 
-          {/* Actual Login Card */}
-          <div
-            className="bg-[#121212]/80 border border-white/5 rounded-2xl p-8 shadow-2xl relative z-10 backdrop-blur-3xl overflow-hidden animate-entrance"
-          >
-            {/* Decorative Gradient Background */}
+          <div className="bg-[#121212]/80 border border-white/5 rounded-2xl p-8 shadow-2xl relative z-10 backdrop-blur-3xl overflow-hidden animate-entrance">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-[80px] -mr-16 -mt-16 pointer-events-none" />
+
 
             <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
               {error && (
@@ -153,13 +120,13 @@ export default function LoginPage() {
                   {error}
                 </div>
               )}
-
               {success && (
                 <div className="p-3 rounded-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[11px] leading-relaxed text-center">
                   {success}
                 </div>
               )}
 
+              {/* E-mail */}
               <div className="space-y-2">
                 <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold ml-1">Seu E-mail</label>
                 <div className="relative group">
@@ -178,39 +145,13 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {isAdminMode ? (
-                <div className="space-y-2 animate-pulse-slow">
-                  <div className="flex justify-between items-center ml-1">
-                    <label className="text-[10px] text-primary uppercase tracking-[0.2em] font-bold">PIN de Administrador</label>
-                    <button type="button" className="text-[10px] text-gray-600 hover:text-white transition-colors uppercase font-bold tracking-tighter">Acesso Restrito</button>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <Lock size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      maxLength={6}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value.replace(/\D/g, ''))}
-                      className="block w-full pl-10 pr-12 py-3.5 bg-primary/5 border border-primary/30 rounded-xl text-white text-sm focus:outline-none focus:border-primary/60 transition-all font-sans tabular-nums tracking-[0.8em] placeholder:font-inter placeholder:tracking-normal"
-                      placeholder="000000"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-600 hover:text-white transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center ml-1">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold">PIN de Acesso (6 Dígitos)</label>
+              {/* PIN — label muda conforme modo */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center ml-1">
+                  <label className={`text-[10px] uppercase tracking-[0.2em] font-bold ${isAdminMode ? 'text-primary' : 'text-gray-500'}`}>
+                    {isAdminMode ? 'PIN de Administrador' : 'PIN de Acesso (6 Dígitos)'}
+                  </label>
+                  {!isAdminMode && (
                     <button
                       type="button"
                       onClick={handleForgotPin}
@@ -218,50 +159,45 @@ export default function LoginPage() {
                     >
                       Esqueci meu PIN
                     </button>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <Lock size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
-                    </div>
-                    <input
-                      type={showPin ? 'text' : 'password'}
-                      inputMode="numeric"
-                      autoComplete="current-password"
-                      maxLength={6}
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      className="block w-full pl-10 pr-12 py-3.5 bg-black border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-primary/50 transition-all placeholder:text-gray-800 font-sans tabular-nums tracking-[0.8em] placeholder:font-inter placeholder:tracking-normal"
-                      placeholder="000000"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPin(!showPin)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-600 hover:text-white transition-colors"
-                    >
-                      {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
+                  )}
                 </div>
-              )}
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Lock size={16} className="text-gray-600 group-focus-within:text-primary transition-colors" />
+                  </div>
+                  <input
+                    type={showPin ? 'text' : 'password'}
+                    inputMode="numeric"
+                    autoComplete="current-password"
+                    maxLength={6}
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                    className={`block w-full pl-10 pr-12 py-3.5 bg-black border rounded-xl text-white text-sm focus:outline-none transition-all placeholder:text-gray-800 font-sans tabular-nums tracking-[0.8em] placeholder:font-inter placeholder:tracking-normal
+                      ${isAdminMode ? 'border-primary/40 bg-primary/5 focus:border-primary/60' : 'border-white/10 focus:border-primary/50'}`}
+                    placeholder="000000"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin(!showPin)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-600 hover:text-white transition-colors"
+                  >
+                    {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
 
               <button
                 type="submit"
                 disabled={loading}
                 className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-black text-lg uppercase tracking-widest transition-all active:scale-[0.98] bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/20 btn-primary"
               >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    LOGIN
-                    <LogIn size={20} />
-                  </>
-                )}
+                {loading
+                  ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  : <><LogIn size={20} /> {isAdminMode ? 'Entrar como Admin' : 'LOGIN'}</>
+                }
               </button>
             </form>
-            
-            {/* Setup Mode Action */}
           </div>
         </div>
 
@@ -272,4 +208,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

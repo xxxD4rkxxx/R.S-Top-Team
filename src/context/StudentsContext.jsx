@@ -97,6 +97,16 @@ export function StudentsProvider({ children }) {
           createdAt: parseFirestoreDate(data.createdAt || data.criadoEm || data.criado_em),
           roles,
           turmas: data.turmas || [],
+          gender: data.gender || data.genero || 'Masculino',
+          genero: data.genero || data.gender || 'Masculino',
+          ageCategory: data.ageCategory || 'Adulto',
+          emergency: data.emergency || '',
+          medical: data.medical || '',
+          parentName: data.parentName || '',
+          parentPhone: data.parentPhone || '',
+          planValue: data.planValue || '',
+          startDate: data.startDate || null,
+          jornada_tecnica: tech,
           collectionName
         }
       } catch (e) {

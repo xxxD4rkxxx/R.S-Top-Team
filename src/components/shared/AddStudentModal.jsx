@@ -97,6 +97,7 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
     type: initialType,
     ageCategory: 'Adulto',
     gender: 'Masculino',
+    genero: 'Masculino',
     parentName: '',
     parentPhone: '',
     initialPaymentStatus: 'paid',
@@ -132,7 +133,8 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
           modality: normalizedModalities.length > 0 ? normalizedModalities : [],
           type: initialData.isPromoting ? 'aluno' : (initialData.roles?.equipe ? 'equipe' : (initialData.roles?.visitante ? 'visitante' : 'aluno')),
           ageCategory: initialData.ageCategory || 'Adulto',
-          gender: initialData.gender || 'Masculino',
+          gender: initialData.gender || initialData.genero || 'Masculino',
+          genero: initialData.genero || initialData.gender || 'Masculino',
           parentName: initialData.parentName || '',
           parentPhone: initialData.parentPhone || '',
           initialPaymentStatus: 'paid',
@@ -157,7 +159,7 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
         setForm({
           name: '', email: '', phone: '', emergency: '', medical: '',
           belt: 'none', stripes: 0, modality: startMod, type: initialType,
-          ageCategory: 'Adulto', gender: 'Masculino',
+          ageCategory: 'Adulto', gender: 'Masculino', genero: 'Masculino',
           parentName: '', parentPhone: '',
           initialPaymentStatus: 'paid',
           initialPaymentStatus: 'paid',
@@ -508,8 +510,8 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
                   <div className="grid grid-cols-2 gap-4">
                     <CustomSelect
                       label="Gênero"
-                      value={form.gender}
-                      onChange={v => setForm({ ...form, gender: v })}
+                      value={form.genero || form.gender}
+                      onChange={v => setForm({ ...form, gender: v, genero: v })}
                       options={[['Masculino', 'Masculino'], ['Feminino', 'Feminino']]}
                     />
                     <CustomSelect

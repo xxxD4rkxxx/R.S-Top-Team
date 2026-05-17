@@ -21,16 +21,16 @@ export default function GraduationChangeModal({ student, onClose, onFinish }) {
     if (!student) return
     setLoading(true)
     try {
-      const studentRef = doc(db, 'users', student.id)
+      const studentRef = doc(db, 'usuarios', student.id)
       const promotionDate = new Date(date)
       
       await updateDoc(studentRef, {
         belt: newBelt,
         'tech_journey.current_belt': newBelt,
-        'tech_journey.last_promotion_date': promotionDate,
+        'tech_journey.last_promotion_date': promotionDate.toISOString(),
         'tech_journey.history': arrayUnion({
           belt: newBelt,
-          date: promotionDate,
+          date: promotionDate.toISOString(),
           reason: reason || 'Promoção técnica'
         }),
         updatedAt: serverTimestamp()

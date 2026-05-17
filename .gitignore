@@ -33,7 +33,7 @@ dist_malformed/
 .gemini/
 .codex/
 scratch/
-
+!I.a/
 # Firebase & Security - NUNCA commitar estes ficheiros
 # A chave de service account dá acesso admin total ao Firebase
 firebase-key.json

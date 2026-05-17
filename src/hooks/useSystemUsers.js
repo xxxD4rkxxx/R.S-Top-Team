@@ -239,9 +239,7 @@ export function useSystemUsers() {
 
     // Se uma startDate for fornecida, converte para Timestamp, senão deixa vazio/null
     // O criado_em ainda será o serverTimestamp, mas se houver startDate, forçamos.
-    if (userData.startDate) {
-      basePayload[FIELDS.CRIADO_EM] = new Date(userData.startDate + 'T12:00:00Z')
-    }
+    // Removido override de data de criação com base na data histórica
     // Apenas incluímos campos cujos nomes no Firestore (via FIELDS) são diferentes do nome no formulário.
     const redundantFields = ['name', 'phone', 'roles']
 
@@ -369,7 +367,7 @@ export function useSystemUsers() {
         ...basePayload,
         [FIELDS.PIN]: pin,
         adminPin: adminPin,
-        [FIELDS.CRIADO_EM]: userData.startDate ? new Date(userData.startDate + 'T12:00:00Z') : serverTimestamp()
+        [FIELDS.CRIADO_EM]: serverTimestamp()
       }
       
       // Para setDoc (criação), NÃO podemos usar deleteField().

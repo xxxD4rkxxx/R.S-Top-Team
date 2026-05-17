@@ -177,6 +177,85 @@ export function AuthProvider({ children }) {
   }, [user, logout])
 
   /**
+   * LOGIN INTELIGENTE: Detecta automaticamente o papel pelo PIN.
+   * - Se o PIN bater com `pin` → entra como Aluno (mesmo que seja admin)
+   * - Se o PIN bater com `adminPin` → entra como Admin com papel completo
+   * Mesmo e-mail, PINs diferentes, papéis diferentes.
+   */
+  const loginSmart = async (identifier, typedPinRaw) => {
+    const email = identifier.toLowerCase().trim()
+    const typedPin = String(typedPinRaw).trim()
+    const securePIN = typedPin.length >= 6 ? typedPin : typedPin.padEnd(6, '0')
+
+    const tryGetDoc = async (col, id) => { try { const d = await getDoc(doc(db, col, id)); return d.exists() ? d : null } catch { return null } }
+    const tryQuery = async (col, field, val) => { try { const s = await getDocs(query(collection(db, col), where(field, '==', val), limit(1))); return s.empty ? null : s.docs[0] } catch { return null } }
+
+    const legacyId = `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
+
+    // 1. Localizar documento primário pelo e-mail real
+    const targetDoc =
+      await tryGetDoc(USERS_COLLECTION, email) ||
+      await tryGetDoc(USERS_COLLECTION, legacyId) ||
+      await tryQuery(USERS_COLLECTION, 'email', email)
+
+    if (!targetDoc?.exists()) throw new Error('Usuário não localizado no sistema.')
+
+    const dbData = targetDoc.data()
+    const profileId = targetDoc.id
+
+    // 2. 🔑 TAMBÉM busca o documento interno para pegar adminPin (pode estar separado)
+    const internalDoc = profileId !== legacyId ? await tryGetDoc(USERS_COLLECTION, legacyId) : null
+    const internalData = internalDoc?.exists() ? internalDoc.data() : {}
+
+    // Função auxiliar para campos com possíveis espaços no nome
+    const getField = (obj, key) => {
+      if (!obj) return ''
+      const found = Object.keys(obj).find(k => k.trim() === key)
+      return found ? String(obj[found] || '').trim() : ''
+    }
+
+    // 3. Combina PINs dos dois documentos
+    const dbPin      = getField(dbData, 'pin')      || getField(internalData, 'pin')
+    const dbAdminPin = getField(dbData, 'adminPin') || getField(dbData, 'admPin') ||
+                       getField(internalData, 'adminPin') || getField(internalData, 'admPin')
+
+    const matchesStudentPin = typedPin === dbPin || securePIN === dbPin
+    const matchesAdminPin   = dbAdminPin && (typedPin === dbAdminPin || securePIN === dbAdminPin)
+
+    if (!matchesStudentPin && !matchesAdminPin) {
+      throw new Error('PIN incorreto.')
+    }
+
+    const realEmail     = dbData.email || (profileId.includes('@') ? profileId : email)
+    const internalEmail = `${realEmail.replace(/[@.]/g, '_')}@rstopteam.internal`
+
+    if (matchesStudentPin && !matchesAdminPin) {
+      // 🎓 MODO ALUNO
+      setSimulatedRole('aluno')
+      try {
+        return await signInWithEmailAndPassword(auth, realEmail, securePIN)
+      } catch (e) {
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+          try { return await signInWithEmailAndPassword(auth, internalEmail, securePIN) } catch {}
+          return await createUserWithEmailAndPassword(auth, realEmail, securePIN)
+        }
+        throw e
+      }
+    }
+
+    // 👑 MODO ADMIN — usa e-mail interno para conta separada no Firebase Auth
+    setSimulatedRole(null)
+    try {
+      return await signInWithEmailAndPassword(auth, internalEmail, securePIN)
+    } catch (e) {
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+        return await createUserWithEmailAndPassword(auth, internalEmail, securePIN)
+      }
+      throw e
+    }
+  }
+
+  /**
    * LOGIN NORMAL: Só aceita PIN de Aluno.
    * Se for Admin, força o papel 'aluno'.
    */
@@ -360,20 +439,27 @@ export function AuthProvider({ children }) {
       const data = snap.data()
       const profileId = snap.id
 
-      const isAdm = data.papeis?.admin || data.roles?.admin || String(data.role).toLowerCase() === 'admin'
-      const isGestor = data.papeis?.gestor || data.roles?.gestor || String(data.role).toLowerCase() === 'gestor'
-      const isProf = data.papeis?.professor || data.roles?.professor || String(data.role).toLowerCase() === 'professor'
+      const getFieldRobust = (obj, targetKey) => {
+        if (!obj) return null
+        const normalizedTarget = targetKey.replace(/\s+/g, '').toLowerCase()
+        const foundKey = Object.keys(obj).find(k => 
+          k.replace(/\s+/g, '').toLowerCase() === normalizedTarget
+        )
+        return foundKey ? obj[foundKey] : null
+      }
+
+      const Papeis = getFieldRobust(data, 'papeis') || data.papeis
+      const Roles = getFieldRobust(data, 'roles') || data.roles
+
+      const isAdm = (Papeis?.admin === true) || (Roles?.admin === true) || getFieldRobust(data, 'role')?.toLowerCase() === 'admin'
+      const isGestor = (Papeis?.gestor === true) || (Roles?.gestor === true) || getFieldRobust(data, 'role')?.toLowerCase() === 'gestor'
+      const isProf = (Papeis?.professor === true) || (Roles?.professor === true) || getFieldRobust(data, 'role')?.toLowerCase() === 'professor'
 
       if (!isAdm && !isGestor && !isProf) {
         throw new Error('Acesso apenas para Administradores, Gestores ou Professores.')
       }
 
       // Valida o PIN Admin contra o Firestore (com detecção robusta de campos)
-      const getFieldRobust = (obj, key) => {
-        const k = Object.keys(obj).find(x => x.trim() === key)
-        return k ? obj[k] : null
-      }
-
       const dbAdminPin = String(
         getFieldRobust(data, 'adminPin') || 
         getFieldRobust(data, 'admPin') || 
@@ -597,7 +683,7 @@ export function AuthProvider({ children }) {
   const sendResetEmail = async (email) => sendPasswordResetEmail(auth, email)
 
   const value = {
-    user, userData, loading, login, loginAdmin, logout, verifyPIN, effectiveRole,
+    user, userData, loading, login, loginAdmin, loginSmart, logout, verifyPIN, effectiveRole,
     isAdmin, isGestor,
     simulatedRole, setSimulatedRole, sendResetEmail,
     isSetupMode, hasAdmin, hasGestor

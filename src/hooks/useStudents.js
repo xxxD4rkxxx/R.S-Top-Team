@@ -278,7 +278,8 @@ export function useStudents() {
       emergency: newStudent.emergency || '',
       medical: newStudent.medical || '',
       ageCategory: newStudent.ageCategory || 'Adulto',
-      gender: newStudent.gender || 'Masculino',
+      gender: newStudent.gender || newStudent.genero || 'Masculino',
+      genero: newStudent.genero || newStudent.gender || 'Masculino',
       parentName: newStudent.parentName || '',
       parentPhone: newStudent.parentPhone || '',
       isPaymentExempt: newStudent.isPaymentExempt || false,
@@ -295,11 +296,11 @@ export function useStudents() {
         [FIELDS.DATA_ULTIMA_GRADUACAO]: serverTimestamp(),
         [FIELDS.HISTORICO]: [{
           belt: beltFinal,
-          date: new Date(),
+          date: newStudent.startDate ? new Date(newStudent.startDate + 'T12:00:00') : new Date(),
           reason: 'Ingresso na Academia'
         }]
       },
-      [FIELDS.CRIADO_EM]: newStudent.startDate ? new Date(newStudent.startDate + 'T12:00:00Z') : serverTimestamp(),
+      [FIELDS.CRIADO_EM]: serverTimestamp(),
       startDate: newStudent.startDate || null,
       [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
       ultima_visita: null,
@@ -440,9 +441,15 @@ export function useStudents() {
         [FIELDS.ATUALIZADO_EM]: serverTimestamp(),
       }
 
-      if (updates.startDate) {
-        payload[FIELDS.CRIADO_EM] = new Date(updates.startDate + 'T12:00:00Z')
+      if (updates.gender && !updates.genero) {
+        payload.genero = updates.gender
       }
+      if (updates.genero && !updates.gender) {
+        payload.gender = updates.genero
+      }
+      // Removido override de data de criação antigo
+
+
 
       // 🔥 Sincronização SSoT: Garantir que se modalidades forem alteradas, os campos EN/PT fiquem iguais
       const newModalities = updates[FIELDS.MODALIDADES] || updates.modalities || updates[FIELDS.MODALIDADE] || updates.modality

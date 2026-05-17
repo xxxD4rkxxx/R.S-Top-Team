@@ -5,7 +5,7 @@ import {
   Info, AlertCircle, CheckCircle2 
 } from 'lucide-react'
 import { db } from '../../../firebase/config'
-import { collection, query, getDocs, setDoc, doc } from 'firebase/firestore'
+import { collection, query, getDocs, setDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { COLLECTIONS } from '../../../firebase/collections'
 import { beltConfig as defaultBelts } from '../../../data/beltConfig'
 
@@ -95,7 +95,7 @@ export default function ConfigurationView() {
         modalityName: selectedModality.name,
         category: selectedCategory,
         belts: currentConfig.belts,
-        updatedAt: new Date()
+        updatedAt: serverTimestamp()
       })
       alert(`Configuração de ${selectedModality.name} (${selectedCategory}) salva com sucesso!`)
     } catch (err) {
