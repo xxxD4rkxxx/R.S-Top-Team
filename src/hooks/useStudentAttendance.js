@@ -167,7 +167,7 @@ export function useStudentAttendance(studentId) {
       monthly,
       weekly,
       streak,
-      recent: presentDocs.slice(0, 10)
+      recent: attendances // Todos os registros (presenças + faltas) para o gráfico
     }
   }, [attendances, loading])
 

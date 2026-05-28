@@ -320,10 +320,21 @@ export default function ModalityModal({
                           <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-600 uppercase">R$</span>
                             <input 
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
                               disabled={!pricing[cat.id].enabled}
-                              value={pricing[cat.id].price}
-                              onChange={(e) => updatePricing(cat.id, 'price', e.target.value)}
+                              value={
+                                (typeof pricing[cat.id].price === 'number' ? pricing[cat.id].price : 0)
+                                  .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                              }
+                              onChange={(e) => {
+                                // Máscara monetária: extrai dígitos e trata como centavos
+                                const digits = e.target.value.replace(/\D/g, '');
+                                const limited = digits.slice(0, 6); // máx 999999 centavos = 9.999,99
+                                const cents = parseInt(limited || '0', 10);
+                                const num = Math.min(9999, cents / 100);
+                                updatePricing(cat.id, 'price', num);
+                              }}
                               className="w-32 bg-black border border-white/5 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-mono disabled:opacity-20"
                             />
                           </div>

@@ -17,9 +17,16 @@ export function calculateModalityValue(aluno, modalities) {
   } 
 
   const normalizedCat = normalizeText(aluno.ageCategory || 'Adulto');
-  const modsAluno = Array.isArray(aluno.modalities) ? aluno.modalities : [aluno.modality].filter(Boolean);
+  
+  // Garante o uso robusto extraindo as modalidades do aluno, mesmo em chaves legadas
+  const rawModalities = aluno.modalidades || aluno.modalities || aluno.modality;
+  const modsAluno = Array.isArray(rawModalities) 
+    ? rawModalities 
+    : (rawModalities ? [rawModalities] : []);
 
   let total = 0;
+  let foundValidModality = false;
+
   modsAluno.forEach(modItem => {
     // Se o item for um objeto (comum em dados legados ou estruturas ricas), extraímos o identificador
     const modIdentifier = (typeof modItem === 'object' && modItem !== null)
@@ -36,6 +43,7 @@ export function calculateModalityValue(aluno, modalities) {
     );
 
     if (modConfig && modConfig.pricing) {
+      foundValidModality = true;
       // Busca robusta da chave de preço (ex: 'kids' ou 'Kids')
       const pricingKey = Object.keys(modConfig.pricing).find(k => normalizeText(k) === normalizedCat);
       
@@ -48,8 +56,11 @@ export function calculateModalityValue(aluno, modalities) {
     }
   });
 
-  // Fallback: se não encontrou nada nas modalidades mas tem um planValue legado, usa ele
-  if (total === 0 && aluno.planValue) {
+  // Fallback: se NÃO encontrou NENHUMA modalidade válida configurada no aluno, 
+  // mas ele tem um planValue legado, usa o legado.
+  // Se encontrou a modalidade (ex: Jiu Jitsu) e o valor dela for realmente R$ 0, 
+  // o fallback NÃO deve substituir o valor 0 por um planValue legado aleatório.
+  if (!foundValidModality && total === 0 && aluno.planValue) {
     total = Number(aluno.planValue) || 0;
   }
 

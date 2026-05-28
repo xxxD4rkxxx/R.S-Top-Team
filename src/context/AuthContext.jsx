@@ -203,11 +203,11 @@ export function AuthProvider({ children }) {
     const dbData = targetDoc.data()
     const profileId = targetDoc.id
 
-    // 2. 🔑 TAMBÉM busca o documento interno para pegar adminPin (pode estar separado)
+    // 2. Busca documento interno para pegar adminPin (pode estar em doc separado)
     const internalDoc = profileId !== legacyId ? await tryGetDoc(USERS_COLLECTION, legacyId) : null
     const internalData = internalDoc?.exists() ? internalDoc.data() : {}
 
-    // Função auxiliar para campos com possíveis espaços no nome
+    // Função auxiliar para campos com possíveis espaços no nome do campo
     const getField = (obj, key) => {
       if (!obj) return ''
       const found = Object.keys(obj).find(k => k.trim() === key)
@@ -226,22 +226,75 @@ export function AuthProvider({ children }) {
       throw new Error('PIN incorreto.')
     }
 
+    // 4. Detecta papel do usuário no banco
+    const isMasterAdmin = dbData.papeis?.admin === true || dbData.roles?.admin === true || String(dbData.role).toLowerCase() === 'admin'
+    const isGestorUser  = dbData.papeis?.gestor === true || dbData.roles?.gestor === true || String(dbData.role).toLowerCase() === 'gestor'
+    const isProfUser    = dbData.papeis?.professor === true || dbData.roles?.professor === true || String(dbData.role).toLowerCase() === 'professor'
+    const isStaff       = isMasterAdmin || isGestorUser || isProfUser
+
+    // 5. Define papel da sessão
+    if (matchesAdminPin) {
+      // Usou PIN de admin → papel real, sem simulação
+      setSimulatedRole(null)
+    } else if (isMasterAdmin && !matchesAdminPin) {
+      // Admin usando PIN de aluno → simula visão de aluno
+      setSimulatedRole('aluno')
+    } else if (isStaff) {
+      // Gestor ou Professor usando PIN normal → entra com papel real
+      setSimulatedRole(null)
+    } else {
+      // Aluno normal
+      setSimulatedRole('aluno')
+    }
+
     const realEmail     = dbData.email || (profileId.includes('@') ? profileId : email)
     const internalEmail = `${realEmail.replace(/[@.]/g, '_')}@rstopteam.internal`
 
-    if (matchesStudentPin && !matchesAdminPin) {
-      // 🎓 MODO ALUNO
-      setSimulatedRole('aluno')
+    // 6. REGRA: Somente Admin usando PIN de admin usa conta .internal
+    //    Gestores, Professores e Alunos sempre usam o e-mail real
+    const useInternal = isMasterAdmin && matchesAdminPin
+
+    if (useInternal) {
+      // 👑 MODO MASTER ADMIN — usa e-mail interno para conta separada no Firebase Auth
+      try {
+        return await signInWithEmailAndPassword(auth, internalEmail, securePIN)
+      } catch (e) {
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+          // Fallback para conta real se a interna não existir
+          try { return await signInWithEmailAndPassword(auth, realEmail, securePIN) } catch {}
+          try {
+            return await createUserWithEmailAndPassword(auth, internalEmail, securePIN)
+          } catch (createErr) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              throw new Error('Acesso Admin: conta interna já existe com outra senha. Exclua a conta interna no Firebase Auth para recriar.')
+            }
+            throw createErr
+          }
+        }
+        throw e
+      }
+    } else {
+      // 👔 MODO GESTOR / PROFESSOR / ALUNO — sempre usa o e-mail real
       try {
         return await signInWithEmailAndPassword(auth, realEmail, securePIN)
       } catch (e) {
         if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+          // Fallback para conta .internal legada (caso tenha sido criado antes no sistema antigo)
           try { return await signInWithEmailAndPassword(auth, internalEmail, securePIN) } catch {}
-          return await createUserWithEmailAndPassword(auth, realEmail, securePIN)
+
+          // Se não existe de jeito nenhum, cria com e-mail real
+          try {
+            return await createUserWithEmailAndPassword(auth, realEmail, securePIN)
+          } catch (createErr) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              throw new Error(`O e-mail ${realEmail} já existe no Auth com outra senha. O Admin precisa excluir o usuário no Firebase Auth para o sistema sincronizar o novo PIN.`)
+            }
+            throw createErr
+          }
         }
         throw e
       }
-    }
+  }
 
     // 👑 MODO ADMIN — usa e-mail interno para conta separada no Firebase Auth
     setSimulatedRole(null)
@@ -305,7 +358,7 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // 4. RESGATE CRÍTICO: Se ainda não achar nada na coleção NOVA, busca na ANTIGA 'users'
+      // 4. RESGATE : Se ainda não achar nada na coleção NOVA, busca na ANTIGA 'users'
       if (!targetDoc || !targetDoc.exists()) {
         const legacyId = `${email.replace(/[@.]/g, '_')}@rstopteam.internal`
         const legacyRef = doc(db, 'users', legacyId)

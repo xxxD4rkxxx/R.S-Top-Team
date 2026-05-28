@@ -211,28 +211,29 @@ export default function ModalitiesPage() {
         </div>
 
         {/* Categories / Modalidade List */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div className="columns-1 lg:columns-2 gap-4 space-y-4 lg:space-y-0">
           {loading ? (
-            Array(4).fill(0).map((_, i) => <div key={i} className="h-20 bg-white/5 rounded-[32px] animate-pulse" />)
+            Array(4).fill(0).map((_, i) => <div key={i} className="h-20 bg-white/5 rounded-[32px] animate-pulse break-inside-avoid mb-4" />)
           ) : filteredModalities.length === 0 ? (
-            <div className="py-20 text-center col-span-full border border-dashed border-white/10 rounded-[32px] opacity-20">
+            <div className="py-20 text-center col-span-full border border-dashed border-white/10 rounded-[32px] opacity-20 break-inside-avoid">
               <Layers size={48} className="mx-auto mb-4" />
               <p className="text-xs font-black uppercase tracking-widest">Nenhuma modalidade disponível</p>
             </div>
           ) : (
             filteredModalities.map(modality => (
-              <ModalityCard
-                key={modality.id}
-                modality={modality}
-                isExpanded={expandedId === String(modality.id)}
-                onToggleExpand={() => handleToggleExpand(modality.id)}
-                onEdit={handleEditModality}
-                onDelete={handleDeleteModality}
-                onToggleStatus={toggleModalityStatus}
-                onAddClass={handleAddClass}
-                onEditClass={handleEditClass}
-                onDeleteClass={handleDeleteClass}
-              />
+              <div key={modality.id} className="break-inside-avoid mb-4">
+                <ModalityCard
+                  modality={modality}
+                  isExpanded={expandedId === String(modality.id)}
+                  onToggleExpand={() => handleToggleExpand(modality.id)}
+                  onEdit={handleEditModality}
+                  onDelete={handleDeleteModality}
+                  onToggleStatus={toggleModalityStatus}
+                  onAddClass={handleAddClass}
+                  onEditClass={handleEditClass}
+                  onDeleteClass={handleDeleteClass}
+                />
+              </div>
             ))
           )}
         </div>

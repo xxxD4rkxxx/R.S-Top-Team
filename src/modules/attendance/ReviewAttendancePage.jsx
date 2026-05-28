@@ -70,7 +70,7 @@ export default function ReviewAttendancePage() {
         [FIELDS.ATUALIZADO_EM]: serverTimestamp()
       })
 
-      // 2. Atualizar Subcoleção de Presenças
+      // 2. Atualizar Subcoleção de Presenças + PRESENCAS_LOG (histórico do aluno)
       Object.entries(records).forEach(([studentId, status]) => {
         if (status) {
           const docRef = doc(attendancesRef, studentId)
@@ -86,6 +86,25 @@ export default function ReviewAttendancePage() {
             [FIELDS.INSTRUTOR_ID]: session[FIELDS.INSTRUTOR_ID] || session.instructorId || '',
             [FIELDS.NOME_INSTRUTOR]: session[FIELDS.NOME_INSTRUTOR] || session.instructorName || ''
           }, { merge: true })
+
+          // 🔥 Atualiza PRESENCAS_LOG (col. raiz usada pelo histórico do aluno)
+          // Grava TODOS os status para que faltas aparecem no calendário de histórico.
+          // Visitantes temporários (temp_vis_) não têm histórico persistente.
+          if (!String(studentId).startsWith('temp_vis_') && !student.isTemporary) {
+            const logRef = doc(db, COLLECTIONS.PRESENCAS_LOG, `${studentId}_${sessionId}`)
+            batch.set(logRef, {
+              studentId: studentId,
+              studentName: student[FIELDS.NOME] || student.nome || student.name || 'Desconhecido',
+              status: status,
+              modalidade: session[FIELDS.MODALIDADE] || session.modality || '',
+              data: session[FIELDS.DATA] || session.date || '',
+              date: session[FIELDS.DATA] || session.date || '',
+              isVisitor: !!(student.isVisitor || student.type === 'visitante'),
+              timestamp: serverTimestamp(),
+              sessionId: sessionId,
+              editedAt: serverTimestamp()
+            }, { merge: true })
+          }
         }
       })
 
@@ -98,6 +117,7 @@ export default function ReviewAttendancePage() {
       setIsSaving(false)
     }
   }
+
 
   useEffect(() => {
     async function fetchData() {

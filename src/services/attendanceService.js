@@ -82,25 +82,25 @@ export const attendanceService = {
           if (student.status === 'present') {
             // Se for visitante temporário, não o salva no banco global de alunos/visitantes
             if (!student.isTemporary) {
-              // 🛡️ USAR COLEÇÃO DE ORIGEM DINÂMICA (Evita atualizar coleção errada)
               const collectionName = student.collectionName || (student.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION)
               const userRef = doc(db, collectionName, String(student.id))
               const JORNADA = FIELDS.JORNADA_TECNICA || 'jornada_tecnica'
               const AULAS = FIELDS.AULAS_DESDE_ULTIMA_GRADUACAO || 'aulas_desde_ultima_graduacao'
-              
               batch.set(userRef, {
                 lastAttendanceAt: serverTimestamp(),
                 ultima_visita: serverTimestamp(),
                 total_visitas: increment(1),
                 [FIELDS.STATUS]: 'Ativo',
-                [JORNADA]: {
-                  [AULAS]: increment(1)
-                },
+                [JORNADA]: { [AULAS]: increment(1) },
                 [FIELDS.ATUALIZADO_EM]: serverTimestamp()
               }, { merge: true })
             }
+          }
 
-            // 🔥 Registro em Coleção Raiz (Double-Write) para facilitar KPIs e Histórico sem erros de índice
+          // 🔥 PRESENCAS_LOG: grava TODOS os status (presente, falta, justificada)
+          // para que o histórico do aluno exiba também os dias de falta no calendário.
+          // Visitantes temporários não têm histórico persistente.
+          if (!student.isTemporary) {
             const logRef = doc(collection(db, COLLECTIONS.PRESENCAS_LOG), `${student.id}_${activeSession.id}`)
             batch.set(logRef, {
               studentId: student.id,
@@ -108,7 +108,7 @@ export const attendanceService = {
               status: student.status,
               modalidade: activeSession[FIELDS.MODALIDADE] || activeSession.modality || '',
               data: activeSession[FIELDS.DATA] || activeSession.date || '',
-              date: activeSession[FIELDS.DATA] || activeSession.date || '', // Legado
+              date: activeSession[FIELDS.DATA] || activeSession.date || '',
               isVisitor: !!student.isVisitor,
               timestamp: serverTimestamp(),
               sessionId: activeSession.id

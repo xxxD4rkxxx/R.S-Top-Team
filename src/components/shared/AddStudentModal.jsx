@@ -109,18 +109,45 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
     if (isOpen) {
       if (initialData) {
         let normalizedModalities = []
-        const raw = Array.isArray(initialData.modalities) ? initialData.modalities :
-          Array.isArray(initialData.modality) ? initialData.modality :
-            (initialData.modality ? [initialData.modality] : [initialModality])
+        
+        // Combina 'modality' e 'modalities' num único array sem repetições
+        const allModsRaw = Array.from(new Set([
+          ...(initialData.modality ? (Array.isArray(initialData.modality) ? initialData.modality : [initialData.modality]) : []),
+          ...(Array.isArray(initialData.modalities) ? initialData.modalities : (typeof initialData.modalities === 'string' ? initialData.modalities.split(',').map(m=>m.trim()) : []))
+        ])).filter(Boolean);
+
+        if (allModsRaw.length === 0 && initialModality) {
+          allModsRaw.push(initialModality);
+        }
 
         // 🔥 Normalização Crítica: Mapear IDs para Nomes se necessário e remover duplicatas
-        normalizedModalities = Array.from(new Set(raw.map(m => {
+        normalizedModalities = Array.from(new Set(allModsRaw.map(m => {
           if (!m) return null
-          const found = activeModalities.find(am => am.id === m || am.name === m)
+          const found = activeModalities.find(am => am.id === m || am.name === m || am.name.toLowerCase() === m.toLowerCase())
           if (found) return found.name
-          if (m === 'jiu-jitsu' || m === 'jiu-jitsu-id') return 'Jiu Jitsu'
+          if (m.toLowerCase() === 'jiu-jitsu' || m === 'jiu-jitsu-id') return 'Jiu Jitsu'
           return m === 'Jiu-Jitsu' ? 'Jiu Jitsu' : m
         }))).filter(Boolean)
+
+        // Normalização de belt
+        let initialBelt = initialData.belt === 'Sem Faixa' || !initialData.belt ? 'none' : initialData.belt;
+        if (initialBelt !== 'none') {
+          // Find the exact belt name from the modalities config to match case
+          const currentCategoryName = (initialData.ageCategory || 'Adulto').toLowerCase();
+          for (const modId of normalizedModalities) {
+             const mod = activeModalities.find(m => m.id === modId || m.name === modId);
+             if (mod?.beltSystem?.categories) {
+               const category = mod.beltSystem.categories.find(c => c.name.toLowerCase() === currentCategoryName || c.id?.toLowerCase() === currentCategoryName);
+               if (category?.belts) {
+                 const exactBelt = category.belts.find(b => b.name.toLowerCase() === initialBelt.toLowerCase());
+                 if (exactBelt) {
+                   initialBelt = exactBelt.name;
+                   break;
+                 }
+               }
+             }
+          }
+        }
 
         setForm({
           name: initialData.nome || initialData.name || '',
@@ -128,7 +155,7 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
           phone: initialData.phone || '',
           emergency: initialData.emergency || '',
           medical: initialData.medical || '',
-          belt: initialData.belt || 'none',
+          belt: initialBelt,
           stripes: initialData.stripes || 0,
           modality: normalizedModalities.length > 0 ? normalizedModalities : [],
           type: initialData.isPromoting ? 'aluno' : (initialData.roles?.equipe ? 'equipe' : (initialData.roles?.visitante ? 'visitante' : 'aluno')),

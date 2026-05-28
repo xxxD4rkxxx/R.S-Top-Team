@@ -7,6 +7,7 @@ import {
 import { COLLECTIONS, FIELDS } from '../firebase/collections'
 import { useAuth } from '../context/AuthContext'
 import { useStudents } from './useStudents'
+import { useModalities } from './useModalities'
 import { beltConfig } from '../data/beltConfig'
 
 // ── HELPERS GLOBAIS ──────────────────────────────────────────────────
@@ -49,6 +50,7 @@ export function useTeacherIntelligence() {
                         String(effectiveRole || userData?.role || '').toLowerCase() === 'gestor'
     
     const { students, isLoading: loadingStudents } = useStudents()
+    const { allTurmas, modalities: gymModalities } = useModalities()
     const [intelligenceData, setIntelligenceData] = useState({
         graduations: [],
         allStudentsStats: [],
@@ -166,15 +168,23 @@ export function useTeacherIntelligence() {
 
                     // Presença (Ranking)
                     const sLogs = allLogs.filter(l => l.studentId === s.id);
-                    if (isPowerUser || sLogs.length > 0) {
+                    // Só ranquear alunos que tiveram alguma atividade avaliada (presença ou falta) no período
+                    if (sLogs.length > 0) {
                         const present = sLogs.filter(l => l.status === 'present' || l.status === 'presente').length;
-                        const total = Math.max(1, sessions.length);
-                        studentStats.push({
-                            id: s.id,
-                            name: s.name || s.nome,
-                            attendanceRate: Math.round((present / total) * 100),
-                            belt: s.belt || 'Branca'
-                        });
+                        const absent = sLogs.filter(l => l.status === 'absent' || l.status === 'falta').length;
+                        
+                        // Total considerável para ser justo: soma de presenças e faltas injustificadas.
+                        // Ignora faltas justificadas e sessões anteriores à matrícula do aluno.
+                        const totalConsiderable = present + absent;
+                        
+                        if (totalConsiderable > 0) {
+                            studentStats.push({
+                                id: s.id,
+                                name: s.name || s.nome,
+                                attendanceRate: Math.round((present / totalConsiderable) * 100),
+                                belt: s.belt || 'Branca'
+                            });
+                        }
                     }
                 });
 
@@ -184,25 +194,95 @@ export function useTeacherIntelligence() {
                     const dSess = new Date(sDate); dSess.setHours(0,0,0,0);
                     const diffV = Math.round((dStart - dSess) / (1000 * 60 * 60 * 24));
                     const vCount = Number(sess.visitantesCount || 0);
+                    const pCount = Number(sess.presencasCount || 0);
+                    const tCount = Number(sess.totalCount || pCount);
+                    const fCount = Number(sess.faltasCount) || Math.max(0, tCount - pCount);
 
                     if (sDate.getFullYear() === now.getFullYear()) {
                         const y = yearData.find(d => d.month === sDate.getMonth());
-                        if (y) { y.presencas += Number(sess.presencasCount || 0); y.visitantes += vCount; }
+                        if (y) { y.presencas += pCount; y.visitantes += vCount; y.faltas += fCount; }
 
                         if (sDate.getMonth() === now.getMonth()) {
                             const m = monthData.find(d => d.day === sDate.getDate());
-                            if (m) { m.presencas += Number(sess.presencasCount || 0); m.visitantes += vCount; }
+                            if (m) { m.presencas += pCount; m.visitantes += vCount; m.faltas += fCount; }
                         }
 
                         if (diffV >= 0 && diffV < 7) {
                             const w = weekData.find(d => d.dateStr === toYMD(sDate));
-                            if (w) { w.presencas += Number(sess.presencasCount || 0); w.visitantes += vCount; }
+                            if (w) { w.presencas += pCount; w.visitantes += vCount; w.faltas += fCount; }
                         }
                     }
                 });
 
+                // 6. PROCESSAR MODALIDADES (Turmas e Modalidades Widget)
+                const modalitiesMap = {};
+                
+                // Pre-seed with available modalities so they show up even with 0 students
+                const validMods = isPowerUser ? gymModalities.map(m => m.name) : teacherModalities;
+                validMods.forEach(mName => {
+                    if (!mName) return;
+                    const mNormalized = mName.toLowerCase().replace(/-/g, ' ').trim();
+                    const mDisplay = mNormalized.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    modalitiesMap[mNormalized] = { name: mDisplay, alunos: 0, logs: [] };
+                });
+
+                activeStudents.forEach(s => {
+                    const mods = (Array.isArray(s.modalities || s[FIELDS.MODALIDADES]) ? (s.modalities || s[FIELDS.MODALIDADES]) : [s.modality || s[FIELDS.MODALIDADE]])
+                        .filter(Boolean)
+                        .map(m => m.trim());
+                    
+                    mods.forEach(m => {
+                        const mNormalized = m.toLowerCase().replace(/-/g, ' ').trim();
+                        const mDisplay = mNormalized.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        
+                        if (!modalitiesMap[mNormalized]) {
+                            modalitiesMap[mNormalized] = { name: mDisplay, alunos: 0, logs: [] };
+                        }
+                        modalitiesMap[mNormalized].alunos++;
+                    });
+                });
+
+                allLogs.forEach(l => {
+                    const mod = (l.modalidade || l.modality || '').trim();
+                    if (mod) {
+                        const mNormalized = mod.toLowerCase().replace(/-/g, ' ').trim();
+                        if (modalitiesMap[mNormalized]) {
+                            modalitiesMap[mNormalized].logs.push(l);
+                        }
+                    }
+                });
+
+                const getModalityCapacity = (modName) => {
+                    const slug = modName.toLowerCase().trim()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/[^\w-]/g, '');
+                    const turmas = allTurmas.filter(t => t.modalityId === slug);
+                    let cap = 0;
+                    turmas.forEach(t => cap += (Number(t.capacidade) || Number(t.capacity) || 0));
+                    return cap;
+                };
+
+                const modalitiesStats = Object.values(modalitiesMap).map(mod => {
+                    const present = mod.logs.filter(l => l.status === 'present' || l.status === 'presente').length;
+                    const absent = mod.logs.filter(l => l.status === 'absent' || l.status === 'falta').length;
+                    const totalConsiderable = present + absent;
+                    const mediaPresenca = totalConsiderable > 0 ? Math.round((present / totalConsiderable) * 100) : 100;
+                    
+                    const capacity = getModalityCapacity(mod.name);
+                    const ocupacao = capacity > 0 ? Math.min(100, Math.round((mod.alunos / capacity) * 100)) : 0;
+                    
+                    return {
+                        name: mod.name,
+                        alunos: mod.alunos,
+                        ocupacao,
+                        mediaPresenca
+                    };
+                }).sort((a, b) => b.alunos - a.alunos).slice(0, 5);
+
                 setIntelligenceData({
                     graduations: [],
+                    modalitiesStats,
                     allStudentsStats: studentStats.sort((a,b) => b.attendanceRate - a.attendanceRate).slice(0, 10),
                     absentStudents: [],
                     charts: { 
@@ -235,7 +315,7 @@ export function useTeacherIntelligence() {
         };
 
         calculate();
-    }, [students, loadingStudents, userData, isPowerUser, teacherModalities]);
+    }, [students, loadingStudents, userData, isPowerUser, teacherModalities, allTurmas, gymModalities]);
 
     return intelligenceData;
 }

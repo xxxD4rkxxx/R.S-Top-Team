@@ -26,12 +26,15 @@ import {
   FileText,
   RefreshCw,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Award,
   Target,
   Smartphone,
   Eye,
   GraduationCap as GraduationIcon,
   CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { useFinance } from "../../hooks/useFinance";
 import { motion, AnimatePresence } from "framer-motion";
@@ -300,6 +303,20 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
   // ⬇️ Controla a visibilidade de alunos inativos/suspensos/arquivados na tabela
   const [showArchived, setShowArchived] = useState(false);
 
+  // ==========================================
+  // ⚡ PAGINAÇÃO CLIENT-SIDE (OTIMIZAÇÃO)
+  // ==========================================
+  // States para controlar a página atual e o limite de itens na tela (10 por padrão).
+  // Isso evita o travamento do DOM ao lidar com bases grandes de alunos (Core Web Vitals).
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // "Reseta" para a página 1 sempre que qualquer filtro ou busca for modificado pelo usuário.
+  // Isso previne que o usuário caia em uma página "fantasma" que ficou vazia após o filtro.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, typeFilter, modalityFilter, sortBy, showArchived]);
+
   const stats = useMemo(() => {
     let active = 0,
       inactive = 0,
@@ -459,21 +476,49 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
     if (statusFilter !== "todos")
       list = list.filter((s) => normalizeStatus(s.status) === statusFilter);
     if (modalityFilter !== "todas") {
-      list = list.filter(
-        (s) =>
-          s.modality === modalityFilter ||
-          (Array.isArray(s.modalities) &&
-            s.modalities.includes(modalityFilter)),
-      );
+      // 🔧 FIX: Comparação case-insensitive para cobrir variações de capitalização
+      // ex: "boxe" == "Boxe", "jiu-jitsu" == "Jiu Jitsu", etc.
+      const filterNorm = modalityFilter
+        .toLowerCase()
+        .replace(/-/g, " ")
+        .trim();
+      list = list.filter((s) => {
+        const allMods = [
+          s.modality,
+          ...(Array.isArray(s.modalities) ? s.modalities : []),
+        ]
+          .filter(Boolean)
+          .map((m) => m.toLowerCase().replace(/-/g, " ").trim());
+        return allMods.includes(filterNorm);
+      });
     }
-    if (sortBy === "az")
+    // Filtro "Recente": Ordena por data de criação ou atualização (do mais novo para o mais velho)
+    if (sortBy === "recente") {
+      list = [...list].sort((a, b) => {
+        // Função auxiliar para extrair o timestamp independentemente de como foi salvo no Firebase
+        const getT = (s) => {
+          const d = s.createdAt || s.updatedAt || 0;
+          if (!d) return 0;
+          if (typeof d.toMillis === "function") return d.toMillis();
+          if (typeof d.toDate === "function") return d.toDate().getTime();
+          return new Date(d).getTime() || 0;
+        };
+        // Ordem decrescente
+        return getT(b) - getT(a);
+      });
+    } 
+    // Ordem alfabética: A-Z
+    else if (sortBy === "az") {
       list = [...list].sort((a, b) =>
         (a.nome || a.name || "").localeCompare(b.nome || b.name || ""),
       );
-    if (sortBy === "za")
+    } 
+    // Ordem alfabética reversa: Z-A
+    else if (sortBy === "za") {
       list = [...list].sort((a, b) =>
         (b.nome || b.name || "").localeCompare(a.nome || a.name || ""),
       );
+    }
     return list;
   }, [
     students,
@@ -485,6 +530,16 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
     typeFilter,
     showArchived,
   ]);
+
+  // Calcula dinamicamente o número total de páginas (Arredonda para cima)
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  
+  // Recorte da lista estritamente para a página atual usando memoization.
+  // Evita re-renderizações pesadas, enviando ao JSX apenas a fração de 10 alunos necessários.
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, currentPage]);
 
   async function handleAddStudent(data, modality, options) {
     try {
@@ -928,7 +983,7 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {filtered.map((student, index) => (
+                  {paginatedStudents.map((student, index) => (
                     <tr
                       key={student.id}
                       className="hover:bg-white/5 transition-colors group cursor-pointer"
@@ -959,9 +1014,16 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
                                     : ""}
                                 </>
                               ) : (
-                                !student.roles?.visitante && (
-                                  <span>Sem faixa</span>
-                                )
+                                !student.roles?.visitante && (() => {
+                                  const val = student[FIELDS.MODALIDADES] || student.modalities || [];
+                                  const single = student[FIELDS.MODALIDADE] || student.modality;
+                                  const raw = [...(Array.isArray(val) ? val : [val]), single].filter(Boolean);
+                                  const isOnlyBoxe = raw.length > 0 && raw.every(m => typeof m === 'string' && m.trim().toLowerCase() === 'boxe');
+                                  
+                                  if (isOnlyBoxe) return null;
+                                  
+                                  return <span>Sem faixa</span>;
+                                })()
                               )}
                             </span>
                           </div>
@@ -1033,7 +1095,21 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
                               ),
                             );
 
-                            return mods.length > 0 ? mods.join(", ") : "---";
+                            return mods.length > 0 ? (
+                              mods.join(", ")
+                            ) : (
+                              <div className="relative group flex items-center justify-center cursor-help">
+                                <div className="flex items-center justify-center text-rose-500 bg-rose-500/10 w-7 h-7 rounded-lg border border-rose-500/20">
+                                  <AlertTriangle size={14} />
+                                </div>
+                                <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity duration-200 pointer-events-none z-50 flex flex-col items-center">
+                                  <div className="bg-[#111] border border-white/10 text-white text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
+                                    Sem Modalidade
+                                  </div>
+                                  <div className="w-2 h-2 bg-[#111] border-b border-r border-white/10 transform rotate-45 -mt-1.5"></div>
+                                </div>
+                              </div>
+                            );
                           })()}
                         </div>
                       </td>
@@ -1144,13 +1220,70 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
               </table>
             )}
           </div>
-
+              {/* Exibindo total de aluno*/}
           {!isLoadingStudents && (
-            <p className="text-[11px] text-gray-600 text-center mt-4">
-              Exibindo {filtered.length} de {students.length}{" "}
-              {typeFilter === "visitante" ? "visitante" : "aluno"}
-              {students.length !== 1 ? "s" : ""}
-            </p>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6">
+              <p className="text-[11px] text-gray-600 font-bold text-center md:text-left w-full md:w-auto ml-1">
+                Exibindo <span className="text-gray-400">{filtered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, filtered.length)}</span> de <span className="text-gray-400">{filtered.length}</span> {typeFilter === "visitante" ? "visitante" : "aluno"}{filtered.length !== 1 ? "s" : ""}
+              </p>
+
+              {/* 
+                CONTROLES DE PAGINAÇÃO
+                Renderizado apenas quando o volume de alunos exigir 2 ou mais páginas.
+              */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5 bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-xl border border-transparent text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  
+                  <div className="flex items-center gap-1 px-2">
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                      const page = i + 1;
+                      
+                      // Lógica de "Encurtamento Inteligente" numérico:
+                      // Mostramos sempre: Página 1, Última Página e Adjacentes (Página atual -1 e +1)
+                      const showPage = page === 1 || page === totalPages || Math.abs(currentPage - page) <= 1;
+                      
+                      // Se a distância for exata de 2 blocos, substituimos o número intermediário por "..."
+                      const showDotsBefore = page === currentPage - 2 && page > 1;
+                      const showDotsAfter = page === currentPage + 2 && page < totalPages;
+                      
+                      if (showPage) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all ${
+                              currentPage === page
+                                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                                : "text-gray-400 hover:bg-white/10 hover:text-white"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      } else if (showDotsBefore || showDotsAfter) {
+                        return <span key={page} className="text-gray-600 text-xs px-1">...</span>;
+                      }
+                      return null;
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-xl border border-transparent text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

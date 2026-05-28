@@ -499,7 +499,7 @@ export default function CollaboratorsPage() {
           </div>
 
           <div className="mt-4 text-center">
-            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em]">Exibindo {filteredUsers.length} de {users.length} membros</span>
+            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em]">Exibindo <span className="text-gray-400">{filteredUsers.length}</span> de <span className="text-gray-400">{users.length}</span> membros</span>
           </div>
         </div>
       </main>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import {
-    Award, Users, TrendingUp, Zap, Star, Eye, AlertCircle, MessageCircle, ChevronRight, ShieldCheck, BarChart3, Activity
+    Award, Users, TrendingUp, Zap, Star, Eye, AlertCircle, MessageCircle, ChevronRight, ShieldCheck, BarChart3, Activity, Target, Swords
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -389,9 +389,9 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                                         tick={{ fill: '#6B7280', fontSize: 10 }}
                                     />
                                     <RechartsTooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }} />
-                                    <Area type="monotone" dataKey="novos" name="Novos" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#gradNovos)" />
-                                    <Area type="monotone" dataKey="inativos" name="Inativos" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#gradInativos)" strokeDasharray="5 5" />
                                     <Area type="monotone" dataKey="visitantes" name="Visitantes" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#gradVisitantes)" />
+                                    <Area type="monotone" dataKey="inativos" name="Inativos" stroke="#f43f5e" strokeWidth={1.5} fillOpacity={1} fill="url(#gradInativos)" />
+                                    <Area type="monotone" dataKey="novos" name="Novos" stroke="#3b82f6" strokeWidth={3.5} fillOpacity={1} fill="url(#gradNovos)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -483,26 +483,6 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                 {/* ── ALERTAS E STATUS (COLUNA DIREITA) ── */}
                 <div className="lg:col-span-4 space-y-6">
 
-
-                    {/* Saúde Geral Circular */}
-                    <div className="glass-card rounded-[32px] border border-white/10 p-8 flex flex-col items-center">
-                        <div className="relative w-40 h-40 mb-6">
-                            <svg className="w-full h-full transform -rotate-90">
-                                <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/[0.03]" />
-                                <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={452.4} strokeDashoffset={452.4 * (1 - stats.avgAttendance30d / 100)} className="text-emerald-500" strokeLinecap="round" />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-3xl font-black text-white tracking-tighter">{stats.avgAttendance30d}%</span>
-                                <span className="text-[8px] text-gray-500 font-black tracking-widest mt-1">Saúde Geral</span>
-                            </div>
-                        </div>
-                        <div className="text-center">
-                            <h3 className="text-sm font-black text-white tracking-tight">Tendências de Atividade</h3>
-                            <p className="text-[10px] text-gray-500 font-bold">Frequência da turma por período</p>
-                        </div>
-                    </div>
-
-
                     {/* Ações Rápidas - Apenas Desktop (Escondido no mobile) */}
                     <div className="hidden lg:block">
                         <div className="glass-card rounded-[32px] border border-white/10 overflow-hidden p-6">
@@ -554,6 +534,60 @@ export default function IntelligenceSection({ data, hideKPIs = false }) {
                             </div>
                         </div>
                     </div>
+
+                    {/* Turmas e Modalidades Widget */}
+                    <div className="glass-card rounded-[32px] border border-white/10 p-6 fade-slide-up">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-[12px] uppercase tracking-widest text-white font-black flex items-center gap-2">
+                                <Swords size={16} className="text-emerald-400" /> Turmas e Modalidades
+                            </h3>
+                            <Link to="/modalities" className="text-[10px] font-bold text-gray-500 hover:text-white transition-colors">
+                                Ver todas
+                            </Link>
+                        </div>
+
+                        {/* Tabela Cabeçalho */}
+                        <div className="grid grid-cols-12 gap-2 mb-4 px-2 border-b border-white/5 pb-2">
+                            <div className="col-span-5 text-[9px] font-black text-gray-500 tracking-widest uppercase">Modalidade</div>
+                            <div className="col-span-2 text-[9px] font-black text-gray-500 tracking-widest uppercase text-center">Alunos</div>
+                            <div className="col-span-3 text-[9px] font-black text-gray-500 tracking-widest uppercase text-center">Ocupação</div>
+                            <div className="col-span-2 text-[9px] font-black text-gray-500 tracking-widest uppercase text-right">Presença</div>
+                        </div>
+
+                        {/* Linhas */}
+                        <div className="space-y-2">
+                            {data.modalitiesStats?.map((mod, idx) => (
+                                <Link to={`/modalities`} key={idx} className="grid grid-cols-12 gap-2 items-center px-2 group hover:bg-white/[0.02] p-2 -mx-2 rounded-xl transition-all border border-transparent hover:border-white/5">
+                                    <div className="col-span-5 flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-[#151515] flex items-center justify-center text-white/80 border border-white/5 shadow-inner">
+                                            {mod.name.toLowerCase().includes('jiu') ? <Users size={14} className="text-gray-400" /> :
+                                             mod.name.toLowerCase().includes('boxe') ? <Target size={14} className="text-gray-400" /> :
+                                             mod.name.toLowerCase().includes('muay') ? <Activity size={14} className="text-gray-400" /> :
+                                             <Activity size={14} className="text-gray-400" />}
+                                        </div>
+                                        <span className="text-[11px] font-black text-white truncate">{mod.name}</span>
+                                    </div>
+                                    <div className="col-span-2 text-center text-[11px] font-black text-white">
+                                        {mod.alunos}
+                                    </div>
+                                    <div className="col-span-3 flex items-center gap-2">
+                                        <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${mod.ocupacao}%` }} />
+                                        </div>
+                                        <span className="text-[9px] font-black text-gray-400 w-5 text-right">{mod.ocupacao}%</span>
+                                    </div>
+                                    <div className="col-span-2 flex items-center justify-end gap-1">
+                                        <span className="text-[11px] font-black text-emerald-400">{mod.mediaPresenca}%</span>
+                                        <ChevronRight size={14} className="text-gray-600 group-hover:text-white transition-colors" />
+                                    </div>
+                                </Link>
+                            ))}
+                            {(!data.modalitiesStats || data.modalitiesStats.length === 0) && (
+                                <div className="text-center py-6 text-xs font-bold text-gray-500">Nenhuma modalidade configurada.</div>
+                            )}
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>

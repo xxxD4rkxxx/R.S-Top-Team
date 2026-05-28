@@ -49,7 +49,12 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
   const normalizedBelt = belt?.toLowerCase()?.trim() || 'white'
   const bgClass = beltConfig[normalizedBelt]?.bgClass || 'belt-white'
   const textColor = beltConfig[normalizedBelt]?.textColor || '#111111'
-  const primaryMod = modality || modalities[0] || 'Não informada'
+  
+  // Combina 'modality' e 'modalities' num único array sem repetições
+  const allMods = Array.from(new Set([
+    ...(modality ? [modality] : []),
+    ...(Array.isArray(modalities) ? modalities : (typeof modalities === 'string' ? modalities.split(',').map(m=>m.trim()) : []))
+  ])).filter(Boolean);
   
   const formatDate = (d) => formatBR(d, {}, true)
 
@@ -114,18 +119,37 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
               <p className="text-2xl md:text-3xl font-black text-white truncate leading-tight tracking-tight">{name}</p>
               
               <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <span className="text-[9px] font-black px-3 py-1.5 rounded-xl border border-white/10 text-gray-400 uppercase tracking-[0.1em]" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                  {primaryMod}
-                </span>
+                {allMods.length > 0 ? (
+                  allMods.map((mod, idx) => (
+                    <span key={idx} className="text-[9px] font-black px-3 py-1.5 rounded-xl border border-white/10 text-gray-400 uppercase tracking-[0.1em]" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                      {mod}
+                    </span>
+                  ))
+                ) : (
+                  <div className="relative group flex items-center justify-center cursor-help mt-1">
+                    <div className="flex items-center justify-center text-rose-500 bg-rose-500/10 w-8 h-8 rounded-xl border border-rose-500/20">
+                      <AlertTriangle size={16} />
+                    </div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity duration-200 pointer-events-none z-50 flex flex-col items-center">
+                      <div className="bg-[#111] border border-white/10 text-white text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
+                        Sem Modalidade
+                      </div>
+                      <div className="w-2 h-2 bg-[#111] border-b border-r border-white/10 transform rotate-45 -mt-1.5"></div>
+                    </div>
+                  </div>
+                )}
                 <span className="text-[9px] font-black px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-gray-500 uppercase tracking-[0.1em]">
                   {ageCategory?.toUpperCase() || 'ADULTO'}
                 </span>
                 <span className="text-[9px] font-black px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-gray-500 uppercase tracking-[0.1em]">
                   {gender === 'Masculino' ? 'MASC' : gender === 'Feminino' ? 'FEM' : (gender || 'NÃO INFORMADO')}
                 </span>
-                <span className={`text-[9px] font-black px-3 py-1.5 rounded-xl border uppercase tracking-[0.1em] ${bgClass}`} style={{ color: textColor }}>
-                  {beltConfig[belt]?.label?.toUpperCase() || belt?.toUpperCase() || 'SEM FAIXA'} {stripes ? `· ${stripes} GRAUS` : ''}
-                </span>
+                {(!allMods.length || !allMods.every(m => m.toLowerCase().trim() === 'boxe')) && (
+                  <span className={`text-[9px] font-black px-3 py-1.5 rounded-xl border uppercase tracking-[0.1em] ${bgClass}`} style={{ color: textColor }}>
+                    {beltConfig[belt]?.label?.toUpperCase() || belt?.toUpperCase() || 'SEM FAIXA'} {stripes ? `· ${stripes} GRAUS` : ''}
+                  </span>
+                )}
               </div>
             </div>
           </div>

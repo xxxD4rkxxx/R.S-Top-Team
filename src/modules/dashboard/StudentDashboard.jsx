@@ -19,6 +19,7 @@ import { beltConfig as defaultBelts } from '../../data/beltConfig'
 import { attendanceService } from '../../services/attendanceService'
 import PageHeader from '../../components/shared/PageHeader'
 import MobileHeader from '../../components/navigation/MobileHeader'
+import { calculateModalityValue } from '../../utils/billingUtils'
 
 /**
  * DASHBOARD PREMIUM DO ALUNO (Academy 2)
@@ -66,12 +67,18 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
 )
 
 const PaymentStatCard = ({ info, delay = 0 }) => {
-  const { amount, status, changeType } = info;
+  const { amount, status, changeType, dueDate } = info;
   
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
   const statusConfig = {
-    pago: { icon: Check, color: '#10b981', label: 'Pago', desc: 'Próxima cobrança' },
-    pendente: { icon: Clock, color: '#f59e0b', label: 'Pendente', desc: 'Fatura atual' },
-    vencido: { icon: AlertCircle, color: '#f43f5e', label: 'Atrasado', desc: 'Fatura atual' }
+    pago: { icon: Check, color: '#10b981', label: 'Pago', desc: 'Mensalidade em dia' },
+    pendente: { icon: Clock, color: '#f59e0b', label: 'Pendente', desc: dueDate ? `Vence: ${formatDate(dueDate)}` : 'Fatura atual' },
+    vencido: { icon: AlertCircle, color: '#f43f5e', label: 'Atrasado', desc: dueDate ? `Venceu: ${formatDate(dueDate)}` : 'Fatura atual' }
   };
 
   const current = statusConfig[status] || statusConfig.pago;
@@ -316,49 +323,48 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     ]
   }, [total, monthly, weekly, streak, loadingAttendance])
 
-  // Cálculo do Próximo Pagamento Estimado e Status Financeiro
+  // Cálculo do Próximo Pagamento Baseado nas Cobranças Reais e Regras
   const nextPaymentInfo = useMemo(() => {
-    if (loadingModalities || !user) return { amount: 0, lastAmount: 0, changed: false, changeType: 'none', status: 'pago' };
+    if (!user) return { amount: 0, lastAmount: 0, changed: false, changeType: 'none', status: 'pago', dueDate: null };
 
-    let currentEstimated = 0;
-    const cat = (user.ageCategory || 'Adulto').toLowerCase();
-    const modsAluno = Array.isArray(user.modalities) ? user.modalities : [user.modality].filter(Boolean);
+    // 1. Encontrar a cobrança mais urgente (vencida primeiro, depois a mais próxima a vencer)
+    const pendingAndOverdue = cobrancas.filter(b => b.status === 'pending' || b.status === 'overdue');
+    
+    // Ordenar por data de vencimento (as mais antigas/vencidas primeiro)
+    pendingAndOverdue.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
-    modsAluno.forEach(modName => {
-      const modConfig = modalities.find(m => m.name === modName || m.id === modName);
-      if (modConfig && modConfig.pricing && modConfig.pricing[cat]) {
-        const rule = modConfig.pricing[cat];
-        if (rule.enabled) {
-          currentEstimated += Number(rule.price) || 0;
-        }
+    const currentBill = pendingAndOverdue[0];
+    
+    let amount = 0;
+    let status = 'pago';
+    let dueDate = null;
+
+    if (currentBill) {
+      amount = Number(currentBill.amount) || 0;
+      status = currentBill.status === 'overdue' ? 'vencido' : 'pendente';
+      
+      const today = new Date().toISOString().split('T')[0];
+      if (currentBill.status === 'pending' && currentBill.dueDate < today) {
+        status = 'vencido';
       }
-    });
-
-    // Fallback para valor manual se configurado
-    if (user.billingMode === 'manual' && user.manualPlanValue) {
-      currentEstimated = Number(user.manualPlanValue);
-    } else if (currentEstimated === 0 && user.planValue) {
-      currentEstimated = Number(user.planValue);
+      
+      dueDate = currentBill.dueDate;
+    } else {
+      // 2. Se não tem fatura aberta, o KPI reflete qual será o valor do próximo vencimento.
+      // Isso utiliza as modalidades ativas no perfil (respeitando se a modalidade custa R$ 0).
+      amount = calculateModalityValue(user, modalities);
+      status = 'pago';
     }
 
-    // Comparar com a última fatura paga para ver se houve aumento ou redução
-    const lastPaidBill = cobrancas.find(b => b.status === 'paid');
-    const lastAmount = lastPaidBill ? Number(lastPaidBill.amount) : currentEstimated;
-    
-    let changeType = 'none';
-    if (currentEstimated > lastAmount) changeType = 'increase';
-    if (currentEstimated < lastAmount && lastAmount > 0) changeType = 'decrease';
-
-    // Determinar Status do Pagamento
-    const hasOverdue = cobrancas.some(b => b.status === 'overdue' || (b.status === 'pending' && b.dueDate < new Date().toISOString().split('T')[0]));
-    const hasPending = cobrancas.some(b => b.status === 'pending' && b.dueDate >= new Date().toISOString().split('T')[0]);
-    
-    let status = 'pago';
-    if (hasOverdue) status = 'vencido';
-    else if (hasPending) status = 'pendente';
-
-    return { amount: currentEstimated, lastAmount, changed: changeType !== 'none', changeType, status };
-  }, [user, modalities, loadingModalities, cobrancas]);
+    return { 
+      amount, 
+      lastAmount: amount, 
+      changed: false, 
+      changeType: 'none', 
+      status,
+      dueDate
+    };
+  }, [user, cobrancas, modalities]);
 
   const handleNoticeClick = (notice) => {
     // Marcar como visto se não for o autor e se ainda não foi lido

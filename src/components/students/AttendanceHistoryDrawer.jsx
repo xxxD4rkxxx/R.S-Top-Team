@@ -74,14 +74,36 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
       const snap = await getDocs(q)
       const recs = snap.docs.map(d => {
         const data = d.data()
-        const ts = data.timestamp || data.date // Suporta campo timestamp ou date legados
-        return {
-          date: ts?.toDate ? ts.toDate() : new Date(ts),
-          modality: data.modality || 'Jiu Jitsu',
-          status: data.status || 'present',
-          sessionId: d.ref.parent.parent?.id || '',
+
+        // 🔥 FIX TIMEZONE:
+        // 'data' e 'date' = string da data da AULA (ex: "2026-05-22") → fonte primária
+        // 'timestamp' = serverTimestamp de quando o registro foi GRAVADO → só fallback
+        // new Date("2026-05-22") interpreta como UTC meia-noite → usa construtor local para evitar off-by-one
+        let parsedDate
+        const rawDate = data.data || data.date // data real da aula (string)
+        if (rawDate && typeof rawDate === 'string' && rawDate.includes('-')) {
+          const parts = rawDate.split('-')
+          if (parts.length === 3) {
+            // new Date(year, month-1, day) usa horário LOCAL — evita virar dia anterior
+            parsedDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+          }
+        } else if (rawDate?.toDate) {
+          parsedDate = rawDate.toDate()
         }
-      }).filter(r => !isNaN(r.date)).sort((a, b) => a.date.getTime() - b.date.getTime())
+
+        // Fallback: usa o timestamp do servidor (menos preciso para exibição de dia)
+        if (!parsedDate || isNaN(parsedDate)) {
+          const ts = data.timestamp
+          if (ts?.toDate) parsedDate = ts.toDate()
+        }
+
+        return {
+          date: parsedDate || new Date(0),
+          modality: data.modalidade || data.modality || 'Jiu Jitsu',
+          status: data.status || 'present',
+          sessionId: data.sessionId || d.ref.parent.parent?.id || '',
+        }
+      }).filter(r => r.date && !isNaN(r.date)).sort((a, b) => a.date.getTime() - b.date.getTime())
       setRecords(recs)
 
       // Professor notes
@@ -457,10 +479,8 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                           } else if (hasJustified) {
                             cellStyle = 'bg-[#3b82f6]/15 text-[#3b82f6] border-2 border-[#3b82f6] shadow-[inset_0_0_12px_rgba(59,130,246,0.5)] cursor-help scale-[1.02]'
                           } else if (hasAbsent) {
-                            // "um cinza, sem borda"
-                            cellStyle = 'bg-white/10 text-gray-400 border-none cursor-help'
+                            cellStyle = 'bg-[#ef4444]/15 text-[#ef4444] border-2 border-[#ef4444] shadow-[inset_0_0_12px_rgba(239,68,68,0.4)] cursor-help scale-[1.02]'
                           } else if (isToday) {
-                            // Subtle today marker
                             cellStyle = 'bg-white/5 text-white font-black border-2 border-primary/60'
                           }
 
@@ -510,7 +530,7 @@ export default function AttendanceHistoryDrawer({ student, isOpen, onClose }) {
                           <span className="text-[10px] text-gray-400">Presença</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="w-3.5 h-3.5 rounded-sm bg-white/10" />
+                          <div className="w-3.5 h-3.5 rounded-sm border-2 border-[#ef4444] bg-[#ef4444]/10" />
                           <span className="text-[10px] text-gray-400">Falta</span>
                         </div>
                         <div className="flex items-center gap-2">

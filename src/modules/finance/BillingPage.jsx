@@ -8,8 +8,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   CreditCard, Plus, Search, Trash2, X,
-  CheckCircle2, Clock, AlertCircle, DollarSign,
-  ChevronDown, Loader2, Users, RefreshCcw, Save, Edit2, FileText
+  CheckCircle2, Clock, AlertCircle, DollarSign, AlertTriangle,
+  ChevronDown, Loader2, Users, RefreshCcw, Save, Edit2, FileText, FileUp
 } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -106,6 +106,67 @@ function CustomSelect({ label, value, onChange, options }) {
     </div>
   )
 }
+
+// ─── MultiSelect — Para filtro de modalidades com suporte a seleção múltipla ───
+
+function MultiSelect({ label, value = [], onChange, options }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const toggleOption = (v) => {
+    if (value.includes(v)) {
+      onChange(value.filter(item => item !== v))
+    } else {
+      onChange([...value, v])
+    }
+  }
+
+  // Conta quantas modalidades estão selecionadas
+  const selectedCount = value.length
+
+  return (
+    <div className="flex flex-col gap-1.5 relative" ref={ref}>
+      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="form-input bg-black input-raise text-sm py-2.5 px-4 text-gray-300 font-medium text-left flex justify-between items-center w-full border border-white/10 rounded-2xl transition-all hover:bg-black/60 focus:ring-1 focus:ring-white/20"
+      >
+        <span className="truncate">
+          {selectedCount === 0 ? 'Todas' : `${selectedCount} selecionada(s)`}
+        </span>
+        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[200px] bg-[#0d0d0d] border border-white/10 rounded-2xl z-[100] overflow-hidden shadow-2xl py-2"
+          style={{ animation: 'fadeSlideUp 0.15s ease-out forwards' }}>
+          {options.map(([v, l]) => {
+            const isSelected = value.includes(v)
+            return (
+              <button
+                key={v}
+                onClick={() => toggleOption(v)}
+                className={`w-full text-left px-5 py-3 text-sm transition-colors hover:bg-white/5 flex items-center justify-between ${isSelected ? 'text-white bg-white/5 font-black' : 'text-gray-400 font-medium'}`}
+              >
+                <span>{l}</span>
+                {isSelected && <CheckCircle2 size={16} className="text-primary" />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 
 // ─── Modal de Nova Cobrança ───────────────────────────────────────────────────
 
@@ -510,7 +571,7 @@ export default function BillingPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
   const [sortOrder, setSortOrder] = useState('recente')
-  const [modalityFilter, setModalityFilter] = useState('todas')
+  const [modalityFilter, setModalityFilter] = useState([]) // Modificado para array
   const [paidByFilter, setPaidByFilter] = useState('todos')
 
   const handleUpdate = async (data) => {
@@ -567,8 +628,24 @@ export default function BillingPage() {
       
       // Filtro por modalidade do aluno
       const student = students.find(s => s.id === b.studentId)
-      const studentMods = student?.modalities || student?.modalitiesArray || []
-      const byModality = modalityFilter === 'todas' || studentMods.includes(modalityFilter)
+      
+      let rawMods = []
+      if (student?.modalidades) {
+        rawMods = Array.isArray(student.modalidades) ? student.modalidades : [student.modalidades]
+      } else if (student?.modalities) {
+        rawMods = Array.isArray(student.modalities) ? student.modalities : [student.modalities]
+      } else if (student?.modality) {
+        rawMods = [student.modality]
+      }
+
+      const studentMods = rawMods.map(m => 
+        typeof m === 'object' && m !== null ? (m.name || m.id || m.slug || '') : String(m)
+      ).filter(Boolean)
+
+      const normalizedFilters = modalityFilter.map(f => String(f).toLowerCase().trim())
+      const byModality = modalityFilter.length === 0 || studentMods.some(mod => 
+        mod && normalizedFilters.includes(String(mod).toLowerCase().trim())
+      )
       
       // Filtro por quem confirmou
       const byPaidBy = paidByFilter === 'todos' || b.paidBy === paidByFilter
@@ -708,7 +785,7 @@ export default function BillingPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearchTerm(''); setStatusFilter('todos'); setModalityFilter('todas'); setPaidByFilter('todos') }}
+              onClick={() => { setSearchTerm(''); setStatusFilter('todos'); setModalityFilter([]); setPaidByFilter('todos') }}
               className="flex items-center justify-center gap-2 px-6 h-[46px] rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
             >
               <RefreshCcw size={18} strokeWidth={1.9} /> Limpar Filtros
@@ -743,14 +820,11 @@ export default function BillingPage() {
                 ['antigo', 'Mais Antigo'],
               ]}
             />
-            <CustomSelect
+            <MultiSelect
               label="Modalidade"
               value={modalityFilter}
               onChange={setModalityFilter}
-              options={[
-                ['todas', 'Todas'],
-                ...modalities.map(m => [m.name, m.name]),
-              ]}
+              options={modalities.map(m => [m.name, m.name])}
             />
             <CustomSelect
               label="Confirmado por"
@@ -777,7 +851,7 @@ export default function BillingPage() {
                 <CreditCard size={48} strokeWidth={1.5} className="mx-auto mb-4 opacity-20" />
                 <p className="text-sm font-medium">Nenhuma cobrança encontrada.</p>
                 <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.2em] mt-2">
-                  Exibindo {filtered.length} de {bills.length} lançamentos
+                  Exibindo <span className="text-gray-400">{filtered.length}</span> de <span className="text-gray-400">{bills.length}</span> lançamentos
                 </p>
               </div>
             ) : (
@@ -802,12 +876,31 @@ export default function BillingPage() {
                           <div className="flex items-center gap-4">
                             {renderAvatar(student)}
                             <div className="flex flex-col">
-                              <span className="text-sm text-app font-medium uppercase tracking-tight group-hover:text-primary transition-colors">
-                                {b.studentName}
-                              </span>
-                              {student && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-app font-medium uppercase tracking-tight group-hover:text-primary transition-colors">
+                                  {b.studentName}
+                                </span>
+                                {student && (!student.modalidades && !student.modalities && !student.modality) && (
+                                  <div className="relative group/mod flex items-center justify-center cursor-help">
+                                    <div className="flex items-center justify-center text-rose-500 bg-rose-500/10 w-5 h-5 rounded border border-rose-500/20">
+                                      <AlertTriangle size={12} strokeWidth={2.5} />
+                                    </div>
+                                    <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 opacity-0 group-hover/mod:opacity-100 transition-opacity duration-200 pointer-events-none z-50 flex flex-col items-center">
+                                      <div className="bg-[#111] border border-white/10 text-white text-[9px] uppercase tracking-widest font-bold px-2 py-1 rounded shadow-xl whitespace-nowrap">
+                                        Sem Modalidade
+                                      </div>
+                                      <div className="w-1.5 h-1.5 bg-[#111] border-b border-r border-white/10 transform rotate-45 -mt-1"></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              {student ? (
                                 <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
                                   {beltConfig[student.belt]?.label || 'Sem faixa'}
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold text-rose-500 uppercase tracking-widest mt-0.5">
+                                  Aluno Excluído
                                 </span>
                               )}
                             </div>

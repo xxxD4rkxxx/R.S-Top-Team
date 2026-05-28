@@ -51,18 +51,22 @@ export function useAttendanceAlerts(studentId, createdAt = null) {
 
         // PROCESSAMENTO NO CLIENTE (Mais estável para o desenvolvedor)
         const allAttendances = snapshot.docs.map(doc => {
-          const data = doc.data();
-          const d = data.date;
-          return d instanceof Timestamp ? d.toDate() : (d?.toDate ? d.toDate() : new Date(d));
-        }).filter(d => !isNaN(d.getTime()));
+          const data = doc.data()
+          const d = data.date
+          const dateObj = d instanceof Timestamp ? d.toDate() : (d?.toDate ? d.toDate() : new Date(d))
+          return { date: dateObj, status: data.status || 'present' }
+        }).filter(r => !isNaN(r.date?.getTime()))
+
+        // Apenas presenças reais para contagem e último treino
+        const presentOnly = allAttendances.filter(r => r.status === 'present').map(r => r.date)
 
         // 1. Encontrar a ÚLTIMA aula
-        const sorted = allAttendances.sort((a, b) => b - a);
-        const latest = sorted[0];
-        setLastAttendance(latest);
+        const sorted = presentOnly.sort((a, b) => b - a)
+        const latest = sorted[0]
+        setLastAttendance(latest)
 
         // 2. Contar aulas no MÊS ATUAL
-        const thisMonthCount = allAttendances.filter(d => d >= startOfMonth).length;
+        const thisMonthCount = presentOnly.filter(d => d >= startOfMonth).length
         setMonthlyCount(thisMonthCount);
 
         // 3. Definir Status

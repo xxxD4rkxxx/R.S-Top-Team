@@ -1,0 +1,522 @@
+﻿commit 723448c259e6fe40e76ced056872dda048d1a393
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Sun May 10 18:44:16 2026 -0300
+
+    fix(10-05-2026 18:43): correcoes gerais do sistema
+    
+    - [Auth] Corrigido acesso admin: adicionado papeis.admin, roles.admin e adminPin no perfil do usuario
+    - [Relatorio] usePaymentReport: alunos com multiplas modalidades agora aparecem em CADA modalidade corretamente
+    - [Relatorio] Turmas resolvidas via turmaLookup (ex: 'boxe:tarde' -> 'Tarde'), eliminando IDs brutos no relatorio
+    - [Relatorio] getModalityTurmaPairs: removido atalho bill.modalityName que impedia multi-modalidade
+    - [Relatorio] Totais gerais deduplicados por bill ID (nao infla quando aluno tem 2+ modalidades)
+    - [Formulario] AddStudentModal: turmas agora carregam corretamente ao editar aluno existente
+    - [Formulario] Botao Salvar bloqueado se modalidade selecionada sem turma correspondente
+    - [Formulario] Selector de Graus desabilitado quando faixa = Sem Faixa (graus zerados automaticamente)
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index af0264a..c6260d1 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext'
+ import { useApp } from '../../context/AppContext'
+ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
+ import { useSystemUsers } from '../../hooks/useSystemUsers'
++import { motion } from 'framer-motion'
++import { formatBR } from '../../utils/dateUtils'
+ 
+ 
+ // Status de Assiduidade removido conforme solicitado
+@@ -37,7 +39,6 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+     }
+   }, [student, canSeePIN, fetchUserPin])
+ 
+-  if (!student) return null;
+ 
+   const name = student.nome || student.name;
+   const {
+@@ -50,18 +51,23 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+   const textColor = beltConfig[normalizedBelt]?.textColor || '#111111'
+   const primaryMod = modality || modalities[0] || 'N├úo informada'
+   
+-  function formatDate(d) {
+-    if (!d) return 'N├úo registrada'
+-    if (typeof d === 'string') return new Date(d).toLocaleDateString('pt-BR')
+-    if (d.toDate) return d.toDate().toLocaleDateString('pt-BR')
+-    if (d instanceof Date) return d.toLocaleDateString('pt-BR')
+-    return 'Data inv├ílida'
+-  }
++  const formatDate = (d) => formatBR(d, {}, true)
+ 
+ 
+   return createPortal(
+-    <div className="modal-backdrop" onClick={onClose}>
+-      <div 
++    <motion.div 
++      key="student-details-backdrop"
++      initial={{ opacity: 0 }}
++      animate={{ opacity: 1 }}
++      exit={{ opacity: 0 }}
++      className="modal-backdrop" 
++      onClick={onClose}
++    >
++      <motion.div 
++        key="student-details-content"
++        initial={{ opacity: 0, scale: 0.95, y: 20 }}
++        animate={{ opacity: 1, scale: 1, y: 0 }}
++        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+         onClick={e => e.stopPropagation()}
+         className="modal-content modal-content-bottom-sheet relative max-w-2xl w-full flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
+       >
+@@ -207,37 +213,6 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+             </div>
+           </div>
+ 
+-          {/* Financeiro e Contrato */}
+-          {(isAdmin || isGestor) && !isVisitor && (
+-            <div className="space-y-4">
+-              <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
+-                Financeiro & Contrato
+-                <div className="h-px flex-1 bg-emerald-500/10" />
+-              </h3>
+-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+-                <div className="flex items-center gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner hover:bg-emerald-500/[0.04]">
+-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+-                    <AlertTriangle size={20} />
+-                  </div>
+-                  <div className="flex-1">
+-                    <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Condi├º├úo Especial</p>
+-                    <p className="text-sm text-white font-bold mt-0.5">{student.isPaymentExempt ? 'Bolsista / Isento' : 'Pagante Regular'}</p>
+-                  </div>
+-                </div>
+-                {!student.isPaymentExempt && (
+-                  <div className="flex items-center gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner hover:bg-emerald-500/[0.04]">
+-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+-                      <span className="font-bold text-lg">R$</span>
+-                    </div>
+-                    <div className="flex-1">
+-                      <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Valor Base (Plano)</p>
+-                      <p className="text-sm text-white font-bold mt-0.5 font-mono">{student.planValue ? `R$ ${Number(student.planValue).toFixed(2)}` : 'N├úo definido'}</p>
+-                    </div>
+-                  </div>
+-                )}
+-              </div>
+-            </div>
+-          )}
+ 
+           {/* Seguran├ºa */}
+           {canSeePIN && !isVisitor && (
+@@ -276,8 +251,8 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+               </div>
+               <div className="flex-1 flex justify-between gap-6">
+                 <div>
+-                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Membro desde</p>
+-                  <p className="text-sm text-white font-bold">{formatDate(createdAt)}</p>
++                  <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">In├¡cio na Academia</p>
++                  <p className="text-sm text-white font-bold">{formatDate(student.startDate || createdAt)}</p>
+                 </div>
+                 <div className="text-right">
+                   <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">├Ültima aula</p>
+@@ -296,8 +271,8 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+             Fechar Perfil
+           </button>
+         </div>
+-      </div>
+-    </div>,
++      </motion.div>
++    </motion.div>,
+     document.body
+   )
+ }
+
+commit aa5c452890abcfdbc8ae41d2006cd21b68e837a0
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Wed May 6 12:10:06 2026 -0300
+
+    feat: novas implementa├º├Áes
+    
+    - Corrigido g├¬nero no StudentsContext (agora salva 'Masculino'/'Feminino' corretamente)
+    - Adicionado PIN no menu de perfil (AuthContext agora permite leitura)
+    - Removido 'Status de Assiduidade' do perfil do aluno
+    - Fontes ajustadas: apenas Inter (400/500 e 900) no perfil; mantido Bebas Neue apenas para 'RS TOP TEAM'
+    - Valor Mensalidade e Pagamento Inicial removidos da interface (c├ílculo autom├ítico mantido)
+    - Fluxo de Caixa (6 meses) adicionado no Dashboard Gestor/Admin
+    - L├│gica de status condicional: AtivoÔåÆInativar/Suspender/Arquivar; Inativo/SuspensoÔåÆReativar; ArquivadoÔåÆRemover Arquivado
+    - Data de vencimento ajustada para 30 dias ap├│s cadastro (m├¬s seguinte fica pendente)
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index 5292fde..af0264a 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -9,67 +9,8 @@ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
+ import { useSystemUsers } from '../../hooks/useSystemUsers'
+ 
+ 
+-const AssiduityCard = ({ student }) => {
+-
+-  const { status, lastAttendance, monthlyCount, isLoading } = useAttendanceAlerts(student.id, student.createdAt)
+-
+-  if (isLoading) return (
+-    <div className="space-y-3">
+-      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Status de Assiduidade</h3>
+-      <div className="animate-pulse bg-white/5 h-24 rounded-2xl border border-white/10" />
+-    </div>
+-  )
+-
+-  const statusConfig = {
+-    active: { label: 'Ativo', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+-    warning:  { label: 'Em Alerta',         color: 'text-amber-500',  bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+-    critical: { label: 'Risco de Abandono', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+-    error:    { label: 'Erro',              color: 'text-gray-400',   bg: 'bg-gray-400/10',    border: 'border-gray-400/20' }
+-  }
+-
+-  const current = statusConfig[status] || statusConfig.active
+-  // Meta de 12 aulas por m├¬s (3x por semana)
+-  const progress = Math.min((monthlyCount / 12) * 100, 100)
+-
+-  return (
+-    <div className="space-y-3">
+-      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">Status de Assiduidade</h3>
+-      <div className={`p-4 rounded-2xl border ${current.border} ${current.bg} space-y-4 shadow-lg backdrop-blur-sm transition-all hover:scale-[1.01]`}>
+-        <div className="flex justify-between items-center">
+-          <div className="flex items-center gap-2">
+-            <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${status === 'active' ? 'bg-emerald-500' : status === 'warning' ? 'bg-amber-500' : 'bg-red-600'}`} />
+-            <span className={`text-sm font-black uppercase tracking-wider ${current.color}`}>{current.label}</span>
+-          </div>
+-          <div className="flex items-center gap-2 text-gray-400">
+-            <Calendar size={12} />
+-            <span className="text-[10px] font-medium">├Ültima aula: {lastAttendance ? (typeof lastAttendance.toDate === 'function' ? lastAttendance.toDate().toLocaleDateString('pt-BR') : new Date(lastAttendance).toLocaleDateString('pt-BR')) : 'Nunca'}</span>
+-          </div>
+-        </div>
+-
+-        <div className="space-y-2.5">
+-          <div className="flex justify-between text-[11px] font-bold">
+-            <span className="text-gray-400 uppercase tracking-wider">Frequ├¬ncia Mensal</span>
+-            <span className="text-white bg-white/10 px-2 py-0.5 rounded-md">{monthlyCount} / 12 aulas</span>
+-          </div>
+-          <div className="h-2.5 bg-black rounded-full overflow-hidden border border-white/5 relative">
+-            <div 
+-              className={`h-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(0,0,0,0.5)] ${status === 'active' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : status === 'warning' ? 'bg-gradient-to-r from-yellow-700 to-yellow-500' : 'bg-gradient-to-r from-rose-900 to-rose-600'}`} 
+-              style={{ width: `${progress}%` }} 
+-            />
+-          </div>
+-          {status !== 'active' && (
+-            <div className="flex items-center gap-2 pt-1">
+-              <AlertTriangle size={12} className={current.color} />
+-              <p className={`text-[10px] font-medium ${current.color}`}>
+-                {status === 'warning' ? 'Aluno sem presen├ºa h├í mais de 2 semanas.' : 'Aluno sem presen├ºa h├í mais de 30 dias. Recomenda-se contato.'}
+-              </p>
+-            </div>
+-          )}
+-        </div>
+-      </div>
+-    </div>
+-  )
+-}
++// Status de Assiduidade removido conforme solicitado
++  
+ 
+ 
+ 
+@@ -174,7 +115,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+                   {ageCategory?.toUpperCase() || 'ADULTO'}
+                 </span>
+                 <span className="text-[9px] font-black px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-gray-500 uppercase tracking-[0.1em]">
+-                  {gender === 'Masculino' ? 'MASC' : 'FEM'}
++                  {gender === 'Masculino' ? 'MASC' : gender === 'Feminino' ? 'FEM' : (gender || 'N├âO INFORMADO')}
+                 </span>
+                 <span className={`text-[9px] font-black px-3 py-1.5 rounded-xl border uppercase tracking-[0.1em] ${bgClass}`} style={{ color: textColor }}>
+                   {beltConfig[belt]?.label?.toUpperCase() || belt?.toUpperCase() || 'SEM FAIXA'} {stripes ? `┬À ${stripes} GRAUS` : ''}
+@@ -321,12 +262,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+             </div>
+           )}
+ 
+-          {/* Assiduity Status */}
+-          {!isVisitor && (
+-            <div className="space-y-4">
+-              <AssiduityCard student={student} />
+-            </div>
+-          )}
++          {/* PIN removido de Assiduidade - agora no menu de perfil */}
+ 
+           {/* Atividade */}
+           <div className="space-y-4">
+
+commit ae70c945773e16b6b588abd2cbd69fce1cde870b
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Wed Apr 29 13:24:29 2026 -0300
+
+    feat: padroniza├º├úo da intelig├¬ncia do dashboard e automa├º├úo de KPIs financeiros
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index 28d4101..5292fde 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -104,8 +104,9 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+     isVisitor, createdAt, lastAttendanceAt, belt, stripes, ageCategory, gender
+   } = student;
+ 
+-  const bgClass = beltConfig[belt]?.bgClass || 'belt-white'
+-  const textColor = beltConfig[belt]?.textColor || '#000'
++  const normalizedBelt = belt?.toLowerCase()?.trim() || 'white'
++  const bgClass = beltConfig[normalizedBelt]?.bgClass || 'belt-white'
++  const textColor = beltConfig[normalizedBelt]?.textColor || '#111111'
+   const primaryMod = modality || modalities[0] || 'N├úo informada'
+   
+   function formatDate(d) {
+
+commit 0fe0e80bbe972efd7c39783c980b48e6bdb9fc2a
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Tue Apr 28 13:09:42 2026 -0300
+
+    Fix: student dashboard intelligence, notice visibility and view counter stabilization
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index 7b61cda..28d4101 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -51,7 +51,7 @@ const AssiduityCard = ({ student }) => {
+             <span className="text-gray-400 uppercase tracking-wider">Frequ├¬ncia Mensal</span>
+             <span className="text-white bg-white/10 px-2 py-0.5 rounded-md">{monthlyCount} / 12 aulas</span>
+           </div>
+-          <div className="h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
++          <div className="h-2.5 bg-black rounded-full overflow-hidden border border-white/5 relative">
+             <div 
+               className={`h-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(0,0,0,0.5)] ${status === 'active' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : status === 'warning' ? 'bg-gradient-to-r from-yellow-700 to-yellow-500' : 'bg-gradient-to-r from-rose-900 to-rose-600'}`} 
+               style={{ width: `${progress}%` }} 
+
+commit 09fb69d8caa0556d9f7a0f1b8614e6cd592e9d11
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Sun Apr 26 14:37:04 2026 -0300
+
+    feat: multi-selection for classes and modality UI fix
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index f5b826d..7b61cda 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -155,7 +155,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar">
+           {/* Header Info */}
+           <div className="flex items-center gap-6">
+-            <div className={`w-[100px] h-[100px] shrink-0 rounded-full flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
++            <div className={`w-[100px] h-[100px] shrink-0 rounded-full flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 relative ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
+               {student.photo ? (
+                 <img src={student.photo} alt={student.nome || student.name} className="w-full h-full rounded-full object-cover" />
+               ) : (
+
+commit 163cfff982908fb8e1b768a001fc72601e5544f4
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Sat Apr 25 17:49:20 2026 -0300
+
+    [estavel] 25/04/2026 17:50
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index dc0773a..f5b826d 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -98,8 +98,9 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+ 
+   if (!student) return null;
+ 
++  const name = student.nome || student.name;
+   const {
+-    name, email, phone, modality, modalities = [],
++    email, phone, modality, modalities = [],
+     isVisitor, createdAt, lastAttendanceAt, belt, stripes, ageCategory, gender
+   } = student;
+ 
+@@ -156,9 +157,9 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+           <div className="flex items-center gap-6">
+             <div className={`w-[100px] h-[100px] shrink-0 rounded-full flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
+               {student.photo ? (
+-                <img src={student.photo} alt={name} className="w-full h-full rounded-full object-cover" />
++                <img src={student.photo} alt={student.nome || student.name} className="w-full h-full rounded-full object-cover" />
+               ) : (
+-                student.initials || name.charAt(0) || 'A'
++                student.initials || (student.nome || student.name)?.charAt(0) || 'A'
+               )}
+             </div>
+             <div className="min-w-0 flex-1">
+
+commit 495d173424d5efcf2285754ae6e73796a909124e
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Fri Apr 24 12:50:58 2026 -0300
+
+    Refactor: Limpeza de visitantes UI - 24/04/2026 12:50
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index 4158e0a..dc0773a 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -265,7 +265,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+           </div>
+ 
+           {/* Financeiro e Contrato */}
+-          {(isAdmin || isGestor) && (
++          {(isAdmin || isGestor) && !isVisitor && (
+             <div className="space-y-4">
+               <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                 Financeiro & Contrato
+@@ -297,7 +297,7 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+           )}
+ 
+           {/* Seguran├ºa */}
+-          {canSeePIN && (
++          {canSeePIN && !isVisitor && (
+              <div className="space-y-4">
+               <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                 Seguran├ºa e Credenciais
+@@ -320,9 +320,11 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+           )}
+ 
+           {/* Assiduity Status */}
+-          <div className="space-y-4">
+-            <AssiduityCard student={student} />
+-          </div>
++          {!isVisitor && (
++            <div className="space-y-4">
++              <AssiduityCard student={student} />
++            </div>
++          )}
+ 
+           {/* Atividade */}
+           <div className="space-y-4">
+
+commit 1ad258b00806b35ba68104ff03c794305c617979
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Thu Apr 16 13:00:52 2026 -0300
+
+    feat: build, deploy e modernizacao da navegacao mobile
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index 1aa4f98..4158e0a 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -154,9 +154,9 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 no-scrollbar">
+           {/* Header Info */}
+           <div className="flex items-center gap-6">
+-            <div className={`w-24 h-24 shrink-0 rounded-3xl flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
++            <div className={`w-[100px] h-[100px] shrink-0 rounded-full flex items-center justify-center font-black text-3xl shadow-2xl ring-4 ring-white/5 bg-gradient-to-br from-white/10 to-white/5 border border-white/10 ${student.photo ? '' : bgClass}`} style={{ color: student.photo ? 'inherit' : textColor }}>
+               {student.photo ? (
+-                <img src={student.photo} alt={name} className="w-full h-full rounded-2xl object-cover" />
++                <img src={student.photo} alt={name} className="w-full h-full rounded-full object-cover" />
+               ) : (
+                 student.initials || name.charAt(0) || 'A'
+               )}
+
+commit ffff7dba2b1b1abab2c9db0f2acc0beb158c2591
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Tue Apr 14 12:57:25 2026 -0300
+
+    fix(auth): implement robust JIT provisioning and fix firestore rules for sanitized identities
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index f4123bc..1aa4f98 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -1,11 +1,12 @@
+-import React, { useState } from 'react'
++import React, { useState, useEffect } from 'react'
+ import { createPortal } from 'react-dom'
+-import { X, Mail, Phone, AlertCircle, HeartPulse, Calendar, Edit2, Save, Users, Smartphone, AlertTriangle, Key } from 'lucide-react'
++import { X, Mail, Phone, AlertCircle, HeartPulse, Calendar, Edit2, Save, Users, Smartphone, AlertTriangle, Key, Loader2 } from 'lucide-react'
+ import { beltConfig } from '../../data/beltConfig'
+ import { useAttendanceAlerts } from '../../hooks/useAttendanceAlerts'
+ import { useAuth } from '../../context/AuthContext'
+ import { useApp } from '../../context/AppContext'
+ import { useHideMobileNav } from '../../hooks/useHideMobileNav'
++import { useSystemUsers } from '../../hooks/useSystemUsers'
+ 
+ 
+ const AssiduityCard = ({ student }) => {
+@@ -75,8 +76,26 @@ const AssiduityCard = ({ student }) => {
+ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+   useHideMobileNav(!!student)
+   const { userData, isAdmin, isGestor } = useAuth()
++  const { fetchUserPin } = useSystemUsers()
++  const [pin, setPin] = useState(student?.pin || null)
++  const [loadingPin, setLoadingPin] = useState(false)
++
+   const canSeePIN = isAdmin || isGestor || userData?.permissions?.viewStudentPins
+ 
++  useEffect(() => {
++    if (student && !student.pin && canSeePIN) {
++      const loadPin = async () => {
++        setLoadingPin(true)
++        const p = await fetchUserPin(student.id)
++        setPin(p)
++        setLoadingPin(false)
++      }
++      loadPin()
++    } else if (student?.pin) {
++      setPin(student.pin)
++    }
++  }, [student, canSeePIN, fetchUserPin])
++
+   if (!student) return null;
+ 
+   const {
+@@ -290,7 +309,11 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+                 </div>
+                 <div>
+                   <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">PIN de Acesso Pessoal</p>
+-                  <p className="text-xl text-emerald-400 font-mono tracking-[0.3em] font-black">{student.pin || '---'}</p>
++                  <div className="flex items-center gap-3 mt-1">
++                    <p className="text-xl text-emerald-400 font-mono tracking-[0.3em] font-black">
++                      {loadingPin ? <Loader2 size={16} className="animate-spin" /> : (pin || '---')}
++                    </p>
++                  </div>
+                 </div>
+               </div>
+             </div>
+
+commit 5b404684bed3519b583bc80c536ef735cc31e5f2
+Author: Antigravity AI <antigravity@deepmind.com>
+Date:   Sun Apr 12 18:41:13 2026 -0300
+
+    feat: Decision Intelligence System v9.0 with custom period selection
+
+diff --git a/src/components/shared/StudentDetailsModal.jsx b/src/components/shared/StudentDetailsModal.jsx
+index 7e67403..f4123bc 100644
+--- a/src/components/shared/StudentDetailsModal.jsx
++++ b/src/components/shared/StudentDetailsModal.jsx
+@@ -245,6 +245,38 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
+             </div>
+           </div>
+ 
++          {/* Financeiro e Contrato */}
++          {(isAdmin || isGestor) && (
++            <div className="space-y-4">
++              <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-3">
++                Financeiro & Contrato
++                <div className="h-px flex-1 bg-emerald-500/10" />
++              </h3>
++              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
++                <div className="flex items-center gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner hover:bg-emerald-500/[0.04]">
++                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
++                    <AlertTriangle size={20} />
++                  </div>
++                  <div className="flex-1">
++                    <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Condi├º├úo Especial</p>
++                    <p className="text-sm text-white font-bold mt-0.5">{student.isPaymentExempt ? 'Bolsista / Isento' : 'Pagante Regular'}</p>
++                  </div>
++                </div>
++                {!student.isPaymentExempt && (
++                  <div className="flex items-center gap-4 bg-emerald-500/[0.02] p-5 rounded-2xl border border-emerald-500/10 shadow-inner hover:bg-emerald-500/[0.04]">
++                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
++                      <span className="font-bold text-lg">R$</span>
++                    </div>
++                    <div className="flex-1">
++                      <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Valor Base (Plano)</p>
++                      <p className="text-sm text-white font-bold mt-0.5 font-mono">{student.planValue ? `R$ ${Number(student.planValue).toFixed(2)}` : 'N├úo definido'}</p>
++                    </div>
++                  </div>
++                )}
++              </div>
++            </div>
++          )}
++
+           {/* Seguran├ºa */}
+           {canSeePIN && (
+              <div className="space-y-4">

@@ -1841,34 +1841,64 @@ function SectionDados({ onSync }) {
 
 function SectionSobre() {
   return (
-    <Section title="RS Top Team — Sistema de Gestão">
-      <div className="divide-y divide-white/5">
-        {[
-          { label: 'Versão', value: '1.0.0-beta' },
-          { label: 'Framework', value: 'React 19 + Vite' },
-          { label: 'Banco de dados', value: 'Firebase Firestore' },
-          { label: 'Hospedagem', value: 'Firebase Hosting' },
-          { label: 'Desenvolvido por', value: '@mad.exe', link: 'https://www.instagram.com/mad.exe/' },
-        ].map(row => (
-          <div key={row.label} className="flex items-center justify-between px-5 py-3">
-            <span className="text-gray-500 text-sm">{row.label}</span>
-            {row.link ? (
-              <a 
-                href={row.link} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-sm font-semibold hover:underline"
-                style={{ color: 'var(--clr-primary)' }}
-              >
-                {row.value}
-              </a>
-            ) : (
-              <span className="text-white text-sm font-semibold">{row.value}</span>
-            )}
-          </div>
-        ))}
+    <div className="space-y-4">
+      {/* Seção principal com informações do sistema */}
+      <Section title="RS Top Team — Sistema de Gestão">
+        <div className="divide-y divide-white/5">
+          {[
+            { label: 'Versão', value: '26.1.5-beta' },
+            { label: 'Framework', value: 'React 19 + Vite' },
+            { label: 'Banco de dados', value: 'Firebase Firestore' },
+            { label: 'Hospedagem', value: 'Firebase Hosting' },
+            { label: 'Desenvolvido por', value: '@mad.exe', link: 'https://www.instagram.com/mad.exe/' },
+            { label: 'Apoio criativo e técnico', value: '@p_maxvinicius', link: 'https://www.instagram.com/p_maxvinicius/' },
+          ].map(row => (
+            <div key={row.label} className="flex items-center justify-between px-5 py-3">
+              <span className="text-gray-500 text-sm">{row.label}</span>
+              {row.link ? (
+                <a
+                  href={row.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold hover:underline"
+                  style={{ color: 'var(--clr-primary)' }}
+                >
+                  {row.value}
+                </a>
+              ) : (
+                <span className="text-white text-sm font-semibold">{row.value}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Aviso de build beta — mesmo estilo visual do cabeçalho das Sections */}
+      <div className="bg-[#0a0a0a]/40 backdrop-blur-md rounded-xl border border-white/5 overflow-hidden shadow-xl">
+        {/* Header — idêntico ao da Section */}
+        <div className="px-6 py-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
+          <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Versão Beta</h3>
+          <AlertTriangle size={14} style={{ color: 'var(--color-primary)' }} />
+        </div>
+
+        {/* Corpo do aviso */}
+        <div className="px-6 py-4 flex items-start gap-3">
+          {/* Ícone de alerta */}
+          {/* <div
+            className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            <AlertTriangle size={15} style={{ color: 'var(--color-primary)' }} />
+          </div> */}
+
+          {/* Texto do aviso */}
+          <p className="text-xs leading-relaxed" style={{ color: 'rgba(248, 248, 248, 0.6)' }}>
+            Esta versão pode conter bugs, instabilidades ou comportamentos inesperados.
+            Recomendamos reportar qualquer problema ao desenvolvedor para que seja corrigido o mais breve possível.
+          </p>
+        </div>
       </div>
-    </Section>
+    </div>
   )
 }
 

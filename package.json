@@ -1,7 +1,7 @@
 {
-  "name": "academy-2",
+  "name": "RS Top Team",
   "private": true,
-  "version": "0.0.0",
+  "version": "26.1.5",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -2461,6 +2461,38 @@ scalar Vector_Embed_Model
   @fdc_example(value: "textembedding-gecko@001", description: "An older version of the textembedding-gecko model")
   @fdc_example(value: "text-embedding-004", description: "Another text embedding model")
 
+"""
+Locks down the allowed fields for a `_Data` input variable.
+When a `_Data` input type is used as a variable in an operation, this directive is REQUIRED.
+
+###### Example: Batch Inserting Movies
+
+To allow clients to batch insert movies but restrict them to only providing the `title`, `genre`, and `releaseYear` fields.
+To prevent risk of overwhelming the database, you can restrict the maximum number of items a client can submit in a single batch request using `maxCount`:
+```graphql
+mutation BatchInsertMovies(
+  $data: [Movie_Data!]! @allow(fields: "title genre releaseYear", maxCount: 10)
+) @auth(level: PUBLIC) {
+  movie_insertMany(data: $data)
+}
+```
+"""
+directive @allow(
+  """
+  A space-separated string mimicking a GraphQL selection set.
+  Example: "title genre releaseYear"
+  """
+  fields: String!
+  """
+   Optional limit on the maximum size or complexity of the variable.
+   - For lists: limits the number of items.
+   - For nested structures: limits the total number of entities processed.
+   - For filters: limits the number of conditions to evaluate.
+   Prevents payload-based abuse and resource exhaustion.
+  """
+  maxCount: Int! = 100
+) on VARIABLE_DEFINITION
+
 # Intentionally left blank.
 
 """
@@ -2530,13 +2562,13 @@ directive @refresh(
   """
   every: Timestamp_Duration
   """
-  Define the mutation that will trigger this query to refresh.
+  Define the mutations that will trigger this query to refresh.
   """
-  onMutationExecuted: OnMutationExecuted_Event
+  onMutationExecuted: [OnMutationExecuted_Event!]
 ) repeatable on QUERY
 
 """
-Defines the mutation that will trigger the query to refresh.
+Defines the mutation events that will trigger the query to refresh.
 """
 input OnMutationExecuted_Event {
   """
