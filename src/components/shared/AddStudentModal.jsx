@@ -91,6 +91,7 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
     phone: '',
     emergency: '',
     medical: '',
+    observacoes: '',
     belt: 'none',
     stripes: 0,
     modality: startModArray,
@@ -155,6 +156,7 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
           phone: initialData.phone || '',
           emergency: initialData.emergency || '',
           medical: initialData.medical || '',
+          observacoes: initialData.observacoes || '',
           belt: initialBelt,
           stripes: initialData.stripes || 0,
           modality: normalizedModalities.length > 0 ? normalizedModalities : [],
@@ -184,7 +186,7 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
         const startMod = found ? [found.name] : (initialModality && initialModality !== 'todas' ? [initialModality === 'jiu-jitsu' ? 'Jiu Jitsu' : initialModality] : [])
 
         setForm({
-          name: '', email: '', phone: '', emergency: '', medical: '',
+          name: '', email: '', phone: '', emergency: '', medical: '', observacoes: '',
           belt: 'none', stripes: 0, modality: startMod, type: initialType,
           ageCategory: 'Adulto', gender: 'Masculino', genero: 'Masculino',
           parentName: '', parentPhone: '',
@@ -791,6 +793,25 @@ export default function AddStudentModal({ isOpen = true, onClose, onAdd, initial
                           placeholder="Ex: Alergias, problemas no joelho..."
                         />
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-3">
+                    Anotações Internas
+                    <div className="h-px flex-1 bg-primary/5" />
+                  </h3>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold ml-1">Notas (Visível no Perfil)</label>
+                    <div className="relative">
+                      <Info size={14} className="absolute left-3.5 top-4 text-gray-600" />
+                      <textarea
+                        value={form.observacoes}
+                        onChange={e => setForm({ ...form, observacoes: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 bg-black border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-all font-medium min-h-[100px] outline-none"
+                        placeholder="Ex: Aluno focado, precisa de atenção na base..."
+                      />
                     </div>
                   </div>
                 </div>

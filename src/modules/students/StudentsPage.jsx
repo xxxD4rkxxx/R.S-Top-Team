@@ -35,6 +35,7 @@ import {
   GraduationCap as GraduationIcon,
   CheckCircle2,
   AlertTriangle,
+  HeartPulse,
 } from "lucide-react";
 import { useFinance } from "../../hooks/useFinance";
 import { motion, AnimatePresence } from "framer-motion";
@@ -993,8 +994,11 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
                         <div className="flex items-center gap-4">
                           {renderAvatar(student)}
                           <div className="flex flex-col">
-                            <span className="text-sm text-app font-medium block uppercase tracking-tight group-hover:text-primary transition-colors">
+                            <span className="text-sm text-app font-medium flex items-center gap-2 uppercase tracking-tight group-hover:text-primary transition-colors">
                               {student.nome || student.name}
+                              {student.medical && student.medical.trim() !== '' && (
+                                <HeartPulse size={14} className="text-emerald-400" title="Possui Restrições Médicas" />
+                              )}
                             </span>
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5 flex items-center gap-1.5">
                               {student.roles?.visitante && (

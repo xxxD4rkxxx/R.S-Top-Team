@@ -22,8 +22,8 @@ import MobileHeader from '../../components/navigation/MobileHeader'
 import { calculateModalityValue } from '../../utils/billingUtils'
 
 /**
- * DASHBOARD PREMIUM DO ALUNO (Academy 2)
- * Interface focada em gamificação, progressão e transparência.
+ * DASHBOARD  DO ALUNO 
+ * 
  */
 
 // --- Componentes Atômicos de UI ---
@@ -457,8 +457,8 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
         {/* COLUNA ESQUERDA */}
         <div className="lg:col-span-8 space-y-8">
           
-          {/* Grid de Estatísticas Consolidado */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Grid de Estatísticas Consolidado (3x2 no PC) */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <PaymentStatCard info={nextPaymentInfo} delay={0.05} />
             <StatCard 
               title="Tempo de Faixa" 

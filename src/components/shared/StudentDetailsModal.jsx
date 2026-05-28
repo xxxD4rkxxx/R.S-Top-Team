@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Mail, Phone, AlertCircle, HeartPulse, Calendar, Edit2, Save, Users, Smartphone, AlertTriangle, Key, Loader2 } from 'lucide-react'
+import { X, Mail, Phone, AlertCircle, HeartPulse, Calendar, Edit2, Save, Users, Smartphone, AlertTriangle, Key, Loader2, Info } from 'lucide-react'
 import { beltConfig } from '../../data/beltConfig'
 import { useAttendanceAlerts } from '../../hooks/useAttendanceAlerts'
 import { useAuth } from '../../context/AuthContext'
@@ -237,6 +237,26 @@ export default function StudentDetailsModal({ student, onClose, onEdit }) {
             </div>
           </div>
 
+          {/* Anotações Internas */}
+          {student.observacoes && student.observacoes.trim() !== '' && (
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                Anotações Internas
+                <div className="h-px flex-1 bg-white/5" />
+              </h3>
+              <div className="flex flex-col gap-4 bg-primary/[0.02] p-5 rounded-2xl border border-primary/10 shadow-inner transition-all hover:bg-primary/[0.04]">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Info size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Notas do Perfil</p>
+                    <p className="text-sm text-white font-medium mt-1 whitespace-pre-wrap leading-relaxed">{student.observacoes}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Segurança */}
           {canSeePIN && !isVisitor && (
