@@ -15,7 +15,7 @@ import {
 import { db } from '../firebase/config'
 import { COLLECTIONS, SUB_COLLECTIONS } from '../firebase/collections'
 import { sanitizeHTML } from '../utils/security'
-import { useSystemLogs } from './useSystemLogs'
+import { registrarAtividade } from './usarLogsSistema'
 
 const LS_KEY = 'academy_notice_views'
 
@@ -102,9 +102,6 @@ export function useNotices(userId = null) {
     }
   }, [])
 
-  // Hook para logging
-  const { registrarAtividade } = useSystemLogs()
-
   // Função auxiliar para extrair tipo de post
   const getTipoPost = (noticeData) => {
     if (noticeData.types?.includes('evento')) return 'evento'
@@ -126,16 +123,19 @@ export function useNotices(userId = null) {
 
     // Log da atividade
     if (usuario) {
+      const titulo = noticeData.title || 'Sem título'
       await registrarAtividade(
-        tipo === 'evento' ? 'Criar evento' : 'Criar aviso',
-        noticeData.title || 'Sem título',
+        'criar',
+        tipo === 'evento' ? 'Criou evento' : 'Criou aviso',
+        titulo,
         {
-          userId: usuario.uid,
-          userName: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
-          userRole: usuario.papel || usuario.effectiveRole || 'professor',
-          category: 'evento',
-          targetId: docRef.id,
-          targetName: noticeData.title || 'Sem título'
+          usuarioId: usuario.uid,
+          usuarioNome: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
+          usuarioPapel: usuario.papel || usuario.effectiveRole || 'professor',
+          usuarioAvatar: usuario.avatarUrl || usuario.photoURL || '',
+          categoria: 'evento',
+          alvoId: docRef.id,
+          alvoNome: titulo
         }
       )
     }
@@ -157,15 +157,17 @@ export function useNotices(userId = null) {
     // Log da atividade
     if (usuario) {
       await registrarAtividade(
-        'Atualizar evento/aviso',
+        'editar',
+        'Editou evento/aviso',
         updates.title || 'Post atualizado',
         {
-          userId: usuario.uid,
-          userName: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
-          userRole: usuario.papel || usuario.effectiveRole || 'professor',
-          category: 'evento',
-          targetId: id,
-          targetName: updates.title || 'Post atualizado'
+          usuarioId: usuario.uid,
+          usuarioNome: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
+          usuarioPapel: usuario.papel || usuario.effectiveRole || 'professor',
+          usuarioAvatar: usuario.avatarUrl || usuario.photoURL || '',
+          categoria: 'evento',
+          alvoId: id,
+          alvoNome: updates.title || 'Post atualizado'
         }
       )
     }
@@ -182,15 +184,17 @@ export function useNotices(userId = null) {
     // Log da atividade
     if (usuario) {
       await registrarAtividade(
-        'Excluir evento/aviso',
+        'excluir',
+        'Excluiu evento/aviso',
         titulo,
         {
-          userId: usuario.uid,
-          userName: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
-          userRole: usuario.papel || usuario.effectiveRole || 'professor',
-          category: 'evento',
-          targetId: id,
-          targetName: titulo
+          usuarioId: usuario.uid,
+          usuarioNome: usuario.nome || usuario.name || usuario.email?.split('@')[0] || 'Usuário',
+          usuarioPapel: usuario.papel || usuario.effectiveRole || 'professor',
+          usuarioAvatar: usuario.avatarUrl || usuario.photoURL || '',
+          categoria: 'evento',
+          alvoId: id,
+          alvoNome: titulo
         }
       )
     }

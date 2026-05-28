@@ -22,6 +22,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, auth, storage, firebaseConfig } from '../firebase/config'
 import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../firebase/collections'
 import { sanitizeString } from '../utils/security'
+import { registrarAtividade, extrairDadosAuth } from './usarLogsSistema'
+import { useAuth } from '../context/AuthContext'
 
 // Inicialização Silenciosa de Auth Secundário para Criação de Contas
 const getVerifyAuth = () => {
@@ -128,6 +130,10 @@ export function useSystemUsers() {
   const [users, setUsers] = useState(_cachedUsers || [])
   const [loading, setLoading] = useState(!_cachedUsers)
 
+  // Dados do usuário logado para registrar nos logs
+  const { userData, effectiveRole } = useAuth()
+  const dadosLog = extrairDadosAuth(userData, effectiveRole)
+
   useEffect(() => {
     const unsub = subscribeToUsers((newUsers) => {
       setUsers(newUsers)
@@ -201,7 +207,21 @@ export function useSystemUsers() {
     }
 
     await updateDoc(userRef, payload)
-  }, [])
+
+    // Log da atividade: perfil editado
+    const usuarioAlvo = users.find(u => u.id === userId)
+    registrarAtividade(
+      'editar',
+      'Editou perfil de usuário',
+      usuarioAlvo?.nome || usuarioAlvo?.name || userId,
+      {
+        ...dadosLog,
+        categoria: 'equipe',
+        alvoId: userId,
+        alvoNome: usuarioAlvo?.nome || usuarioAlvo?.name || userId
+      }
+    )
+  }, [users, dadosLog])
 
   const createNewUser = useCallback(async (userData) => {
     const email = (userData.email || '').toLowerCase().trim()
@@ -422,9 +442,23 @@ export function useSystemUsers() {
         }
       }
 
+      // Log da atividade: novo usuário criado
+      const rolesStr = Object.keys(rolesMap).filter(k => rolesMap[k]).join(', ')
+      registrarAtividade(
+        'criar',
+        'Criou usuário',
+        `${sanitizeString(userData.name || userData.nome || 'Nome')} como ${rolesStr}`,
+        {
+          ...dadosLog,
+          categoria: 'equipe',
+          alvoId: emailId,
+          alvoNome: sanitizeString(userData.name || userData.nome || 'Nome')
+        }
+      )
+
       return { id: emailId, pin, adminPin, isExisting: false }
     }
-  }, [])
+  }, [generatePIN, dadosLog])
 
   const fetchUserPin = useCallback(async (userId) => {
     if (!userId) return null
@@ -466,11 +500,13 @@ export function useSystemUsers() {
   }, [updateProfile])
 
   const deleteUser = useCallback(async (userId) => {
+    let nomeUsuario = userId
     try {
       const userRef = doc(db, USERS_COLLECTION, userId)
       const snap = await getDoc(userRef)
       if (snap.exists()) {
         const userData = snap.data()
+        nomeUsuario = userData.nome || userData.name || userId
         const studentEmail = userData.email || userId
 
         // 1. Limpeza de Turmas (Decremento de contador e remoção da lista)
@@ -503,11 +539,24 @@ export function useSystemUsers() {
       // Finalmente, deleta o documento principal
       await deleteDoc(userRef)
       console.log(`✅ Usuário ${userId} removido. Turmas e dados internos limpos. Financeiro preservado.`)
+
+      // Log da atividade: usuário excluído
+      registrarAtividade(
+        'excluir',
+        'Excluiu usuário',
+        nomeUsuario,
+        {
+          ...dadosLog,
+          categoria: 'equipe',
+          alvoId: userId,
+          alvoNome: nomeUsuario
+        }
+      )
     } catch (e) {
       console.error('❌ Erro crítico ao deletar usuário:', e)
       throw e
     }
-  }, [])
+  }, [dadosLog])
 
   return {
     users,

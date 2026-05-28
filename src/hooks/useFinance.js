@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore'
 import { COLLECTIONS } from '../firebase/collections'
 import { useAuth } from '../context/AuthContext'
+import { registrarAtividade, extrairDadosAuth } from './usarLogsSistema'
 import { calculateModalityValue } from '../utils/billingUtils'
 
 const toDateKeyUTC = (date) => {
@@ -208,6 +209,9 @@ export function useFinance() {
   const [despesas, setDespesas] = useState(_cachedDespesas || [])
   const [carregandoDespesas, setCarregandoDespesas] = useState(_financeListeners.despesas.loading)
 
+  // Dados do usuário logado para registrar nos logs
+  const dadosLog = extrairDadosAuth(userData, effectiveRole)
+
   useEffect(() => {
     if (!user) {
       setCarregandoCobrancas(false)
@@ -286,6 +290,20 @@ export function useFinance() {
       createdAt: serverTimestamp(),
       amount: Number(dadosCobranca.amount)
     })
+
+    // Log da atividade: cobrança criada
+    const valor = Number(dadosCobranca.amount) || 0
+    registrarAtividade(
+      'criar',
+      'Criou cobrança',
+      `R$ ${valor.toFixed(2)} — ${dadosCobranca.studentName || dadosCobranca.studentId || 'Aluno'}`,
+      {
+        ...dadosLog,
+        categoria: 'financeiro',
+        alvoId: dadosCobranca.studentId,
+        alvoNome: dadosCobranca.studentName || 'Aluno'
+      }
+    )
   }
 
   /**
@@ -376,6 +394,23 @@ export function useFinance() {
       payload.paidBy = null
     }
     await updateDoc(cobrancaRef, payload)
+
+    // Log da atividade: status da cobrança alterado
+    const cobrancaAlvo = cobrancas.find(c => c.id === idCobranca)
+    const rotuloStatus = { paid: 'paga', pending: 'pendente', overdue: 'atrasada' }
+    registrarAtividade(
+      novoStatus === 'paid' ? 'pagar' : 'alterar_status',
+      novoStatus === 'paid' ? 'Registrou pagamento' : 'Alterou status da cobrança',
+      `${cobrancaAlvo?.studentName || 'Aluno'} — R$ ${(Number(cobrancaAlvo?.amount) || 0).toFixed(2)} → ${rotuloStatus[novoStatus] || novoStatus}`,
+      {
+        ...dadosLog,
+        categoria: 'financeiro',
+        alvoId: cobrancaAlvo?.studentId,
+        alvoNome: cobrancaAlvo?.studentName || 'Aluno',
+        valorAntigo: cobrancaAlvo?.status,
+        valorNovo: novoStatus
+      }
+    )
   }
 
   /**
@@ -390,16 +425,47 @@ export function useFinance() {
       ...dados,
       updatedAt: serverTimestamp()
     })
+
+    // Log da atividade: cobrança editada
+    const cobrancaEditada = cobrancas.find(c => c.id === idCobranca)
+    registrarAtividade(
+      'editar',
+      'Editou cobrança',
+      `${cobrancaEditada?.studentName || 'Aluno'} — R$ ${(Number(dados.amount) || 0).toFixed(2)}`,
+      {
+        ...dadosLog,
+        categoria: 'financeiro',
+        alvoId: cobrancaEditada?.studentId,
+        alvoNome: cobrancaEditada?.studentName || 'Aluno'
+      }
+    )
   }
 
 /**
-   * Deleta uma cobrança específica.
-   */
+ * Deleta uma cobrança específica.
+ */
   async function deletarCobranca(idCobranca) {
     if (effectiveRole === 'aluno') {
       throw new Error('Segurança Operacional: Acesso Negado para deletar.')
     }
+
+    // Busca dados da cobrança antes de deletar (para o log)
+    const cobrancaDeletada = cobrancas.find(c => c.id === idCobranca)
+
     await deleteDoc(doc(db, COLLECTIONS.FATURAMENTO, idCobranca))
+
+    // Log da atividade: cobrança excluída
+    registrarAtividade(
+      'excluir',
+      'Excluiu cobrança',
+      `${cobrancaDeletada?.studentName || 'Aluno'} — R$ ${(Number(cobrancaDeletada?.amount) || 0).toFixed(2)}`,
+      {
+        ...dadosLog,
+        categoria: 'financeiro',
+        alvoId: cobrancaDeletada?.studentId,
+        alvoNome: cobrancaDeletada?.studentName || 'Aluno'
+      }
+    )
   }
 
   /**
@@ -465,7 +531,103 @@ export function useFinance() {
         updatedAt: serverTimestamp()
       })
       console.log(`[Cobrança] Valor ajustado de R$${valorAtual} para R$${novoValor}`)
+
+      // Log da atividade: cobrança ajustada por mudança de modalidade
+      registrarAtividade(
+        'editar',
+        'Ajustou cobrança por mudança de modalidade',
+        `${cobrancaData.studentName || studentId}: R$ ${valorAtual.toFixed(2)} → R$ ${novoValor.toFixed(2)}`,
+        {
+          ...dadosLog,
+          categoria: 'financeiro',
+          alvoId: studentId,
+          alvoNome: cobrancaData.studentName || studentId,
+          valorAntigo: `R$ ${valorAtual.toFixed(2)}`,
+          valorNovo: `R$ ${novoValor.toFixed(2)}`
+        }
+      )
     }
+  }
+
+  // ==========================================
+  // CRUD DE DESPESAS
+  // ==========================================
+
+  /**
+   * Adiciona uma nova despesa.
+   */
+  async function adicionarDespesa(dadosDespesa) {
+    if (effectiveRole === 'aluno' || effectiveRole === 'professor') {
+      throw new Error('Acesso Negado para criar despesas.')
+    }
+    const despesasRef = collection(db, COLLECTIONS.DESPESAS)
+    await addDoc(despesasRef, {
+      ...dadosDespesa,
+      createdAt: serverTimestamp(),
+      amount: Number(dadosDespesa.amount)
+    })
+
+    // Log da atividade: despesa criada
+    registrarAtividade(
+      'criar',
+      'Registrou despesa',
+      `${dadosDespesa.description || 'Sem descrição'} — R$ ${(Number(dadosDespesa.amount) || 0).toFixed(2)}`,
+      {
+        ...dadosLog,
+        categoria: 'financeiro',
+        alvoNome: dadosDespesa.description || 'Despesa'
+      }
+    )
+  }
+
+  /**
+   * Atualiza uma despesa existente.
+   */
+  async function atualizarDespesa(idDespesa, dados) {
+    if (effectiveRole === 'aluno' || effectiveRole === 'professor') {
+      throw new Error('Acesso Negado para editar despesas.')
+    }
+    const despesaRef = doc(db, COLLECTIONS.DESPESAS, idDespesa)
+    await updateDoc(despesaRef, {
+      ...dados,
+      updatedAt: serverTimestamp()
+    })
+
+    // Log da atividade: despesa editada
+    const despesaEditada = despesas.find(d => d.id === idDespesa)
+    registrarAtividade(
+      'editar',
+      'Editou despesa',
+      despesaEditada?.description || dados.description || 'Despesa',
+      {
+        ...dadosLog,
+        categoria: 'financeiro',
+        alvoNome: despesaEditada?.description || 'Despesa'
+      }
+    )
+  }
+
+  /**
+   * Deleta uma despesa.
+   */
+  async function deletarDespesa(idDespesa) {
+    if (effectiveRole === 'aluno' || effectiveRole === 'professor') {
+      throw new Error('Acesso Negado para deletar despesas.')
+    }
+    const despesaDeletada = despesas.find(d => d.id === idDespesa)
+    await deleteDoc(doc(db, COLLECTIONS.DESPESAS, idDespesa))
+
+    // Log da atividade: despesa excluída
+    registrarAtividade(
+      'excluir',
+      'Excluiu despesa',
+      despesaDeletada?.description || 'Despesa',
+      {
+        ...dadosLog,
+        categoria: 'financeiro',
+        alvoNome: despesaDeletada?.description || 'Despesa'
+      }
+    )
   }
 
   // Compatibilidade Legada (Mantendo nomes em inglês pro restante do app não quebrar instantaneamente)
@@ -491,6 +653,9 @@ export function useFinance() {
     loadingExpenses: carregandoDespesas,
     expensesPaidTotal: totalDespesasPagas,
     expensesPendingTotal: totalDespesasPendentes,
+    addExpense: adicionarDespesa,
+    updateExpense: atualizarDespesa,
+    deleteExpense: deletarDespesa,
     
     // Ajuste de cobrança por mudança de modalidade
     ajustarCobrancaPorMudancaModalidade

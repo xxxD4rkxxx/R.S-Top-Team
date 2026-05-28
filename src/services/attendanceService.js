@@ -10,6 +10,7 @@ import {
   collectionGroup, where, setDoc, deleteDoc, increment
 } from 'firebase/firestore'
 import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../firebase/collections'
+import { registrarAtividade } from '../hooks/usarLogsSistema'
 
 const USERS_COLLECTION = COLLECTIONS.USUARIOS
 const VISITORS_COLLECTION = 'visitantes'
@@ -46,8 +47,12 @@ export const attendanceService = {
   /**
    * REGISTRO DE CHAMADA EM LOTE (Batch)
    * 🎯 Agora atualiza a coleção unificada 'users' para marcar a última presença.
+   * 
+   * @param {object} activeSession - Dados da sessão atual
+   * @param {Array} activeList - Lista de alunos com status
+   * @param {object|null} usuarioLog - Dados do usuário para log { usuarioId, usuarioNome, usuarioPapel, usuarioAvatar }
    */
-  async markAttendanceBatch(activeSession, activeList) {
+  async markAttendanceBatch(activeSession, activeList, usuarioLog = null) {
     console.log(`📝 Iniciando registro em lote para ${activeList.length} registros...`)
     try {
       const batch = writeBatch(db)
@@ -140,6 +145,24 @@ export const attendanceService = {
       console.log('🚀 Iniciando commit do lote de presença...')
       await batch.commit()
       console.log('✅ Lote de presença persistido com sucesso.')
+
+      // Log da atividade: chamada finalizada
+      const tituloAula = activeSession.classTitle || activeSession.titulo || 'Chamada'
+      const modalidade = activeSession[FIELDS.MODALIDADE] || activeSession.modality || ''
+      if (usuarioLog) {
+        registrarAtividade(
+          'finalizar',
+          'Finalizou chamada',
+          `${tituloAula} — ${presences} presenças, ${absents} faltas${modalidade ? ` (${modalidade})` : ''}`,
+          {
+            ...usuarioLog,
+            categoria: 'chamada',
+            alvoId: activeSession.id,
+            alvoNome: tituloAula
+          }
+        )
+      }
+
       return true
     } catch (error) {
       console.error('❌ Erro fatal ao salvar lote de chamadas:', error)
@@ -193,10 +216,30 @@ export const attendanceService = {
 
   /**
    * Remove uma sessão de aula completa.
+   * 
+   * @param {string} sessionId - ID da sessão
+   * @param {string|null} tituloSessao - Nome da sessão (para o log)
+   * @param {object|null} usuarioLog - Dados do usuário para log
    */
-  async deleteSession(sessionId) {
+  async deleteSession(sessionId, tituloSessao = null, usuarioLog = null) {
     try {
       await deleteDoc(doc(db, COLLECTIONS.CHAMADAS, sessionId))
+
+      // Log da atividade: sessão excluída
+      if (usuarioLog) {
+        registrarAtividade(
+          'excluir',
+          'Excluiu sessão de chamada',
+          tituloSessao || sessionId,
+          {
+            ...usuarioLog,
+            categoria: 'chamada',
+            alvoId: sessionId,
+            alvoNome: tituloSessao || 'Sessão'
+          }
+        )
+      }
+
       return true
     } catch (error) {
       console.error('Erro ao deletar sessão:', error)

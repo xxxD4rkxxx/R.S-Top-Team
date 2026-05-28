@@ -6,7 +6,7 @@
  */
 import React, { useState } from 'react'
 import { AlertCircle, RefreshCw } from 'lucide-react'
-import { useSystemLogs } from '../../../hooks/useSystemLogs'
+import { useSystemLogs } from '../../../hooks/usarLogsSistema'
 
 // Formatar data/hora
 function formatarDataHora(data) {
@@ -56,25 +56,25 @@ function CardErro({ log }) {
           {/* Título e tempo */}
           <div className="flex items-center justify-between gap-2 mb-1">
             <h3 className="text-sm font-bold text-red-400 truncate">
-              {log.action}
+              {log.nomeLog || log.titulo || log['action'] || log.acao || ''}
             </h3>
             <span className="text-[10px] text-gray-600 whitespace-nowrap">
-              {tempoRelativo(log.createdAt)}
+              {tempoRelativo(log.criadoEm || log['createdAt'])}
             </span>
           </div>
 
           {/* Detalhe do erro */}
           <p className="text-xs text-gray-500 font-mono line-clamp-2">
-            {log.detail}
+            {log.detalhe || log['detail'] || ''}
           </p>
 
           {/* Informações do usuário */}
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5">
             <span className="text-[9px] uppercase tracking-wider text-gray-600">Usuário:</span>
-            <span className="text-xs text-gray-400">{log.userName}</span>
-            {log.userRole && (
+            <span className="text-xs text-gray-400">{log.usuarioNome || log['userName'] || ''}</span>
+            {(log.usuarioPapel || log['userRole']) && (
               <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-500/20 text-gray-500 uppercase">
-                {log.userRole}
+                {log.usuarioPapel || log['userRole']}
               </span>
             )}
           </div>
@@ -82,7 +82,7 @@ function CardErro({ log }) {
           {/* Timestamp completo quando expandido */}
           {expandido && (
             <div className="text-[10px] text-gray-700 font-mono mt-2 pt-2 border-t border-white/5">
-              {formatarDataHora(log.createdAt)}
+              {formatarDataHora(log.criadoEm || log['createdAt'])}
             </div>
           )}
         </div>
@@ -94,7 +94,7 @@ function CardErro({ log }) {
 // Página principal de erros
 export default function ErrosPagina() {
   const { logs, loading } = useSystemLogs('error', 100)
-  const erros = logs.filter(l => l.type === 'error')
+  const erros = logs.filter(l => l.tipo === 'error')
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-6">

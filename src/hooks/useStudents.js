@@ -31,6 +31,8 @@ import {
 import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../firebase/collections'
 import { useStudentsContext } from '../context/StudentsContext'
 import { sanitizeString } from '../utils/security'
+import { registrarAtividade, extrairDadosAuth } from './usarLogsSistema'
+import { useAuth } from '../context/AuthContext'
 
 // Inicialização Silenciosa de Auth Secundário para Criação de Contas
 const getVerifyAuth = () => {
@@ -116,7 +118,11 @@ const getNextMonthlyDueDateFromDate = (baseDate) => {
 
 export function useStudents() {
   const { students, isLoadingStudents } = useStudentsContext()
+  const { userData, effectiveRole } = useAuth()
   const [isUpdating, setIsUpdating] = useState(false)
+
+  // Dados do usuário logado para registrar nos logs
+  const dadosLog = extrairDadosAuth(userData, effectiveRole)
 
   /**
    * Gera um PIN aleatório de 6 dígitos.
@@ -169,7 +175,23 @@ export function useStudents() {
 
     const collectionName = student?.isVisitor ? VISITORS_COLLECTION : USERS_COLLECTION
     await updateDoc(doc(db, collectionName, id), payload)
-  }, [students])
+
+    // Log da atividade: status alterado
+    const statusAntigo = student?.[FIELDS.STATUS] || student?.status || 'desconhecido'
+    registrarAtividade(
+      'alterar_status',
+      'Alterou status do aluno',
+      `${student?.name || id}: ${statusAntigo} → ${newStatus}`,
+      {
+        ...dadosLog,
+        categoria: 'aluno',
+        alvoId: id,
+        alvoNome: student?.name || id,
+        valorAntigo: statusAntigo,
+        valorNovo: newStatus
+      }
+    )
+  }, [students, dadosLog])
 
   /**
    * Realiza o 'Soft Delete' do aluno. 
@@ -223,11 +245,24 @@ export function useStudents() {
       await deleteDoc(userRef)
 
       console.log(`✅ Aluno ${studentId} removido. Turmas e dados internos limpos. Financeiro preservado.`)
+
+      // Log da atividade: aluno excluído
+      registrarAtividade(
+        'excluir',
+        'Excluiu aluno',
+        target?.name || studentId,
+        {
+          ...dadosLog,
+          categoria: 'aluno',
+          alvoId: studentId,
+          alvoNome: target?.name || studentId
+        }
+      )
     } catch (e) {
       console.error('Erro ao remover aluno:', e)
       throw e
     }
-  }, [students])
+  }, [students, dadosLog])
 
 
   /**
@@ -413,8 +448,21 @@ export function useStudents() {
       }
     }
 
+    // Log da atividade: aluno adicionado
+    registrarAtividade(
+      'criar',
+      isVisitor ? 'Adicionou visitante' : 'Adicionou aluno',
+      sanitizeString(newStudent.name || 'Novo aluno'),
+      {
+        ...dadosLog,
+        categoria: 'aluno',
+        alvoId: docId,
+        alvoNome: sanitizeString(newStudent.name || 'Novo aluno')
+      }
+    )
+
     return { id: docId, ...payload }
-  }, [generatePIN])
+  }, [generatePIN, dadosLog])
 
   /**
    * ADICIONAR NOVO VISITANTE (Lead)
@@ -426,6 +474,35 @@ export function useStudents() {
       responsibleProfessor 
     })
   }, [addStudent])
+
+  const CAMPOS_LABEL = {
+    name: 'nome',
+    email: 'e-mail',
+    phone: 'telefone',
+    emergency: 'contato de emergência',
+    medical: 'informações médicas',
+    observacoes: 'observações',
+    belt: 'graduação',
+    stripes: 'graus',
+    modality: 'modalidade',
+    type: 'tipo',
+    ageCategory: 'faixa etária',
+    gender: 'gênero',
+    parentName: 'responsável',
+    parentPhone: 'tel. do responsável',
+    startDate: 'data de início',
+    turmas: 'turmas',
+    planValue: 'valor do plano',
+    address: 'endereço',
+    cep: 'CEP',
+    bairro: 'bairro',
+    cidade: 'cidade',
+    estado: 'estado',
+    numero: 'número',
+    complemento: 'complemento',
+  }
+
+  const CAMPOS_TRACKED = Object.keys(CAMPOS_LABEL)
 
   /**
    * Atualiza dados cadastrais do perfil.
@@ -533,13 +610,56 @@ export function useStudents() {
       }
 
       await updateDoc(doc(db, collectionName, id), payload)
+
+      const IGNORAR = ['genero', 'ddd', 'telefone_limpo', 'telefone_completo']
+      const normalizar = (v) => {
+        if (v === undefined || v === null || v === '') return ''
+        let s = String(v).trim()
+        if (s.length > 3 && /[()\-\s]/.test(s) && /\d{8,}/.test(s)) s = s.replace(/\D/g, '')
+        return s
+      }
+
+      const alteracoes = []
+      for (const campo of CAMPOS_TRACKED) {
+        if (IGNORAR.includes(campo)) continue
+        if (updates[campo] !== undefined) {
+          const de = normalizar(student?.[campo])
+          const para = normalizar(updates[campo])
+          if (de !== para) {
+            alteracoes.push({ campo: CAMPOS_LABEL[campo] || campo, de: student?.[campo] ?? '', para: updates[campo] })
+          }
+        }
+      }
+      if (updates.turmas !== undefined) {
+        const oldTurmas = student?.turmas || []
+        const newTurmas = updates.turmas || []
+        const oldStr = JSON.stringify(oldTurmas)
+        const newStr = JSON.stringify(newTurmas)
+        if (oldStr !== newStr) {
+          alteracoes.push({ campo: 'turmas', de: `${oldTurmas.length} turmas`, para: `${newTurmas.length} turmas` })
+        }
+      }
+
+      // Log da atividade: aluno editado
+      registrarAtividade(
+        'editar',
+        'Editou aluno',
+        '',
+        {
+          ...dadosLog,
+          categoria: 'aluno',
+          alvoId: id,
+          alvoNome: student?.name || id,
+          alteracoes
+        }
+      )
     } catch (err) {
       console.error('Erro ao atualizar:', err)
       throw err
     } finally {
       setIsUpdating(false)
     }
-  }, [students])
+  }, [students, dadosLog])
 
   /**
    * Remove um visitante da coleção de leads.

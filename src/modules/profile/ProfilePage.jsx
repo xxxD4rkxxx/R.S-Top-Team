@@ -13,7 +13,7 @@ import { modalities } from '../../data/modalities'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
-import { useSystemLogs } from '../../hooks/useSystemLogs'
+import { useSystemLogs } from '../../hooks/usarLogsSistema'
 import { useTheme, THEMES } from '../../context/ThemeContext'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
@@ -388,12 +388,12 @@ function SectionSeguranca({ user, onChangePassword, activityLogs }) {
                     <Smartphone size={14} className="text-gray-400" />
                   </div>
                   <div>
-                    <p className="text-white text-sm font-bold">{log.detail || 'Dispositivo Autorizado'}</p>
+                    <p className="text-white text-sm font-bold">{log.detalhe || 'Dispositivo Autorizado'}</p>
                     <p className="text-[10px] text-gray-500 font-medium">{log.ip || 'Localização não identificada'}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <LogTime date={log.createdAt} />
+                  <LogTime date={log.criadoEm} />
                   <p className="text-[8px] text-emerald-500 font-black uppercase tracking-tighter mt-0.5">Ativo</p>
                 </div>
               </div>
@@ -1186,8 +1186,8 @@ const ICONES_CATEGORIA = {
 // Componente de card de log individual
 function CardLog({ log, onExpand }) {
   const [expandido, setExpandido] = useState(false)
-  const estiloRole = CORES_POR_ROLE[log.userRole] || CORES_POR_ROLE.sistema
-  const infoCategoria = ICONES_CATEGORIA[log.category] || ICONES_CATEGORIA.sistema
+  const estiloRole = CORES_POR_ROLE[log.usuarioPapel] || CORES_POR_ROLE.sistema
+  const infoCategoria = ICONES_CATEGORIA[log.categoria] || ICONES_CATEGORIA.sistema
 
   const formatarData = (data) => {
     if (!data) return ''
@@ -1219,24 +1219,19 @@ function CardLog({ log, onExpand }) {
           <span className="text-base">{infoCategoria.icon}</span>
           <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{infoCategoria.label}</span>
           <div className="flex-1" />
-          <span className="text-[10px] text-gray-600">{formatarData(log.createdAt)}</span>
+          <span className="text-[10px] text-gray-600">{formatarData(log.criadoEm)}</span>
         </div>
 
         {/* Título da ação */}
         <h3 className="text-sm font-black text-gray-200 mb-1 group-hover:text-white transition-colors">
-          {log.action}
+          {(log.nomeLog || log.titulo || log.acao || log['action'] || '')}
         </h3>
 
         {/* Detalhes (visível quando expandido ou no desktop) */}
         <div className={`overflow-hidden transition-all ${expandido ? 'max-h-40' : 'max-h-0'}`}>
           <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-white/5">
-            {log.detail}
+            {log.detalhe}
           </p>
-          {log.targetName && (
-            <p className="text-xs text-gray-600 mt-1">
-              Alvo: <span className="text-gray-400">{log.targetName}</span>
-            </p>
-          )}
         </div>
 
         {/* Linha inferior: usuário com badge do role */}
@@ -1244,7 +1239,7 @@ function CardLog({ log, onExpand }) {
           <div className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${estiloRole.bg} ${estiloRole.cor} border ${estiloRole.border}`}>
             {estiloRole.label}
           </div>
-          <span className="text-xs text-gray-400 truncate">{log.userName}</span>
+          <span className="text-xs text-gray-400 truncate">{log.usuarioNome}</span>
           {expandido && (
             <span className="text-[10px] text-gray-600 ml-auto">▼</span>
           )}
@@ -1255,7 +1250,7 @@ function CardLog({ log, onExpand }) {
 }
 
 function SectionLogs({ logs, loading, carregandoMais, temMais, carregarMais }) {
-  const activity = logs.filter(l => l.type === 'activity')
+  const activity = logs.filter(l => l.tipo === 'activity')
   const containerRef = useRef(null)
 
   // Scroll infinito
@@ -1380,8 +1375,8 @@ const INFO_CATEGORIA = {
 function CardTimeline({ log, tema = 'crimson' }) {
   const [expandido, setExpandido] = useState(false)
   const cores = obterCoresPorTema(tema)
-  const estilo = cores[log.userRole] || cores.sistema
-  const info = INFO_CATEGORIA[log.category] || INFO_CATEGORIA.sistema
+  const estilo = cores[log.usuarioPapel] || cores.sistema
+  const info = INFO_CATEGORIA[log.categoria] || INFO_CATEGORIA.sistema
 
   const formatarDataHora = (data) => {
     if (!data) return ''
@@ -1425,17 +1420,17 @@ function CardTimeline({ log, tema = 'crimson' }) {
             <span className="text-base">{info.emoji}</span>
             <span className={`text-[10px] font-black uppercase tracking-wider ${info.cor}`}>{info.label}</span>
           </div>
-          <span className="text-[10px] text-gray-600 font-medium">{tempoRelativo(log.createdAt)}</span>
+          <span className="text-[10px] text-gray-600 font-medium">{tempoRelativo(log.criadoEm)}</span>
         </div>
 
         {/* Título principal */}
         <div>
           <h3 className={`text-sm font-bold ${cores.titulo} group-hover:${cores.tituloHover} transition-colors line-clamp-2`}>
-            {log.action}
+            {(log.nomeLog || log.titulo || log.acao || log['action'] || '')}
           </h3>
-          {log.detail && (
+          {log.detalhe && (
             <p className={`text-xs ${cores.texto} mt-1 transition-all ${expandido ? 'max-h-40' : 'max-h-0 overflow-hidden'}`}>
-              {log.detail}
+              {log.detalhe}
             </p>
           )}
         </div>
@@ -1443,22 +1438,15 @@ function CardTimeline({ log, tema = 'crimson' }) {
         {/* Footer: autor + role */}
         <div className="flex items-center gap-2 pt-2 border-t border-white/5">
           <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${estilo.badge}`}>
-            {estilo.label || log.userRole?.toUpperCase()}
+            {estilo.label || log.usuarioPapel?.toUpperCase()}
           </span>
-          <span className="text-xs text-gray-400 truncate flex-1">{log.userName}</span>
-          
-          {log.targetName && (
-            <span className="text-[10px] text-gray-600 flex items-center gap-1">
-              →
-              <span className="text-gray-500">{log.targetName}</span>
-            </span>
-          )}
+          <span className="text-xs text-gray-400 truncate flex-1">{log.usuarioNome}</span>
         </div>
 
         {/* Timestamp completo quando expandido */}
         {expandido && (
           <div className="text-[10px] text-gray-700 font-mono">
-            {formatarDataHora(log.createdAt)}
+            {formatarDataHora(log.criadoEm)}
           </div>
         )}
       </div>
@@ -1468,7 +1456,7 @@ function CardTimeline({ log, tema = 'crimson' }) {
 
 // Seção Timeline principal
 function SectionTimeline({ logs, loading, carregandoMais, temMais, carregarMais }) {
-  const activity = logs.filter(l => l.type === 'activity')
+  const activity = logs.filter(l => l.tipo === 'activity')
   const containerRef = useRef(null)
 
   // Scroll infinito
@@ -1531,7 +1519,7 @@ function SectionTimeline({ logs, loading, carregandoMais, temMais, carregarMais 
 //  PAINEL: LOGS DE ERRO
 // ════════════════════════════════════════════════════════════════
 function SectionErros({ logs, loading }) {
-  const errors = logs.filter(l => l.type === 'error')
+  const errors = logs.filter(l => l.tipo === 'error')
   return (
     <div className="space-y-6">
       <Section title={`Erros registrados (${errors.length})`}>
@@ -1548,11 +1536,11 @@ function SectionErros({ logs, loading }) {
               <div key={log.id} className="flex items-start gap-3 px-5 py-3 border-b border-white/5 last:border-0">
                 <AlertCircle size={18} strokeWidth={1.9} style={{ color: 'var(--clr-primary)' }} className="flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--clr-primary)' }}>{log.action}</p>
-                  <p className="text-gray-500 text-xs font-mono break-all">{log.detail}</p>
-                  <p className="text-gray-700 text-[10px] mt-0.5">{log.userName}</p>
+                   <p className="text-sm font-semibold" style={{ color: 'var(--clr-primary)' }}>{(log.nomeLog || log.titulo || log.acao || log['action'] || '')}</p>
+                  <p className="text-gray-500 text-xs font-mono break-all">{log.detalhe}</p>
+                  <p className="text-gray-700 text-[10px] mt-0.5">{log.usuarioNome}</p>
                 </div>
-                <LogTime date={log.createdAt} />
+                <LogTime date={log.criadoEm} />
               </div>
             ))
         }

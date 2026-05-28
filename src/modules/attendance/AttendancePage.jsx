@@ -14,6 +14,7 @@ import { COLLECTIONS, SUB_COLLECTIONS, FIELDS } from '../../firebase/collections
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { useStudents } from '../../hooks/useStudents'
+import { extrairDadosAuth } from '../../hooks/usarLogsSistema'
 import { beltConfig } from '../../data/beltConfig'
 import { useModalities } from '../../hooks/useModalities'
 import { useSystemUsers } from '../../hooks/useSystemUsers'
@@ -135,6 +136,7 @@ export default function AttendancePage() {
   const { modalities, allTurmas, loading: loadingModalities } = useModalities()
   const { users: staffMembers } = useSystemUsers()
   const { user, userData, effectiveRole } = useAuth()
+  const usuarioLog = extrairDadosAuth(userData, effectiveRole)
 
   const isPowerUser = effectiveRole === 'admin' || effectiveRole === 'gestor'
   const CRIADO_EM = FIELDS.CRIADO_EM || 'criadoEm'
@@ -704,7 +706,7 @@ export default function AttendancePage() {
     }
     setIsFinishingSession(true)
     try {
-      await attendanceService.markAttendanceBatch(activeSession, activeList)
+      await attendanceService.markAttendanceBatch(activeSession, activeList, usuarioLog)
       const savedSessionId = activeSession.id
       setToastMessage("Chamada finalizada e salva!")
       console.log("✅ Chamada finalizada com ID:", savedSessionId)
