@@ -1,15 +1,22 @@
+// ─── React e Hooks ─────────────────────────────────────────────
 import React, { useState, useMemo } from 'react'
+
+// ─── Ícones ───────────────────────────────────────────────────
 import { 
   Trophy, Medal, Target, Calendar, Clock, TrendingUp, 
   ChevronLeft, ChevronRight, Star, Zap, Bell, AlertCircle, History,
   Activity, Sparkles, Check, LayoutDashboard, DollarSign, 
-  Wallet, ArrowUpRight, ShieldCheck, CalendarDays
+  Wallet, ArrowUpRight, ShieldCheck, CalendarDays, X
 } from 'lucide-react'
+
+// ─── Gráficos (Recharts) ─────────────────────────────────────
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  XAxis, YAxis, 
   Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar
 } from 'recharts'
+
+// ─── Hooks e Serviços ─────────────────────────────────────────
 import { useModalities } from '../../hooks/useModalities'
 import QuickStartGuide from './components/QuickStartGuide'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -18,24 +25,31 @@ import { useNotices } from '../../hooks/useNotices'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
 import { beltConfig as defaultBelts } from '../../data/beltConfig'
 import { attendanceService } from '../../services/attendanceService'
+
+// ─── Componentes Compartilhados ───────────────────────────────
 import PageHeader from '../../components/shared/PageHeader'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import { calculateModalityValue } from '../../utils/billingUtils'
 
 /**
- * DASHBOARD  DO ALUNO 
- * 
+ * DASHBOARD DO ALUNO
+ * Visão geral com estatísticas, calendário de presença, agenda semanal, conquistas e grade de horários.
  */
 
+// ─── Constantes ───────────────────────────────────────────────
 const DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const NUM_TO_DAY = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' }
 const DAY_TO_NUM = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6 }
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const MONTHS_FULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
-// --- Componentes Atômicos de UI ---
+// ─── Componentes Atômicos de UI ───────────────────────────────
 
+// Raio padrão dos cartões
 const RADIUS_MAIN = 'rounded-[32px]'
 const RADIUS_CARD = 'rounded-[20px]'
 
+// Cartão de estatística genérico com ícone, valor e descrição
 const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
@@ -46,7 +60,7 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
     <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-[40px] opacity-10 transition-opacity group-hover:opacity-20 pointer-events-none`} style={{ background: color }} />
     
     <div className="relative z-10 flex flex-col h-full uppercase">
-      {/* Top: Icon & Title */}
+      {/* Ícone e Título */}
       <div className="flex items-center gap-3 mb-2">
         <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-primary transition-transform group-hover:scale-110 duration-500 shrink-0">
           <Icon size={18} />
@@ -56,14 +70,14 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
         </span>
       </div>
 
-      {/* Middle: Centered Value */}
+      {/* Valor centralizado */}
       <div className="flex-1 flex flex-col justify-center py-2">
         <h3 className="text-4xl font-black text-white tracking-tighter leading-none">
           {value}
         </h3>
       </div>
 
-      {/* Bottom: Detail text at the base */}
+      {/* Texto inferior */}
       <p className="text-[9px] font-bold text-gray-600 tracking-[0.1em] leading-tight opacity-70">
         {detail}
       </p>
@@ -71,6 +85,7 @@ const StatCard = ({ title, value, detail, icon: Icon, color, delay = 0 }) => (
   </motion.div>
 )
 
+// Cartão de pagamento com status (pago/pendente/vencido) e botão de ação
 const PaymentStatCard = ({ info, delay = 0 }) => {
   const { amount, status, changeType, dueDate } = info;
   
@@ -140,25 +155,7 @@ const PaymentStatCard = ({ info, delay = 0 }) => {
 };
 
 
-// ChartTooltip customizado (mesmo do IntelligenceSection)
-function ChartTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="glass-card p-3 rounded-xl border border-white/10 shadow-2xl bg-[#0a0a0a]/90 backdrop-blur text-xs">
-      <p className="text-gray-400 font-bold tracking-wider mb-2">{label}</p>
-      {payload.map((e, i) => (
-        <div key={i} className="flex items-center justify-between gap-5 mb-1 last:mb-0">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ background: e.color }} />
-            <span className="text-gray-300">{e.name}</span>
-          </div>
-          <span className="font-black text-white">{e.value}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
+// Tooltip personalizado para o gráfico de consistência mensal
 function CustomBarTooltip({ active, payload }) {
   if (active && payload && payload.length) {
     return (
@@ -172,16 +169,23 @@ function CustomBarTooltip({ active, payload }) {
 }
 
 
+// ─── Componente Principal ─────────────────────────────────────
 export default function StudentDashboard({ user, cobrancas = [] }) {
+  // Hook de frequência ー presenças, faltas, sequência
   const { total: hookTotal, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.id)
 
-  // Sincronizar com dados do documento do usuário (Source of Truth)
+  // Sincroniza com dados do documento do usuário (fonte oficial)
   const total = user?.total_visitas || hookTotal || 0
+
+  // Avisos, sessões do dia e modalidades
   const { notices, userViews = new Set(), markAsViewed } = useNotices(user?.id)
-  const { sessions, loading: loadingSessions } = useTodaySessions()
+  const { loading: loadingSessions } = useTodaySessions()
   const { modalities } = useModalities()
+
+  // Estado de sincronização manual
   const [syncing, setSyncing] = useState(false)
 
+  // Estado da agenda semanal
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date()
@@ -189,6 +193,11 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     return d
   })
 
+  // Estado do calendário mensal de presença
+  const [viewDate, setViewDate] = useState(() => new Date())
+  const [selectedDayInfo, setSelectedDayInfo] = useState(null)
+
+  // Converte registros brutos em objetos padronizados com data, modalidade e status
   const records = useMemo(() => {
     if (!recent) return [];
     return recent.map(log => {
@@ -209,8 +218,10 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     }).filter(r => r.date && !isNaN(r.date.getTime())).sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [recent])
 
+  // Apenas registros de presença
   const presentRecords = useMemo(() => records.filter(r => r.status === 'present' || r.status === 'presente'), [records])
 
+  // Dados do gráfico de consistência mensal (presenças por mês)
   const monthlyData = useMemo(() => {
     const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     const counts = {}
@@ -221,6 +232,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     return Array.from({ length: 12 }, (_, i) => ({ month: i, label: MONTHS[i], count: counts[i] || 0 }))
   }, [presentRecords])
 
+  // Dias da semana atual para a agenda semanal
   const weeklyCalendarDays = useMemo(() => {
     const today = new Date()
     today.setHours(0,0,0,0)
@@ -240,6 +252,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
 
   const { allTurmas = [] } = useModalities()
 
+  // Dias da semana com aulas agendadas para o aluno
   const scheduledDays = useMemo(() => {
     const studentModalities = user?.modalities || []
     if (studentModalities.length === 0) return []
@@ -264,6 +277,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     return Array.from(daysSet)
   }, [allTurmas, modalities, user])
 
+  // Turmas do dia selecionado na agenda semanal
   const selectedDayClasses = useMemo(() => {
     const dayNum = selectedDate.getDay()
     const mapNumToDay = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' }
@@ -287,6 +301,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     })
   }, [allTurmas, modalities, user, selectedDate])
 
+  // Sincronização manual do histórico global de presenças
   const handleSync = async () => {
     if (!window.confirm('Deseja sincronizar o histórico global de presenças? Isso pode levar alguns segundos.')) return
     
@@ -303,94 +318,17 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     }
   }
 
-  // Filtro de cobranças pendentes
+  // Cobranças pendentes ou vencidas
   const pendingBills = useMemo(() => 
     cobrancas.filter(b => b.status === 'pending' || b.status === 'overdue'),
   [cobrancas])
 
-  // Dados do gráfico de presença
-  const [period, setPeriod] = useState('ano')
-  
-  const attendanceChartData = useMemo(() => {
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-    
-    if (period === 'mes') {
-      // Dados por dia do mês atual
-      const currentMonth = now.getMonth()
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-      const dataMap = {}
-
-      for (let d = 1; d <= daysInMonth; d++) {
-        dataMap[d] = { name: d.toString().padStart(2, '0'), presencas: 0, faltas: 0 }
-      }
-
-      if (recent && recent.length > 0) {
-        recent.forEach(log => {
-          let date = null
-          if (log.parsedDate) {
-            date = log.parsedDate instanceof Date ? log.parsedDate : new Date(log.parsedDate)
-          } else if (log.date) {
-            date = new Date(log.date + 'T12:00:00')
-          } else if (log.data) {
-            date = new Date(log.data + 'T12:00:00')
-          }
-          
-          if (date && !isNaN(date.getTime())) {
-            if (date.getFullYear() === currentYear && date.getMonth() === currentMonth) {
-              const day = date.getDate()
-              if (dataMap[day]) {
-                if (log.status === 'present' || log.status === 'presente' || !log.status) {
-                  dataMap[day].presencas += 1
-                } else if (log.status === 'absent' || log.status === 'ausente') {
-                  dataMap[day].faltas += 1
-                }
-              }
-            }
-          }
-        })
-      }
-      return Object.values(dataMap)
-    } else {
-      // Dados por mês do ano atual
-      const dataMap = {}
-      for (let m = 0; m < 12; m++) {
-        dataMap[m] = { name: months[m], presencas: 0, faltas: 0 }
-      }
-
-      if (recent && recent.length > 0) {
-        recent.forEach(log => {
-          let date = null
-          if (log.parsedDate) {
-            date = log.parsedDate instanceof Date ? log.parsedDate : new Date(log.parsedDate)
-          } else if (log.date) {
-            date = new Date(log.date + 'T12:00:00')
-          } else if (log.data) {
-            date = new Date(log.data + 'T12:00:00')
-          }
-          
-          if (date && !isNaN(date.getTime())) {
-            if (date.getFullYear() === currentYear && dataMap[date.getMonth()]) {
-              if (log.status === 'present' || log.status === 'presente' || !log.status) {
-                dataMap[date.getMonth()].presencas += 1
-              } else if (log.status === 'absent' || log.status === 'ausente') {
-                dataMap[date.getMonth()].faltas += 1
-              }
-            }
-          }
-        })
-      }
-      return Object.values(dataMap)
-    }
-  }, [recent, period])
-
-  // Configuração da Faixa Atual
+  // Configuração da faixa atual do aluno
   const beltInfo = defaultBelts[user?.belt?.toLowerCase()] || defaultBelts.white
   const beltColor = user?.belt?.toLowerCase() || ''
   const isWhiteBelt = beltColor === 'white' || beltColor === 'branca' || beltColor === 'branco'
   
-  // Cálculo de Progresso Técnico Real
+  // Progresso técnico: meses na faixa atual
   const { technicalProgress, monthsInBelt } = useMemo(() => {
     const jornada = user?.jornada_tecnica || {}
     const lastPromoDate = jornada.data_ultima_graduacao?.toDate?.() || 
@@ -406,11 +344,12 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     return { technicalProgress: progress, monthsInBelt: months }
   }, [user, beltInfo])
 
+  // Histórico de graduações
   const history = user?.jornada_tecnica?.historico || [
     { belt: 'white', date: user?.criadoEm?.toDate?.() || new Date(), reason: 'Início na Academy' }
   ]
 
-  // Filtro de Avisos Ativos (que não expiraram ou foram finalizados)
+  // Avisos ativos (não expirados e não finalizados)
   const activeNotices = useMemo(() => {
     return notices.filter(notice => {
       if (notice.isFinalized) return false
@@ -418,10 +357,10 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
         return notice.expiresAt.toDate() > new Date()
       }
       return true
-    }).slice(0, 3) // Mostra os 3 últimos ativos
+    }).slice(0, 3)
   }, [notices])
 
-  // Dias da semana que têm anúncios ativos com data e dias marcados (para indicadores no calendário)
+  // Dias da semana com anúncios ativos (indicador de sino no calendário)
   const noticeDays = useMemo(() => {
     const daysSet = new Set()
 
@@ -431,7 +370,6 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
       const start = new Date(notice.startDate + 'T00:00:00')
       const end = notice.endDate ? new Date(notice.endDate + 'T23:59:59') : new Date(start)
 
-      // Varre os dias da semana atual e vê se o anúncio cobre cada um
       weeklyCalendarDays.forEach(date => {
         const dayStr = NUM_TO_DAY[date.getDay()]
         if (!notice.diasSemana.includes(dayStr)) return
@@ -458,17 +396,6 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
       return true
     })
   }, [selectedDate, activeNotices])
-
-  // Filtro de Grade de Aulas (Apenas modalidades que o aluno pratica)
-  const filteredSessions = useMemo(() => {
-    const studentModalities = user?.modalities || []
-    if (studentModalities.length === 0) return []
-    
-    return sessions.filter(sess => {
-      return studentModalities.includes(sess.modalityId) || 
-             studentModalities.some(m => m.toLowerCase() === sess.modality?.toLowerCase())
-    })
-  }, [sessions, user])
 
   // Lógica de Conquistas Reais baseadas em dados de assiduidade
   const realAchievements = useMemo(() => {
@@ -535,9 +462,127 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
     window.location.href = `/events?noticeId=${notice.id}`;
   };
 
+  // Grade do calendário para o mês atual
+  const calendarGrid = useMemo(() => {
+    const year = viewDate.getFullYear(), month = viewDate.getMonth()
+    const firstDay = new Date(year, month, 1).getDay()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const cells = []
+    for (let i = 0; i < firstDay; i++) cells.push(null)
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+    return cells
+  }, [viewDate])
+
+  // Mapa de registros por dia no mês visualizado
+  const monthPresentMap = useMemo(() => {
+    const map = {}
+    records.forEach(r => {
+      if (r.date.getFullYear() === viewDate.getFullYear() && r.date.getMonth() === viewDate.getMonth()) {
+        const d = r.date.getDate()
+        if (!map[d]) map[d] = []
+        map[d].push(r)
+      }
+    })
+    return map
+  }, [records, viewDate])
+
+  // Medalha de ranking baseada na frequência mensal
+  const rankBadge = useMemo(() => {
+    const n = monthly
+    if (n >= 20) return { label: 'Top Atleta 🥇', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' }
+    if (n >= 14) return { label: 'Assíduo 🥈', color: 'text-gray-300', bg: 'bg-gray-500/10', border: 'border-gray-500/20' }
+    if (n >= 8) return { label: 'Regular 🥉', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' }
+    if (n >= 4) return { label: 'Iniciante', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' }
+    return null
+  }, [monthly])
+
+  // ─── Lógica do Card "Minha Grade" ─────────────────────────────
+
+  // Dia de hoje em formato abreviado
+  const today = new Date()
+  const todayDayStr = NUM_TO_DAY[today.getDay()]
+  const todayDayName = DAYS_FULL[today.getDay()].slice(0, 3)
+
+  // Turmas do aluno para o dia de hoje, ordenadas por horário
+  const todayClasses = useMemo(() => {
+    const studentModalities = user?.modalities || []
+    if (studentModalities.length === 0) return []
+
+    return allTurmas.filter(t => {
+      const mod = modalities.find(m => m.id === t.modalityId)
+      const isStudentEnrolled = studentModalities.includes(t.modalityId) || 
+        (mod && studentModalities.some(m => m.toLowerCase() === mod.name.toLowerCase()))
+      const isToday = t.diasSemana?.includes(todayDayStr)
+      return isStudentEnrolled && isToday
+    }).map(t => {
+      const mod = modalities.find(m => m.id === t.modalityId)
+      return {
+        ...t,
+        modalityName: mod ? mod.name : (t.name || 'Treino')
+      }
+    }).sort((a, b) => (a.horarioInicio || '').localeCompare(b.horarioInicio || ''))
+  }, [allTurmas, modalities, user, todayDayStr])
+
+  // Índice da próxima aula (primeira que ainda não passou)
+  const nextClassIndex = useMemo(() => {
+    const now = new Date()
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    return todayClasses.findIndex(cls => {
+      const [h, m] = (cls.horarioInicio || '00:00').split(':').map(Number)
+      return h * 60 + m > currentMinutes
+    })
+  }, [todayClasses])
+
+  // Próxima aula futura (quando todas de hoje já passaram ou não há aulas hoje)
+  const nextFutureClass = useMemo(() => {
+    const studentModalities = user?.modalities || []
+    if (studentModalities.length === 0 || allTurmas.length === 0) return null
+
+    const todayNum = today.getDay()
+    const mapNumToDay = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' }
+    const mapNumToDayAbbr = { 0: 'Dom', 1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex', 6: 'Sab' }
+
+    for (let offset = 1; offset <= 7; offset++) {
+      const dayNum = (todayNum + offset) % 7
+      const dayStr = mapNumToDay[dayNum]
+
+      const dayTurmas = allTurmas.filter(t => {
+        const mod = modalities.find(m => m.id === t.modalityId)
+        const isStudentEnrolled = studentModalities.includes(t.modalityId) || 
+          (mod && studentModalities.some(m => m.toLowerCase() === mod.name.toLowerCase()))
+        return isStudentEnrolled && t.diasSemana?.includes(dayStr)
+      }).map(t => {
+        const mod = modalities.find(m => m.id === t.modalityId)
+        return {
+          ...t,
+          modalityName: mod ? mod.name : (t.name || 'Treino')
+        }
+      }).sort((a, b) => (a.horarioInicio || '').localeCompare(b.horarioInicio || ''))
+
+      if (dayTurmas.length > 0) {
+        const first = dayTurmas[0]
+        return {
+          dayName: mapNumToDayAbbr[dayNum],
+          horarioInicio: first.horarioInicio,
+          modalityName: first.modalityName
+        }
+      }
+    }
+    return null
+  }, [allTurmas, modalities, user])
+
+  // Rótulo de recorrência semanal
+  const recurrenceLabel = useMemo(() => {
+    const mapNumToDayAbbr = { 0: 'Dom', 1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex', 6: 'Sab' }
+    return scheduledDays
+      .sort((a, b) => a - b)
+      .map(d => mapNumToDayAbbr[d])
+      .join(' • ')
+  }, [scheduledDays])
+
   return (
     <>
-      {/* Sistema de Cabeçalhos Padronizados (Desktop & Mobile) */}
+      {/* Sistema de Cabeçalhos Padronizados (Desktop e Mobile) */}
       <MobileHeader 
         title={`Olá, ${(user?.nome || user?.name || 'Aluno').split(' ')[0]}`} 
         profileIconClass={beltInfo.bgClass || 'bg-primary/20'}
@@ -548,7 +593,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
         icon={() => (
           <div className={`w-full h-full flex items-center justify-center ${beltInfo.bgClass || 'bg-primary/10'}`}>
             {user?.photo ? (
-              <img src={user.photo} alt="" className="w-full h-full object-cover" />
+              <img src={user.photo}             alt="Foto do perfil" className="w-full h-full object-cover" />
             ) : (
               <span className={`font-black text-sm uppercase ${isWhiteBelt ? 'text-[#111]' : 'text-white'}`}>
                 {user?.initials || (user?.nome || user?.name)?.[0]}
@@ -707,171 +752,188 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
                       {/* Indicadores: bolinha verde de aula + sino amarelo de comunicado */}
                       <div className="mt-1.5 h-4 flex items-center justify-center gap-1 w-full">
                          {hasClass && <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-black/40' : 'bg-primary'}`} />}
-                         {hasNotice && <Bell size={9} className={isSelected ? 'text-black/60' : 'text-yellow-500/70'} fill="currentColor" fillOpacity={0.3} />}
-                      </div>
-                    </div>
-                  )
-                })}
-             </div>
+                       {hasNotice && <Bell size={9} className={isSelected ? 'text-black/60' : 'text-yellow-500/70'} fill="currentColor" fillOpacity={0.3} />}
+                       </div>
+                     </div>
+                   )
+                 })}
+              </div>
 
-             {/* Card do Dia Selecionado */}
-             <div className="mt-6 p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col justify-center relative overflow-hidden">
-                {scheduledDays.includes(selectedDate.getDay()) ? (
-                   <div className="flex items-center justify-between relative z-10">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--clr-primary)]" />
-                          <span className="text-xs font-bold text-white uppercase tracking-wider">
-                            {selectedDayClasses.length > 1 ? `${selectedDayClasses.length} Treinos Agendados` : 'Treino Agendado'}
-                          </span>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          {selectedDayClasses.map((cls, idx) => (
-                            <p key={idx} className="text-[10px] text-gray-400 font-medium">
-                              {cls.modalityName} • {cls.horarioInicio || '?'} - {cls.horarioFim || '?'}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                      <button
+              {/* Card do Dia Selecionado — só aparece quando tem aula ou comunicado */}
+              {(scheduledDays.includes(selectedDate.getDay()) || selectedDayNotices.length > 0) && (
+              <div className="mt-6 p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col justify-center relative overflow-hidden">
+                 {scheduledDays.includes(selectedDate.getDay()) && (
+                    <div className="flex items-center justify-between relative z-10">
+                       <div>
+                         <div className="flex items-center gap-2 mb-1">
+                           <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--clr-primary)]" />
+                           <span className="text-xs font-bold text-white uppercase tracking-wider">
+                             {selectedDayClasses.length > 1 ? `${selectedDayClasses.length} Treinos Agendados` : 'Treino Agendado'}
+                           </span>
+                         </div>
+                         <div className="flex flex-col gap-0.5">
+                           {selectedDayClasses.map((cls, idx) => (
+                             <p key={idx} className="text-[10px] text-gray-400 font-medium">
+                               {cls.modalityName} • {cls.horarioInicio || '?'} - {cls.horarioFim || '?'}
+                             </p>
+                           ))}
+                         </div>
+                       </div>
+                       <button
+                         onClick={() => {
+                           if ('Notification' in window) {
+                             Notification.requestPermission().then(perm => {
+                               if (perm === 'granted') {
+                                 new Notification('RS Top Team', {
+                                   body: 'Notificações de aula ativadas! (Simulação)',
+                                   icon: '/vite.svg'
+                                 })
+                               }
+                             })
+                           }
+                         }}
+                         className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-xl text-[10px] font-bold hover:bg-primary/30 transition-colors flex items-center gap-1.5 active:scale-95">
+                         <Bell size={12} />
+                         Lembrar
+                       </button>
+                    </div>
+                 )}
+                 {selectedDayNotices.length > 0 && (
+                   <div className={scheduledDays.includes(selectedDate.getDay()) ? 'mt-4 pt-4 border-t border-white/5 relative z-10 space-y-2' : 'relative z-10 space-y-2'}>
+                     <span className="text-[9px] font-black text-yellow-500/80 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                       <Bell size={11} /> Comunicados
+                     </span>
+                     {selectedDayNotices.map((notice, idx) => (
+                       <div
+                         key={idx}
+                         onClick={() => handleNoticeClick(notice)}
+                         className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 hover:bg-yellow-500/10 hover:border-yellow-500/20 transition-all cursor-pointer active:scale-[0.98]"
+                       >
+                         <div className="flex items-center justify-between gap-2 mb-0.5">
+                           <h5 className="text-[11px] font-black text-white uppercase tracking-tight truncate">
+                             {notice.title}
+                           </h5>
+                           {/* Data: início → fim */}
+                           <span className="text-[8px] font-bold text-yellow-600/60 uppercase tracking-widest shrink-0">
+                             {notice.startDate && `${notice.startDate.split('-').reverse().join('/')}${notice.endDate && notice.endDate !== notice.startDate ? ` → ${notice.endDate.split('-').reverse().join('/')}` : ''}`}
+                           </span>
+                         </div>
+                         {/* Resumo do conteúdo */}
+                         <p className="text-[9px] text-gray-500 font-medium line-clamp-1">
+                           {notice.description?.replace(/<[^>]*>?/gm, ' ') || notice.content || ''}
+                         </p>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+                 {/* Decoração de fundo */}
+                 <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+              </div>
+              )}
+            </section>
+
+           {/* Histórico de Presença */}
+          <section className="glass-card rounded-[32px] p-6 border border-white/10 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-lg font-black text-white tracking-wide">Histórico de Presença</h2>
+                <p className="text-xs text-gray-500 mt-0.5 tracking-tighter">Calendário de frequência</p>
+              </div>
+            </div>
+
+            {/* Calendário Mensal */}
+            {loadingAttendance ? (
+              <div className="h-[300px] bg-white/5 rounded-2xl animate-pulse" />
+            ) : (
+              <>
+                {/* Navegação */}
+                <div className="flex items-center justify-between mb-4 bg-white/5 rounded-2xl p-2.5 border border-white/5">
+                  <button onClick={() => setViewDate(p => new Date(p.getFullYear(), p.getMonth() - 1, 1))}
+                    className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                    <ChevronLeft size={20} />
+                  </button>
+                  <span className="text-base font-bold text-white">
+                    {MONTHS_FULL[viewDate.getMonth()]} {viewDate.getFullYear()}
+                  </span>
+                  <button onClick={() => setViewDate(p => new Date(p.getFullYear(), p.getMonth() + 1, 1))}
+                    className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+
+                {/* Dias da Semana */}
+                <div className="grid grid-cols-7 mb-2">
+                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                    <div key={d} className="text-center text-[11px] font-bold text-gray-600 uppercase py-1.5">{d}</div>
+                  ))}
+                </div>
+
+                {/* Células */}
+                <div className="grid grid-cols-7 gap-1.5">
+                  {calendarGrid.map((day, i) => {
+                    if (!day) return <div key={`e-${i}`} className="sm:h-16" />
+
+                    const hoje = new Date()
+                    const registrosDia = monthPresentMap[day] || []
+                    const ehHoje = viewDate.getFullYear() === hoje.getFullYear() &&
+                      viewDate.getMonth() === hoje.getMonth() &&
+                      day === hoje.getDate()
+
+                    const temPresenca = registrosDia.some(r => r.status === 'present')
+                    const temJustificado = registrosDia.some(r => r.status === 'justified')
+                    const temFalta = registrosDia.some(r => r.status === 'absent')
+
+                    let estiloCelula = 'text-gray-500 bg-white/[0.04] hover:bg-white/10 border border-transparent'
+
+                    if (temPresenca) {
+                      estiloCelula = 'bg-[#10b981]/15 text-[#10b981] border-2 border-[#10b981] shadow-[inset_0_0_12px_rgba(16,185,129,0.5)]'
+                    } else if (temJustificado) {
+                      estiloCelula = 'bg-[#3b82f6]/15 text-[#3b82f6] border-2 border-[#3b82f6] shadow-[inset_0_0_12px_rgba(59,130,246,0.5)]'
+                    } else if (temFalta) {
+                      estiloCelula = 'bg-[#ef4444]/15 text-[#ef4444] border-2 border-[#ef4444] shadow-[inset_0_0_12px_rgba(239,68,68,0.4)]'
+                    } else if (ehHoje) {
+                      estiloCelula = 'bg-white/5 text-white font-black border-2 border-primary/60'
+                    }
+
+                    return (
+                      <div key={day}
                         onClick={() => {
-                          if ('Notification' in window) {
-                            Notification.requestPermission().then(perm => {
-                              if (perm === 'granted') {
-                                new Notification('RS Top Team', {
-                                  body: 'Notificações de aula ativadas! (Simulação)',
-                                  icon: '/vite.svg'
-                                })
-                              }
-                            })
+                          if (registrosDia.length > 0) {
+                            setSelectedDayInfo(selectedDayInfo?.day === day ? null : { day, details: registrosDia })
                           }
                         }}
-                        className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-xl text-[10px] font-bold hover:bg-primary/30 transition-colors flex items-center gap-1.5 active:scale-95">
-                        <Bell size={12} />
-                        Lembrar
-                      </button>
-                   </div>
-                ) : (
-                   <div className="text-center relative z-10">
-                     <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1">Dia Livre</p>
-                     <p className="text-[10px] text-gray-600">Nenhum treino agendado para hoje.</p>
-                   </div>
-                )}
-                {/* Anúncios do dia — avisos de professor com data e dias da semana */}
-                {selectedDayNotices.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-white/5 relative z-10 space-y-2">
-                    <span className="text-[9px] font-black text-yellow-500/80 uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                      <Bell size={11} /> Comunicados
-                    </span>
-                    {selectedDayNotices.map((notice, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => handleNoticeClick(notice)}
-                        className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 hover:bg-yellow-500/10 hover:border-yellow-500/20 transition-all cursor-pointer active:scale-[0.98]"
+                        className={`max-sm:aspect-square sm:h-16 flex items-center justify-center rounded-xl text-[13px] font-bold transition-all cursor-pointer ${estiloCelula}`}
                       >
-                        <div className="flex items-center justify-between gap-2 mb-0.5">
-                          <h5 className="text-[11px] font-black text-white uppercase tracking-tight truncate">
-                            {notice.title}
-                          </h5>
-                          {/* Data: início → fim */}
-                          <span className="text-[8px] font-bold text-yellow-600/60 uppercase tracking-widest shrink-0">
-                            {notice.startDate && `${notice.startDate.split('-').reverse().join('/')}${notice.endDate && notice.endDate !== notice.startDate ? ` → ${notice.endDate.split('-').reverse().join('/')}` : ''}`}
+                        {day}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Detalhes do Dia */}
+                {selectedDayInfo && (
+                  <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-2xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-primary">Dia {selectedDayInfo.day}</span>
+                      <button onClick={() => setSelectedDayInfo(null)} className="text-primary/60 hover:text-primary"><X size={14} /></button>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedDayInfo.details.map((d, idx) => (
+                        <div key={idx} className="flex items-center justify-between">
+                          <span className="text-sm text-white font-medium">{d.modality}</span>
+                          <span className={`font-bold px-3 py-1 rounded-lg text-[11px] uppercase ${d.status === 'present' ? 'bg-[#10b981]/20 text-[#10b981]' : d.status === 'absent' ? 'bg-[#ef4444]/20 text-[#ef4444]' : 'bg-[#3b82f6]/20 text-[#3b82f6]'}`}>
+                            {d.status === 'present' ? 'Presente' : d.status === 'absent' ? 'Falta' : 'Justificado'}
                           </span>
                         </div>
-                        {/* Resumo do conteúdo (strip de HTML) */}
-                        <p className="text-[9px] text-gray-500 font-medium line-clamp-1">
-                          {notice.description?.replace(/<[^>]*>?/gm, ' ') || notice.content || ''}
-                        </p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
-                {/* Background decoration */}
-                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-             </div>
-           </section>
 
-          {/* Tendência de Presença */}
-          <section className="glass-card rounded-[32px] p-6 border border-white/10 relative overflow-hidden">
-             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                  <h2 className="text-lg font-black text-white tracking-wide">Tendência de Presença</h2>
-                  <p className="text-xs text-gray-500 mt-1 tracking-tighter">Sua frequência de treino</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex bg-black p-1 rounded-xl border border-white/5">
-                    {['mes', 'ano'].map(v => (
-                      <button
-                        key={v}
-                        onClick={() => setPeriod(v)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === v ? 'bg-primary text-white shadow-lg' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                      >
-                        {v === 'mes' ? 'Mês' : 'Ano'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-             </div>
 
-             <div className="h-[260px] w-full">
-                {loadingAttendance ? (
-                  <div className="h-full bg-white/5 rounded-2xl animate-pulse" />
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={attendanceChartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="gradPresencas" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#DC143C" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="#DC143C" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="gradFaltas" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: '#6B7280', fontSize: 11, fontWeight: 600 }}
-                        dy={8}
-                      />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: '#6B7280', fontSize: 10 }}
-                      />
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
-                      <RechartsTooltip 
-                        content={<ChartTooltip />}
-                        cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="faltas" 
-                        name="Faltas" 
-                        stroke="#f97316" 
-                        strokeWidth={2} 
-                        strokeDasharray="5 5" 
-                        fillOpacity={1} 
-                        fill="url(#gradFaltas)"
-                        activeDot={{ r: 5, fill: '#f97316', stroke: '#111', strokeWidth: 2 }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="presencas" 
-                        name="Presenças" 
-                        stroke="#DC143C" 
-                        strokeWidth={3} 
-                        fillOpacity={1} 
-                        fill="url(#gradPresencas)"
-                        activeDot={{ r: 7, fill: '#DC143C', stroke: '#111', strokeWidth: 2 }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-           </section>
+              </>
+            )}
+          </section>
 
           {/* Consistência Mensal */}
           <section className="glass-card rounded-[24px] p-4 md:p-5 border border-white/10 relative overflow-hidden">
@@ -945,86 +1007,80 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
                 })}
              </div>
 
-             {/* Card do Dia Selecionado */}
-             <div className="mt-6 p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col justify-center relative overflow-hidden">
-                {scheduledDays.includes(selectedDate.getDay()) ? (
-                   <div className="flex items-center justify-between relative z-10">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--clr-primary)]" />
-                          <span className="text-xs font-bold text-white uppercase tracking-wider">
-                            {selectedDayClasses.length > 1 ? `${selectedDayClasses.length} Treinos Agendados` : 'Treino Agendado'}
-                          </span>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          {selectedDayClasses.map((cls, idx) => (
-                            <p key={idx} className="text-[10px] text-gray-400 font-medium">
-                              {cls.modalityName} • {cls.horarioInicio || '?'} - {cls.horarioFim || '?'}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if ('Notification' in window) {
-                            Notification.requestPermission().then(perm => {
-                              if (perm === 'granted') {
-                                new Notification('RS Top Team', {
-                                  body: 'Notificações de aula ativadas! (Simulação)',
-                                  icon: '/vite.svg'
-                                })
-                              }
-                            })
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-xl text-[10px] font-bold hover:bg-primary/30 transition-colors flex items-center gap-1.5 active:scale-95">
-                        <Bell size={12} />
-                        Lembrar
-                      </button>
+              {/* Card do Dia Selecionado — só aparece quando tem aula ou comunicado */}
+              {(scheduledDays.includes(selectedDate.getDay()) || selectedDayNotices.length > 0) && (
+              <div className="mt-6 p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col justify-center relative overflow-hidden">
+                 {scheduledDays.includes(selectedDate.getDay()) && (
+                    <div className="flex items-center justify-between relative z-10">
+                       <div>
+                         <div className="flex items-center gap-2 mb-1">
+                           <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--clr-primary)]" />
+                           <span className="text-xs font-bold text-white uppercase tracking-wider">
+                             {selectedDayClasses.length > 1 ? `${selectedDayClasses.length} Treinos Agendados` : 'Treino Agendado'}
+                           </span>
+                         </div>
+                         <div className="flex flex-col gap-0.5">
+                           {selectedDayClasses.map((cls, idx) => (
+                             <p key={idx} className="text-[10px] text-gray-400 font-medium">
+                               {cls.modalityName} • {cls.horarioInicio || '?'} - {cls.horarioFim || '?'}
+                             </p>
+                           ))}
+                         </div>
+                       </div>
+                       <button
+                         onClick={() => {
+                           if ('Notification' in window) {
+                             Notification.requestPermission().then(perm => {
+                               if (perm === 'granted') {
+                                 new Notification('RS Top Team', {
+                                   body: 'Notificações de aula ativadas! (Simulação)',
+                                   icon: '/vite.svg'
+                                 })
+                               }
+                             })
+                           }
+                         }}
+                         className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-xl text-[10px] font-bold hover:bg-primary/30 transition-colors flex items-center gap-1.5 active:scale-95">
+                         <Bell size={12} />
+                         Lembrar
+                       </button>
+                    </div>
+                 )}
+                 {selectedDayNotices.length > 0 && (
+                   <div className={scheduledDays.includes(selectedDate.getDay()) ? 'mt-4 pt-4 border-t border-white/5 relative z-10 space-y-2' : 'relative z-10 space-y-2'}>
+                     <span className="text-[9px] font-black text-yellow-500/80 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                       <Bell size={11} /> Comunicados
+                     </span>
+                     {selectedDayNotices.map((notice, idx) => (
+                       <div
+                         key={idx}
+                         onClick={() => handleNoticeClick(notice)}
+                         className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 hover:bg-yellow-500/10 hover:border-yellow-500/20 transition-all cursor-pointer active:scale-[0.98]"
+                       >
+                         <div className="flex items-center justify-between gap-2 mb-0.5">
+                           <h5 className="text-[11px] font-black text-white uppercase tracking-tight truncate">
+                             {notice.title}
+                           </h5>
+                           {/* Data: início → fim */}
+                           <span className="text-[8px] font-bold text-yellow-600/60 uppercase tracking-widest shrink-0">
+                             {notice.startDate && `${notice.startDate.split('-').reverse().join('/')}${notice.endDate && notice.endDate !== notice.startDate ? ` → ${notice.endDate.split('-').reverse().join('/')}` : ''}`}
+                           </span>
+                         </div>
+                         {/* Resumo do conteúdo */}
+                         <p className="text-[9px] text-gray-500 font-medium line-clamp-1">
+                           {notice.description?.replace(/<[^>]*>?/gm, ' ') || notice.content || ''}
+                         </p>
+                       </div>
+                     ))}
                    </div>
-                ) : (
-                   <div className="text-center relative z-10">
-                     <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1">Dia Livre</p>
-                     <p className="text-[10px] text-gray-600">Nenhum treino agendado para hoje.</p>
-                   </div>
-                )}
-                {/* Anúncios do dia — avisos de professor com data e dias da semana */}
-                {selectedDayNotices.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-white/5 relative z-10 space-y-2">
-                    <span className="text-[9px] font-black text-yellow-500/80 uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                      <Bell size={11} /> Comunicados
-                    </span>
-                    {selectedDayNotices.map((notice, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => handleNoticeClick(notice)}
-                        className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 hover:bg-yellow-500/10 hover:border-yellow-500/20 transition-all cursor-pointer active:scale-[0.98]"
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-0.5">
-                          <h5 className="text-[11px] font-black text-white uppercase tracking-tight truncate">
-                            {notice.title}
-                          </h5>
-                          {/* Data: início → fim */}
-                          <span className="text-[8px] font-bold text-yellow-600/60 uppercase tracking-widest shrink-0">
-                            {notice.startDate && `${notice.startDate.split('-').reverse().join('/')}${notice.endDate && notice.endDate !== notice.startDate ? ` → ${notice.endDate.split('-').reverse().join('/')}` : ''}`}
-                          </span>
-                        </div>
-                        {/* Resumo do conteúdo (strip de HTML) */}
-                        <p className="text-[9px] text-gray-500 font-medium line-clamp-1">
-                          {notice.description?.replace(/<[^>]*>?/gm, ' ') || notice.content || ''}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* Background decoration */}
-                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-             </div>
-           </section>
+                 )}
+                 {/* Decoração de fundo */}
+                 <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+              </div>
+              )}
+            </section>
 
-
-
-          {/* Conquistas */}
+           {/* Conquistas */}
           <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>
             <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
               <Star size={20} className="text-yellow-500 fill-yellow-500/20" />
@@ -1053,24 +1109,68 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
 
           {/* Grade de Horários */}
           <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>
-             <div className="flex items-center gap-3 mb-6">
+             <div className="flex items-center gap-3 mb-1">
                 <Clock size={16} className="text-primary" />
                 <h4 className="text-[11px] font-black text-white uppercase tracking-widest">Minha Grade</h4>
              </div>
-             <div className="space-y-3">
+             <p className="text-[10px] font-medium text-gray-500 mb-5">Hoje • {todayDayName}</p>
+
+             <div className="space-y-2">
                 {loadingSessions ? (
-                   [1, 2].map(i => <div key={i} className="h-12 bg-white/5 rounded-2xl animate-pulse" />)
-                ) : filteredSessions.length > 0 ? (
-                  filteredSessions.map((slot, i) => (
-                    <div key={i} className="flex items-center justify-between p-3.5 rounded-2xl border bg-white/5 border-white/5 hover:border-primary/20 transition-all">
-                      <span className="text-[11px] font-black text-white">{slot.time}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-tight text-primary">{slot.classTitle}</span>
-                    </div>
-                  ))
+                   [1, 2, 3].map(i => <div key={i} className="h-14 bg-white/5 rounded-2xl animate-pulse" />)
+                ) : todayClasses.length > 0 ? (
+                  todayClasses.map((cls, i) => {
+                    const isNext = i === nextClassIndex
+                    return (
+                      <div key={i} className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                        isNext
+                          ? 'bg-primary/[0.08] border-primary/30 ring-1 ring-primary/20'
+                          : 'bg-white/5 border-white/5 hover:border-white/10'
+                      }`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className={`text-[13px] font-black tabular-nums shrink-0 ${isNext ? 'text-primary' : 'text-white'}`}>
+                            {cls.horarioInicio}
+                          </span>
+                          <span className={`text-[11px] font-bold uppercase tracking-tight truncate ${isNext ? 'text-white' : 'text-gray-300'}`}>
+                            {cls.modalityName}
+                          </span>
+                        </div>
+                        {isNext && (
+                          <span className="text-[8px] font-black text-primary bg-primary/20 px-2.5 py-1 rounded-full uppercase tracking-widest whitespace-nowrap shrink-0 ml-2">
+                            Próxima aula
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })
                 ) : (
-                  <p className="text-[10px] font-bold text-gray-600 uppercase text-center py-4">Nenhuma aula da sua modalidade para hoje.</p>
+                  <div className="py-6 text-center space-y-1">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Calendar size={14} className="text-gray-600" />
+                      <p className="text-[11px] font-bold text-gray-500">Hoje não há aulas</p>
+                    </div>
+                    {nextFutureClass && (
+                      <p className="text-[10px] text-gray-600 font-medium">
+                        Próxima aula: {nextFutureClass.dayName} • {nextFutureClass.horarioInicio} • {nextFutureClass.modalityName}
+                      </p>
+                    )}
+                  </div>
                 )}
              </div>
+
+             {recurrenceLabel && todayClasses.length > 0 && (
+               <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-5">
+                 Aulas recorrentes: {recurrenceLabel}
+               </p>
+             )}
+
+             {/* Futuro: aba separada de agenda */}
+             <button
+               disabled
+               className="w-full mt-4 p-3 rounded-2xl bg-white/5 border border-white/5 text-[10px] font-bold text-gray-600 uppercase tracking-widest opacity-50 cursor-not-allowed"
+             >
+               Ver agenda
+             </button>
           </section>
 
         </div>
