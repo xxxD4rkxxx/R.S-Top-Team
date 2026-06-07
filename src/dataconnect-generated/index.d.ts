@@ -37,10 +37,10 @@ export interface GetDashboardStatsData {
     studentId: string;
     registeredAt: TimestampString;
   })[];
-    recentPresences: ({
-      studentId: string;
-      registeredAt: TimestampString;
-    })[];
+  recentPresences: ({
+    studentId: string;
+    registeredAt: TimestampString;
+  })[];
 }
 
 export interface GetDashboardStatsVariables {

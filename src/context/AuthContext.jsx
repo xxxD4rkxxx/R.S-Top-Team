@@ -162,22 +162,23 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  useEffect(() => {
-    const resetTimer = () => {
-      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
-      inactivityTimerRef.current = setTimeout(() => logout(), INACTIVITY_TIMEOUT_MS)
-    }
-    if (!user) return
-    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click']
-    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }))
-    resetTimer()
-    return () => {
-      events.forEach(e => window.removeEventListener(e, resetTimer))
-    }
-  }, [user, logout])
+  // ⏸️ AUTO-LOGOUT POR INATIVIDADE 
+  // useEffect(() => {
+  //   const resetTimer = () => {
+  //     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
+  //     inactivityTimerRef.current = setTimeout(() => logout(), INACTIVITY_TIMEOUT_MS)
+  //   }
+  //   if (!user) return
+  //   const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click']
+  //   events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }))
+  //   resetTimer()
+  //   return () => {
+  //     events.forEach(e => window.removeEventListener(e, resetTimer))
+  //   }
+  // }, [user, logout])
 
   /**
-   * LOGIN INTELIGENTE: Detecta automaticamente o papel pelo PIN.
+   *Detecta automaticamente o papel pelo PIN.
    * - Se o PIN bater com `pin` → entra como Aluno (mesmo que seja admin)
    * - Se o PIN bater com `adminPin` → entra como Admin com papel completo
    * Mesmo e-mail, PINs diferentes, papéis diferentes.
@@ -266,7 +267,13 @@ export function AuthProvider({ children }) {
             return await createUserWithEmailAndPassword(auth, internalEmail, securePIN)
           } catch (createErr) {
             if (createErr.code === 'auth/email-already-in-use') {
-              throw new Error('Acesso Admin: conta interna já existe com outra senha. Exclua a conta interna no Firebase Auth para recriar.')
+              // Conta admin interna já existe com senha diferente, tenta redefinir
+              try {
+                await sendPasswordResetEmail(auth, internalEmail)
+              } catch (resetErr) {
+                console.warn('Erro ao enviar e-mail de redefinição admin:', resetErr.message)
+              }
+              throw new Error('Conta administrativa interna desatualizada. Enviamos um e-mail de redefinição. Verifique sua caixa de entrada e tente novamente.')
             }
             throw createErr
           }
@@ -287,7 +294,14 @@ export function AuthProvider({ children }) {
             return await createUserWithEmailAndPassword(auth, realEmail, securePIN)
           } catch (createErr) {
             if (createErr.code === 'auth/email-already-in-use') {
-              throw new Error(`O e-mail ${realEmail} já existe no Auth com outra senha. O Admin precisa excluir o usuário no Firebase Auth para o sistema sincronizar o novo PIN.`)
+              // Email já existe no Auth com senha diferente (PIN dessincronizado)
+              // Tenta redefinir a senha automaticamente para sincronizar
+              try {
+                await sendPasswordResetEmail(auth, realEmail)
+              } catch (resetErr) {
+                console.warn('Erro ao enviar e-mail de redefinição:', resetErr.message)
+              }
+              throw new Error(`Detectamos que sua senha de acesso estava desatualizada. Enviamos um e-mail de redefinição para ${realEmail}. Verifique sua caixa de entrada (inclusive spam) e tente novamente após redefinir.`)
             }
             throw createErr
           }

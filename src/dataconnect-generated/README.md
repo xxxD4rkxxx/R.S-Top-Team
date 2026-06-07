@@ -333,10 +333,10 @@ export interface GetDashboardStatsData {
     studentId: string;
     registeredAt: TimestampString;
   })[];
-    recentPresences: ({
-      studentId: string;
-      registeredAt: TimestampString;
-    })[];
+  recentPresences: ({
+    studentId: string;
+    registeredAt: TimestampString;
+  })[];
 }
 ```
 ### Using `getDashboardStats`'s action shortcut function

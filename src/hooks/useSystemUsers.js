@@ -16,7 +16,7 @@ import { initializeApp, getApps } from 'firebase/app'
 import {
   updatePassword, reauthenticateWithCredential, EmailAuthProvider,
   getAuth, setPersistence, inMemoryPersistence,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
 } from 'firebase/auth'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, auth, storage, firebaseConfig } from '../firebase/config'
@@ -340,15 +340,41 @@ export function useSystemUsers() {
 
       await updateDoc(userRef, basePayload)
 
-      // Se geramos um PIN novo para um usuário existente, precisamos criar o Auth Secundário dele
-      // 5. Garante Auth de PIN (Aluno)
+      // Quando o PIN é gerado/alterado, precisamos sincronizar o Auth do Firebase
+      // 5. Garante Auth de PIN (Aluno) — cria ou atualiza a conta de autenticação
       if (pinWasGenerated) {
         try {
           const pinAuthEmail = getPinAuthEmail(emailId)
           const securePIN = finalPin.length >= 6 ? finalPin : finalPin.padEnd(6, '0')
-          await createUserWithEmailAndPassword(vAuth, pinAuthEmail, securePIN)
+
+          try {
+            // Tenta criar conta nova (funciona se ainda não existir Auth)
+            await createUserWithEmailAndPassword(vAuth, pinAuthEmail, securePIN)
+          } catch (createErr) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              // Auth já existe — tenta fazer login com o PIN novo
+              try {
+                await signInWithEmailAndPassword(vAuth, pinAuthEmail, securePIN)
+                // Login OK — senha já está atualizada, não precisa fazer nada
+                await signOut(vAuth)
+              } catch {
+                // PIN novo não funcionou — tenta com o PIN antigo e atualiza
+                try {
+                  const oldPinValue = existingData.pin || existingData[FIELDS.PIN]
+                  if (oldPinValue && oldPinValue !== finalPin) {
+                    const oldSecure = oldPinValue.length >= 6 ? oldPinValue : oldPinValue.padEnd(6, '0')
+                    const cred = await signInWithEmailAndPassword(vAuth, pinAuthEmail, oldSecure)
+                    await updatePassword(cred.user, securePIN)
+                    await signOut(vAuth)
+                  }
+                } catch (updateErr) {
+                  console.warn('Não foi possível atualizar senha do Auth:', updateErr.message)
+                }
+              }
+            }
+          }
         } catch (e) {
-          console.warn('Erro ao criar Auth Secundário para Staff promovido:', e.message)
+          console.warn('Erro ao sincronizar Auth Secundário:', e.message)
         }
       }
 

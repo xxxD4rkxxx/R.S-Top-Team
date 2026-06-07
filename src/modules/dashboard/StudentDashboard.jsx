@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react'
 import { 
   Trophy, Medal, Target, Calendar, Clock, TrendingUp, 
-  ChevronRight, Star, Zap, Bell, AlertCircle, History,
+  ChevronLeft, ChevronRight, Star, Zap, Bell, AlertCircle, History,
   Activity, Sparkles, Check, LayoutDashboard, DollarSign, 
   Wallet, ArrowUpRight, ShieldCheck, CalendarDays
 } from 'lucide-react'
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip as RechartsTooltip, ResponsiveContainer 
+  Tooltip as RechartsTooltip, ResponsiveContainer,
+  BarChart, Bar
 } from 'recharts'
 import { useModalities } from '../../hooks/useModalities'
 import QuickStartGuide from './components/QuickStartGuide'
@@ -25,6 +26,10 @@ import { calculateModalityValue } from '../../utils/billingUtils'
  * DASHBOARD  DO ALUNO 
  * 
  */
+
+const DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+const NUM_TO_DAY = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' }
+const DAY_TO_NUM = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6 }
 
 // --- Componentes Atômicos de UI ---
 
@@ -154,16 +159,133 @@ function ChartTooltip({ active, payload, label }) {
   )
 }
 
+function CustomBarTooltip({ active, payload }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#111] border border-white/10 rounded-xl p-3 shadow-2xl">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{payload[0].payload.label}</p>
+        <p className="text-sm font-black text-white">{payload[0].value} Treinos</p>
+      </div>
+    )
+  }
+  return null
+}
+
 
 export default function StudentDashboard({ user, cobrancas = [] }) {
   const { total: hookTotal, monthly, weekly, streak, recent, loading: loadingAttendance } = useStudentAttendance(user?.id)
 
   // Sincronizar com dados do documento do usuário (Source of Truth)
   const total = user?.total_visitas || hookTotal || 0
-  const { notices, userViews = new Set(), loading: loadingNotices, markAsViewed } = useNotices(user?.id)
+  const { notices, userViews = new Set(), markAsViewed } = useNotices(user?.id)
   const { sessions, loading: loadingSessions } = useTodaySessions()
-  const { modalities, loading: loadingModalities } = useModalities()
+  const { modalities } = useModalities()
   const [syncing, setSyncing] = useState(false)
+
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date()
+    d.setHours(0,0,0,0)
+    return d
+  })
+
+  const records = useMemo(() => {
+    if (!recent) return [];
+    return recent.map(log => {
+      let date = null
+      if (log.parsedDate) {
+        date = log.parsedDate instanceof Date ? log.parsedDate : new Date(log.parsedDate)
+      } else if (log.date) {
+        date = new Date(log.date + 'T12:00:00')
+      } else if (log.data) {
+        date = new Date(log.data + 'T12:00:00')
+      }
+      return {
+        ...log,
+        date: date || new Date(0),
+        modality: log.modalidade || log.modality || 'Jiu Jitsu',
+        status: log.status || 'present'
+      }
+    }).filter(r => r.date && !isNaN(r.date.getTime())).sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [recent])
+
+  const presentRecords = useMemo(() => records.filter(r => r.status === 'present' || r.status === 'presente'), [records])
+
+  const monthlyData = useMemo(() => {
+    const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    const counts = {}
+    presentRecords.forEach(r => {
+      const key = r.date.getMonth()
+      counts[key] = (counts[key] || 0) + 1
+    })
+    return Array.from({ length: 12 }, (_, i) => ({ month: i, label: MONTHS[i], count: counts[i] || 0 }))
+  }, [presentRecords])
+
+  const weeklyCalendarDays = useMemo(() => {
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    const currentDay = today.getDay()
+    const distToMon = currentDay === 0 ? -6 : 1 - currentDay
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() + distToMon + (weekOffset * 7))
+
+    const days = []
+    for(let i=0; i<7; i++) {
+      const d = new Date(startOfWeek)
+      d.setDate(startOfWeek.getDate() + i)
+      days.push(d)
+    }
+    return days
+  }, [weekOffset])
+
+  const { allTurmas = [] } = useModalities()
+
+  const scheduledDays = useMemo(() => {
+    const studentModalities = user?.modalities || []
+    if (studentModalities.length === 0) return []
+
+    const studentTurmas = allTurmas.filter(t => {
+       const mod = modalities.find(m => m.id === t.modalityId)
+       return studentModalities.includes(t.modalityId) || 
+              (mod && studentModalities.some(m => m.toLowerCase() === mod.name.toLowerCase()))
+    })
+
+    const daysSet = new Set()
+    const mapDayToNum = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6 }
+    
+    studentTurmas.forEach(t => {
+      if (t.diasSemana) {
+        t.diasSemana.forEach(d => {
+           if (mapDayToNum[d] !== undefined) daysSet.add(mapDayToNum[d])
+        })
+      }
+    })
+
+    return Array.from(daysSet)
+  }, [allTurmas, modalities, user])
+
+  const selectedDayClasses = useMemo(() => {
+    const dayNum = selectedDate.getDay()
+    const mapNumToDay = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' }
+    const dayStr = mapNumToDay[dayNum]
+
+    const studentModalities = user?.modalities || []
+    if (studentModalities.length === 0) return []
+
+    return allTurmas.filter(t => {
+       const mod = modalities.find(m => m.id === t.modalityId)
+       const isStudentEnrolled = studentModalities.includes(t.modalityId) || 
+              (mod && studentModalities.some(m => m.toLowerCase() === mod.name.toLowerCase()))
+       const isOnThisDay = t.diasSemana?.includes(dayStr)
+       return isStudentEnrolled && isOnThisDay
+    }).map(t => {
+       const mod = modalities.find(m => m.id === t.modalityId)
+       return {
+         ...t,
+         modalityName: mod ? mod.name : (t.name || 'Treino')
+       }
+    })
+  }, [allTurmas, modalities, user, selectedDate])
 
   const handleSync = async () => {
     if (!window.confirm('Deseja sincronizar o histórico global de presenças? Isso pode levar alguns segundos.')) return
@@ -298,6 +420,44 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
       return true
     }).slice(0, 3) // Mostra os 3 últimos ativos
   }, [notices])
+
+  // Dias da semana que têm anúncios ativos com data e dias marcados (para indicadores no calendário)
+  const noticeDays = useMemo(() => {
+    const daysSet = new Set()
+
+    activeNotices.forEach(notice => {
+      if (!notice.diasSemana || !notice.startDate) return
+
+      const start = new Date(notice.startDate + 'T00:00:00')
+      const end = notice.endDate ? new Date(notice.endDate + 'T23:59:59') : new Date(start)
+
+      // Varre os dias da semana atual e vê se o anúncio cobre cada um
+      weeklyCalendarDays.forEach(date => {
+        const dayStr = NUM_TO_DAY[date.getDay()]
+        if (!notice.diasSemana.includes(dayStr)) return
+        if (date < start) return
+        if (date > end) return
+        daysSet.add(date.getDay())
+      })
+    })
+
+    return daysSet
+  }, [weeklyCalendarDays, activeNotices])
+
+  // Anúncios específicos do dia selecionado na agenda
+  const selectedDayNotices = useMemo(() => {
+    const dayNum = selectedDate.getDay()
+    const dayStr = NUM_TO_DAY[dayNum]
+    const dateStr = selectedDate.toISOString().split('T')[0]
+
+    return activeNotices.filter(notice => {
+      if (!notice.diasSemana || !notice.diasSemana.length) return false
+      if (!notice.diasSemana.includes(dayStr)) return false
+      if (notice.startDate && dateStr < notice.startDate) return false
+      if (notice.endDate && dateStr > notice.endDate) return false
+      return true
+    })
+  }, [selectedDate, activeNotices])
 
   // Filtro de Grade de Aulas (Apenas modalidades que o aluno pratica)
   const filteredSessions = useMemo(() => {
@@ -504,6 +664,133 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
 
 
 
+          {/* Calendário Semanal (MOBILE) */}
+          <section className="glass-card rounded-[32px] p-6 border border-white/10 relative overflow-hidden flex lg:hidden flex-col">
+             <div className="flex items-center justify-between mb-6">
+               <h2 className="text-lg font-black text-white tracking-wide">Agenda Semanal</h2>
+               <div className="flex items-center gap-1">
+                 <button onClick={() => setWeekOffset(p => p - 1)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
+                   <ChevronLeft size={16} className="text-gray-400" />
+                 </button>
+                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[80px] text-center">
+                   {weeklyCalendarDays[0].toLocaleDateString('pt-BR', { month: 'short' })} {weeklyCalendarDays[0].getFullYear()}
+                 </span>
+                 <button onClick={() => setWeekOffset(p => p + 1)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
+                   <ChevronRight size={16} className="text-gray-400" />
+                 </button>
+               </div>
+             </div>
+
+             <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar snap-x sm:justify-between sm:overflow-visible">
+                {weeklyCalendarDays.map((date, i) => {
+                  const isSelected = date.getTime() === selectedDate.getTime()
+                  const dayOfWeek = date.getDay()
+                  const hasClass = scheduledDays.includes(dayOfWeek)
+                  const hasNotice = noticeDays.has(dayOfWeek)
+
+                  return (
+                    <div key={i}
+                         onClick={() => setSelectedDate(date)}
+                         className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl cursor-pointer transition-all flex-[0_0_auto] min-w-[64px] sm:flex-1 sm:min-w-0 snap-center
+                           ${isSelected
+                              ? 'bg-primary border-transparent shadow-[0_0_20px_rgba(var(--clr-primary-rgb),0.3)] scale-[1.05]'
+                              : 'bg-white/5 hover:bg-white/10 border border-white/5'
+                           }
+                         `}
+                    >
+                      <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mb-1 ${isSelected ? 'text-black/70' : 'text-gray-500'}`}>
+                        {DAYS_FULL[dayOfWeek].substring(0,3)}
+                      </span>
+                      <span className={`text-sm sm:text-lg font-black ${isSelected ? 'text-black' : 'text-white'}`}>
+                        {date.getDate()}
+                      </span>
+                      {/* Indicadores: bolinha verde de aula + sino amarelo de comunicado */}
+                      <div className="mt-1.5 h-4 flex items-center justify-center gap-1 w-full">
+                         {hasClass && <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-black/40' : 'bg-primary'}`} />}
+                         {hasNotice && <Bell size={9} className={isSelected ? 'text-black/60' : 'text-yellow-500/70'} fill="currentColor" fillOpacity={0.3} />}
+                      </div>
+                    </div>
+                  )
+                })}
+             </div>
+
+             {/* Card do Dia Selecionado */}
+             <div className="mt-6 p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col justify-center relative overflow-hidden">
+                {scheduledDays.includes(selectedDate.getDay()) ? (
+                   <div className="flex items-center justify-between relative z-10">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--clr-primary)]" />
+                          <span className="text-xs font-bold text-white uppercase tracking-wider">
+                            {selectedDayClasses.length > 1 ? `${selectedDayClasses.length} Treinos Agendados` : 'Treino Agendado'}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          {selectedDayClasses.map((cls, idx) => (
+                            <p key={idx} className="text-[10px] text-gray-400 font-medium">
+                              {cls.modalityName} • {cls.horarioInicio || '?'} - {cls.horarioFim || '?'}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if ('Notification' in window) {
+                            Notification.requestPermission().then(perm => {
+                              if (perm === 'granted') {
+                                new Notification('RS Top Team', {
+                                  body: 'Notificações de aula ativadas! (Simulação)',
+                                  icon: '/vite.svg'
+                                })
+                              }
+                            })
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-xl text-[10px] font-bold hover:bg-primary/30 transition-colors flex items-center gap-1.5 active:scale-95">
+                        <Bell size={12} />
+                        Lembrar
+                      </button>
+                   </div>
+                ) : (
+                   <div className="text-center relative z-10">
+                     <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1">Dia Livre</p>
+                     <p className="text-[10px] text-gray-600">Nenhum treino agendado para hoje.</p>
+                   </div>
+                )}
+                {/* Anúncios do dia — avisos de professor com data e dias da semana */}
+                {selectedDayNotices.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-white/5 relative z-10 space-y-2">
+                    <span className="text-[9px] font-black text-yellow-500/80 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                      <Bell size={11} /> Comunicados
+                    </span>
+                    {selectedDayNotices.map((notice, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleNoticeClick(notice)}
+                        className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 hover:bg-yellow-500/10 hover:border-yellow-500/20 transition-all cursor-pointer active:scale-[0.98]"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <h5 className="text-[11px] font-black text-white uppercase tracking-tight truncate">
+                            {notice.title}
+                          </h5>
+                          {/* Data: início → fim */}
+                          <span className="text-[8px] font-bold text-yellow-600/60 uppercase tracking-widest shrink-0">
+                            {notice.startDate && `${notice.startDate.split('-').reverse().join('/')}${notice.endDate && notice.endDate !== notice.startDate ? ` → ${notice.endDate.split('-').reverse().join('/')}` : ''}`}
+                          </span>
+                        </div>
+                        {/* Resumo do conteúdo (strip de HTML) */}
+                        <p className="text-[9px] text-gray-500 font-medium line-clamp-1">
+                          {notice.description?.replace(/<[^>]*>?/gm, ' ') || notice.content || ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Background decoration */}
+                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+             </div>
+           </section>
+
           {/* Tendência de Presença */}
           <section className="glass-card rounded-[32px] p-6 border border-white/10 relative overflow-hidden">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -526,7 +813,7 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
                 </div>
              </div>
 
-<div className="h-[260px] w-full">
+             <div className="h-[260px] w-full">
                 {loadingAttendance ? (
                   <div className="h-full bg-white/5 rounded-2xl animate-pulse" />
                 ) : (
@@ -586,59 +873,156 @@ export default function StudentDashboard({ user, cobrancas = [] }) {
               </div>
            </section>
 
+          {/* Consistência Mensal */}
+          <section className="glass-card rounded-[24px] p-4 md:p-5 border border-white/10 relative overflow-hidden">
+            <h2 className="text-base font-black text-white tracking-wide mb-4">Consistência Mensal</h2>
+            
+            <div className="bg-white/5 rounded-2xl border border-white/10 p-3">
+              <ResponsiveContainer width="100%" height={80}>
+                <BarChart data={monthlyData} barSize={8}>
+                  <XAxis dataKey="label" tick={{ fill: '#4b5563', fontSize: 8 }} axisLine={false} tickLine={false} />
+                  <YAxis hide />
+                  <RechartsTooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                  <Bar dataKey="count" fill="var(--clr-primary)" radius={[4, 4, 0, 0]}
+                    label={{ position: 'top', fill: '#6b7280', fontSize: 8, formatter: v => v || '' }} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
         </div>
 
         {/* COLUNA DIREITA */}
         <div className="lg:col-span-4 space-y-8">
           
-          {/* Mural de Avisos */}
-          <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-white/5 border border-white/10"><Bell size={20} className="text-primary" /></div>
-                <h3 className="text-xl font-black text-white uppercase tracking-widest">Mural da Academy</h3>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              {loadingNotices ? (
-                <div className="h-24 bg-white/5 rounded-2xl animate-pulse" />
-              ) : activeNotices.length > 0 ? (
-                activeNotices.map((notice, idx) => {
-                  const isRead = userViews.has(notice.id);
+           {/* Calendário Semanal (DESKTOP) */}
+           <section className="glass-card rounded-[32px] p-6 border border-white/10 relative overflow-hidden hidden lg:flex flex-col">
+             <div className="flex items-center justify-between mb-6">
+               <h2 className="text-lg font-black text-white tracking-wide">Agenda Semanal</h2>
+               <div className="flex items-center gap-1">
+                 <button onClick={() => setWeekOffset(p => p - 1)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
+                   <ChevronLeft size={16} className="text-gray-400" />
+                 </button>
+                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[80px] text-center">
+                   {weeklyCalendarDays[0].toLocaleDateString('pt-BR', { month: 'short' })} {weeklyCalendarDays[0].getFullYear()}
+                 </span>
+                 <button onClick={() => setWeekOffset(p => p + 1)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
+                   <ChevronRight size={16} className="text-gray-400" />
+                 </button>
+               </div>
+             </div>
+
+             <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar snap-x sm:justify-between sm:overflow-visible">
+                {weeklyCalendarDays.map((date, i) => {
+                  const isSelected = date.getTime() === selectedDate.getTime()
+                  const dayOfWeek = date.getDay()
+                  const hasClass = scheduledDays.includes(dayOfWeek)
+                  const hasNotice = noticeDays.has(dayOfWeek)
+
                   return (
-                    <div 
-                      key={idx} 
-                      onClick={() => handleNoticeClick(notice)}
-                      className={`relative p-5 rounded-2xl bg-white/5 border transition-all group cursor-pointer ${isRead ? 'border-white/5 opacity-70' : 'border-primary/20 bg-primary/5 hover:border-primary/40'}`}
+                    <div key={i}
+                         onClick={() => setSelectedDate(date)}
+                         className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl cursor-pointer transition-all flex-[0_0_auto] min-w-[64px] sm:flex-1 sm:min-w-0 snap-center
+                           ${isSelected
+                              ? 'bg-primary border-transparent shadow-[0_0_20px_rgba(var(--clr-primary-rgb),0.3)] scale-[1.05]'
+                              : 'bg-white/5 hover:bg-white/10 border border-white/5'
+                           }
+                         `}
                     >
-                      {!isRead && (
-                        <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--clr-primary-rgb),0.6)] animate-pulse" />
-                      )}
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded bg-primary/20 text-primary uppercase tracking-widest">
-                          {notice.category || 'Aviso'}
-                        </span>
-                        <span className="text-[9px] font-bold text-gray-600 uppercase">
-                          {new Date(notice.createdAt?.toDate ? notice.createdAt.toDate() : notice.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                        </span>
+                      <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mb-1 ${isSelected ? 'text-black/70' : 'text-gray-500'}`}>
+                        {DAYS_FULL[dayOfWeek].substring(0,3)}
+                      </span>
+                      <span className={`text-sm sm:text-lg font-black ${isSelected ? 'text-black' : 'text-white'}`}>
+                        {date.getDate()}
+                      </span>
+                      {/* Indicadores: bolinha verde de aula + sino amarelo de comunicado */}
+                      <div className="mt-1.5 h-4 flex items-center justify-center gap-1 w-full">
+                         {hasClass && <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-black/40' : 'bg-primary'}`} />}
+                         {hasNotice && <Bell size={9} className={isSelected ? 'text-black/60' : 'text-yellow-500/70'} fill="currentColor" fillOpacity={0.3} />}
                       </div>
-                      <h4 className="text-sm font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary transition-colors">
-                        {notice.title}
-                      </h4>
-                      <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter leading-tight line-clamp-2">
-                        {notice.content || notice.description?.replace(/<[^>]*>?/gm, ' ')}
-                      </p>
                     </div>
                   )
-                })
-              ) : (
-                <div className="py-10 text-center">
-                  <p className="text-[11px] font-black text-gray-600 uppercase tracking-widest">Nenhum aviso importante no momento.</p>
-                </div>
-              )}
-            </div>
-          </section>
+                })}
+             </div>
+
+             {/* Card do Dia Selecionado */}
+             <div className="mt-6 p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col justify-center relative overflow-hidden">
+                {scheduledDays.includes(selectedDate.getDay()) ? (
+                   <div className="flex items-center justify-between relative z-10">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--clr-primary)]" />
+                          <span className="text-xs font-bold text-white uppercase tracking-wider">
+                            {selectedDayClasses.length > 1 ? `${selectedDayClasses.length} Treinos Agendados` : 'Treino Agendado'}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          {selectedDayClasses.map((cls, idx) => (
+                            <p key={idx} className="text-[10px] text-gray-400 font-medium">
+                              {cls.modalityName} • {cls.horarioInicio || '?'} - {cls.horarioFim || '?'}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if ('Notification' in window) {
+                            Notification.requestPermission().then(perm => {
+                              if (perm === 'granted') {
+                                new Notification('RS Top Team', {
+                                  body: 'Notificações de aula ativadas! (Simulação)',
+                                  icon: '/vite.svg'
+                                })
+                              }
+                            })
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-xl text-[10px] font-bold hover:bg-primary/30 transition-colors flex items-center gap-1.5 active:scale-95">
+                        <Bell size={12} />
+                        Lembrar
+                      </button>
+                   </div>
+                ) : (
+                   <div className="text-center relative z-10">
+                     <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1">Dia Livre</p>
+                     <p className="text-[10px] text-gray-600">Nenhum treino agendado para hoje.</p>
+                   </div>
+                )}
+                {/* Anúncios do dia — avisos de professor com data e dias da semana */}
+                {selectedDayNotices.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-white/5 relative z-10 space-y-2">
+                    <span className="text-[9px] font-black text-yellow-500/80 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                      <Bell size={11} /> Comunicados
+                    </span>
+                    {selectedDayNotices.map((notice, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleNoticeClick(notice)}
+                        className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 hover:bg-yellow-500/10 hover:border-yellow-500/20 transition-all cursor-pointer active:scale-[0.98]"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <h5 className="text-[11px] font-black text-white uppercase tracking-tight truncate">
+                            {notice.title}
+                          </h5>
+                          {/* Data: início → fim */}
+                          <span className="text-[8px] font-bold text-yellow-600/60 uppercase tracking-widest shrink-0">
+                            {notice.startDate && `${notice.startDate.split('-').reverse().join('/')}${notice.endDate && notice.endDate !== notice.startDate ? ` → ${notice.endDate.split('-').reverse().join('/')}` : ''}`}
+                          </span>
+                        </div>
+                        {/* Resumo do conteúdo (strip de HTML) */}
+                        <p className="text-[9px] text-gray-500 font-medium line-clamp-1">
+                          {notice.description?.replace(/<[^>]*>?/gm, ' ') || notice.content || ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Background decoration */}
+                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+             </div>
+           </section>
+
+
 
           {/* Conquistas */}
           <section className={`glass-card p-8 bg-surface-app/30 border border-white/5 ${RADIUS_MAIN}`}>

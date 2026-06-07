@@ -25,6 +25,16 @@ function useMediaQuery(query) {
     return matches;
 }
 
+const DAYS_OF_WEEK = [
+    { id: 'seg', label: 'Seg' },
+    { id: 'ter', label: 'Ter' },
+    { id: 'qua', label: 'Qua' },
+    { id: 'qui', label: 'Qui' },
+    { id: 'sex', label: 'Sex' },
+    { id: 'sab', label: 'Sáb' },
+    { id: 'dom', label: 'Dom' },
+]
+
 function InlinePostForm({ onSave, onCancel, initialData, isInline, forceModal = false }) {
     const isMobile = useMediaQuery('(max-width: 768px)')
     const shouldShowAsModal = forceModal || isMobile;
@@ -40,7 +50,16 @@ function InlinePostForm({ onSave, onCancel, initialData, isInline, forceModal = 
     const [isAllDay, setIsAllDay] = useState(initialData?.isAllDay || false)
     const [repeat, setRepeat] = useState(initialData?.repeat || 'none')
     const [notification, setNotification] = useState(initialData?.notification || { value: 30, unit: 'minutes' })
+    const [diasSemana, setDiasSemana] = useState(initialData?.diasSemana || [])
     const editorRef = useRef(null)
+
+    const toggleDay = (dayId) => {
+        setDiasSemana(prev =>
+            prev.includes(dayId)
+                ? prev.filter(d => d !== dayId)
+                : [...prev, dayId]
+        )
+    }
 
     const onPublish = async (e) => {
         if (e) e.preventDefault();
@@ -60,7 +79,8 @@ function InlinePostForm({ onSave, onCancel, initialData, isInline, forceModal = 
             isAllDay,
             allDay: isAllDay,
             repeat,
-            notification
+            notification,
+            diasSemana
         });
     };
 
@@ -223,6 +243,29 @@ function InlinePostForm({ onSave, onCancel, initialData, isInline, forceModal = 
                                     <option value="weekly" className="bg-[#0A0A0A]">Semanalmente</option>
                                     <option value="monthly" className="bg-[#0A0A0A]">Mensalmente</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        {/* DIAS DA SEMANA */}
+                        <div className="space-y-3 pt-2">
+                            <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                                Dias da Semana <span className="text-[8px] text-gray-700 font-normal normal-case tracking-normal">(para aparecer na agenda)</span>
+                            </span>
+                            <div className="grid grid-cols-7 gap-1.5">
+                                {DAYS_OF_WEEK.map(day => (
+                                    <button
+                                        key={day.id}
+                                        type="button"
+                                        onClick={() => toggleDay(day.id)}
+                                        className={`h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                                            diasSemana.includes(day.id)
+                                                ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-[1.02]'
+                                                : 'bg-white/5 border-white/5 text-gray-500 hover:border-white/10 hover:text-gray-300'
+                                        }`}
+                                    >
+                                        {day.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
