@@ -1834,7 +1834,7 @@ function SectionSobre() {
       <Section title="RS Top Team — Sistema de Gestão">
         <div className="divide-y divide-white/5">
           {[
-            { label: 'Versão', value: '26.1.7-beta' },
+            { label: 'Versão', value: '26.1.8-beta' },
             { label: 'Framework', value: 'React 19 + Vite' },
             { label: 'Banco de dados', value: 'Firebase Firestore' },
             { label: 'Hospedagem', value: 'Firebase Hosting' },
