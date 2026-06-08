@@ -97,7 +97,7 @@ const PaymentStatCard = ({ info, delay = 0 }) => {
 
   const statusConfig = {
     pago: { icon: Check, color: '#10b981', label: 'Pago', desc: 'Mensalidade em dia' },
-    pendente: { icon: Clock, color: '#f59e0b', label: 'Pendente', desc: dueDate ? `Vence: ${formatDate(dueDate)}` : 'Fatura atual' },
+    pendente: { icon: Clock, color: '#f43f5e', label: 'Pendente', desc: dueDate ? `Vence: ${formatDate(dueDate)}` : 'Fatura atual' },
     vencido: { icon: AlertCircle, color: '#f43f5e', label: 'Atrasado', desc: dueDate ? `Venceu: ${formatDate(dueDate)}` : 'Fatura atual' }
   };
 

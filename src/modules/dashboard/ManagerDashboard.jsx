@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react'
 import {
     Users, UserPlus, CalendarDays, UserX,
-    TrendingUp, TrendingDown, AlertCircle,
+    TrendingUp, TrendingDown, AlertCircle, AlertTriangle,
     Award, Activity, Bell, PlayCircle, Wallet,
     DollarSign, Percent, Phone, X, ChevronRight,
     BarChart3, Zap, Eye, RefreshCw, ShieldCheck
@@ -23,6 +23,7 @@ import KPICard from '../../components/shared/KPICard'
 import MobileHeader from '../../components/navigation/MobileHeader'
 import PageHeader from '../../components/shared/PageHeader'
 import { useTodaySessions } from '../../hooks/useTodaySessions'
+import { useAlertasInteligentes } from '../../hooks/useAlertasInteligentes'
 import { useFinance } from '../../hooks/useFinance'
 import { useModalities } from '../../hooks/useModalities'
 import { attendanceService } from '../../services/attendanceService'
@@ -255,12 +256,27 @@ export default function ManagerDashboard() {
         const status = String(s.status || '').toLowerCase()
         return !status || status === 'active' || status === 'ativo'
     }), [enrolledMembers])
-    const newMembers30Days = useMemo(() => enrolledMembers.filter(s => s.createdAt && daysBetween(parseDate(s.createdAt)) <= 30), [enrolledMembers])
+    const newMembers15Days = useMemo(() => enrolledMembers.filter(s => s.createdAt && daysBetween(parseDate(s.createdAt)) <= 15), [enrolledMembers])
+    const visitantes30Dias = useMemo(() => safeStudents.filter(s => {
+      if (!s.isVisitor) return false
+      const ultima = s.lastAttendanceAt || s.ultimaPresenca
+      if (!ultima) return false
+      const diff = Math.floor((Date.now() - new Date(ultima).getTime()) / 86400000)
+      return diff <= 30
+    }), [safeStudents])
 
     const presentCount = stats?.todayPresences || 0
     const retentionRate = stats?.retentionRate ?? 100
     const weekGrowth = stats?.weekGrowth ?? 0
     const absentList = stats?.absentStudents || []
+
+    // ── Alertas inteligentes para badges nos KPIs ──
+    const alertas = useAlertasInteligentes({
+      alunos: safeStudents,
+      sessoesHoje: todaySessions,
+      faturas: bills,
+      ausentes: absentList,
+    })
 
     // Próximas Graduações (based on attendances)
     const graduations = useMemo(() =>
@@ -277,20 +293,22 @@ export default function ManagerDashboard() {
         const baseKPIs = [
             {
                 title: 'Alunos Ativos', value: isLoadingStudents ? '...' : String(activeMembers.length),
-                desc: 'Total de matriculados', icon: Users, color: 'text-white', iconColor: 'text-gray-400'
+                desc: 'Total de matriculados', icon: Users, color: 'text-white', iconColor: 'text-gray-400',
+                badge: alertas.badgeCrescimento
             },
             {
-                title: 'Novos Alunos', value: isLoadingStudents ? '...' : String(newMembers30Days.length),
-                desc: 'Últimos 30 dias', icon: UserPlus, color: 'text-emerald-400', iconColor: 'text-gray-400',
-                badge: newMembers30Days.length > 0 ? { label: 'Novo', bg: 'bg-emerald-500/20', color: 'text-emerald-400' } : null
+                title: 'Novos Alunos', value: isLoadingStudents ? '...' : String(newMembers15Days.length),
+                desc: 'Últimos 15 dias', icon: UserPlus, color: 'text-emerald-400', iconColor: 'text-gray-400',
+                badge: newMembers15Days.length > 0 ? { label: 'Novo', bg: 'bg-emerald-500/20', color: 'text-emerald-400' } : null
             },
             {
                 title: 'Presença Hoje', value: initialLoading && !presentCount ? '...' : String(presentCount),
-                desc: 'Check-ins registrados', icon: CalendarDays, color: 'text-white', iconColor: 'text-gray-400'
+                desc: 'Check-ins registrados', icon: CalendarDays, color: 'text-blue-400', iconColor: 'text-gray-400',
+                badge: alertas.badgeNenhumaChamada
             },
             {
                 title: 'Ausentes +10D', value: initialLoading && !absentList.length ? '...' : String(absentList.length),
-                desc: 'Clique p/ ver lista', icon: UserX, color: absentList.length > 0 ? 'text-yellow-400' : 'text-gray-400', iconColor: 'text-gray-400',
+                desc: 'Clique p/ ver lista', icon: UserX, color: absentList.length > 0 ? 'text-rose-400' : 'text-gray-400', iconColor: 'text-gray-400',
                 onClick: () => setShowAbsents(true),
                 badge: absentList.filter(s => s.isCritical).length > 0
                     ? { label: `${absentList.filter(s => s.isCritical).length} críticos`, bg: 'bg-red-500/20', color: 'text-red-400' } : null
@@ -302,16 +320,12 @@ export default function ManagerDashboard() {
             {
                 title: 'Taxa de Retenção', value: initialLoading && !retentionRate ? '...' : `${retentionRate}%`,
                 desc: `${absentList.filter(s => s.isCritical).length} evasões críticas`,
-                icon: TrendingUp, color: retentionRate >= 80 ? 'text-emerald-400' : 'text-red-400', iconColor: 'text-gray-400',
-                badge: {
-                    label: `${weekGrowth >= 0 ? '+' : ''}${weekGrowth}% vs ant.`,
-                    bg: weekGrowth >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20',
-                    color: weekGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'
-                }
+                icon: TrendingUp,                 color: retentionRate >= 80 ? 'text-emerald-400' : 'text-yellow-400', iconColor: 'text-gray-400'
             },
             {
                 title: 'Pgtos Atrasados', value: String(overdueCount),
-                desc: 'Total de boletos vencidos', icon: AlertCircle, color: 'text-rose-400', iconColor: 'text-gray-400'
+                desc: 'Total de boletos vencidos', icon: AlertCircle, color: 'text-rose-400', iconColor: 'text-gray-400',
+                badge: alertas.badgeVencendoHoje
             },
             {
                 title: 'pendentes', value: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue),
@@ -328,8 +342,9 @@ export default function ManagerDashboard() {
                 desc: 'Equipe técnica ativa', icon: ShieldCheck, color: 'text-emerald-400', iconColor: 'text-emerald-400'
             },
             {
-                title: 'Visitantes', value: isLoadingStudents ? '...' : String(safeStudents.filter(s => s.isVisitor).length),
-                desc: 'Participações externas', icon: Users, color: 'text-blue-400', iconColor: 'text-blue-400'
+                title: 'Visitantes', value: isLoadingStudents ? '...' : String(visitantes30Dias.length),
+                desc: 'Últimos 30 dias', icon: Users, color: 'text-blue-400', iconColor: 'text-blue-400',
+                badge: alertas.badgeVisitantes
             }
         ]
 
@@ -376,7 +391,7 @@ export default function ManagerDashboard() {
         }
 
         return baseKPIs
-    }, [isLoadingStudents, loadingModalities, masterModalities, activeMembers, newMembers30Days, initialLoading, presentCount, absentList, retentionRate, weekGrowth, loadingStaff, staffMembers, safeStudents, totalPaid, totalOverdue, overdueCount])
+    }, [isLoadingStudents, loadingModalities, masterModalities, activeMembers, newMembers15Days, visitantes30Dias, initialLoading, presentCount, absentList, retentionRate, weekGrowth, loadingStaff, staffMembers, safeStudents, totalPaid, totalOverdue, overdueCount, alertas])
 
     const history = useMemo(() => {
         const months = []

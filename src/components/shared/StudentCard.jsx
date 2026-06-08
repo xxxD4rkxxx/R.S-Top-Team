@@ -6,7 +6,7 @@ import { useApp } from '../../context/AppContext'
 
 const statusConfig = {
   present:   { label: 'Presente',   bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)',  text: '#10B981' },
-  absent:    { label: 'Ausente',    bg: 'rgba(80,80,80,0.2)',   border: 'rgba(100,100,100,0.5)', text: '#9CA3AF' },
+  absent:    { label: 'Ausente',    bg: 'rgba(244,63,94,0.15)',   border: 'rgba(244,63,94,0.3)', text: '#f43f5e' },
   justified: { label: 'Justif.',    bg: 'rgba(59,130,246,0.1)',   border: 'rgba(59,130,246,0.3)',   text: '#3B82F6' },
 }
 

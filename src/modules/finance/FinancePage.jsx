@@ -32,7 +32,7 @@ const formatDate = (str) => {
 
 const statusStyle = {
   paid: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  pending: 'bg-amber-500/10  text-amber-400  border-amber-500/20',
+  pending: 'bg-rose-500/10   text-rose-400   border-rose-500/20',
   overdue: 'bg-rose-500/10   text-rose-400   border-rose-500/20',
 }
 const statusLabel = { paid: 'Pago', pending: 'Pendente', overdue: 'Atrasado' }
@@ -572,7 +572,7 @@ export default function FinancePage() {
         {/* KPI Grid — sempre visível */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard title="Receita Realizada" value={stats.totalRevenue} description="Mensalidades pagas" icon={CheckCircle2} valueColor="text-emerald-400" />
-          <KPICard title="A Receber" value={stats.pendingRevenue} description="Previsão pendente" icon={Clock} valueColor="text-amber-400" />
+          <KPICard title="A Receber" value={stats.pendingRevenue} description="Previsão pendente" icon={Clock} valueColor="text-rose-400" />
           <KPICard title="Inadimplência" value={stats.overdueRevenue} description="Cobranças vencidas" icon={AlertCircle} valueColor="text-rose-400" />
           <KPICard title="Alunos Ativos" value={stats.alunosAtivos} description="Com matrícula ativa" icon={TrendingUp} valueColor="text-blue-400" />
         </div>

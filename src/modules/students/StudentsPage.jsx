@@ -1139,7 +1139,7 @@ export default function StudentsPage({ defaultTypeFilter = "aluno" }) {
                                 },
                                 pending: {
                                   label: "Pendente",
-                                  color: "text-amber-400",
+                                  color: "text-rose-400",
                                 },
                                 overdue: {
                                   label: "Vencido",

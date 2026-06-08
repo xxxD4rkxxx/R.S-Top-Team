@@ -36,7 +36,7 @@ const dataBR = (str) => {
 
 const STATUS_STYLE = {
   paid: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  pending: 'bg-amber-500/10  text-amber-400  border-amber-500/20',
+  pending: 'bg-rose-500/10   text-rose-400   border-rose-500/20',
   overdue: 'bg-rose-500/10   text-rose-400   border-rose-500/20',
 }
 const STATUS_LABEL = { paid: 'Pago', pending: 'Pendente', overdue: 'Atrasado' }
@@ -732,7 +732,7 @@ export default function BillingPage() {
             value={R$(kpis.aReceber)}
             description="Dentro do prazo"
             icon={Clock}
-            valueColor="text-amber-400"
+            valueColor="text-rose-400"
             onClick={() => setStatusFilter(statusFilter === 'pending' ? 'todos' : 'pending')}
             active={statusFilter === 'pending'}
           />

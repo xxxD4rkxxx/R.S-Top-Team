@@ -230,16 +230,16 @@ export default function TeacherDashboard() {
         title: 'Meus Alunos', value: String(myStudents.length), desc: 'Alunos ativos', icon: Users, color: 'text-white', iconColor: 'text-gray-400'
       },
       {
-        title: 'Aulas Hoje', value: String(todaySessions.length), desc: 'Agendadas para hoje', icon: CalendarDays, color: 'text-white', iconColor: 'text-gray-400'
+        title: 'Aulas Hoje', value: String(todaySessions.length), desc: 'Agendadas para hoje', icon: CalendarDays, color: 'text-blue-400', iconColor: 'text-gray-400'
       },
       {
-        title: 'Aulas do Mês', value: String(teacherStats.classesTaught), desc: 'Total de aulas', icon: Clock, color: 'text-emerald-400', iconColor: 'text-gray-400'
+        title: 'Aulas do Mês', value: String(teacherStats.classesTaught), desc: 'Total de aulas', icon: Clock, color: 'text-blue-400', iconColor: 'text-gray-400'
       },
       {
-        title: 'Média (30d)', value: `${avgAttendance}%`, desc: 'Média de presença', icon: Target, color: avgAttendance >= 80 ? 'text-emerald-400' : 'text-yellow-400', iconColor: 'text-gray-400'
+        title: 'Média (30d)', value: `${avgAttendance}%`, desc: 'Média de presença', icon: Target, color: avgAttendance >= 80 ? 'text-emerald-400' : 'text-rose-400', iconColor: 'text-gray-400'
       },
       {
-        title: 'Novos (30d)', value: String(newStudents.length), desc: 'Novos alunos', icon: GraduationCap, color: newStudents.length > 0 ? 'text-blue-400' : 'text-gray-400', iconColor: 'text-gray-400'
+        title: 'Novos (30d)', value: String(newStudents.length), desc: 'Novos alunos', icon: GraduationCap, color: newStudents.length > 0 ? 'text-emerald-400' : 'text-gray-400', iconColor: 'text-gray-400'
       },
       {
         title: 'Ausentes (7d)', value: String(ausentesCount), desc: 'Alunos ausentes', icon: AlertCircle, color: ausentesCount > 0 ? 'text-rose-400' : 'text-gray-400', iconColor: 'text-gray-400'

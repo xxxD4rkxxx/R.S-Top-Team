@@ -34,7 +34,7 @@ const dataBR = (str) => {
 
 const STATUS_STYLE = {
   paid: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  pending: 'bg-amber-500/10  text-amber-400  border-amber-500/20',
+  pending: 'bg-rose-500/10   text-rose-400   border-rose-500/20',
 }
 const STATUS_LABEL = { paid: 'Pago', pending: 'Pendente' }
 
@@ -611,8 +611,8 @@ export default function ExpensesPage() {
             value={R$(kpis.totalPendente)}
             description={`${kpis.qtdPendente} conta(s) pendente(s)`}
             icon={Clock}
-            iconColor="text-orange-500"
-            valueColor="text-orange-400"
+            iconColor="text-rose-500"
+            valueColor="text-rose-400"
             onClick={() => setStatusFilter(statusFilter === 'pending' ? 'todos' : 'pending')}
             active={statusFilter === 'pending'}
           />
@@ -639,8 +639,8 @@ export default function ExpensesPage() {
             value={`${kpis.variacao > 0 ? '+' : ''}${kpis.variacao.toFixed(1)}%`}
             description="vs. mês anterior"
             icon={kpis.variacao >= 0 ? TrendingUp : TrendingDown}
-            iconColor={kpis.variacao <= 0 ? 'text-emerald-500' : 'text-rose-500'}
-            valueColor={kpis.variacao <= 0 ? 'text-emerald-400' : 'text-rose-400'}
+            iconColor={kpis.variacao <= 0 ? 'text-emerald-500' : 'text-yellow-500'}
+            valueColor={kpis.variacao <= 0 ? 'text-emerald-400' : 'text-yellow-400'}
           />
         </div>
 
@@ -869,8 +869,8 @@ function ExpenseActionMenu({ expense, menuPosition, onClose, onAction }) {
         }}
       >
         <button onClick={() => onAction('toggleStatus', expense)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all group font-medium">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${expense.status === 'paid' ? 'bg-orange-500/10 group-hover:bg-orange-500/20' : 'bg-emerald-500/10 group-hover:bg-emerald-500/20'}`}>
-            {expense.status === 'paid' ? <Clock size={14} className="text-orange-400" /> : <CheckCircle2 size={14} className="text-emerald-400" />}
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${expense.status === 'paid' ? 'bg-rose-500/10 group-hover:bg-rose-500/20' : 'bg-emerald-500/10 group-hover:bg-emerald-500/20'}`}>
+            {expense.status === 'paid' ? <Clock size={14} className="text-rose-400" /> : <CheckCircle2 size={14} className="text-emerald-400" />}
           </div>
           {expense.status === 'paid' ? 'Marcar como Pendente' : 'Marcar como Pago'}
         </button>
@@ -909,7 +909,7 @@ function ExpenseActionMenu({ expense, menuPosition, onClose, onAction }) {
 
           <div className="space-y-3">
             <button onClick={() => onAction('toggleStatus', expense)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white">
-              {expense.status === 'paid' ? <Clock size={18} className="text-orange-400" /> : <CheckCircle2 size={18} className="text-emerald-400" />}
+              {expense.status === 'paid' ? <Clock size={18} className="text-rose-400" /> : <CheckCircle2 size={18} className="text-emerald-400" />}
               {expense.status === 'paid' ? 'Marcar como Pendente' : 'Marcar como Pago'}
             </button>
             <button onClick={() => onAction('edit', expense)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white">

@@ -94,7 +94,7 @@ function SimpleReportView({ data, filters, modalities }) {
           .text-gray-400, .text-gray-500, .text-gray-600 { color: #333 !important; }
           .status-paid { color: #059669 !important; font-weight: bold; }
           .status-overdue { color: #dc2626 !important; font-weight: bold; }
-          .status-pending { color: #d97706 !important; font-weight: bold; }
+          .status-pending { color: #f43f5e !important; font-weight: bold; }
         }
       `}</style>
 
@@ -183,7 +183,7 @@ function SimpleReportView({ data, filters, modalities }) {
                             <span className={
                               bill.status === 'paid' ? 'status-paid text-emerald-600' : 
                               bill.status === 'overdue' ? 'status-overdue text-rose-600' : 
-                              'status-pending text-amber-600'
+                              'status-pending text-rose-600'
                             }>
                               {bill.status === 'paid' ? 'Pago' : bill.status === 'overdue' ? 'Atrasado' : 'Pendente'}
                             </span>
