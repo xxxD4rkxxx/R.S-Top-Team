@@ -154,7 +154,9 @@ export function useSystemUsers() {
     if (data.pin !== undefined) {
       const userDoc = await getDoc(userRef)
       const userData = userDoc.exists() ? userDoc.data() : {}
-      const isStaff = userData.roles?.admin || userData.roles?.gestor || userData.roles?.professor
+      const isStaff = userData.roles?.admin || userData.papeis?.admin ||
+                      userData.roles?.gestor || userData.papeis?.gestor ||
+                      userData.roles?.professor || userData.papeis?.professor
       if (isStaff) payload.adminPin = data.pin
     }
 

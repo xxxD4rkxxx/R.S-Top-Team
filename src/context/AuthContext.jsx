@@ -224,13 +224,33 @@ export function AuthProvider({ children }) {
     const matchesAdminPin   = dbAdminPin && (typedPin === dbAdminPin || securePIN === dbAdminPin)
 
     if (!matchesStudentPin && !matchesAdminPin) {
+      console.warn('🔍 [loginSmart] PIN incorreto', {
+        email,
+        profileId,
+        pinDocPrimario: dbPin,
+        adminPinDocPrimario: getField(dbData, 'adminPin') || getField(dbData, 'admPin'),
+        pinDocInterno: getField(internalData, 'pin'),
+        adminPinDocInterno: getField(internalData, 'adminPin') || getField(internalData, 'admPin'),
+        typedPin,
+        securePIN,
+        matchesStudentPin,
+        matchesAdminPin,
+        temDocInterno: !!internalDoc?.exists(),
+      })
       throw new Error('PIN incorreto.')
     }
 
-    // 4. Detecta papel do usuário no banco
-    const isMasterAdmin = dbData.papeis?.admin === true || dbData.roles?.admin === true || String(dbData.role).toLowerCase() === 'admin'
-    const isGestorUser  = dbData.papeis?.gestor === true || dbData.roles?.gestor === true || String(dbData.role).toLowerCase() === 'gestor'
-    const isProfUser    = dbData.papeis?.professor === true || dbData.roles?.professor === true || String(dbData.role).toLowerCase() === 'professor'
+    // 4. Detecta papel do usuário no banco (considera ambos os documentos)
+    // O doc primário (dbData) pode ser o perfil de aluno, e o interno (internalData) o de admin
+    const isMasterAdmin =
+      dbData.papeis?.admin === true || dbData.roles?.admin === true || String(dbData.role).toLowerCase() === 'admin' ||
+      internalData.papeis?.admin === true || internalData.roles?.admin === true || String(internalData.role).toLowerCase() === 'admin'
+    const isGestorUser =
+      dbData.papeis?.gestor === true || dbData.roles?.gestor === true || String(dbData.role).toLowerCase() === 'gestor' ||
+      internalData.papeis?.gestor === true || internalData.roles?.gestor === true || String(internalData.role).toLowerCase() === 'gestor'
+    const isProfUser =
+      dbData.papeis?.professor === true || dbData.roles?.professor === true || String(dbData.role).toLowerCase() === 'professor' ||
+      internalData.papeis?.professor === true || internalData.roles?.professor === true || String(internalData.role).toLowerCase() === 'professor'
     const isStaff       = isMasterAdmin || isGestorUser || isProfUser
 
     // 5. Define papel da sessão
@@ -254,6 +274,22 @@ export function AuthProvider({ children }) {
     // 6. REGRA: Somente Admin usando PIN de admin usa conta .internal
     //    Gestores, Professores e Alunos sempre usam o e-mail real
     const useInternal = isMasterAdmin && matchesAdminPin
+
+    console.log('🔍 [loginSmart] Fluxo de login', {
+      email,
+      profileId,
+      usouAdminPin: matchesAdminPin,
+      isMasterAdmin,
+      isGestorUser,
+      isProfUser,
+      isStaff,
+      useInternal,
+      realEmail,
+      internalEmail,
+      temDocInterno: !!internalDoc?.exists(),
+      idDocPrimario: profileId,
+      idDocInterno: internalDoc?.id || '(nulo)',
+    })
 
     if (useInternal) {
       // 👑 MODO MASTER ADMIN — usa e-mail interno para conta separada no Firebase Auth
@@ -310,16 +346,7 @@ export function AuthProvider({ children }) {
       }
   }
 
-    // 👑 MODO ADMIN — usa e-mail interno para conta separada no Firebase Auth
-    setSimulatedRole(null)
-    try {
-      return await signInWithEmailAndPassword(auth, internalEmail, securePIN)
-    } catch (e) {
-      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
-        return await createUserWithEmailAndPassword(auth, internalEmail, securePIN)
-      }
-      throw e
-    }
+  // ⚠️ Código removido: bloco inalcançável após o if/else acima (ambos retornam)
   }
 
   /**
