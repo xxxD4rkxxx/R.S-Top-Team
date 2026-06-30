@@ -2,11 +2,15 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import legacy from '@vitejs/plugin-legacy'
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    legacy({
+      targets: ['defaults', 'not IE 11', 'Android >= 7']
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
@@ -73,8 +77,8 @@ export default defineConfig({
     include: ['react-is']
   },
   build: {
-    // Alvo browsers modernos — saída menor com async/await nativo
-    target: 'esnext',
+    // Alvo es2015 para garantir compatibilidade com WebViews mais antigos
+    target: 'es2015',
 
     // Source maps desactivados em produção — evita exposição do código fonte.
     // NOTE: Para o deploy final de produção, adicionar: drop: ['console', 'debugger']

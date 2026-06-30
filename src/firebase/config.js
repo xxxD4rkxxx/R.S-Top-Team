@@ -31,7 +31,7 @@ export const firebaseConfig = {
   projectId: "academia-rstopteam",
   storageBucket: "academia-rstopteam.firebasestorage.app",
   messagingSenderId: "427455835491",
-  appId: "1:427455835491:web:83c029a7e400c35e1c7756"
+  appId: "1:427455835491:web:d647ab4788c1858c1c7756"
 }
 
 // Inicializa o App (HMR Safe)

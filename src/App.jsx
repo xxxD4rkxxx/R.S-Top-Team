@@ -15,6 +15,8 @@ import SiteFooter from './components/shared/SiteFooter'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import ErrorBoundary from './components/shared/ErrorBoundary'
 import { useSystemUsers } from './hooks/useSystemUsers'
+import { useNotificacoesPush } from './hooks/useNotificacoesPush'
+import { useNotificacoesApp } from './hooks/useNotificacoesApp'
 import { Toaster } from 'react-hot-toast'
 import NotificationCenter from './components/notifications/NotificationCenter'
 import NetworkStatusIndicator from './components/navigation/NetworkStatusIndicator'
@@ -106,6 +108,15 @@ function AppContent() {
   }, [])
 
   const { user, userData, isSetupMode, loading: authLoading } = useAuth()
+
+  // Registra o device no FCM (token salvo no Firestore para notificações futuras)
+  useNotificacoesPush({ userId: user?.uid })
+
+  // Escuta avisos, horários e chamadas do Firestore e dispara notificações locais
+  useNotificacoesApp({
+    alunoId: user?.uid,
+    role: userData?.role || userData?.papel
+  })
 
   // 1. PÁGINAS PÚBLICAS: Telas de autenticação que não requerem login.
   const isAuthPage = ['/login', '/rsadmin'].includes(location.pathname)

@@ -1,0 +1,69 @@
+{
+  "project_info": {
+    "project_number": "427455835491",
+    "firebase_url": "https://academia-rstopteam-default-rtdb.firebaseio.com",
+    "project_id": "academia-rstopteam",
+    "storage_bucket": "academia-rstopteam.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:427455835491:android:a79fcefa0ffc652e1c7756",
+        "android_client_info": {
+          "package_name": "com.rstopteam.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "427455835491-tusq84b5f9c3uv8jf2mnqj0o90a6abte.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuYsdV5NV4wbBUPmSbEP_QoMMlejP8b7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "427455835491-tusq84b5f9c3uv8jf2mnqj0o90a6abte.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:427455835491:android:9e7e0ba6493988841c7756",
+        "android_client_info": {
+          "package_name": "rstopteam.apk"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "427455835491-tusq84b5f9c3uv8jf2mnqj0o90a6abte.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuYsdV5NV4wbBUPmSbEP_QoMMlejP8b7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "427455835491-tusq84b5f9c3uv8jf2mnqj0o90a6abte.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

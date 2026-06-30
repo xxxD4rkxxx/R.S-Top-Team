@@ -60,6 +60,54 @@ const SECTIONS = [
 ]
 
 // ════════════════════════════════════════════════════════════════
+//  COMPONENTES AUXILIARES PARA A CONTA
+// ════════════════════════════════════════════════════════════════
+function InfoRow({ label, value, icon: Icon }) {
+  return (
+    <div className="flex items-center justify-between px-6 py-4 group border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+      <div className="flex items-center gap-3">
+        <Icon size={16} className="text-gray-500" />
+        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+      </div>
+      <span className="text-sm font-medium text-white">{value || '—'}</span>
+    </div>
+  )
+}
+
+function EditableRow({ label, field, value, icon: Icon, onEdit, editing, fieldValue, setFieldValue, onSave, onCancel, saving, type = 'text', isSelect = false, options = [] }) {
+  return (
+    <div className="flex items-center justify-between px-6 py-4 group border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+      <div className="flex items-center gap-3 w-1/3">
+        <Icon size={16} className="text-gray-500" />
+        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+      </div>
+      
+      {editing ? (
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          {isSelect ? (
+            <select value={fieldValue} onChange={e => setFieldValue(e.target.value)} className="bg-black border border-white/10 rounded-md px-3 py-1.5 text-sm text-white focus:border-primary focus:outline-none">
+              <option value="">Selecione...</option>
+              {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          ) : (
+            <input type={type} value={fieldValue} onChange={e => setFieldValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && onSave()} className="bg-black border border-white/10 rounded-md px-3 py-1.5 text-sm text-white focus:border-primary focus:outline-none text-right w-full max-w-[200px]" autoFocus />
+          )}
+          <button onClick={onSave} disabled={saving} className="text-emerald-400 hover:text-emerald-300 p-1 bg-emerald-500/10 rounded-md transition-colors"><CheckCircle2 size={16} /></button>
+          <button onClick={onCancel} className="text-red-400 hover:text-red-300 p-1 bg-red-500/10 rounded-md transition-colors"><X size={16} /></button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-white">{type === 'date' && value ? formatBR(value, {}, true) : (value || '—')}</span>
+          <button onClick={onEdit} className="text-gray-600 hover:text-white transition-colors opacity-0 group-hover:opacity-100 p-1">
+            <Edit2 size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════
 //  PAINEL: MINHA CONTA
 // ════════════════════════════════════════════════════════════════
 function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
@@ -67,198 +115,243 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
   const [fieldValue, setFieldValue] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const startEdit = (field, current) => { setEditingField(field); setFieldValue(current || '') }
+  // Estados compostos para edição da graduação
+  const [gradEdit, setGradEdit] = useState({ belt: '', degree: 0, date: '', modality: '' })
+
+  const isGestor = ['admin', 'gestor', 'dono', 'desenvolvedor'].includes(activeRole)
+
+  const startEdit = (field, current) => { 
+    setEditingField(field) 
+    setFieldValue(current || '') 
+  }
   const cancelEdit = () => setEditingField(null)
 
   const saveField = async () => {
     setSaving(true)
-    try { await onUpdateProfile({ [editingField]: fieldValue }) }
+    try { 
+      if (editingField === 'modality') {
+         await onUpdateProfile({ modalities: [fieldValue] })
+      } else {
+         await onUpdateProfile({ [editingField]: fieldValue }) 
+      }
+    }
     finally { setSaving(false); setEditingField(null) }
   }
 
+  const startGradEdit = () => {
+    setEditingField('graduacao')
+    setGradEdit({
+      belt: user?.jiuJitsu?.belt || 'white',
+      degree: user?.jiuJitsu?.degree || 0,
+      date: user?.jiuJitsu?.lastGraduation || '',
+      modality: user?.modalities?.[0] || 'Jiu-Jitsu'
+    })
+  }
+
+  const saveGraduacao = async () => {
+    setSaving(true)
+    try {
+      const historyItem = {
+        belt: gradEdit.belt,
+        degree: gradEdit.degree,
+        date: gradEdit.date,
+        modality: gradEdit.modality,
+        timestamp: new Date().toISOString()
+      }
+
+      // Evita duplicatas se nada mudou
+      const currentBelt = user?.jiuJitsu?.belt || 'white'
+      const currentDegree = user?.jiuJitsu?.degree || 0
+      const currentDate = user?.jiuJitsu?.lastGraduation || ''
+      const currentMod = user?.modalities?.[0] || 'Jiu-Jitsu'
+      
+      let newHistory = user?.jiuJitsu?.history || []
+      
+      if (currentBelt !== gradEdit.belt || currentDegree !== gradEdit.degree || currentDate !== gradEdit.date || currentMod !== gradEdit.modality) {
+         // Atualiza histórico apenas se os dados cruciais de faixa mudaram
+         if (currentBelt !== gradEdit.belt || currentDegree !== gradEdit.degree) {
+           newHistory = [...newHistory, historyItem]
+         }
+      }
+
+      const updates = {
+        jiuJitsu: {
+          ...user?.jiuJitsu,
+          belt: gradEdit.belt,
+          degree: gradEdit.degree,
+          lastGraduation: gradEdit.date,
+          history: newHistory
+        }
+      }
+      
+      // Apenas o gestor atualiza a modalidade pelo form de graduação
+      if (isGestor && gradEdit.modality !== currentMod) {
+        updates.modalities = [gradEdit.modality]
+      }
+
+      await onUpdateProfile(updates)
+    } finally {
+      setSaving(false)
+      setEditingField(null)
+    }
+  }
 
   const initials = (user?.name || 'M').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
-  const role = roleConfig[activeRole] || roleConfig[user?.role] || roleConfig.aluno
+  const currentBeltKey = user?.jiuJitsu?.belt || user?.belt || 'white'
+  const currentBeltLabel = beltConfig[currentBeltKey]?.label || currentBeltKey
+  const currentModality = user?.modalities?.[0] || user?.modality || 'Jiu-Jitsu'
 
   return (
     <div className="space-y-6">
-      {/* PROFILE CARD */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid color-mix(in srgb, var(--clr-primary-dark) 35%, transparent)' }}>
-        {/* BANNER (STATIC GRADIENT) */}
-        <div className="h-28 w-full relative">
-          <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark) 0%, var(--clr-primary) 60%, #FF3057 100%)' }}>
-            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.12) 10px, rgba(0,0,0,0.12) 20px)' }} />
-          </div>
-        </div>
-
-        {/* AVATAR + INFO */}
-        <div className="px-6 pb-5" style={{ background: 'var(--clr-surface-2)' }}>
-          <div className="flex items-end gap-4 -mt-10 mb-4">
+      {/* HEADER DO PERFIL (Inspirado no layout da imagem) */}
+      <div className="relative rounded-2xl overflow-hidden border border-white/5 shadow-xl bg-gradient-to-r from-white/[0.02] to-white/[0.05]">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, var(--clr-primary) 10px, var(--clr-primary) 20px)' }} />
+        <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-5 w-full sm:w-auto">
             {/* AVATAR */}
-            {/* AVATAR (INITIALS ONLY) */}
             <div className="relative flex-shrink-0">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white ring-4 shadow-xl shadow-primary/20" style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))', ringColor: 'var(--clr-surface-2)' }}>
-                {initials}
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-primary/20 border-4 border-[#1a1a1a]" style={{ background: 'linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary))' }}>
+                {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full rounded-full object-cover" alt="Avatar" /> : initials}
+              </div>
+              <button className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full text-black shadow-md border border-gray-200 hover:scale-105 transition-transform" onClick={() => startEdit('name', user?.name)}>
+                <Edit2 size={10} strokeWidth={3} />
+              </button>
+            </div>
+
+            {/* INFO CABEÇALHO */}
+            <div className="text-center sm:text-left flex-1">
+              <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">{user?.name || 'Nome do Atleta'}</h2>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{currentBeltLabel}</span>
+                <span className="px-2 py-0.5 rounded-full bg-black/40 border border-white/5 text-[10px] font-bold text-gray-300 uppercase shadow-inner">{currentModality}</span>
               </div>
             </div>
-
-            <div className="pb-1 flex-1 min-w-0">
-              <p className="text-white font-bold text-lg leading-none truncate">{user?.name || 'Anon'}</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2 justify-end">
-              {/* TAGS DE CARGO (ROLES) */}
-              {(() => {
-                const rolesSet = new Set()
-                
-                // 1. Coleta do objeto roles (plural/SSoT)
-                if (user?.roles) {
-                  Object.entries(user.roles).forEach(([k, active]) => {
-                    if (active) rolesSet.add(k.toLowerCase())
-                  })
-                }
-
-                // 2. Coleta do campo role (singular/Legado)
-                if (user?.role) {
-                  rolesSet.add(user.role.toLowerCase())
-                }
-
-                // 3. Fallback: Se não houver nenhum cargo identificado, assume Aluno
-                if (rolesSet.size === 0) {
-                  rolesSet.add('aluno')
-                }
-
-                // 4. Ordenação por importância: Admin/Dono > Gestor > Professor > Aluno
-                const priority = { admin: 0, dono: 0, desenvolvedor: 0, gestor: 1, professor: 2, aluno: 3 }
-                const roles = Array.from(rolesSet).sort((a, b) => (priority[a] ?? 99) - (priority[b] ?? 99))
-
-                return roles.map(rKey => {
-                  const rCfg = roleConfig[rKey] || roleConfig.aluno
-                  return (
-                    <div key={rKey} className={`px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border transition-all hover:scale-105 ${rCfg.bg}`}>
-                      <rCfg.icon size={12} className={rCfg.color} />
-                      <span className={rCfg.color}>{rCfg.label}</span>
-                    </div>
-                  )
-                })
-              })()}
-
-              {/* TAG DE STATUS */}
-              {user?.status && (
-                <div className={`px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border transition-all ${
-                  user.status === 'ativo' ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-red-500/10 border-red-500/25 text-red-400'
-                }`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${user.status === 'ativo' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-                  <span className="uppercase">{user.status}</span>
-                </div>
-              )}
-
-              {/* TAG DE FAIXA (Se aplicável) */}
-              {user?.belt && user.belt !== 'none' && (
-                <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-300">
-                  <Award size={12} className="text-white/40" />
-                  <span className="uppercase">{beltConfig[user.belt]?.label || user.belt}</span>
-                </div>
-              )}
-
-              {/* TAGS DE MODALIDADE */}
-              {(user?.modalities || (user?.modality ? [user.modality] : [])).map(m => (
-                <div key={m} className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-primary/20 bg-primary/5 text-primary-light">
-                  <Dumbbell size={12} className="opacity-50" />
-                  <span className="uppercase">{m}</span>
-                </div>
-              ))}
-
-              {/* TAG DE CATEGORIA (Adulto/Kids) */}
-              {user?.ageCategory && (
-                <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-400">
-                  <Users size={12} className="opacity-50" />
-                  <span className="uppercase">{user.ageCategory}</span>
-                </div>
-              )}
-
-              {/* TAG DE GÊNERO */}
-              {user?.gender && (
-                <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-400">
-                  <User size={12} className="opacity-50" />
-                  <span className="uppercase">{user.gender === 'Masculino' ? 'MASC' : user.gender === 'Feminino' ? 'FEM' : user.gender}</span>
-                </div>
-              )}
-
-              {/* TAG DE TOTAL DE AULAS */}
-              {user?.total_visitas !== undefined && (
-                <div className="px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-1.5 border border-white/10 bg-white/5 text-gray-400">
-                  <Activity size={12} className="text-primary opacity-70" />
-                  <span>{user.total_visitas || 0} AULAS</span>
-                </div>
-              )}
-            </div>
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1.5 rounded-2xl text-[11px] font-bold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>🥋 RS Top Team</span>
-            <span className="px-3 py-1.5 rounded-2xl text-[11px] font-bold text-gray-400" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              📅 Início na Academia {
-                (() => {
-                  const raw = user?.startDate || user?.criadoEm || user?.createdAt || user?.dataRegistro || user?.registrationDate || authUser?.metadata?.creationTime
-                  return formatBR(raw, {}, true)
-                })()
-              }
-            </span>
-          </div>
+          
+          <button className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-colors shrink-0">
+            <Clock size={14} /> HISTÓRICO
+          </button>
         </div>
       </div>
 
-      {/* EDIT FIELDS */}
-      <Section title="Informações da conta">
-        {[
-          { key: 'name', label: 'Nome', val: user?.name || 'Anon' },
-          { key: 'email', label: 'E-mail', val: user?.email || '—' },
-          { key: 'phone', label: 'Telefone', val: user?.phone || '—' },
-          { key: 'pin', label: 'PIN de Acesso', val: user?.pin || '—' },
-        ].map(f => (
-          <div key={f.key}>
-            {editingField === f.key ? (
-              <div className="flex items-center gap-3 px-5 py-3">
-                <div className="flex-1">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">{f.label}</p>
-                  <input
-                    autoFocus
-                    value={fieldValue}
-                    onChange={e => setFieldValue(e.target.value)}
-                    className="form-input text-sm py-2 px-3 focus:border-primary/50 transition-all"
-                    placeholder={f.label}
-                    onKeyDown={e => e.key === 'Enter' && saveField()}
-                  />
-                </div>
-                <div className="flex gap-2 items-end pb-0.5 mt-5">
-                  <button onClick={saveField} disabled={saving} className="btn-primary px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5">
-                    <Save size={12} /> {saving ? '...' : 'Salvar'}
-                  </button>
-                  <button onClick={cancelEdit} className="px-3 py-1.5 rounded-md text-xs text-gray-600 hover:text-app hover:bg-white/5 transition-colors border border-white/5">
-                    <X size={12} />
-                  </button>
-                </div>
+      {/* INFORMAÇÕES PESSOAIS */}
+      <Section title={<div className="flex items-center gap-2"><User size={14} className="text-gray-400" /> INFORMAÇÕES PESSOAIS</div>}>
+        <InfoRow label="ID ATLETA" value={authUser?.uid || user?.id} icon={QrCode} />
+        <InfoRow label="E-MAIL" value={user?.email} icon={Mail} />
+        <EditableRow label="TELEFONE" field="phone" value={user?.phone || user?.telefone} icon={Phone} onEdit={() => startEdit('phone', user?.phone || user?.telefone)} editing={editingField === 'phone'} fieldValue={fieldValue} setFieldValue={setFieldValue} onSave={saveField} onCancel={cancelEdit} saving={saving} />
+        <EditableRow label="NASCIMENTO" field="birthDate" value={user?.birthDate || user?.nascimento} icon={Calendar} onEdit={() => startEdit('birthDate', user?.birthDate || user?.nascimento)} editing={editingField === 'birthDate'} fieldValue={fieldValue} setFieldValue={setFieldValue} onSave={saveField} onCancel={cancelEdit} saving={saving} type="date" />
+        <EditableRow label="SEXO" field="gender" value={user?.gender} icon={User} onEdit={() => startEdit('gender', user?.gender)} editing={editingField === 'gender'} fieldValue={fieldValue} setFieldValue={setFieldValue} onSave={saveField} onCancel={cancelEdit} saving={saving} isSelect options={['Masculino', 'Feminino', 'Outro']} />
+      </Section>
+
+      {/* MODALIDADE */}
+      <Section title={
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2"><Dumbbell size={14} className="text-gray-400" /> MODALIDADE</div>
+        </div>
+      }>
+        {editingField === 'modality' ? (
+          <div className="px-6 py-4 flex gap-4 items-center bg-white/[0.02]">
+            <select value={fieldValue} onChange={e => setFieldValue(e.target.value)} className="bg-black border border-white/10 rounded-md px-4 py-2 text-sm text-white focus:border-primary focus:outline-none flex-1">
+              <option value="">Selecione...</option>
+              {modalities.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <button onClick={saveField} disabled={saving} className="btn-primary px-4 py-2 rounded-md text-xs font-bold flex items-center gap-1"><CheckCircle2 size={14}/> Salvar</button>
+            <button onClick={cancelEdit} className="text-red-400 hover:text-red-300 p-2 bg-red-500/10 rounded-md transition-colors"><X size={16} /></button>
+          </div>
+        ) : (
+          <div className="px-6 py-5 flex items-center justify-between group">
+            <span className="text-sm font-medium text-white uppercase">{currentModality}</span>
+            {isGestor && (
+              <button onClick={() => startEdit('modality', currentModality)} className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary-light flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary/20 bg-primary/10 transition-all opacity-0 group-hover:opacity-100">
+                <Edit2 size={12} /> Editar
+              </button>
+            )}
+          </div>
+        )}
+      </Section>
+
+      {/* GRADUAÇÃO */}
+      <Section title={
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2 text-primary"><Award size={14} /> GRADUAÇÃO</div>
+          {!editingField && (
+            <button onClick={startGradEdit} className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-white flex items-center gap-1 transition-colors">
+              <Edit2 size={12} /> EDITAR
+            </button>
+          )}
+        </div>
+      }>
+        {editingField === 'graduacao' ? (
+          <div className="p-6 bg-white/[0.02] border-t border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Faixa</label>
+                <select disabled={!isGestor} value={gradEdit.belt} onChange={e => setGradEdit({...gradEdit, belt: e.target.value})} className="w-full bg-black border border-white/10 rounded-md px-4 py-2.5 text-sm text-white focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                  {Object.entries(beltConfig).map(([id, cfg]) => <option key={id} value={id}>{cfg.label}</option>)}
+                </select>
               </div>
-            ) : (
-              <div className="flex items-center justify-between px-5 py-4 group">
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-0.5">{f.label}</p>
-                  <p className={`text-sm font-medium ${f.key === 'pin' ? 'font-mono tracking-[0.3em] text-emerald-400 font-black' : 'text-app'}`}>{f.val}</p>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Grau</label>
+                <select value={gradEdit.degree} onChange={e => setGradEdit({...gradEdit, degree: parseInt(e.target.value) || 0})} className="w-full bg-black border border-white/10 rounded-md px-4 py-2.5 text-sm text-white focus:border-primary focus:outline-none">
+                  {[0,1,2,3,4].map(g => <option key={g} value={g}>{g}º Grau</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Modalidade</label>
+                <select disabled={!isGestor} value={gradEdit.modality} onChange={e => setGradEdit({...gradEdit, modality: e.target.value})} className="w-full bg-black border border-white/10 rounded-md px-4 py-2.5 text-sm text-white focus:border-primary focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                  {modalities.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">Data da Graduação</label>
+                <input type="date" value={gradEdit.date} onChange={e => setGradEdit({...gradEdit, date: e.target.value})} className="w-full bg-black border border-white/10 rounded-md px-4 py-2.5 text-sm text-white focus:border-primary focus:outline-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
+              <button onClick={cancelEdit} className="px-5 py-2.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white border border-white/10 hover:bg-white/5 transition-all">Cancelar</button>
+              <button onClick={saveGraduacao} disabled={saving} className="btn-primary px-5 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2">
+                {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />} {saving ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6">
+            <div className="bg-black/20 rounded-xl p-5 flex items-center gap-5 border border-white/5 shadow-inner">
+               <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center shadow-md border border-white/5 relative overflow-hidden">
+                 <div className="absolute inset-0 opacity-20" style={{ background: beltConfig[currentBeltKey]?.color || '#fff' }} />
+                 <Award size={24} color={beltConfig[currentBeltKey]?.color || '#fff'} />
+               </div>
+               <div>
+                 <h3 className="text-lg font-black text-white">{currentBeltLabel} {user?.jiuJitsu?.degree ? `- ${user.jiuJitsu.degree}º Grau` : ''}</h3>
+                 <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-0.5">{currentModality}</p>
+               </div>
+            </div>
+            
+            {(user?.jiuJitsu?.history && user.jiuJitsu.history.length > 0) && (
+              <div className="mt-8">
+                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <div className="w-4 h-px bg-white/10" /> Histórico de Graduações
+                </h4>
+                <div className="space-y-1">
+                  {[...user.jiuJitsu.history].sort((a, b) => new Date(b.date) - new Date(a.date)).map((hist, idx) => (
+                    <div key={idx} className="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-white/[0.02] transition-colors border border-transparent hover:border-white/5">
+                      <div className="flex items-center gap-3 text-sm font-bold text-white">
+                        <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: beltConfig[hist.belt]?.color || '#888' }} />
+                        {beltConfig[hist.belt]?.label || hist.belt} {hist.degree ? `- ${hist.degree}º Grau` : ''}
+                      </div>
+                      <div className="text-[11px] text-gray-500 font-bold tracking-widest bg-black/40 px-3 py-1 rounded-md border border-white/5">{hist.date ? formatBR(hist.date, {}, true) : '—'}</div>
+                    </div>
+                  ))}
                 </div>
-                {f.key !== 'pin' && (
-                  <button onClick={() => startEdit(f.key, f.val)} className="px-3 py-1 rounded-md text-xs text-gray-600 hover:text-app hover:bg-white/5 transition-colors border border-white/5">
-                    <Edit2 size={18} strokeWidth={1.9} />
-                  </button>
-                )}
               </div>
             )}
           </div>
-        ))}
+        )}
       </Section>
     </div>
   )
 }
+
 
 // ════════════════════════════════════════════════════════════════
 //  PAINEL: PIN & ACESSO
