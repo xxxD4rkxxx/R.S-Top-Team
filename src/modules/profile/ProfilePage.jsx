@@ -19,6 +19,7 @@ import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import { formatPhoneUI, parsePhoneData } from '../../utils/phoneUtils'
 import { formatBR } from '../../utils/dateUtils'
+import HistoryDrawer from '../../components/profile/HistoryDrawer'
 
 // ── Ícones de role ──────────────────────────────────────────────
 const roleConfig = {
@@ -114,6 +115,7 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
   const [editingField, setEditingField] = useState(null)
   const [fieldValue, setFieldValue] = useState('')
   const [saving, setSaving] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   // Estados compostos para edição da graduação
   const [gradEdit, setGradEdit] = useState({ belt: '', degree: 0, date: '', modality: '' })
@@ -205,7 +207,6 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
     <div className="space-y-6">
       {/* HEADER DO PERFIL (Inspirado no layout da imagem) */}
       <div className="relative rounded-2xl overflow-hidden border border-white/5 shadow-xl bg-gradient-to-r from-white/[0.02] to-white/[0.05]">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, var(--clr-primary) 10px, var(--clr-primary) 20px)' }} />
         <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center gap-5 w-full sm:w-auto">
             {/* AVATAR */}
@@ -228,7 +229,10 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
             </div>
           </div>
           
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-colors shrink-0">
+          <button
+            onClick={() => setHistoryOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-colors shrink-0 active:scale-95"
+          >
             <Clock size={14} /> HISTÓRICO
           </button>
         </div>
@@ -348,6 +352,19 @@ function SectionConta({ user, authUser, activeRole, onUpdateProfile }) {
           </div>
         )}
       </Section>
+
+      {/* ── History Drawer ─────────────────────────────────── */}
+      <AnimatePresence>
+        {historyOpen && (
+          <HistoryDrawer
+            userId={authUser?.uid || user?.id}
+            userName={user?.name}
+            userBelt={user?.jiuJitsu?.belt || user?.belt}
+            isOpen={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -1927,7 +1944,7 @@ function SectionSobre() {
       <Section title="RS Top Team — Sistema de Gestão">
         <div className="divide-y divide-white/5">
           {[
-            { label: 'Versão', value: '26.1.8-beta' },
+            { label: 'Versão', value: '26.1.9-beta' },
             { label: 'Framework', value: 'React 19 + Vite' },
             { label: 'Banco de dados', value: 'Firebase Firestore' },
             { label: 'Hospedagem', value: 'Firebase Hosting' },
