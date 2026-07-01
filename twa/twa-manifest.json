@@ -1,0 +1,28 @@
+{
+  "packageName": "com.rstopteam.academy",
+  "host": "rstopteam.web.app",
+  "launchUrl": "https://rstopteam.web.app",
+  "name": "Rs Top Team",
+  "shortName": "Rs Top Team",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#6D001A",
+  "backgroundColor": "#000000",
+  "appVersion": "1.0.0",
+  "appVersionCode": 1,
+  "iconUrl": "https://rstopteam.web.app/logo.webp",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "alias": "android",
+    "path": "./android.keystore"
+  },
+  "androidBundleSupport": {
+    "supported": false
+  },
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    }
+  }
+}
