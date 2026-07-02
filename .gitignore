@@ -44,6 +44,11 @@ service-account*.json
 .env.*.local
 storage.rules.bak
 
+# Keystores Android - NUNCA commitar (permite assinar APKs falsos)
+*.jks
+*.keystore
+android/app/google-services.json
+
 # Workspace "lixo" e arquivos temporários
 users.json
 Novo Documento de Texto.html
